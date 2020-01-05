@@ -24,3 +24,9 @@
  Demodulation is performed by calculating the correlation for each of these symbols and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the Z symbol, the X symbol and the difference between them necessary to detect the synchronization.
  
  ![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
+
+ As you can see there is a delay between the signal and the correlation functions due to the buffer used to calculate it.
+ 
+ ### Symbol detection
+ 
+ 
