@@ -53,7 +53,7 @@
  
  ![APP](/doc/nfc-spy-capture2.png?raw=true "Protocol detail example")
  
- ### Licensig
+ ### Licensing
  
  This project is published under the terms of the MIT license, however there are parts of it that I have used and are subject to other types of licenses, please check if you are interested in this work.
  
