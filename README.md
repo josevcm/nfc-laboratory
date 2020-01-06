@@ -43,4 +43,25 @@
  
  The BPSK demodulation requires a reference signal to detect the phase changes, since that is complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to determine the value of symbols through the changes produced between then.
  
+ ## Application example
+ 
+ An example of the result can be seen below. 
+ 
+ ![APP](/doc/nfc-spy-capture1.png?raw=true "Application example")
+ 
+ Of course, once the frames have been obtained, many improvements can be applied, such as time measurement or protocol details.
+ 
+ ![APP](/doc/nfc-spy-capture2.png?raw=true "Protocol detail example")
+ 
+ ### Licensig
+ 
+ This project is published under the terms of the MIT license, however there are parts of it that I have used and are subject to other types of licenses, please check if you are interested in this work.
+ 
+ - AirSpy SDR driver (src/support/airspy)
+ - RTL SDR driver (src/support/rtlsdr)
+ - Posix for windows (src/support/posix)
+ - QCustomPlot library (src/support/plot)
+ 
+ 
+ 
  
