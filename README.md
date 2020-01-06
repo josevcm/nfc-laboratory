@@ -1,5 +1,5 @@
-# nfc-spy
- NFC protocol analyzer via SDR receiver
+# SDR nfc-signal-monitor
+ NFC signal and protocol analyzer via SDR receiver
  
 ## Description
  By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the reader.
@@ -19,9 +19,9 @@
  
 ### Demodulation
 
- Due to the digital nature of the signal I used a technique called symbol correlation which is equivalent to carrying out the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A modulation is based on 6 symbols: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications for complete description).
+ Due to the digital nature of the signal i used a technique called symbol correlation which is equivalent to carrying out the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A modulation is based on 6 symbols: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications for complete description).
  
- Demodulation is performed by calculating the correlation for each of these symbols and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the Z symbol, the X symbol and the difference between them necessary to detect the synchronization.
+ Demodulation is performed by calculating the correlation for each of these symbols and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the symbol Z and X, followed by absolute difference between them necessary to detect the synchronization.
  
  ![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
 
