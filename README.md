@@ -1,5 +1,5 @@
 # SDR nfc-signal-monitor
- A simple NFC signal and protocol analyzer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
+ A simple NFC signal and protocol sniffer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
  
 ## Description
  By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the reader.
@@ -59,7 +59,7 @@
  
  - AirSpy Mini: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these parameters it is possible to capture the communication up to 424 Kbps. 
  
-  - RTL SDR: Wors tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it only allows you to capture the commands.
+  - RTL SDR: Works tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it only allows you to capture the commands.
   
   - Lime SDR: I couldn't finish the job with this receiver, maybe one day ...
  
