@@ -69,6 +69,7 @@
  
  - AirSpy SDR driver (src/support/airspy)
  - RTL SDR driver (src/support/rtlsdr)
+ - Lime SDR driver (src/support/lime)
  - Posix for windows (src/support/posix)
  - QCustomPlot library (src/support/plot)
  
