@@ -53,6 +53,16 @@
  
  ![APP](/doc/nfc-spy-capture2.png?raw=true "Protocol detail example")
  
+ ## SDR Receivers tested
+ 
+ I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices but surely it works with others.
+ 
+ - AirSpy Mini: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these parameters it is possible to capture the communication up to 424 Kbps. 
+ 
+  - RTL SDR: Wors tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it only allows you to capture the commands.
+  
+  - Lime SDR: I couldn't finish the job with this receiver, maybe one day ...
+ 
  ### Licensing
  
  This project is published under the terms of the MIT license, however there are parts of it that I have used and are subject to other types of licenses, please check if you are interested in this work.
