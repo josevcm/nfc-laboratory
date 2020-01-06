@@ -1,5 +1,5 @@
-# nfc-spy
- NFC protocol analyzer via SDR receiver
+# SDR nfc-signal-monitor
+ NFC signal and protocol analyzer via SDR receiver
  
 ## Description
  By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the reader.
@@ -13,12 +13,20 @@
  
  Let's see a capture of the signal received in baseband for the REQA command and its response:
  
- ![REQA](/screenshots/nfc-baseband-reqa.png?raw=true "REQA signal capture")
+ ![REQA](/doc/nfc-baseband-reqa.png?raw=true "REQA signal capture")
 
  As can be seen, it is a signal modulated in 100% ASK that corresponds to the REQA 26h command of the NFC specifications, the response of the card uses something called load modulation that manifests as a series of pulses on the main signal after the command.
  
 ### Demodulation
 
- Due to the digital nature of the signal I used a technique called symbol correlation which is equivalent to carrying out the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A modulation is based on 6 symbols: Y, X and Z for commands and E, D, F for card responses (see NFC specifications for complete description).
+ Due to the digital nature of the signal i used a technique called symbol correlation which is equivalent to carrying out the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A modulation is based on 6 symbols: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications for complete description).
  
- Demodulation is performed by calculating the correlation for each of these symbols and detecting when the maximum approximation to each of them occurs.
+ Demodulation is performed by calculating the correlation for each of these symbols and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the symbol Z and X, followed by absolute difference between them necessary to detect the synchronization.
+ 
+ ![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
+
+ As you can see there is a delay between the signal and the correlation functions due to the buffer used to calculate it.
+ 
+ ### Symbol detection
+ 
+ 
