@@ -67,9 +67,7 @@
  
  It will be available soon... i am working on cleaning and preparing it.
  
- If you think it is an interesting job or you plan to use it for something please send me an email and let me know, i will be happy to exchange experiences, thank you very much!
- 
- ### Licensing
+ If you think it is an interesting job or you plan to use it for something please send me an email and let me know, i will be happy to exchange experiences, thank you very much. 
  
  This project is published under the terms of the MIT license, however there are parts of it that I have used and are subject to other types of licenses, please check if you are interested in this work.
  
