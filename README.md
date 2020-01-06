@@ -1,5 +1,5 @@
 # SDR nfc-signal-monitor
- NFC signal and protocol analyzer via SDR receiver
+ A simple NFC signal and protocol analyzer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
  
 ## Description
  By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the reader.
@@ -36,5 +36,11 @@
  For the detection of each symbol the value of each correlation is evaluated in the appropriate instants according to the synchronization.
  
  This results in a flow of symbols X, Y, Z, E, D, F that are subsequently interpreted by a state machine in accordance with the specifications of ISO 14443-3 to obtain a byte stream that can be easily processed.
+ 
+### ASK / BPSK modulation
+
+ The ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK for card responses when the speed is 212Kbps or higher.
+ 
+ The BPSK demodulation requires a reference signal to detect the phase changes, since that is complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to determine the value of symbols through the changes produced between then.
  
  
