@@ -6,10 +6,12 @@
  
  I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation accessible through Google, i will describe as simply as possible the method that i have used to implement this software.
  
-## Signal processing
- The first step is receive the 13.56MHz signal and demodulate to get the baseband ASK stream, for this purpose any SDR device capable of tuning this frequency can be used, i have the fantastic and cheap AirSpy Mini capable of tuning from 27Mhz to 1700Mhz.
+ Currently only detection and decoding for NFC-A modulation has been implemented.
  
- However, it is not possible to tune 13.56Mhz with this receiver, instead it is possible to use the second harmonic at 27.12Mhz or third at 40.68Mhz.
+## Signal processing
+ The first step is receive the 13.56MHz signal and demodulate to get the baseband ASK stream, for this purpose any SDR device capable of tuning this frequency can be used, i have the fantastic and cheap AirSpy Mini capable of tuning from 27Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
+ 
+ However, it is not possible to tune 13.56Mhz with this receiver, instead it is possible to use the second harmonic at 27.12Mhz or third at 40.68Mhz, the latter has been used to perform the tests
  
  Let's see a capture of the signal received in baseband for the REQA command and its response:
  
@@ -25,8 +27,14 @@
  
  ![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
 
- As you can see there is a delay between the signal and the correlation functions due to the buffer used to calculate it.
+ The response of the card is much weaker but enough to allow its detection, here it is shown in better scale.
  
- ### Symbol detection
+ ![CORRELATION](/doc/nfc-response-log.png?raw=true "Decoder response correlation")
+ 
+### Symbol detection
+ 
+ For the detection of each symbol the value of each correlation is evaluated in the appropriate instants according to the synchronization.
+ 
+ This results in a flow of symbols X, Y, Z, E, D, F that are subsequently interpreted by a state machine in accordance with the specifications of ISO 14443-3 to obtain a byte stream that can be easily processed.
  
  
