@@ -1,4 +1,4 @@
-# SDR nfc-signal-monitor
+# SDR nfc-signal-monitor (work in progress...)
  A simple NFC signal and protocol sniffer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
  
 ## Description
