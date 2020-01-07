@@ -73,7 +73,7 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  ![APP](/doc/nfc-spy-capture2.png?raw=true "Protocol detail example")
  
- Capture of a transmission of the PPS command with a speed change from 106Kbps to 424Kbps demonstrating the BPSK demodulation capability.
+ Example of PPS command with a speed change from 106Kbps to 424Kbps demonstrating the BPSK demodulation capability.
  
  ![APP](/doc/nfc-spy-capture3.png?raw=true "Protocol detail example")
  
