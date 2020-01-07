@@ -11,9 +11,9 @@
 ## Signal processing
  The first step is receive the 13.56MHz signal and demodulate to get the baseband ASK stream, for this purpose any SDR device capable of tuning this frequency can be used, i have the fantastic and cheap AirSpy Mini capable of tuning from 27Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
  
- However, it is not possible to tune 13.56Mhz with this receiver, instead it is possible to use the second harmonic at 27.12Mhz or third at 40.68Mhz, the latter has been used to perform the tests
+ However, it is not possible to tune 13.56Mhz with this receiver, instead i use the second harmonic at 27.12Mhz or third at 40.68Mhz with good results.
  
- Let's see a capture of the signal received in baseband for the REQA command and its response:
+ Let's see a capture of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its response:
  
  ![REQA](/doc/nfc-baseband-reqa.png?raw=true "REQA signal capture")
 
@@ -23,7 +23,7 @@
 
  Due to the digital nature of the signal i used a technique called symbol correlation which is equivalent to carrying out the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A modulation is based on 6 patterns: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications for complete description).
  
- Demodulation is performed by calculating the correlation for each of these patterns and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the others. Last value is function SD represent the absolute difference between S0 and S1 necessary to detect the timmings.
+ Demodulation is performed by calculating the correlation for these patterns and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the others. Last value is function SD represent the absolute difference between S0 and S1 necessary to detect the timmings.
  
  ![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
 
@@ -33,7 +33,7 @@
  
 ### Symbol detection
  
- For the detection of each symbol the value of each correlation is evaluated in the appropriate instants according to the synchronization. The number of samples per symbol is defined as N and must be calculated before starting the process knowing the sampling frequency and symbol duration.
+ For the detection of each symbol the value of each correlation is evaluated in the appropriate instants according to the synchronization. The number of samples per symbol is defined as N and must be calculated before starting the process knowing the sampling frequency (fc) and symbol duration.
  
  The correlation process begins with the calculation of the S0 and S1 values that represent the basic symbols subsequently used to discriminate between the NFC patterns X, Y, Z, E, D and F, as shown below.
  
