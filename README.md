@@ -37,7 +37,7 @@
  
  The correlation process begins with the calculation of the S0 and S1 values that represent the basic symbols subsequently used to discriminate between the NFC patterns X, Y, Z, E, D and F, as shown below.
  
- ![DEC1](/doc/nfc-decoder1.png?raw=true "Symbols S0 and S1 correlation")
+ ![DEC1](/doc/nfc-demodulator-correlation.png?raw=true "Symbols S0 and S1 correlation")
  
  This results in a flow of patterns X, Y, Z, E, D, F that are subsequently interpreted by a state machine in accordance with the specifications of ISO 14443-3 to obtain a byte stream that can be easily processed.
  
