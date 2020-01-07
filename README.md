@@ -51,14 +51,18 @@ So, we have seen how demodulation is performed, but how does this apply when the
 
 ### BPSK modulation
 
- The ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK for card responses when the speed is 212Kbps or higher.
+ ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK for card responses when the speed is 212Kbps or higher.
  
- The BPSK demodulation requires a reference signal to detect the phase changes, since that is complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to determine the value of symbols through the changes produced between then.
+ For BPSK demodulation a reference signal is required to detect the phase changes (carrier recovery), since that is complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to determine the value of symbols through the changes produced between then.
  
- Below you can see the signal modulated in BPSK for a response at 424Kbps, followed by the demodulation and integration process over a quarter of a symbol.
+ ![BPSK1](/doc/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
+ 
+ Below you can see the signal modulated in BPSK for a response frame at 424Kbps, followed by the demodulation y(t) and integration process over a quarter of a symbol r(t).
 
-![BPSK](/doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
-
+ ![BPSK2](/doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
+ 
+ Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat more complex since timing and synchronization must be considered.
+ 
  ## Application example
  
  An example of the result can be seen below. 
