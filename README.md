@@ -23,7 +23,7 @@
 
  Due to the digital nature of the signal i used a technique called symbol correlation which is equivalent to carrying out the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A modulation is based on 6 patterns: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications for complete description).
  
- Demodulation is performed by calculating the correlation for each of these patterns and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the others. Last value is funcion SD represent the absolute difference between S0 and S1 necessary to detect the timmings.
+ Demodulation is performed by calculating the correlation for each of these patterns and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the others. Last value is function SD represent the absolute difference between S0 and S1 necessary to detect the timmings.
  
  ![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
 
