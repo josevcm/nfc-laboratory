@@ -1,5 +1,5 @@
 # SDR nfc-signal-monitor
- A simple NFC signal and protocol analyzer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
+ A simple NFC signal and protocol sniffer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
  
 ## Description
  By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the reader.
@@ -42,5 +42,41 @@
  The ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK for card responses when the speed is 212Kbps or higher.
  
  The BPSK demodulation requires a reference signal to detect the phase changes, since that is complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to determine the value of symbols through the changes produced between then.
+ 
+ ## Application example
+ 
+ An example of the result can be seen below. 
+ 
+ ![APP](/doc/nfc-spy-capture1.png?raw=true "Application example")
+ 
+ Of course, once the frames have been obtained, many improvements can be applied, such as time measurement or protocol details.
+ 
+ ![APP](/doc/nfc-spy-capture2.png?raw=true "Protocol detail example")
+ 
+ ## SDR Receivers tested
+ 
+ I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices but surely it works with others.
+ 
+ - AirSpy Mini: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these parameters it is possible to capture the communication up to 424 Kbps. 
+ 
+  - RTL SDR: Works tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it only allows you to capture the commands.
+  
+  - Lime SDR: I couldn't finish the job with this receiver, maybe one day ...
+ 
+ ### Source code
+ 
+ It will be available soon... i am working on cleaning and preparing it.
+ 
+ If you think it is an interesting job or you plan to use it for something please send me an email and let me know, i will be happy to exchange experiences, thank you very much. 
+ 
+ This project is published under the terms of the MIT license, however there are parts of it that I have used and are subject to other types of licenses, please check if you are interested in this work.
+ 
+ - AirSpy SDR driver (src/support/airspy)
+ - RTL SDR driver (src/support/rtlsdr)
+ - Lime SDR driver (src/support/lime)
+ - Posix for windows (src/support/posix)
+ - QCustomPlot library (src/support/plot)
+ 
+ 
  
  
