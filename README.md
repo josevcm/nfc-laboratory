@@ -41,6 +41,8 @@
  
  This results in a flow of patterns X, Y, Z, E, D, F that are subsequently interpreted by a state machine in accordance with the specifications of ISO 14443-3 to obtain a byte stream that can be easily processed.
  
+ ![DEC2](/doc/nfc-demodulator-pattern-process.png?raw=true "Pattern and frame detection")
+  
 ### ASK / BPSK modulation
 
  The ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK for card responses when the speed is 212Kbps or higher.
