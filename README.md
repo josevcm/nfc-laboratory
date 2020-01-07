@@ -73,6 +73,10 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  ![APP](/doc/nfc-spy-capture2.png?raw=true "Protocol detail example")
  
+ Capture of a transmission of the PPS command with a speed change from 106Kbps to 424Kbps demonstrating the BPSK demodulation capability.
+ 
+ ![APP](/doc/nfc-spy-capture3.png?raw=true "Protocol detail example")
+ 
  ## SDR Receivers tested
  
  I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices but surely it works with others.
