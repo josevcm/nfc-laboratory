@@ -47,14 +47,18 @@
 
 So, we have seen how demodulation is performed, but how does this apply when there are different speeds? Well, since we do not know in advance the transmission speed it is necessary to apply the same process for all possible speeds through a bank of correlators. Really only is necessary to do it for the first symbol of each frame, once the bitrate is known the rest are decoded using that speed.
 
-![DEC3](/doc/nfc-demodulator-speed-detector.png?raw=true "Pattern and frame detection")
+![DEC3](/doc/nfc-demodulator-speed-detector.png?raw=true "Bitrate discrimination")
 
-### ASK / BPSK modulation
+### BPSK modulation
 
  The ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK for card responses when the speed is 212Kbps or higher.
  
- The BPSK demodulation requires a reference signal to detect the phase changes, since that is complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to determine the value of symbols through the changes produced between then. 
+ The BPSK demodulation requires a reference signal to detect the phase changes, since that is complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to determine the value of symbols through the changes produced between then.
  
+ Below you can see the signal modulated in BPSK for a response at 424Kbps, followed by the demodulation and integration process over a quarter of a symbol.
+
+![BPSK](/doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
+
  ## Application example
  
  An example of the result can be seen below. 
