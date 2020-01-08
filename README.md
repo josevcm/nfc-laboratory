@@ -103,5 +103,11 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  This project is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included in this repository. I have not tried to compile it on Linux but it should be possible by making some minor adaptations.
  
+ If you do not have an SDR receiver, i have included a small capture sample signal in file "wav/capture-424kbps.wav" that serves as an example to test demodulation.
+ 
+ ## Next steps, work in Android?
+ 
+  I have not spent much time, but i been able to migrate this SW to Android (very simplified) by connecting an SDR receiver and sniff NFC frames in real-time, interesting thing to investigate, maybe start a new project with this...
+ 
  
  
