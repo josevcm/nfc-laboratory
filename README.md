@@ -1,4 +1,4 @@
-# SDR nfc-signal-monitor (work in progress...)
+# SDR nfc-signal-monitor 
  A simple NFC signal and protocol sniffer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
  
 ## Description
@@ -88,8 +88,6 @@ So, we have seen how demodulation is performed, but how does this apply when the
   - Lime SDR: I couldn't finish the job with this receiver, maybe one day ...
  
  ## Source code
- 
- It will be available soon... i am working on cleaning and preparing it.
  
  If you think it is an interesting job or you plan to use it for something please send me an email and let me know, i will be happy to exchange experiences, thank you very much. 
  
