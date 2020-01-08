@@ -1,4 +1,4 @@
-# SDR nfc-signal-monitor (work in progress...)
+# SDR nfc-signal-monitor 
  A simple NFC signal and protocol sniffer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
  
 ## Description
@@ -73,6 +73,10 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  ![APP](/doc/nfc-spy-capture2.png?raw=true "Protocol detail example")
  
+ Example of PPS command with a speed change from 106Kbps to 424Kbps demonstrating the BPSK demodulation capability.
+ 
+ ![APP](/doc/nfc-spy-capture3.png?raw=true "Protocol detail example")
+ 
  ## SDR Receivers tested
  
  I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices but surely it works with others.
@@ -83,9 +87,7 @@ So, we have seen how demodulation is performed, but how does this apply when the
   
   - Lime SDR: I couldn't finish the job with this receiver, maybe one day ...
  
- ### Source code
- 
- It will be available soon... i am working on cleaning and preparing it.
+ ## Source code
  
  If you think it is an interesting job or you plan to use it for something please send me an email and let me know, i will be happy to exchange experiences, thank you very much. 
  
@@ -97,6 +99,9 @@ So, we have seen how demodulation is performed, but how does this apply when the
  - Posix for windows (src/support/posix)
  - QCustomPlot library (src/support/plot)
  
+ ### Build project
+ 
+ This project is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included in this repository. I have not tried to compile it on Linux but it should be possible by making some minor adaptations.
  
  
  
