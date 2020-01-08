@@ -1,0 +1,4 @@
+build*
+src/*.pro.user
+run/records/*
+run/capture/*
