@@ -87,7 +87,7 @@ So, we have seen how demodulation is performed, but how does this apply when the
   
   - Lime SDR: I couldn't finish the job with this receiver, maybe one day ...
  
- ### Source code
+ ## Source code
  
  It will be available soon... i am working on cleaning and preparing it.
  
@@ -101,6 +101,9 @@ So, we have seen how demodulation is performed, but how does this apply when the
  - Posix for windows (src/support/posix)
  - QCustomPlot library (src/support/plot)
  
+ ### Build project
+ 
+ This project is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included in this repository. I have not tried to compile it on Linux but it should be possible by making some minor adaptations.
  
  
  
