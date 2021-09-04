@@ -49,7 +49,7 @@ struct QtApplication::Impl
    // receiver control
    QPointer<QtDecoder> control;
 
-   Impl() : settings("config/nfc-lab.conf", QSettings::IniFormat)
+   Impl() : settings("conf/nfc-lab.conf", QSettings::IniFormat)
    {
       // create user interface window
       window = new QtWindow(settings);

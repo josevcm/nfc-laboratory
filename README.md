@@ -116,4 +116,4 @@ So, we have seen how demodulation is performed, but how does this apply when the
 
 ## Releases
 
- Precompiled installer for x86 64 bit can be found in repository, check this MD5 first! b99baa8b718c194b4248866f20169b91
+ Precompiled installer for x86 64 bit can be found in repository, check this MD5 first! cf088515b4321b9c10d9d5d37bfebbc8
