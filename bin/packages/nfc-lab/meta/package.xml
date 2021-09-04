@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+    <DisplayName>NFC Laboratory</DisplayName>
+    <Description>NFC Laboratory Package Installer</Description>
+    <Version>1.0.0</Version>
+    <ReleaseDate>2021-08-31</ReleaseDate>
+    <Licenses>
+        <License name="License Agreement" file="license.txt" />
+    </Licenses>
+    <Default>true</Default>
+</Package>

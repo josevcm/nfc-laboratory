@@ -1,0 +1,36 @@
+<RCC>
+    <qresource prefix="app_icons">
+        <file alias="logo-indra">rc/logo.png</file>
+<!--        <file alias="splash">rc/splash.png</file>-->
+        <file alias="app-icon">rc/app-icon.png</file>
+        <file alias="radio-on">rc/baseline_nfc_blue_48dp.png</file>
+        <file alias="radio-off">rc/baseline_nfc_white_48dp.png</file> 
+        <file alias="radio-none">rc/baseline_nfc_grey_48dp.png</file>
+        <file alias="live-on">rc/baseline_visibility_white_48dp.png</file>
+        <file alias="live-off">rc/baseline_visibility_off_white_48dp.png</file>
+        <file alias="live-none">rc/baseline_visibility_white_48dp.png</file>
+        <file alias="record-on">rc/baseline_save_red_48dp.png</file>
+        <file alias="record-off">rc/baseline_save_white_48dp.png</file> 
+        <file alias="follow-on">rc/baseline_get_app_green_48dp.png</file> 
+        <file alias="follow-off">rc/baseline_get_app_white_48dp.png</file> 
+        <file alias="filter-on">rc/baseline_filter_green_48dp.png</file>
+        <file alias="filter-off">rc/baseline_filter_white_48dp.png</file>
+        <file alias="action-open">rc/baseline_pageview_white_48dp.png</file>
+        <file alias="action-clear">rc/baseline_delete_sweep_white_48dp.png</file>
+        <file alias="action-time">rc/baseline_timelapse_white_48dp.png</file>
+        <file alias="action-setup">rc/baseline_settings_white_48dp.png</file>
+        <file alias="action-record">rc/baseline_save_white_48dp.png</file>
+        <file alias="listen-icon">rc/baseline_wifi_white_24dp.png</file>
+        <file alias="listen-icon-disabled">rc/baseline_wifi_gray_24dp.png</file>
+        <file alias="record-icon">rc/baseline_fiber_manual_record_white_24dp.png</file>
+        <file alias="record-icon-disabled">rc/baseline_fiber_manual_record_gray_24dp.png</file>
+        <file alias="stop-icon">rc/baseline_stop_white_24dp.png</file>
+        <file alias="stop-icon-disabled">rc/baseline_stop_gray_24dp.png</file>
+        <file alias="arrow-green">rc/arrow_green_16dp.png</file>
+        <file alias="arrow-red">rc/arrow_red_16dp.png</file>
+        <file alias="arrow-blue">rc/arrow_blue_16dp.png</file>
+        <file alias="warning-icon">rc/warning_yellow_16dp.png</file>
+        <file alias="encrypted-icon">rc/key_yellow_16dp.png</file>
+        <file alias="transparent">rc/transparent_16dp.png</file>
+    </qresource>
+</RCC>

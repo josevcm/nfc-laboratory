@@ -1,1 +1,0 @@
-windeployqt.exe --release --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw nfc-spy.exe

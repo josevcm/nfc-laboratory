@@ -1,0 +1,22 @@
+<RCC>
+    <qresource prefix="shader">
+        <file alias="DefaultShader.v.glsl">rc/DefaultShader.v.glsl</file>
+        <file alias="DefaultShader.f.glsl">rc/DefaultShader.f.glsl</file>
+        <file alias="EnvelopeShader.v.glsl">rc/EnvelopeShader.v.glsl</file>
+        <file alias="EnvelopeShader.f.glsl">rc/EnvelopeShader.f.glsl</file>
+        <file alias="PeakShader.v.glsl">rc/PeakShader.v.glsl</file>
+        <file alias="PeakShader.g.glsl">rc/PeakShader.g.glsl</file>
+        <file alias="PeakShader.f.glsl">rc/PeakShader.f.glsl</file>
+        <file alias="HeatmapShader.v.glsl">rc/HeatmapShader.v.glsl</file>
+        <file alias="HeatmapShader.g.glsl">rc/HeatmapShader.g.glsl</file>
+        <file alias="HeatmapShader.f.glsl">rc/HeatmapShader.f.glsl</file>
+        <file alias="QuadratureShader.v.glsl">rc/QuadratureShader.v.glsl</file>
+        <file alias="QuadratureShader.f.glsl">rc/QuadratureShader.f.glsl</file>
+        <file alias="SignalSmoother.v.glsl">rc/SignalSmoother.v.glsl</file>
+        <file alias="SignalSmoother.f.glsl">rc/SignalSmoother.f.glsl</file>
+        <file alias="TextureShader.v.glsl">rc/TextureShader.v.glsl</file>
+        <file alias="TextureShader.f.glsl">rc/TextureShader.f.glsl</file>
+        <file alias="TypeFaceShader.v.glsl">rc/TypeFaceShader.v.glsl</file>
+        <file alias="TypeFaceShader.f.glsl">rc/TypeFaceShader.f.glsl</file>
+    </qresource>
+</RCC>

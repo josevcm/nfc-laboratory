@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Installer>
+    <Name>NFC Laboratory</Name>
+    <Version>1.0.0</Version>
+    <Title>NFC Laboratory Installer</Title>
+    <Publisher>Jose Vicente Campos Martinez</Publisher>
+    <StartMenuDir>NFC Laboratory</StartMenuDir>
+    <TargetDir>@ApplicationsDirX64@/nfc-laboratory</TargetDir>
+</Installer>

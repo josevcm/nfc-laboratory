@@ -1,5 +1,5 @@
-# SDR nfc-signal-monitor 
- A simple NFC signal and protocol sniffer using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
+# SDR nfc-laboratory v2.0 
+ A simple NFC signal sniffer and protocol decoder using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
  
 ## Description
  By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the reader.
@@ -62,6 +62,10 @@ So, we have seen how demodulation is performed, but how does this apply when the
  ![BPSK2](/doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
  
  Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat more complex since timing and synchronization must be considered.
+
+### Signal quality analisys
+ 
+ This version includes a OpenGL spectrum analyzer and IQ graph to show the quality of the received signal. 
  
  ## Application example
  
@@ -89,7 +93,7 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  ## Source code
  
- If you think it is an interesting job or you plan to use it for something please send me an email and let me know, i will be happy to exchange experiences, thank you very much. 
+ If you think it is an interesting job or you plan to use it for something please send me an email and let me know, I will be happy to exchange experiences, thank you very much. 
  
  This project is published under the terms of the MIT license, however there are parts of it subject to other types of licenses, please check if you are interested in this work.
  
