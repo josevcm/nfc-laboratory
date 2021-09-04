@@ -112,6 +112,8 @@ So, we have seen how demodulation is performed, but how does this apply when the
  ## Next steps, work in Android?
  
   I have not spent much time, but i been able to migrate this SW to Android (very simplified) by connecting an SDR receiver and sniff NFC frames in real-time, interesting thing to investigate, maybe start a new project with this...
- 
- 
- 
+
+
+## Releases
+
+ Precompiled installer for x86 64 bit can be found in repository, check this MD5 first! b99baa8b718c194b4248866f20169b91
