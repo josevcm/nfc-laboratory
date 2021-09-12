@@ -7,7 +7,7 @@
  I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation accessible through Google, i will describe as simply as possible the method that i have used to implement this software.
  
  Currently only detection and decoding for NFC-A modulation has been implemented.
- 
+
 ## Signal processing
  The first step is receive the 13.56MHz signal and demodulate to get the baseband ASK stream, for this purpose any SDR device capable of tuning this frequency can be used, i have the fantastic and cheap AirSpy Mini capable of tuning from 27Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
  
@@ -70,11 +70,17 @@ So, we have seen how demodulation is performed, but how does this apply when the
  ## Application example
  
  An example of the result can be seen below. 
- 
+
+ Signal capture with spectrum analysis and IQ diagram.
+
  ![APP](/doc/nfc-lab-capture1.png?raw=true "Application example")
+
+ Capture of the protocol and time measurement.
  
  ![APP](/doc/nfc-lab-capture2.png?raw=true "Protocol timing example")
- 
+
+ Protocol detail view.
+
  ![APP](/doc/nfc-lab-capture3.png?raw=true "Protocol detail example")
 
   Inside the "doc" folder you can find a [video](/doc/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
@@ -85,10 +91,14 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  - AirSpy Mini: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these parameters it is possible to capture the communication up to 424 Kbps. 
  
-  - RTL SDR: Works tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it only allows you to capture the commands.
+ - RTL SDR: Works tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it only allows you to capture the commands.
   
-  - Lime SDR: I couldn't finish the job with this receiver, maybe one day ...
- 
+![Devices](/doc/nfc-lab-devices1.png?raw=true "Devices")
+
+![Devices](/doc/nfc-lab-devices2.png?raw=true "Devices")
+
+![Devices](/doc/nfc-lab-devices3.png?raw=true "Devices")
+
  ## Source code
  
  If you think it is an interesting job or you plan to use it for something please send me an email and let me know, I will be happy to exchange experiences, thank you very much. 
