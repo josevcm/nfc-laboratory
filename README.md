@@ -77,9 +77,7 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  ![APP](/doc/nfc-lab-capture3.png?raw=true "Protocol detail example")
 
-  Inside the "doc" folder you can find a video with an example of how it works.
-
- ![APP](/doc/VID-20210912-WA0004.mp4?raw=true "Video")
+  Inside the "doc" folder you can find a [video](/doc/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
 
  ## SDR Receivers tested
  
