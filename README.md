@@ -71,16 +71,16 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  An example of the result can be seen below. 
  
- ![APP](/doc/nfc-spy-capture1.png?raw=true "Application example")
+ ![APP](/doc/nfc-lab-capture1.png?raw=true "Application example")
  
- Of course, once the frames have been obtained, many improvements can be applied, such as time measurement or protocol details.
+ ![APP](/doc/nfc-lab-capture2.png?raw=true "Protocol timing example")
  
- ![APP](/doc/nfc-spy-capture2.png?raw=true "Protocol detail example")
- 
- Example of PPS command with a speed change from 106Kbps to 424Kbps demonstrating the BPSK demodulation capability.
- 
- ![APP](/doc/nfc-spy-capture3.png?raw=true "Protocol detail example")
- 
+ ![APP](/doc/nfc-lab-capture3.png?raw=true "Protocol detail example")
+
+  Inside the "doc" folder you can find a video with an example of how it works.
+
+ ![APP](/doc/VID-20210912-WA0004.mp4?raw=true "Video")
+
  ## SDR Receivers tested
  
  I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices but surely it works with others.
