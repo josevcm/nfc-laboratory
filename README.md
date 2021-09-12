@@ -95,17 +95,15 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  This project is published under the terms of the MIT license, however there are parts of it subject to other types of licenses, please check if you are interested in this work.
  
- - AirSpy SDR driver (src/support/airspy)
- - RTL SDR driver (src/support/rtlsdr)
- - Lime SDR driver (src/support/lime)
- - Posix for windows (src/support/posix)
- - QCustomPlot library (src/support/plot)
+ - AirSpy SDR driver (src/nfc-lib/lib-ext/airspy)
+ - RTL SDR driver (src/nfc-lib/lib-ext/rtlsdr)
+ - QCustomPlot library (src/nfc-app/app-qt/src/main/cpp/support)
  
  ### Build project
  
- This project is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included in this repository. I have not tried to compile it on Linux but it should be possible by making some minor adaptations.
+ This project is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included in this repository.
  
- If you do not have an SDR receiver, i have included a small capture sample signal in file "wav/capture-424kbps.wav" that serves as an example to test demodulation.
+ If you do not have an SDR receiver, I have included a small capture sample signal in file "wav/capture-424kbps.wav" that serves as an example to test demodulation.
  
  ## Next steps, work in Android?
  
