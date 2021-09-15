@@ -107,8 +107,10 @@ So, we have seen how demodulation is performed, but how does this apply when the
  
  - AirSpy SDR driver (src/nfc-lib/lib-ext/airspy)
  - RTL SDR driver (src/nfc-lib/lib-ext/rtlsdr)
- - QCustomPlot library (src/nfc-app/app-qt/src/main/cpp/support)
- 
+ - nlohmann json (src/nfc-lib/lib-ext/nlohmann)
+ - mufft library (src/nfc-lib/lib-ext/mufft)
+ - QCustomPlot (src/nfc-app/app-qt/src/main/cpp/support)
+
  ### Build project
  
  This project is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included in this repository.
