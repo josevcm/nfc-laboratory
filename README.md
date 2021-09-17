@@ -11,7 +11,7 @@ reader.
 I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation
 accessible through Google, i will describe as simply as possible the method that i have used to implement this software.
 
-Currently only detection and decoding for NFC-A modulation has been implemented.
+Currently, only detection and decoding for NFC-A modulation has been implemented.
 
 ## Signal processing
 
@@ -132,9 +132,15 @@ works with others.
 
 ![Devices](/doc/nfc-lab-devices3.png?raw=true "Devices")
 
+## Hardware requirements
+
+Due to the nature of the real-time signal analysis performed for decoding, it is necessary to have a powerful computer.
+
+The real-time spectrum analyzer requires a graphics card with OpenGL support and geometry shaders, otherwise the "NFC Frequency" view will not be displayed correctly.
+
 ## Build instructions
 
-This project has two main components:
+This project has two main components and is based on Qt5 and MinGW-W64:
 
 - /src/sfc-app: Application interface based on Qt Widgets
 - /src/nfc-lib: A core library without dependencies of Qt (for other uses)
@@ -143,11 +149,31 @@ And can be build with mingw-g64
 
 ### Prerequisites:
 
-´- Qt5 framework 5.x for Windows, see https://www.qt.io/offline-installers´
-´- A recent mingw-w64 for windows, see https://www.mingw-w64.org/downloads´
-´- CMake version 3.17 or higher, see http://www.cmake.org/cmake/resources/software.html´
+- Qt5 framework 5.x for Windows, see https://www.qt.io/offline-installers
+- A recent mingw-w64 for windows, see https://www.mingw-w64.org/downloads
+- CMake version 3.17 or higher, see http://www.cmake.org/cmake/resources/software.html
+- Git-bash or your preferred client for Windows, see https://gitforwindows.org/ 
 
-$ cmake.exe -DCMAKE_BUILD_TYPE=Release -DCMAKE_DEPENDS_USE_COMPILER=FALSE -G "CodeBlocks - MinGW Makefiles" ./nfc-laboratory/
+### Manual build without IDE
+
+Using git-bash, download repository:
+
+```
+$ git clone https://github.com/josevcm/nfc-laboratory.git
+Cloning into 'nfc-laboratory'...
+remote: Enumerating objects: 1629, done.
+remote: Counting objects: 100% (1003/1003), done.
+remote: Compressing objects: 100% (776/776), done.
+remote: Total 1629 (delta 188), reused 990 (delta 179), pack-reused 626
+Receiving objects: 100% (1629/1629), 32.09 MiB | 10.60 MiB/s, done.
+Resolving deltas: 100% (312/312), done.
+Updating files: 100% (975/975), done.
+```
+
+Prepare release makefiles, or change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output:
+
+```
+$ cmake.exe -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - MinGW Makefiles" -S nfc-laboratory -B cmake-build-release
 -- The C compiler identification is GNU 8.1.0
 -- The CXX compiler identification is GNU 8.1.0
 -- Detecting C compiler ABI info
@@ -165,19 +191,115 @@ $ cmake.exe -DCMAKE_BUILD_TYPE=Release -DCMAKE_DEPENDS_USE_COMPILER=FALSE -G "Co
 -- FT_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/freetype-2.11.0/x86_64-w64-mingw32/lib/libfreetype.dll.a
 -- Configuring done
 -- Generating done
-CMake Warning:
-Manually-specified variables were not used by the project:
+-- Build files have been written to: C:/Users/jvcampos/build/cmake-build-release
+```
 
-    CMAKE_DEPENDS_USE_COMPILER
+Launch build:
 
+```
+$ cmake.exe --build cmake-build-release --target nfc-lab -- -j 6
+Scanning dependencies of target mufft-sse
+Scanning dependencies of target mufft-sse3
+Scanning dependencies of target rt-lang
+Scanning dependencies of target mufft-avx
+Scanning dependencies of target airspy
+Scanning dependencies of target rtlsdr
+[  1%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/cpp/x86/kernel.sse.c.obj
+[  2%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse3.dir/src/main/cpp/x86/kernel.sse3.c.obj
+[  3%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-avx.dir/src/main/cpp/x86/kernel.avx.c.obj
+[  4%] Building CXX object src/nfc-lib/lib-rt/rt-lang/CMakeFiles/rt-lang.dir/src/main/cpp/Executor.cpp.obj
+[  4%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/cpp/airspy.c.obj
+[  5%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/cpp/librtlsdr.c.obj
+....
+[100%] Linking CXX executable nfc-lab.exe
+[100%] Built target nfc-lab
+```
 
--- Build files have been written to: C:/Users/jvcampos/build
+### Prepare Qt deployment
 
+To run the application correctly it is necessary to deploy the Qt components together with the libraries, fonts and the generated artifact.
 
+```
+mkdir qt-deploy
+cp -rf nfc-laboratory/dat/conf/ qt-deploy/
+cp -rf nfc-laboratory/dat/fonts/ qt-deploy/
+cp nfc-laboratory/dll/glew-2.1.0/x86_64-w64-mingw32/bin/*.dll qt-deploy/
+cp nfc-laboratory/dll/usb-1.0.20/x86_64-w64-mingw32/bin/*.dll qt-deploy/
+cp nfc-laboratory/dll/freetype-2.11.0/x86_64-w64-mingw32/bin/*.dll qt-deploy/
+cp cmake-build-release/src/nfc-app/app-qt/nfc-lab.exe qt-deploy/
+```
 
+Run `windeployqt.exe` tool to create required folders and copy required Qt DLLs
 
+```
+$ windeployqt.exe --release --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw qt-deploy/nfc-lab.exe
+C:\Users\jvcampos\build\qt-deploy\nfc-lab.exe 64 bit, release executable
+Adding Qt5Svg for qsvgicon.dll
+Direct dependencies: Qt5Core Qt5Gui Qt5PrintSupport Qt5Widgets
+All dependencies   : Qt5Core Qt5Gui Qt5PrintSupport Qt5Widgets
+To be deployed     : Qt5Core Qt5Gui Qt5PrintSupport Qt5Svg Qt5Widgets
+Updating Qt5Core.dll.
+Updating Qt5Gui.dll.
+Updating Qt5PrintSupport.dll.
+Updating Qt5Svg.dll.
+Updating Qt5Widgets.dll.
+Updating libgcc_s_seh-1.dll.
+Updating libstdc++-6.dll.
+Updating libwinpthread-1.dll.
+Patching Qt5Core.dll...
+Creating directory C:/Users/jvcampos/build/qt-deploy/iconengines.
+Updating qsvgicon.dll.
+Creating directory C:/Users/jvcampos/build/qt-deploy/imageformats.
+Updating qgif.dll.
+Updating qicns.dll.
+Updating qico.dll.
+Updating qjpeg.dll.
+Updating qsvg.dll.
+Updating qtga.dll.
+Updating qtiff.dll.
+Updating qwbmp.dll.
+Updating qwebp.dll.
+Creating directory C:/Users/jvcampos/build/qt-deploy/platforms.
+Updating qwindows.dll.
+Creating directory C:/Users/jvcampos/build/qt-deploy/printsupport.
+Updating windowsprintersupport.dll.
+Creating directory C:/Users/jvcampos/build/qt-deploy/styles.
+Updating qwindowsvistastyle.dll.
+```
 
-## Source code
+Application is ready to use!
+
+If you do not have an SDR receiver, I have included a small capture sample signal in file "wav/capture-424kbps.wav" that
+serves as an example to test demodulation.
+
+### Build from QtCreator
+
+Thanks to bvernoux for this instructions:
+
+Working solution is to use Qt Creator (Tested with latest Qt Creator 4.15.2 with Qt 5.15.2 + mingw81_64 ) then import the nfc-laboratory/CMakeLists.txt project and built it with MinGW 64-bit (Tested with success with Qt 5.15.2 + mingw81_64 on Windows10Pro 21H1)
+Example of batch used(requires msys2/linux cp/rm commands) to do the deployment (after build of the release version with Qt Creator)
+
+```
+set qtpath=C:\Qt\5.15.2\mingw81_64\bin\
+set PATH=%qtpath%;%PATH%
+set execpath="%qtpath%\windeployqt.exe"
+set nflabpath=D:\_proj\__Lab_Tools\NFC\nfc-laboratory
+set build_path=%nflabpath%\..\build-nfc-laboratory-Desktop_Qt_5_15_2_MinGW_64_bit-Release\src\nfc-app\app-qt
+
+cp -a %build_path%/. ./
+rm -rf CMakeFiles nfc-lab_autogen installerResources cmake_install.cmake libnfc-lab.dll.a
+%execpath% nfc-lab.exe
+
+cp %qtpath%\libgcc_s_seh-1.dll ./
+cp %qtpath%\libwinpthread-1.dll ./
+cp %qtpath%\libstdc++-6.dll ./
+
+cp %nflabpath%\dll\glew-2.1.0\x86_64-w64-mingw32\bin\libglew32.dll ./
+cp %nflabpath%\dll\freetype-2.11.0\x86_64-w64-mingw32\bin\libfreetype.dll ./
+cp %nflabpath%\dll\usb-1.0.20\x86_64-w64-mingw32\bin\libusb-1.0.dll ./
+```
+
+## Source code and licensing
 
 If you think it is an interesting job or you plan to use it for something please send me an email and let me know, I
 will be happy to exchange experiences, thank you very much.
@@ -190,18 +312,6 @@ licenses, please check if you are interested in this work.
 - nlohmann json (src/nfc-lib/lib-ext/nlohmann)
 - mufft library (src/nfc-lib/lib-ext/mufft)
 - QCustomPlot (src/nfc-app/app-qt/src/main/cpp/support)
-
-
-
-
-
-
-
-is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included
-in this repository.
-
-If you do not have an SDR receiver, I have included a small capture sample signal in file "wav/capture-424kbps.wav" that
-serves as an example to test demodulation.
 
 ## Next steps, work in Android?
 
