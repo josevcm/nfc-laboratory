@@ -1,127 +1,213 @@
-# SDR nfc-laboratory v2.0 
- A simple NFC signal sniffer and protocol decoder using SDR receiver, capable of demodulate in real-time the comunication with contacless cards up to 424Kpbs.
- 
+# SDR nfc-laboratory v2.0
+
+A simple NFC signal sniffer and protocol decoder using SDR receiver, capable of demodulate in real-time the comunication
+with contacless cards up to 424Kpbs.
+
 ## Description
- By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the reader.
- 
- I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation accessible through Google, i will describe as simply as possible the method that i have used to implement this software.
- 
- Currently only detection and decoding for NFC-A modulation has been implemented.
+
+By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the
+reader.
+
+I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation
+accessible through Google, i will describe as simply as possible the method that i have used to implement this software.
+
+Currently only detection and decoding for NFC-A modulation has been implemented.
 
 ## Signal processing
- The first step is receive the 13.56MHz signal and demodulate to get the baseband ASK stream, for this purpose any SDR device capable of tuning this frequency can be used, i have the fantastic and cheap AirSpy Mini capable of tuning from 27Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
- 
- However, it is not possible to tune 13.56Mhz with this receiver, instead i use the second harmonic at 27.12Mhz or third at 40.68Mhz with good results.
- 
- Let's see a capture of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its response:
- 
- ![REQA](/doc/nfc-baseband-reqa.png?raw=true "REQA signal capture")
 
- As can be seen, it is a signal modulated in 100% ASK that corresponds to the REQA 26h command of the NFC specifications, the response of the card uses something called load modulation that manifests as a series of pulses on the main signal after the command.
- 
+The first step is receive the 13.56MHz signal and demodulate to get the baseband ASK stream, for this purpose any SDR
+device capable of tuning this frequency can be used, i have the fantastic and cheap AirSpy Mini capable of tuning from
+27Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
+
+However, it is not possible to tune 13.56Mhz with this receiver, instead i use the second harmonic at 27.12Mhz or third
+at 40.68Mhz with good results.
+
+Let's see a capture of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its
+response:
+
+![REQA](/doc/nfc-baseband-reqa.png?raw=true "REQA signal capture")
+
+As can be seen, it is a signal modulated in 100% ASK that corresponds to the REQA 26h command of the NFC specifications,
+the response of the card uses something called load modulation that manifests as a series of pulses on the main signal
+after the command.
+
 ### Demodulation
 
- Due to the digital nature of the signal i used a technique called symbol correlation which is equivalent to carrying out the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A modulation is based on 6 patterns: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications for complete description).
- 
- Demodulation is performed by calculating the correlation for these patterns and detecting when the maximum approximation to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the others. Last value is function SD represent the absolute difference between S0 and S1 necessary to detect the timmings.
- 
- ![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
+Due to the digital nature of the signal i used a technique called symbol correlation which is equivalent to carrying out
+the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A
+modulation is based on 6 patterns: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications
+for complete description).
 
- The response of the card is much weaker but enough to allow its detection using the same technique for patterns E, D, F, here it is shown in better scale.
- 
- ![CORRELATION](/doc/nfc-response-log.png?raw=true "Decoder response correlation")
- 
+Demodulation is performed by calculating the correlation for these patterns and detecting when the maximum approximation
+to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the
+others. Last value is function SD represent the absolute difference between S0 and S1 necessary to detect the timmings.
+
+![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
+
+The response of the card is much weaker but enough to allow its detection using the same technique for patterns E, D, F,
+here it is shown in better scale.
+
+![CORRELATION](/doc/nfc-response-log.png?raw=true "Decoder response correlation")
+
 ### Symbol detection
- 
- For the detection of each symbol the value of each correlation is evaluated in the appropriate instants according to the synchronization. The number of samples per symbol is defined as N and must be calculated before starting the process knowing the sampling frequency (fc) and symbol duration.
- 
- The correlation process begins with the calculation of the S0 and S1 values that represent the basic symbols subsequently used to discriminate between the NFC patterns X, Y, Z, E, D and F, as shown below.
- 
- ![DEC1](/doc/nfc-demodulator-correlation.png?raw=true "Symbols S0 and S1 correlation")
- 
- This results in a flow of patterns X, Y, Z, E, D, F that are subsequently interpreted by a state machine in accordance with the specifications of ISO 14443-3 to obtain a byte stream that can be easily processed.
- 
- ![DEC2](/doc/nfc-demodulator-pattern-process.png?raw=true "Pattern and frame detection")
-  
+
+For the detection of each symbol the value of each correlation is evaluated in the appropriate instants according to the
+synchronization. The number of samples per symbol is defined as N and must be calculated before starting the process
+knowing the sampling frequency (fc) and symbol duration.
+
+The correlation process begins with the calculation of the S0 and S1 values that represent the basic symbols
+subsequently used to discriminate between the NFC patterns X, Y, Z, E, D and F, as shown below.
+
+![DEC1](/doc/nfc-demodulator-correlation.png?raw=true "Symbols S0 and S1 correlation")
+
+This results in a flow of patterns X, Y, Z, E, D, F that are subsequently interpreted by a state machine in accordance
+with the specifications of ISO 14443-3 to obtain a byte stream that can be easily processed.
+
+![DEC2](/doc/nfc-demodulator-pattern-process.png?raw=true "Pattern and frame detection")
+
 ### Bitrate discrimination
 
-So, we have seen how demodulation is performed, but how does this apply when there are different speeds? Well, since we do not know in advance the transmission speed it is necessary to apply the same process for all possible speeds through a bank of correlators. Really only is necessary to do it for the first symbol of each frame, once the bitrate is known the rest are decoded using that speed.
+So, we have seen how demodulation is performed, but how does this apply when there are different speeds? Well, since we
+do not know in advance the transmission speed it is necessary to apply the same process for all possible speeds through
+a bank of correlators. Really only is necessary to do it for the first symbol of each frame, once the bitrate is known
+the rest are decoded using that speed.
 
 ![DEC3](/doc/nfc-demodulator-speed-detector.png?raw=true "Bitrate discrimination")
 
 ### BPSK modulation
 
- ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK for card responses when the speed is 212Kbps or higher.
- 
- For BPSK demodulation a reference signal is required to detect the phase changes (carrier recovery), since that is complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to determine the value of symbols through the changes produced between then.
- 
- ![BPSK1](/doc/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
- 
- Below you can see the signal modulated in BPSK for a response frame at 424Kbps, followed by the demodulation y(t) and integration process over a quarter of a symbol r(t).
+ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK
+for card responses when the speed is 212Kbps or higher.
 
- ![BPSK2](/doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
- 
- Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat more complex since timing and synchronization must be considered.
+For BPSK demodulation a reference signal is required to detect the phase changes (carrier recovery), since that is
+complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to
+determine the value of symbols through the changes produced between then.
+
+![BPSK1](/doc/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
+
+Below you can see the signal modulated in BPSK for a response frame at 424Kbps, followed by the demodulation y(t) and
+integration process over a quarter of a symbol r(t).
+
+![BPSK2](/doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
+
+Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat
+more complex since timing and synchronization must be considered.
 
 ### Signal quality analisys
- 
- This version includes a OpenGL spectrum analyzer and IQ graph to show the quality of the received signal. 
- 
- ## Application example
- 
- An example of the result can be seen below. 
 
- Signal capture with spectrum analysis and IQ diagram.
+This version includes a OpenGL spectrum analyzer and IQ graph to show the quality of the received signal.
 
- ![APP](/doc/nfc-lab-capture1.png?raw=true "Application example")
+## Application example
 
- Capture of the protocol and time measurement.
- 
- ![APP](/doc/nfc-lab-capture2.png?raw=true "Protocol timing example")
+An example of the result can be seen below.
 
- Protocol detail view.
+Signal capture with spectrum analysis and IQ diagram.
 
- ![APP](/doc/nfc-lab-capture3.png?raw=true "Protocol detail example")
+![APP](/doc/nfc-lab-capture1.png?raw=true "Application example")
 
-  Inside the "doc" folder you can find a [video](/doc/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
+Capture of the protocol and time measurement.
 
- ## SDR Receivers tested
- 
- I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices but surely it works with others.
- 
- - AirSpy Mini: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these parameters it is possible to capture the communication up to 424 Kbps. 
- 
- - RTL SDR: Works tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it only allows you to capture the commands.
-  
+![APP](/doc/nfc-lab-capture2.png?raw=true "Protocol timing example")
+
+Protocol detail view.
+
+![APP](/doc/nfc-lab-capture3.png?raw=true "Protocol detail example")
+
+Inside the "doc" folder you can find a [video](/doc/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
+
+## SDR Receivers tested
+
+I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices but surely it
+works with others.
+
+- AirSpy Mini: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these
+  parameters it is possible to capture the communication up to 424 Kbps.
+
+- RTL SDR: Works tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it
+  only allows you to capture the commands.
+
 ![Devices](/doc/nfc-lab-devices1.png?raw=true "Devices")
 
 ![Devices](/doc/nfc-lab-devices2.png?raw=true "Devices")
 
 ![Devices](/doc/nfc-lab-devices3.png?raw=true "Devices")
 
- ## Source code
- 
- If you think it is an interesting job or you plan to use it for something please send me an email and let me know, I will be happy to exchange experiences, thank you very much. 
- 
- This project is published under the terms of the MIT license, however there are parts of it subject to other types of licenses, please check if you are interested in this work.
- 
- - AirSpy SDR driver (src/nfc-lib/lib-ext/airspy)
- - RTL SDR driver (src/nfc-lib/lib-ext/rtlsdr)
- - nlohmann json (src/nfc-lib/lib-ext/nlohmann)
- - mufft library (src/nfc-lib/lib-ext/mufft)
- - QCustomPlot (src/nfc-app/app-qt/src/main/cpp/support)
+## Build instructions
 
- ### Build project
- 
- This project is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included in this repository.
- 
- If you do not have an SDR receiver, I have included a small capture sample signal in file "wav/capture-424kbps.wav" that serves as an example to test demodulation.
- 
- ## Next steps, work in Android?
- 
-  I have not spent much time, but i been able to migrate this SW to Android (very simplified) by connecting an SDR receiver and sniff NFC frames in real-time, interesting thing to investigate, maybe start a new project with this...
+This project has two main components:
 
+- /src/sfc-app: Application interface based on Qt Widgets
+- /src/nfc-lib: A core library without dependencies of Qt (for other uses)
+
+And can be build with mingw-g64
+
+### Prerequisites:
+
+´- Qt5 framework 5.x for Windows, see https://www.qt.io/offline-installers´
+´- A recent mingw-w64 for windows, see https://www.mingw-w64.org/downloads´
+´- CMake version 3.17 or higher, see http://www.cmake.org/cmake/resources/software.html´
+
+$ cmake.exe -DCMAKE_BUILD_TYPE=Release -DCMAKE_DEPENDS_USE_COMPILER=FALSE -G "CodeBlocks - MinGW Makefiles" ./nfc-laboratory/
+-- The C compiler identification is GNU 8.1.0
+-- The CXX compiler identification is GNU 8.1.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: D:/develop/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin/gcc.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: D:/develop/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin/g++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- USB_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/usb-1.0.20/x86_64-w64-mingw32/lib/libusb-1.0.dll.a
+-- GLEW_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/glew-2.1.0/x86_64-w64-mingw32/lib/libglew32.dll.a
+-- FT_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/freetype-2.11.0/x86_64-w64-mingw32/lib/libfreetype.dll.a
+-- Configuring done
+-- Generating done
+CMake Warning:
+Manually-specified variables were not used by the project:
+
+    CMAKE_DEPENDS_USE_COMPILER
+
+
+-- Build files have been written to: C:/Users/jvcampos/build
+
+
+
+
+
+## Source code
+
+If you think it is an interesting job or you plan to use it for something please send me an email and let me know, I
+will be happy to exchange experiences, thank you very much.
+
+This project is published under the terms of the MIT license, however there are parts of it subject to other types of
+licenses, please check if you are interested in this work.
+
+- AirSpy SDR driver (src/nfc-lib/lib-ext/airspy)
+- RTL SDR driver (src/nfc-lib/lib-ext/rtlsdr)
+- nlohmann json (src/nfc-lib/lib-ext/nlohmann)
+- mufft library (src/nfc-lib/lib-ext/mufft)
+- QCustomPlot (src/nfc-app/app-qt/src/main/cpp/support)
+
+
+
+
+
+
+
+is based on Qt5 and MinGW, the last release tested has been 5.12.4. Binary files for Windows are included
+in this repository.
+
+If you do not have an SDR receiver, I have included a small capture sample signal in file "wav/capture-424kbps.wav" that
+serves as an example to test demodulation.
+
+## Next steps, work in Android?
+
+I have not spent much time, but i been able to migrate this SW to Android (very simplified) by connecting an SDR
+receiver and sniff NFC frames in real-time, interesting thing to investigate, maybe start a new project with this...
 
 ## Releases
 
- Precompiled installer for x86 64 bit can be found in repository, check this MD5 first! cf088515b4321b9c10d9d5d37bfebbc8
+Precompiled installer for x86 64 bit can be found in repository, check this MD5 first! cf088515b4321b9c10d9d5d37bfebbc8
