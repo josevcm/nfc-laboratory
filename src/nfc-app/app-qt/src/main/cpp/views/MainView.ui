@@ -362,7 +362,7 @@
        </widget>
        <widget class="TimingWidget" name="timingView">
         <attribute name="title">
-         <string>Timming</string>
+         <string>Timing</string>
         </attribute>
        </widget>
        <widget class="QWidget" name="signalView">
