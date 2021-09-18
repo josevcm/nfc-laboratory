@@ -343,7 +343,7 @@ struct DecoderDebug
 
    void begin(int sampleCount)
    {
-      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->sampleRate(), recorder->channelCount());
+      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate());
    }
 
    void commit()
@@ -1860,7 +1860,7 @@ void NfcDecoder::Impl::process(NfcFrame frame)
          processOther(frame);
       }
 
-      // all encrypted frames are considered application frames
+         // all encrypted frames are considered application frames
       else
       {
          frame.setFramePhase(NfcFrame::ApplicationFrame);

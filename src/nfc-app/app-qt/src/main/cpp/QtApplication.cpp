@@ -64,11 +64,16 @@ struct QtApplication::Impl
 
       QApplication::postEvent(QApplication::instance(), new SystemStartupEvent());
 
-      QFile file("startup.wav");
-
-      if (file.exists())
+      if (arguments().size() > 1)
       {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReadFile, "file", file.fileName()));
+         qInfo() << "with file" << arguments().at(1);
+
+         QFile file(arguments().at(1));
+
+         if (file.exists())
+         {
+            QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReadFile, "file", file.fileName()));
+         }
       }
    }
 
