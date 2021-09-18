@@ -103,11 +103,6 @@ struct LogWriter
 {
    void push(LogEvent *event)
    {
-      write(std::shared_ptr<LogEvent>(event));
-   }
-
-   void write(const std::shared_ptr<LogEvent> &event)
-   {
       char date[32];
       struct tm timeinfo {};
 

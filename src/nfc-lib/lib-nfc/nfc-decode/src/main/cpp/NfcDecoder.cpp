@@ -33,21 +33,21 @@
 //#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNELS 4
+#define DEBUG_CHANNELS 8
 
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-//#define DEBUG_SIGNAL_POWER_CHANNEL 1
-#define DEBUG_SIGNAL_AVERAGE_CHANNEL 1
-#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
-#define DEBUG_SIGNAL_EDGE_CHANNEL 3
+#define DEBUG_SIGNAL_POWER_CHANNEL 1
+#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
+#define DEBUG_SIGNAL_VARIANCE_CHANNEL 3
+#define DEBUG_SIGNAL_EDGE_CHANNEL 4
 
-#define DEBUG_ASK_CORRELATION_CHANNEL 1
-#define DEBUG_ASK_INTEGRATION_CHANNEL 2
-#define DEBUG_ASK_SYNCHRONIZATION_CHANNEL 3
+#define DEBUG_ASK_CORRELATION_CHANNEL 5
+#define DEBUG_ASK_INTEGRATION_CHANNEL 6
+#define DEBUG_ASK_SYNCHRONIZATION_CHANNEL 7
 
-#define DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL 1
-#define DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL 2
-#define DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL 3
+#define DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL 5
+#define DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL 4
+#define DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL 7
 #endif
 
 
@@ -795,7 +795,7 @@ bool NfcDecoder::Impl::detectModulation(sdr::SignalBuffer &buffer, std::list<Nfc
                decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
 #endif
                // check modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
-               if (modulation->searchDeepValue > 0.9 && modulation->correlationPeek > signalStatus.powerAverage * modulationThreshold)
+               if (modulation->searchDeepValue > 0.85 && modulation->correlationPeek > signalStatus.powerAverage * modulationThreshold)
                {
                   // set lower threshold to detect valid response pattern
                   modulation->searchThreshold = signalStatus.powerAverage * modulationThreshold;
@@ -1051,6 +1051,7 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
             // detect end of response for ASK
             if (pattern == PatternType::PatternF || streamStatus.bytes == frameStatus.maxFrameSize)
             {
+               // a valid response must contains at least 4 bits of data
                if (streamStatus.bytes > 0 || streamStatus.bits == 4)
                {
                   // add remaining byte to request
