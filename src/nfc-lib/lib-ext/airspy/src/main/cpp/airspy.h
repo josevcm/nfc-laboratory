@@ -28,10 +28,10 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 #include <stdint.h>
 #include "airspy_commands.h"
 
-#define AIRSPY_VERSION "1.0.9"
+#define AIRSPY_VERSION "1.0.11"
 #define AIRSPY_VER_MAJOR 1
 #define AIRSPY_VER_MINOR 0
-#define AIRSPY_VER_REVISION 9
+#define AIRSPY_VER_REVISION 11
 
 #ifdef _WIN32
 	 #define ADD_EXPORTS
@@ -129,6 +129,7 @@ extern ADDAPI int ADDCALL airspy_open_sn(struct airspy_device** device, uint64_t
 extern ADDAPI int ADDCALL airspy_open(struct airspy_device** device);
 extern ADDAPI int ADDCALL airspy_close(struct airspy_device* device);
 
+/* Use airspy_get_samplerates(device, buffer, 0) to get the number of available sample rates. It will be returned in the first element of buffer */
 extern ADDAPI int ADDCALL airspy_get_samplerates(struct airspy_device* device, uint32_t* buffer, const uint32_t len);
 
 /* Parameter samplerate can be either the index of a samplerate or directly its value in Hz within the list returned by airspy_get_samplerates() */

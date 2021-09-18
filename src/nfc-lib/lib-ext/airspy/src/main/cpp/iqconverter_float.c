@@ -72,10 +72,6 @@ void *_aligned_malloc(size_t size, size_t alignment)
 	#define ALIGNED
 #endif
 
-#ifdef USE_SSE2
-#include <xmmintrin.h>
-#endif
-
 iqconverter_float_t *iqconverter_float_create(const float *hb_kernel, int len)
 {
 	int i, j;
@@ -93,7 +89,6 @@ iqconverter_float_t *iqconverter_float_create(const float *hb_kernel, int len)
 
 	iqconverter_float_reset(cnv);
 
-   #pragma GCC ivdep
 	for (i = 0, j = 0; i < cnv->len; i++, j += 2)
 	{
 		cnv->fir_kernel[i] = hb_kernel[j];

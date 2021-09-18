@@ -102,13 +102,7 @@ typedef struct airspy_device
 static const uint16_t airspy_usb_vid = 0x1d50;
 static const uint16_t airspy_usb_pid = 0x60a1;
 
-#define STR_PRODUCT_AIRSPY_SIZE (6)
-static const char str_product_airspy[STR_PRODUCT_AIRSPY_SIZE] =
-{ 'A', 'I', 'R', 'S', 'P', 'Y' };
-
 #define STR_PREFIX_SERIAL_AIRSPY_SIZE (10)
-static const char str_prefix_serial_airspy[STR_PREFIX_SERIAL_AIRSPY_SIZE] =
-{ 'A', 'I', 'R', 'S', 'P', 'Y', ' ', 'S', 'N', ':' };
 
 #define SERIAL_AIRSPY_EXPECTED_SIZE (26)
 
@@ -343,7 +337,7 @@ static void* consumer_threadproc(void *arg)
 
 #ifdef _WIN32
 
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
 #endif
 
@@ -477,12 +471,12 @@ static void airspy_libusb_transfer_callback(struct libusb_transfer* usb_transfer
 
 		if (libusb_submit_transfer(usb_transfer) != 0)
 		{
-			device->streaming = false;
+			device->stop_requested = true;
 		}
 	}
 	else
 	{
-		device->streaming = false;
+		device->stop_requested = true;
 	}
 }
 
@@ -494,7 +488,7 @@ static void* transfer_threadproc(void* arg)
 
 #ifdef _WIN32
 
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
 #endif
 
@@ -504,7 +498,7 @@ static void* transfer_threadproc(void* arg)
 		if (error < 0)
 		{
 			if (error != LIBUSB_ERROR_INTERRUPTED)
-				device->streaming = false;
+				device->stop_requested = true;
 		}
 	}
 
@@ -515,6 +509,8 @@ static void* transfer_threadproc(void* arg)
 
 static int kill_io_threads(airspy_device_t* device)
 {
+	struct timeval timeout = { 0, 0 };
+
 	if (device->streaming)
 	{
 		device->stop_requested = true;
@@ -526,6 +522,8 @@ static int kill_io_threads(airspy_device_t* device)
 
 		pthread_join(device->transfer_thread, NULL);
 		pthread_join(device->consumer_thread, NULL);
+
+		libusb_handle_events_timeout_completed(device->usb_context, &timeout, NULL);
 
 		device->stop_requested = false;
 		device->streaming = false;
@@ -590,19 +588,6 @@ static void airspy_open_exit(airspy_device_t* device)
 	device->usb_context = NULL;
 }
 
-static void upper_string(unsigned char *string, size_t len)
-{
-	while (len > 0)
-	{
-		if (*string >= 'a' && *string <= 'z')
-		{
-			*string = *string - 32;
-		}
-		string++;
-		len--;
-	}
-}
-
 static void airspy_open_device(airspy_device_t* device,
 	int* ret,
 	uint16_t vid,
@@ -620,10 +605,7 @@ static void airspy_open_device(airspy_device_t* device,
 	ssize_t cnt;
 	int serial_descriptor_index;
 	struct libusb_device_descriptor device_descriptor;
-	char serial_number_expected[SERIAL_AIRSPY_EXPECTED_SIZE + 1];
 	unsigned char serial_number[SERIAL_AIRSPY_EXPECTED_SIZE + 1];
-	uint32_t serial_number_msb_val;
-	uint32_t serial_number_lsb_val;
 
 	libusb_dev_handle = &device->usb_device;
 	*libusb_dev_handle = NULL;
@@ -660,17 +642,18 @@ static void airspy_open_device(airspy_device_t* device,
 						sizeof(serial_number));
 					if (serial_number_len == SERIAL_AIRSPY_EXPECTED_SIZE)
 					{
-						serial_number[SERIAL_AIRSPY_EXPECTED_SIZE] = 0;
-						upper_string(serial_number, SERIAL_AIRSPY_EXPECTED_SIZE);
-						serial_number_msb_val = (uint32_t)(serial_number_val >> 32);
-						serial_number_lsb_val = (uint32_t)(serial_number_val & 0xFFFFFFFF);
+						uint64_t serial = 0;
+						// use same code to determine device's serial number as in airspy_list_devices()
+						{
+							char *start, *end;
 
-						sprintf(serial_number_expected, "%s%08X%08X",
-							str_prefix_serial_airspy,
-							serial_number_msb_val,
-							serial_number_lsb_val);
+							serial_number[SERIAL_AIRSPY_EXPECTED_SIZE] = 0;
+							start = (char*)(serial_number + STR_PREFIX_SERIAL_AIRSPY_SIZE);
+							end = NULL;
+							serial = strtoull(start, &end, 16);
+						}
 
-						if (strncmp((const char*)serial_number, serial_number_expected, SERIAL_AIRSPY_EXPECTED_SIZE) == 0)
+						if (serial == serial_number_val)
 						{
 #ifdef __linux__
 							/* Check whether a kernel driver is attached to interface #0. If so, we'll
@@ -1002,8 +985,8 @@ int airspy_list_devices(uint64_t *serials, int count)
 			pthread_cond_destroy(&device->consumer_cv);
 			pthread_mutex_destroy(&device->consumer_mp);
 
-			airspy_open_exit(device);
 			free_transfers(device);
+			airspy_open_exit(device);
 			free(device->supported_samplerates);
 			free(device);
 		}
@@ -1874,7 +1857,7 @@ int airspy_list_devices(uint64_t *serials, int count)
 
 	int ADDCALL airspy_is_streaming(airspy_device_t* device)
 	{
-		return device->streaming == true;
+		return (device->streaming == true && device->stop_requested == false);
 	}
 
 	const char* ADDCALL airspy_error_name(enum airspy_error errcode)
