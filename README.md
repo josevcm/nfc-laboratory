@@ -128,13 +128,15 @@ works with others.
 
 ![Devices](doc/nfc-lab-devices1.png?raw=true "Devices")
 
-![Devices](doc/nfc-lab-devices2.png?raw=true "Devices")
-
 ![Devices](doc/nfc-lab-devices3.png?raw=true "Devices")
 
-## Hardware requirements
+## Hardware requirements and performance
 
-Due to the nature of the real-time signal analysis performed for decoding, it is necessary to have a powerful computer.
+The demodulator is designed to run in real time, so it requires a recent computer with a lot of processing capacity.
+
+During development, I have opted for a mixed approach where some optimizations are sacrificed in favor of maintaining clarity in the code and facilitating its monitoring and debugging.
+
+For this reason it is possible that certain parts can be improved in performance, but I have done it as a didactic exercise rather than a production application.
 
 The real-time spectrum analyzer requires a graphics card with OpenGL support and geometry shaders, otherwise the "NFC Frequency" view will not be displayed correctly.
 
@@ -142,7 +144,7 @@ The real-time spectrum analyzer requires a graphics card with OpenGL support and
 
 This project has two main components and is based on Qt5 and MinGW-W64:
 
-- /src/sfc-app: Application interface based on Qt Widgets
+- /src/nfc-app: Application interface based on Qt Widgets
 - /src/nfc-lib: A core library without dependencies of Qt (for other uses)
 
 And can be build with mingw-g64

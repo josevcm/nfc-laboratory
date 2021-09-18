@@ -1,7 +1,5 @@
 <RCC>
     <qresource prefix="app_icons">
-        <file alias="logo-indra">rc/logo.png</file>
-<!--        <file alias="splash">rc/splash.png</file>-->
         <file alias="app-icon">rc/app-icon.png</file>
         <file alias="radio-on">rc/baseline_nfc_blue_48dp.png</file>
         <file alias="radio-off">rc/baseline_nfc_white_48dp.png</file> 
