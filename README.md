@@ -25,7 +25,7 @@ at 40.68Mhz with good results.
 Let's see a capture of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its
 response:
 
-![REQA](/doc/nfc-baseband-reqa.png?raw=true "REQA signal capture")
+![REQA](doc/nfc-baseband-reqa.png?raw=true "REQA signal capture")
 
 As can be seen, it is a signal modulated in 100% ASK that corresponds to the REQA 26h command of the NFC specifications,
 the response of the card uses something called load modulation that manifests as a series of pulses on the main signal
@@ -42,12 +42,12 @@ Demodulation is performed by calculating the correlation for these patterns and 
 to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the
 others. Last value is function SD represent the absolute difference between S0 and S1 necessary to detect the timmings.
 
-![CORRELATION](/doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
+![CORRELATION](doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
 
 The response of the card is much weaker but enough to allow its detection using the same technique for patterns E, D, F,
 here it is shown in better scale.
 
-![CORRELATION](/doc/nfc-response-log.png?raw=true "Decoder response correlation")
+![CORRELATION](doc/nfc-response-log.png?raw=true "Decoder response correlation")
 
 ### Symbol detection
 
@@ -58,12 +58,12 @@ knowing the sampling frequency (fc) and symbol duration.
 The correlation process begins with the calculation of the S0 and S1 values that represent the basic symbols
 subsequently used to discriminate between the NFC patterns X, Y, Z, E, D and F, as shown below.
 
-![DEC1](/doc/nfc-demodulator-correlation.png?raw=true "Symbols S0 and S1 correlation")
+![DEC1](doc/nfc-demodulator-correlation.png?raw=true "Symbols S0 and S1 correlation")
 
 This results in a flow of patterns X, Y, Z, E, D, F that are subsequently interpreted by a state machine in accordance
 with the specifications of ISO 14443-3 to obtain a byte stream that can be easily processed.
 
-![DEC2](/doc/nfc-demodulator-pattern-process.png?raw=true "Pattern and frame detection")
+![DEC2](doc/nfc-demodulator-pattern-process.png?raw=true "Pattern and frame detection")
 
 ### Bitrate discrimination
 
@@ -72,7 +72,7 @@ do not know in advance the transmission speed it is necessary to apply the same 
 a bank of correlators. Really only is necessary to do it for the first symbol of each frame, once the bitrate is known
 the rest are decoded using that speed.
 
-![DEC3](/doc/nfc-demodulator-speed-detector.png?raw=true "Bitrate discrimination")
+![DEC3](doc/nfc-demodulator-speed-detector.png?raw=true "Bitrate discrimination")
 
 ### BPSK modulation
 
@@ -83,12 +83,12 @@ For BPSK demodulation a reference signal is required to detect the phase changes
 complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to
 determine the value of symbols through the changes produced between then.
 
-![BPSK1](/doc/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
+![BPSK1](doc/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
 
 Below you can see the signal modulated in BPSK for a response frame at 424Kbps, followed by the demodulation y(t) and
 integration process over a quarter of a symbol r(t).
 
-![BPSK2](/doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
+![BPSK2](doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
 
 Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat
 more complex since timing and synchronization must be considered.
@@ -103,17 +103,17 @@ An example of the result can be seen below.
 
 Signal capture with spectrum analysis and IQ diagram.
 
-![APP](/doc/nfc-lab-capture1.png?raw=true "Application example")
+![APP](doc/nfc-lab-capture1.png?raw=true "Application example")
 
 Capture of the protocol and time measurement.
 
-![APP](/doc/nfc-lab-capture2.png?raw=true "Protocol timing example")
+![APP](doc/nfc-lab-capture2.png?raw=true "Protocol timing example")
 
 Protocol detail view.
 
-![APP](/doc/nfc-lab-capture3.png?raw=true "Protocol detail example")
+![APP](doc/nfc-lab-capture3.png?raw=true "Protocol detail example")
 
-Inside the "doc" folder you can find a [video](/doc/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
+Inside the "doc" folder you can find a [video](doc/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
 
 ## SDR Receivers tested
 
@@ -126,11 +126,11 @@ works with others.
 - RTL SDR: Works tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it
   only allows you to capture the commands.
 
-![Devices](/doc/nfc-lab-devices1.png?raw=true "Devices")
+![Devices](doc/nfc-lab-devices1.png?raw=true "Devices")
 
-![Devices](/doc/nfc-lab-devices2.png?raw=true "Devices")
+![Devices](doc/nfc-lab-devices2.png?raw=true "Devices")
 
-![Devices](/doc/nfc-lab-devices3.png?raw=true "Devices")
+![Devices](doc/nfc-lab-devices3.png?raw=true "Devices")
 
 ## Hardware requirements
 
@@ -298,6 +298,17 @@ cp %nflabpath%\dll\glew-2.1.0\x86_64-w64-mingw32\bin\libglew32.dll ./
 cp %nflabpath%\dll\freetype-2.11.0\x86_64-w64-mingw32\bin\libfreetype.dll ./
 cp %nflabpath%\dll\usb-1.0.20\x86_64-w64-mingw32\bin\libusb-1.0.dll ./
 ```
+### Build from Jetbrains CLion
+
+This is my favorite IDE and that I use for all projects. 
+
+Install all prerequisites, and register MinGW toolchain in `File->Settings->Build, Execution, Deployment->Toolchains`
+
+![Build Settings](doc/clion-toolchain-settings.png)
+
+Next download project from GITHUB and create new CMake project from source, then build release and debug verions.
+
+Prepare the Qt deployment environment by executing the script `build-runenv.ps1`, now is ready to launch!
 
 ## Source code and licensing
 
