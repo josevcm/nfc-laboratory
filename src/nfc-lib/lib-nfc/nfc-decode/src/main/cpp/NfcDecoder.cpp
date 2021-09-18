@@ -430,6 +430,8 @@ struct NfcDecoder::Impl
 
    inline int decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer);
 
+   inline void resetFrameSearch();
+
    inline void resetModulation();
 
    inline bool nextSample(sdr::SignalBuffer &buffer);
@@ -1089,8 +1091,8 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
                   return true;
                }
 
-               // reset modulation status
-               resetModulation();
+               // only detect first pattern-D without anymore, so can be spurious pulse, we try to find SoF again
+               resetFrameSearch();
 
                // no valid frame found
                return false;
@@ -1723,6 +1725,21 @@ int NfcDecoder::Impl::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
    }
 
    return pattern;
+}
+
+void NfcDecoder::Impl::resetFrameSearch()
+{
+   // reset frame search status
+   if (modulation)
+   {
+      modulation->symbolEndTime = 0;
+      modulation->searchPeakTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->correlationPeek = 0;
+   }
+
+   // reset frame start time
+   frameStatus.frameStart = 0;
 }
 
 void NfcDecoder::Impl::resetModulation()
