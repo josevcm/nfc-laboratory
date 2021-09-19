@@ -795,7 +795,7 @@ bool NfcDecoder::Impl::detectModulation(sdr::SignalBuffer &buffer, std::list<Nfc
                decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
 #endif
                // check modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
-               if (modulation->searchDeepValue > 0.85 && modulation->correlationPeek > signalStatus.powerAverage * modulationThreshold)
+               if (modulation->searchDeepValue > modulationThreshold)
                {
                   // set lower threshold to detect valid response pattern
                   modulation->searchThreshold = signalStatus.powerAverage * modulationThreshold;
