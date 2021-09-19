@@ -320,11 +320,12 @@ will be happy to exchange experiences, thank you very much.
 This project is published under the terms of the MIT license, however there are parts of it subject to other types of
 licenses, please check if you are interested in this work.
 
-- AirSpy SDR driver (src/nfc-lib/lib-ext/airspy)
-- RTL SDR driver (src/nfc-lib/lib-ext/rtlsdr)
-- nlohmann json (src/nfc-lib/lib-ext/nlohmann)
-- mufft library (src/nfc-lib/lib-ext/mufft)
-- QCustomPlot (src/nfc-app/app-qt/src/main/cpp/support)
+- AirSpy SDR driver at `src/nfc-lib/lib-ext/airspy` see https://github.com/airspy/airspyone_host
+- RTL SDR driver at `src/nfc-lib/lib-ext/rtlsdr` see https://osmocom.org/projects/rtl-sdr
+- nlohmann json at `src/nfc-lib/lib-ext/nlohmann` see https://github.com/nlohmann/json
+- mufft library at `src/nfc-lib/lib-ext/mufft` see https://github.com/Themaister/muFFT
+- QCustomPlot at `src/nfc-app/app-qt/src/main/cpp/support` see https://www.qcustomplot.com/
+- QDarkStyleSheet at `src/nfc-app/app-qt/src/main/assets/theme` see https://github.com/ColinDuquesnoy/QDarkStyleSheet
 
 ## Next steps, work in Android?
 
