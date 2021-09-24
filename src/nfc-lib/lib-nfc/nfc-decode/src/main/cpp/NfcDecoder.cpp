@@ -268,24 +268,56 @@ struct StreamStatus
 };
 
 /*
- * Status for demodulate frame
+ * Status for current frame
  */
 struct FrameStatus
 {
-   unsigned int lastCommand; // last command
+   unsigned int lastCommand; // last received command
    unsigned int frameType; // frame type
    unsigned int symbolRate; // frame bit rate
-   unsigned int frameStart;    // sample clocks for start of last decoded symbol
+   unsigned int frameStart;  // sample clocks for start of last decoded symbol
    unsigned int frameEnd; // sample clocks for end of last decoded symbol
    unsigned int guardEnd; // frame guard end time
    unsigned int waitingEnd; // frame waiting end time
 
+   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
    unsigned int frameGuardTime;
+
+   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
    unsigned int frameWaitingTime;
+
+   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
    unsigned int startUpGuardTime;
-   unsigned int maxFrameSize;
+
+   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
+   unsigned int requestGuardTime;
 };
 
+/*
+ * Status for protocol
+ */
+struct ProtocolStatus
+{
+   // The FSD defines the maximum size of a frame the PCD is able to receive
+   unsigned int maxFrameSize;
+
+   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
+   unsigned int frameGuardTime;
+
+   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
+   unsigned int frameWaitingTime;
+
+   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
+   unsigned int startUpGuardTime;
+
+   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
+   unsigned int requestGuardTime;
+};
+
+/*
+ * Signal debugger
+ */
+#ifdef DEBUG_SIGNAL
 struct DecoderDebug
 {
    unsigned int channels;
@@ -353,6 +385,7 @@ struct DecoderDebug
       recorder->write(buffer);
    }
 };
+#endif
 
 struct NfcDecoder::Impl
 {
@@ -379,6 +412,9 @@ struct NfcDecoder::Impl
    // frame processing status
    FrameStatus frameStatus {0,};
 
+   // protocol processing status
+   ProtocolStatus protocolStatus {0,};
+
    // modulation status for each bitrate
    ModulationStatus modulationStatus[4] {0,};
 
@@ -387,9 +423,6 @@ struct NfcDecoder::Impl
 
    // current detected modulation
    ModulationStatus *modulation = nullptr;
-
-   // decoder debugging recorder
-   std::shared_ptr<DecoderDebug> decoderDebug;
 
    // signal sample rate
    unsigned int sampleRate = 0;
@@ -403,11 +436,16 @@ struct NfcDecoder::Impl
    // chained frame flags
    unsigned int chainedFlags = 0;
 
-   // minimun signal level
+   // minimum signal level
    float powerLevelThreshold = 0.010f;
 
-   // minimun modulation threshold to detect valid signal (default 5%)
+   // minimum modulation threshold to detect valid signal (default 5%)
    float modulationThreshold = 0.850f;
+
+   // decoder signal debugging
+#ifdef DEBUG_SIGNAL
+   std::shared_ptr<DecoderDebug> decoderDebug;
+#endif
 
    // frame handlers
 //   std::vector<FrameHandler> frameHandlers;
@@ -540,7 +578,7 @@ void NfcDecoder::Impl::configure(long newSampleRate)
 
    if (sampleRate > 0)
    {
-      // calculate sample time unit
+      // calculate sample time unit, (equivalent to 1/fc in ISO/IEC 14443-3 especifications)
       signalParams.sampleTimeUnit = double(sampleRate) / double(BaseFrequency);
 
       log.info("--------------------------------------------");
@@ -566,16 +604,16 @@ void NfcDecoder::Impl::configure(long newSampleRate)
          bitrate->techType = NfcA;
          bitrate->rateType = rate;
 
-         // symbol timming parameters
+         // symbol timing parameters
          bitrate->symbolsPerSecond = BaseFrequency / (128 >> rate);
 
-         // correlator timming parameters
-         bitrate->period1SymbolSamples = int(round(signalParams.sampleTimeUnit * (128 >> rate)));
-         bitrate->period2SymbolSamples = int(round(signalParams.sampleTimeUnit * (64 >> rate)));
-         bitrate->period4SymbolSamples = int(round(signalParams.sampleTimeUnit * (32 >> rate)));
-         bitrate->period8SymbolSamples = int(round(signalParams.sampleTimeUnit * (16 >> rate)));
+         // number of samples per symbol
+         bitrate->period1SymbolSamples = int(round(signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
+         bitrate->period2SymbolSamples = int(round(signalParams.sampleTimeUnit * (64 >> rate))); // half symbol samples
+         bitrate->period4SymbolSamples = int(round(signalParams.sampleTimeUnit * (32 >> rate))); // quarter of symbol...
+         bitrate->period8SymbolSamples = int(round(signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
-         // delay guard from lower rate
+         // delay guard for each symbol rate
          bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
 
          // moving average offsets
@@ -601,10 +639,18 @@ void NfcDecoder::Impl::configure(long newSampleRate)
          log.info("\toffsetDetectIndex    {}", {bitrate->offsetDetectIndex});
       }
 
-      // initialize default frame parameters
-      frameStatus.maxFrameSize = 256;
-      frameStatus.frameGuardTime = signalParams.sampleTimeUnit * 128 * 7;
-      frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 128 * 18;
+      // initialize default protocol parameters for start decoding
+      protocolStatus.maxFrameSize = 256;
+      protocolStatus.startUpGuardTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
+      protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+      protocolStatus.frameGuardTime = int(signalParams.sampleTimeUnit * 128 * 7);
+      protocolStatus.requestGuardTime = int(signalParams.sampleTimeUnit * 7000);
+
+      // initialize frame parameters to default protocol parameters
+      frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
+      frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+      frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+      frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
 
       // initialize exponential average factors for power value
       signalParams.powerAverageW0 = float(1 - 1E3 / sampleRate);
@@ -621,6 +667,11 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       // starts width no modulation
       modulation = nullptr;
 
+      log.info("Startup parameters");
+      log.info("\tmaxFrameSize {} bytes", {protocolStatus.maxFrameSize});
+      log.info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / sampleRate});
+      log.info("\tframeWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / sampleRate});
+      log.info("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / sampleRate});
    }
 
 #ifdef DEBUG_SIGNAL
@@ -916,7 +967,7 @@ bool NfcDecoder::Impl::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<N
       streamStatus.pattern = pattern;
 
       // detect end of request (Pattern-Y after Pattern-Z)
-      if ((streamStatus.pattern == PatternType::PatternY && (streamStatus.previous == PatternType::PatternY || streamStatus.previous == PatternType::PatternZ)) || streamStatus.bytes == frameStatus.maxFrameSize)
+      if ((streamStatus.pattern == PatternType::PatternY && (streamStatus.previous == PatternType::PatternY || streamStatus.previous == PatternType::PatternZ)) || streamStatus.bytes == protocolStatus.maxFrameSize)
       {
          // frames must contains at least one full byte or 7 bits for short frames
          if (streamStatus.bytes > 0 || streamStatus.bits == 7)
@@ -925,7 +976,7 @@ bool NfcDecoder::Impl::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<N
             if (streamStatus.bits >= 7)
                streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
 
-            // set last symbol timming
+            // set last symbol timing
             if (streamStatus.previous == PatternType::PatternZ)
                frameStatus.frameEnd = symbolStatus.start - bitrate->period2SymbolSamples;
             else
@@ -943,7 +994,7 @@ bool NfcDecoder::Impl::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<N
             if (streamStatus.flags & ParityError)
                request.setFrameFlags(NfcFrame::ParityError);
 
-            if (streamStatus.bytes == frameStatus.maxFrameSize)
+            if (streamStatus.bytes == protocolStatus.maxFrameSize)
                request.setFrameFlags(NfcFrame::Truncated);
 
             if (streamStatus.bytes == 1 && streamStatus.bits == 7)
@@ -989,7 +1040,7 @@ bool NfcDecoder::Impl::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<N
          }
 
             // store full byte in stream buffer and check parity
-         else if (streamStatus.bytes < frameStatus.maxFrameSize)
+         else if (streamStatus.bytes < protocolStatus.maxFrameSize)
          {
             streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
             streamStatus.flags |= !checkParity(streamStatus.data, value) ? ParityError : 0;
@@ -1049,7 +1100,7 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
          while ((pattern = decodeSymbolTagAskNfcA(buffer)) > PatternType::NoPattern)
          {
             // detect end of response for ASK
-            if (pattern == PatternType::PatternF || streamStatus.bytes == frameStatus.maxFrameSize)
+            if (pattern == PatternType::PatternF || streamStatus.bytes == protocolStatus.maxFrameSize)
             {
                // a valid response must contains at least 4 bits of data
                if (streamStatus.bytes > 0 || streamStatus.bits == 4)
@@ -1071,7 +1122,7 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
                   if (streamStatus.flags & ParityError)
                      response.setFrameFlags(NfcFrame::ParityError);
 
-                  if (streamStatus.bytes == frameStatus.maxFrameSize)
+                  if (streamStatus.bytes == protocolStatus.maxFrameSize)
                      response.setFrameFlags(NfcFrame::Truncated);
 
                   if (streamStatus.bytes == 1 && streamStatus.bits == 4)
@@ -1106,7 +1157,7 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
             }
 
                // store full byte in stream buffer and check parity
-            else if (streamStatus.bytes < frameStatus.maxFrameSize)
+            else if (streamStatus.bytes < protocolStatus.maxFrameSize)
             {
                streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
                streamStatus.flags |= !checkParity(streamStatus.data, symbolStatus.value) ? ParityError : 0;
@@ -1185,7 +1236,7 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
                   if (streamStatus.flags & ParityError)
                      response.setFrameFlags(NfcFrame::ParityError);
 
-                  if (streamStatus.bytes == frameStatus.maxFrameSize)
+                  if (streamStatus.bytes == protocolStatus.maxFrameSize)
                      response.setFrameFlags(NfcFrame::Truncated);
 
                   // add bytes to frame and flip to prepare read
@@ -1223,7 +1274,7 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
             }
 
                // store full byte in stream buffer and check parity
-            else if (streamStatus.bytes < frameStatus.maxFrameSize)
+            else if (streamStatus.bytes < protocolStatus.maxFrameSize)
             {
                // store byte in stream buffer
                streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
@@ -1519,7 +1570,7 @@ int NfcDecoder::Impl::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
             modulation->symbolCorr1 = 0;
          }
 
-         // search symbol timmings
+         // search symbol timings
          if (signalClock >= modulation->searchStartTime && signalClock <= modulation->searchEndTime)
          {
             if (modulation->correlatedSD > modulation->correlationPeek)
@@ -1678,7 +1729,7 @@ int NfcDecoder::Impl::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
             modulation->searchEndTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
          }
 
-            // search symbol timmings
+            // search symbol timings
          else if (signalClock == modulation->searchEndTime)
          {
 #ifdef DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL
@@ -1844,6 +1895,13 @@ bool NfcDecoder::Impl::nextSample(sdr::SignalBuffer &buffer)
 
 void NfcDecoder::Impl::process(NfcFrame frame)
 {
+   // for request frame set default response timings, must be overridden by subsequent process functions
+   if (frame.isRequestFrame())
+   {
+      frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+      frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+   }
+
    while (true)
    {
       if (processREQA(frame))
@@ -1893,14 +1951,18 @@ void NfcDecoder::Impl::process(NfcFrame frame)
    // for request frame set response timings
    if (frame.isRequestFrame())
    {
-      // response guard time TR0min (PICC must not modulate reponse within this period)
-      frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime + bitrate->symbolDelayDetect;
+      // update frame timing parameters for receive PICC frame
+      if (bitrate)
+      {
+         // response guard time TR0min (PICC must not modulate reponse within this period)
+         frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime + bitrate->symbolDelayDetect;
 
-      // response delay time WFT (PICC must reply to command before this period)
-      frameStatus.waitingEnd = frameStatus.frameEnd + frameStatus.frameWaitingTime + bitrate->symbolDelayDetect;
+         // response delay time WFT (PICC must reply to command before this period)
+         frameStatus.waitingEnd = frameStatus.frameEnd + frameStatus.frameWaitingTime + bitrate->symbolDelayDetect;
 
-      // next frame must be ListenFrame
-      frameStatus.frameType = ListenFrame;
+         // next frame must be ListenFrame
+         frameStatus.frameType = ListenFrame;
+      }
    }
    else
    {
@@ -1930,9 +1992,15 @@ bool NfcDecoder::Impl::processREQA(NfcFrame &frame)
          frame.setFramePhase(NfcFrame::SelectionFrame);
 
          frameStatus.lastCommand = frame[0];
-         frameStatus.frameGuardTime = signalParams.sampleTimeUnit * 128 * 7;
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 128 * 18;
-         frameStatus.maxFrameSize = 256;
+
+         // This commands starts or wakeup card communication, so reset the protocol parameters to the default values
+         protocolStatus.maxFrameSize = 256;
+         protocolStatus.frameGuardTime = int(signalParams.sampleTimeUnit * 128 * 7);
+         protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+
+         // The REQ-A Response must start exactly at 128 * n, n=9, decoder search between n=7 and n=18
+         frameStatus.frameGuardTime = signalParams.sampleTimeUnit * 128 * 7; // REQ-A response guard
+         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 128 * 18; // REQ-A response timeout
 
          // clear chained flags
          chainedFlags = 0;
@@ -1964,12 +2032,17 @@ bool NfcDecoder::Impl::processHLTA(NfcFrame &frame)
          frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
 
          frameStatus.lastCommand = frame[0];
-         frameStatus.frameGuardTime = signalParams.sampleTimeUnit * 128 * 7;
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 128 * 18;
-         frameStatus.maxFrameSize = 256;
+
+         // After this command the PICC will stop and will not respond, set the protocol parameters to the default values
+         protocolStatus.maxFrameSize = 256;
+         protocolStatus.frameGuardTime = int(signalParams.sampleTimeUnit * 128 * 7);
+         protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
 
          // clear chained flags
          chainedFlags = 0;
+
+         // reset modulation status
+         resetModulation();
 
          return true;
       }
@@ -1987,9 +2060,10 @@ bool NfcDecoder::Impl::processSELn(NfcFrame &frame)
          frame.setFramePhase(NfcFrame::SelectionFrame);
 
          frameStatus.lastCommand = frame[0];
+
+         // The selection commands has same timings as REQ-A
          frameStatus.frameGuardTime = signalParams.sampleTimeUnit * 128 * 7;
          frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 128 * 18;
-         frameStatus.maxFrameSize = 256;
 
          return true;
       }
@@ -2010,7 +2084,7 @@ bool NfcDecoder::Impl::processSELn(NfcFrame &frame)
 
 bool NfcDecoder::Impl::processRATS(NfcFrame &frame)
 {
-   // capture parameters from ATS and reconfigure decoder timmings
+   // capture parameters from ATS and reconfigure decoder timings
    if (frame.isRequestFrame())
    {
       if (frame[0] == NFCA_RATS)
@@ -2018,11 +2092,15 @@ bool NfcDecoder::Impl::processRATS(NfcFrame &frame)
          auto fsdi = (frame[1] >> 4) & 0x0F;
 
          frameStatus.lastCommand = frame[0];
-         frameStatus.maxFrameSize = TABLE_FDS[fsdi];
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
+
+         // sets maximum frame length requested by reader
+         protocolStatus.maxFrameSize = TABLE_FDS[fsdi];
+
+         // sets the activation frame waiting time for ATS response, ISO/IEC 14443-4 defined a value of 65536/fc (~4833 μs).
+         frameStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 65536);
 
          log.info("RATS frame parameters");
-         log.info("  maxFrameSize {} bytes", {frameStatus.maxFrameSize});
+         log.info("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
 
          frame.setFramePhase(NfcFrame::SelectionFrame);
          frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
@@ -2042,11 +2120,11 @@ bool NfcDecoder::Impl::processRATS(NfcFrame &frame)
          {
             auto t0 = frame[offset++];
 
-            // if TA is transmitted, skip..
+            // if TA is transmitted, skip...
             if (t0 & 0x10)
                offset++;
 
-            // if TB is transmitted capture timming parameters
+            // if TB is transmitted capture timing parameters
             if (t0 & 0x20)
             {
                auto tb = frame[offset++];
@@ -2065,14 +2143,20 @@ bool NfcDecoder::Impl::processRATS(NfcFrame &frame)
                if (fwi == 15)
                   fwi = 4;
 
-               // calculate timming parameters
-               frameStatus.startUpGuardTime = int(256 * 16 * signalParams.sampleTimeUnit * (1 << sfgi));
-               frameStatus.frameWaitingTime = int(256 * 16 * signalParams.sampleTimeUnit * (1 << fwi));
-
-               log.info("ATS timming parameters");
-               log.info("  startUpGuardTime {} samples ({} us)", {frameStatus.startUpGuardTime, 1000000.0 * frameStatus.startUpGuardTime / sampleRate});
-               log.info("  frameWaitingTime {} samples ({} us)", {frameStatus.frameWaitingTime, 1000000.0 * frameStatus.frameWaitingTime / sampleRate});
+               // calculate timing parameters
+               protocolStatus.startUpGuardTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << sfgi));
+               protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << fwi));
             }
+            else
+            {
+               // if TB is not transmitted establish default timing parameters
+               protocolStatus.startUpGuardTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
+               protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+            }
+
+            log.info("ATS protocol timing parameters");
+            log.info("  startUpGuardTime {} samples ({} us)", {frameStatus.startUpGuardTime, 1000000.0 * frameStatus.startUpGuardTime / sampleRate});
+            log.info("  frameWaitingTime {} samples ({} us)", {frameStatus.frameWaitingTime, 1000000.0 * frameStatus.frameWaitingTime / sampleRate});
          }
 
          frame.setFramePhase(NfcFrame::SelectionFrame);
@@ -2092,7 +2176,9 @@ bool NfcDecoder::Impl::processPPSr(NfcFrame &frame)
       if ((frame[0] & 0xF0) == NFCA_PPS)
       {
          frameStatus.lastCommand = frame[0] & 0xF0;
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
+
+         // Set PPS response waiting time to protocol default
+         frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
 
          frame.setFramePhase(NfcFrame::SelectionFrame);
          frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
@@ -2122,7 +2208,7 @@ bool NfcDecoder::Impl::processAUTH(NfcFrame &frame)
       if (frame[0] == NFCA_AUTH1 || frame[0] == NFCA_AUTH2)
       {
          frameStatus.lastCommand = frame[0];
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
+//         frameStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
 
          frame.setFramePhase(NfcFrame::ApplicationFrame);
          frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
@@ -2165,7 +2251,6 @@ bool NfcDecoder::Impl::processIBlock(NfcFrame &frame)
       if ((frame[0] & 0xE2) == NFCA_IBLOCK)
       {
          frameStatus.lastCommand = frame[0] & 0xE2;
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
 
          frame.setFramePhase(NfcFrame::ApplicationFrame);
          frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
@@ -2195,7 +2280,6 @@ bool NfcDecoder::Impl::processRBlock(NfcFrame &frame)
       if ((frame[0] & 0xE6) == NFCA_RBLOCK)
       {
          frameStatus.lastCommand = frame[0] & 0xE6;
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
 
          frame.setFramePhase(NfcFrame::ApplicationFrame);
          frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
@@ -2225,7 +2309,6 @@ bool NfcDecoder::Impl::processSBlock(NfcFrame &frame)
       if ((frame[0] & 0xC7) == NFCA_SBLOCK)
       {
          frameStatus.lastCommand = frame[0] & 0xC7;
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
 
          frame.setFramePhase(NfcFrame::ApplicationFrame);
          frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
@@ -2250,11 +2333,6 @@ bool NfcDecoder::Impl::processSBlock(NfcFrame &frame)
 
 void NfcDecoder::Impl::processOther(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
-   {
-      frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
-   }
-
    frame.setFramePhase(NfcFrame::ApplicationFrame);
    frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
 }

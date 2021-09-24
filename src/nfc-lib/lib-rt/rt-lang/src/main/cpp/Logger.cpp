@@ -97,7 +97,7 @@ struct LogWriter
 } writer;
 #endif
 
-// direct to stderr logger, waring: big performance impact! use only for strange debugging when others logger do not work!
+// direct to stderr logger, warning, performance impact! use only for strange debugging when others logger do not work!
 #ifdef STDERR_LOG
 struct LogWriter
 {
