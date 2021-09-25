@@ -93,7 +93,7 @@ integration process over a quarter of a symbol r(t).
 Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat
 more complex since timing and synchronization must be considered.
 
-### Signal quality analisys
+### Signal quality analysis
 
 This version includes a OpenGL spectrum analyzer and IQ graph to show the quality of the received signal.
 
