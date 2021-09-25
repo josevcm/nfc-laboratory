@@ -9,7 +9,7 @@ By using an SDR receiver it is possible to capture, demodulate and decode the NF
 reader.
 
 I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation
-accessible through Google, i will describe as simply as possible the method that i have used to implement this software.
+accessible through Google, I will describe as simply as possible the method that i have used to implement this software.
 
 Currently, only detection and decoding for NFC-A modulation has been implemented.
 
@@ -17,9 +17,9 @@ Currently, only detection and decoding for NFC-A modulation has been implemented
 
 The first step is receive the 13.56MHz signal and demodulate to get the baseband ASK stream, for this purpose any SDR
 device capable of tuning this frequency can be used, i have the fantastic and cheap AirSpy Mini capable of tuning from
-27Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
+24Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
 
-However, it is not possible to tune 13.56Mhz with this receiver, instead i use the second harmonic at 27.12Mhz or third
+However, it is not possible to tune 13.56Mhz with this receiver, instead I use the second harmonic at 27.12Mhz or third
 at 40.68Mhz with good results.
 
 Let's see a capture of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its
@@ -117,18 +117,25 @@ Inside the "doc" folder you can find a [video](doc/VID-20210912-WA0004.mp4?raw=t
 
 ## SDR Receivers tested
 
-I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices but surely it
+I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices, but surely it
 works with others.
 
-- AirSpy Mini: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these
+- AirSpy Mini or R2: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these
   parameters it is possible to capture the communication up to 424 Kbps.
 
-- RTL SDR: Works tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling rate of 3Mbps, it
-  only allows you to capture the commands.
+- RTL SDR: It works by tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling frequency 
+  of 3Mbps and its 8 bits of precision only allows you to capture the commands.
+
+NOTE: Due to the above, the support for RTL-SDR is not finalized due to its limited application.
 
 ![Devices](doc/nfc-lab-devices1.png?raw=true "Devices")
 
 ![Devices](doc/nfc-lab-devices3.png?raw=true "Devices")
+
+### Upconverters
+
+To avoid the use of harmonics it is possible to use an up-converter and thus tune directly to the carrier 
+frequency of 13.56Mhz, although I have not tried this combination.
 
 ## Hardware requirements and performance
 
