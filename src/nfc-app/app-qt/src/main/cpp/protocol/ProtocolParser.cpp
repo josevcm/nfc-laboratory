@@ -65,7 +65,7 @@ struct ProtocolParser::Impl
    {
       ProtocolFrame *info = nullptr;
 
-      if (frame.isRequestFrame())
+      if (frame.isPollFrame())
       {
          if (frameChain == 0)
          {

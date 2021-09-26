@@ -118,7 +118,7 @@ struct StreamModel::Impl
 
    inline static QString frameType(const nfc::NfcFrame *frame)
    {
-      if (frame->isRequestFrame())
+      if (frame->isPollFrame())
       {
          int command = (*frame)[0];
 
@@ -237,10 +237,10 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
       {
          case Columns::Data:
          {
-            if (frame->isRequestFrame())
+            if (frame->isPollFrame())
                return impl->requestDefaultFont;
 
-            if (frame->isResponseFrame())
+            if (frame->isListenFrame())
                return impl->responseDefaultFont;
          }
       }
@@ -250,7 +250,7 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
    {
       if (index.column() == Columns::Data)
       {
-         if (frame->isResponseFrame())
+         if (frame->isListenFrame())
             return QColor(Qt::darkGray);
       }
    }

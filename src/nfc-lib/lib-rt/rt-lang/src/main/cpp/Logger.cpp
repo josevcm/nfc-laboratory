@@ -39,8 +39,8 @@
 
 //#define NULL_LOG
 //#define STDERR_LOG
-#define STDOUT_LOG
-//#define FSTREAM_LOG
+//#define STDOUT_LOG
+#define FSTREAM_LOG
 
 namespace rt {
 
@@ -203,7 +203,7 @@ struct LogWriter
    std::ofstream stream;
 
    // events queue
-   BlockingQueue<std::shared_ptr<LogEvent>> queue;
+   BlockingQueue<LogEvent*> queue;
 
    LogWriter() : thread([this] { this->exec(); }), shutdown(false), stream("log/nfc-lab.log", std::ios::out | std::ios::app)
    {

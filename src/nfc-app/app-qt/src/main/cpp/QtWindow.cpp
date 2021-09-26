@@ -223,7 +223,7 @@ struct QtWindow::Impl
       const auto &frame = event->frame();
 
       // add data frames to stream model (omit carrier lost and empty frames)
-      if (frame.isRequestFrame() || frame.isResponseFrame())
+      if (frame.isPollFrame() || frame.isListenFrame())
       {
          streamModel->append(frame);
       }
@@ -656,7 +656,7 @@ struct QtWindow::Impl
 
          if (auto firstFrame = streamModel->frame(firstIndex))
          {
-            if (firstFrame->isRequestFrame())
+            if (firstFrame->isPollFrame())
             {
                parserModel->append(*firstFrame);
 
@@ -666,14 +666,14 @@ struct QtWindow::Impl
                {
                   if (auto secondFrame = streamModel->frame(secondIndex))
                   {
-                     if (secondFrame->isResponseFrame())
+                     if (secondFrame->isListenFrame())
                      {
                         parserModel->append(*secondFrame);
                      }
                   }
                }
             }
-            else if (firstFrame->isResponseFrame())
+            else if (firstFrame->isListenFrame())
             {
                auto secondIndex = streamModel->index(firstIndex.row() - 1, 0);
 
@@ -681,7 +681,7 @@ struct QtWindow::Impl
                {
                   if (auto secondFrame = streamModel->frame(secondIndex))
                   {
-                     if (secondFrame->isRequestFrame())
+                     if (secondFrame->isPollFrame())
                      {
                         parserModel->append(*secondFrame);
                         parserModel->append(*firstFrame);

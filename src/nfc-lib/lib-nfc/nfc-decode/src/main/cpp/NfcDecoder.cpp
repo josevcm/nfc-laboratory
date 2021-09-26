@@ -28,7 +28,14 @@
 
 #include <rt/Logger.h>
 #include <sdr/RecordDevice.h>
+
+#include <nfc/Nfc.h>
+#include <nfc/NfcA.h>
+#include <nfc/NfcB.h>
+
 #include <nfc/NfcDecoder.h>
+
+#include "NfcSignal.h"
 
 //#define DEBUG_SIGNAL
 
@@ -53,55 +60,19 @@
 
 namespace nfc {
 
-// carrier frequency (13.56 Mhz)
-constexpr static const unsigned int BaseFrequency = 13.56E6;
-
-// buffer for signal integration, must be power of 2^n
-constexpr static const unsigned int SignalBufferLength = 512;
-
-enum TechType
-{
-   NfcA = 1,
-   NfcB = 2
-};
-
-enum FrameType
-{
-   PollFrame = 1,
-   ListenFrame = 2
-};
-
-enum FrameFlags
-{
-   ShortFrame = NfcFrame::ShortFrame,
-   Encrypted = NfcFrame::Encrypted,
-   ParityError = NfcFrame::ParityError,
-   CrcError = NfcFrame::CrcError,
-   Truncated = NfcFrame::Truncated
-};
-
-enum RateType
-{
-   r106k = 0,
-   r212k = 1,
-   r424k = 2,
-   r848k = 3
-};
-
 enum PatternType
 {
    Invalid = 0,
-   NoCarrier = 1,
-   NoPattern = 2,
-   PatternX = 3,
-   PatternY = 4,
-   PatternZ = 5,
-   PatternD = 6,
-   PatternE = 7,
-   PatternF = 8,
-   PatternM = 9,
-   PatternN = 10,
-   PatternO = 11
+   NoPattern = 1,
+   PatternX = 2,
+   PatternY = 3,
+   PatternZ = 4,
+   PatternD = 5,
+   PatternE = 6,
+   PatternF = 7,
+   PatternM = 8,
+   PatternN = 9,
+   PatternO = 10
 };
 
 enum FrameCommand
@@ -124,195 +95,7 @@ enum FrameCommand
 // FSDI to FSD conversion (frame size)
 static const int TABLE_FDS[] = {16, 24, 32, 40, 48, 64, 96, 128, 256, 0, 0, 0, 0, 0, 0, 256};
 
-struct SignalParams
-{
-   // exponential factors for power integrator
-   float powerAverageW0;
-   float powerAverageW1;
 
-   // exponential factors for average integrator
-   float signalAverageW0;
-   float signalAverageW1;
-
-   // exponential factors for variance integrator
-   float signalVarianceW0;
-   float signalVarianceW1;
-
-   // default decoder parameters
-   double sampleTimeUnit;
-};
-
-struct BitrateParams
-{
-   int rateType;
-   int techType;
-
-   float symbolAverageW0;
-   float symbolAverageW1;
-
-   // symbol parameters
-   unsigned int symbolsPerSecond;
-   unsigned int period1SymbolSamples;
-   unsigned int period2SymbolSamples;
-   unsigned int period4SymbolSamples;
-   unsigned int period8SymbolSamples;
-
-   // modulation parameters
-   unsigned int symbolDelayDetect;
-   unsigned int offsetSignalIndex;
-   unsigned int offsetFilterIndex;
-   unsigned int offsetSymbolIndex;
-   unsigned int offsetDetectIndex;
-};
-
-struct SignalStatus
-{
-   // raw IQ sample data
-   float sampleData[2];
-
-   // signal normalized value
-   float signalValue;
-
-   // exponential power integrator
-   float powerAverage;
-
-   // exponential average integrator
-   float signalAverage;
-
-   // exponential variance integrator
-   float signalVariance;
-
-   // signal data buffer
-   float signalData[SignalBufferLength];
-
-   // silence start (no modulation detected)
-   unsigned int carrierOff;
-
-   // silence end (modulation detected)
-   unsigned int carrierOn;
-};
-
-/*
- * Modulation parameters and status for one symbol rate
- */
-struct ModulationStatus
-{
-   // symbol search status
-   unsigned int searchStartTime;   // sample start of symbol search window
-   unsigned int searchEndTime;     // sample end of symbol search window
-   unsigned int searchPeakTime;    // sample time for for maximum correlation peak
-   unsigned int searchPulseWidth;         // detected signal pulse width
-   float searchDeepValue;          // signal modulation deep during search
-   float searchThreshold;          // signal threshold
-
-   // symbol parameters
-   unsigned int symbolStartTime;
-   unsigned int symbolEndTime;
-   float symbolCorr0;
-   float symbolCorr1;
-   float symbolPhase;
-   float symbolAverage;
-
-   // integrator processor
-   float filterIntegrate;
-   float phaseIntegrate;
-   float phaseThreshold;
-
-   // integration indexes
-   unsigned int signalIndex;
-   unsigned int filterIndex;
-   unsigned int symbolIndex;
-   unsigned int detectIndex;
-
-   // correlation indexes
-   unsigned int filterPoint1;
-   unsigned int filterPoint2;
-   unsigned int filterPoint3;
-
-   // correlation processor
-   float correlatedS0;
-   float correlatedS1;
-   float correlatedSD;
-   float correlationPeek;
-
-   float integrationData[SignalBufferLength];
-   float correlationData[SignalBufferLength];
-};
-
-/*
- * Status for one demodulated symbol
- */
-struct SymbolStatus
-{
-   unsigned int pattern; // symbol pattern
-   unsigned int value; // symbol value (0 / 1)
-   unsigned long start;    // sample clocks for start of last decoded symbol
-   unsigned long end; // sample clocks for end of last decoded symbol
-   unsigned int length; // samples for next symbol synchronization
-   unsigned int rate; // symbol rate
-};
-
-/*
- * Status for demodulate bit stream
- */
-struct StreamStatus
-{
-   unsigned int previous;
-   unsigned int pattern;
-   unsigned int bits;
-   unsigned int data;
-   unsigned int flags;
-   unsigned int parity;
-   unsigned int bytes;
-   unsigned char buffer[512];
-};
-
-/*
- * Status for current frame
- */
-struct FrameStatus
-{
-   unsigned int lastCommand; // last received command
-   unsigned int frameType; // frame type
-   unsigned int symbolRate; // frame bit rate
-   unsigned int frameStart;  // sample clocks for start of last decoded symbol
-   unsigned int frameEnd; // sample clocks for end of last decoded symbol
-   unsigned int guardEnd; // frame guard end time
-   unsigned int waitingEnd; // frame waiting end time
-
-   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
-   unsigned int frameGuardTime;
-
-   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
-   unsigned int frameWaitingTime;
-
-   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
-   unsigned int startUpGuardTime;
-
-   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
-   unsigned int requestGuardTime;
-};
-
-/*
- * Status for protocol
- */
-struct ProtocolStatus
-{
-   // The FSD defines the maximum size of a frame the PCD is able to receive
-   unsigned int maxFrameSize;
-
-   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
-   unsigned int frameGuardTime;
-
-   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
-   unsigned int frameWaitingTime;
-
-   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
-   unsigned int startUpGuardTime;
-
-   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
-   unsigned int requestGuardTime;
-};
 
 /*
  * Signal debugger
@@ -328,7 +111,7 @@ struct DecoderDebug
 
    float values[10] {0,};
 
-   DecoderDebug(unsigned int channels, unsigned int sampleRate) : channels(channels), clock(0)
+   DecoderDebug(unsigned int channels, unsigned int decoder.sampleRate) : channels(channels), clock(0)
    {
       char file[128];
       struct tm timeinfo {};
@@ -339,7 +122,7 @@ struct DecoderDebug
 
       recorder = new sdr::RecordDevice(file);
       recorder->setChannelCount(channels);
-      recorder->setSampleRate(sampleRate);
+      recorder->setSampleRate(decoder.sampleRate);
       recorder->open(sdr::RecordDevice::Write);
    }
 
@@ -375,7 +158,7 @@ struct DecoderDebug
 
    void begin(int sampleCount)
    {
-      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate());
+      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->decoder.sampleRate());
    }
 
    void commit()
@@ -394,53 +177,14 @@ struct NfcDecoder::Impl
 
    rt::Logger log {"NfcDecoder"};
 
-   // signal parameters
-   SignalParams signalParams {0,};
+   // NFC-A Decoder
+   struct NfcA nfca;
 
-   // bitrate parameters
-   BitrateParams bitrateParams[4] {0,};
+   // NFC-B Decoder
+   struct NfcB nfcb;
 
-   // signal processing status
-   SignalStatus signalStatus {0,};
-
-   // detected symbol status
-   SymbolStatus symbolStatus {0,};
-
-   // bit stream status
-   StreamStatus streamStatus {0,};
-
-   // frame processing status
-   FrameStatus frameStatus {0,};
-
-   // protocol processing status
-   ProtocolStatus protocolStatus {0,};
-
-   // modulation status for each bitrate
-   ModulationStatus modulationStatus[4] {0,};
-
-   // current detected bitrate
-   BitrateParams *bitrate = nullptr;
-
-   // current detected modulation
-   ModulationStatus *modulation = nullptr;
-
-   // signal sample rate
-   unsigned int sampleRate = 0;
-
-   // signal master clock
-   unsigned int signalClock = 0;
-
-   // last detected frame end
-   unsigned int lastFrameEnd = 0;
-
-   // chained frame flags
-   unsigned int chainedFlags = 0;
-
-   // minimum signal level
-   float powerLevelThreshold = 0.010f;
-
-   // minimum modulation threshold to detect valid signal (default 5%)
-   float modulationThreshold = 0.850f;
+   // global decoder status
+   struct DecoderStatus decoder;
 
    // decoder signal debugging
 #ifdef DEBUG_SIGNAL
@@ -467,6 +211,14 @@ struct NfcDecoder::Impl
    inline int decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer);
 
    inline int decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer);
+
+   inline bool decodeFrameDevNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+
+   inline bool decodeFrameTagNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+
+   inline int decodeSymbolTagAskNfcB(sdr::SignalBuffer &buffer);
+
+   inline int decodeSymbolTagBpskNfcB(sdr::SignalBuffer &buffer);
 
    inline void resetFrameSearch();
 
@@ -517,27 +269,27 @@ void NfcDecoder::setSampleRate(long sampleRate)
 
 void NfcDecoder::setPowerLevelThreshold(float value)
 {
-   impl->powerLevelThreshold = value;
+   impl->decoder.powerLevelThreshold = value;
 }
 
 float NfcDecoder::powerLevelThreshold() const
 {
-   return impl->powerLevelThreshold;
+   return impl->decoder.powerLevelThreshold;
 }
 
 void NfcDecoder::setModulationThreshold(float value)
 {
-   impl->modulationThreshold = value;
+   impl->decoder.modulationThreshold = value;
 }
 
 float NfcDecoder::modulationThreshold() const
 {
-   return impl->modulationThreshold;
+   return impl->decoder.modulationThreshold;
 }
 
 float NfcDecoder::signalStrength() const
 {
-   return impl->signalStatus.powerAverage;
+   return impl->decoder.signalStatus.powerAverage;
 }
 
 NfcDecoder::Impl::Impl()
@@ -550,133 +302,133 @@ NfcDecoder::Impl::Impl()
 void NfcDecoder::Impl::configure(long newSampleRate)
 {
    // clear signal parameters
-   signalParams = {0,};
+   decoder.signalParams = {0,};
 
    // clear signal processing status
-   signalStatus = {0,};
+   decoder.signalStatus = {0,};
 
    // clear detected symbol status
-   symbolStatus = {0,};
+   decoder.symbolStatus = {0,};
 
    // clear bit stream status
-   streamStatus = {0,};
+   decoder.streamStatus = {0,};
 
    // clear frame processing status
-   frameStatus = {0,};
+   decoder.frameStatus = {0,};
 
    // set decoder samplerate
-   sampleRate = newSampleRate;
+   decoder.sampleRate = newSampleRate;
 
    // clear signal master clock
-   signalClock = 0;
+   decoder.signalClock = 0;
 
    // clear last detected frame end
-   lastFrameEnd = 0;
+   decoder.lastFrameEnd = 0;
 
    // clear chained flags
-   chainedFlags = 0;
+   decoder.chainedFlags = 0;
 
-   if (sampleRate > 0)
+   if (decoder.sampleRate > 0)
    {
-      // calculate sample time unit, (equivalent to 1/fc in ISO/IEC 14443-3 especifications)
-      signalParams.sampleTimeUnit = double(sampleRate) / double(BaseFrequency);
+      // calculate sample time unit, (equivalent to 1/fc in ISO/IEC 14443-3 specifications)
+      decoder.signalParams.sampleTimeUnit = double(decoder.sampleRate) / double(BaseFrequency);
 
       log.info("--------------------------------------------");
       log.info("initializing NFC decoder");
       log.info("--------------------------------------------");
-      log.info("\tsignalSampleRate     {}", {sampleRate});
-      log.info("\tpowerLevelThreshold  {}", {powerLevelThreshold});
-      log.info("\tmodulationThreshold  {}", {modulationThreshold});
+      log.info("\tsignalSampleRate     {}", {decoder.sampleRate});
+      log.info("\tdecoder.powerLevelThreshold  {}", {decoder.powerLevelThreshold});
+      log.info("\tdecoder.modulationThreshold  {}", {decoder.modulationThreshold});
 
       // compute symbol parameters for 106Kbps, 212Kbps, 424Kbps and 848Kbps
       for (int rate = r106k; rate <= r424k; rate++)
       {
-         // clear bitrate parameters
-         bitrateParams[rate] = {0,};
+         // clear decoder.bitrate parameters
+         decoder.bitrateParams[rate] = {0,};
 
-         // clear modulation parameters
-         modulationStatus[rate] = {0,};
+         // clear decoder.modulation parameters
+         decoder.modulationStatus[rate] = {0,};
 
-         // configuracion to current bitrate
-         bitrate = bitrateParams + rate;
+         // configuracion to current decoder.bitrate
+         decoder.bitrate = decoder.bitrateParams + rate;
 
          // set tech type and rate
-         bitrate->techType = NfcA;
-         bitrate->rateType = rate;
+         decoder.bitrate->techType = TechType::NfcA;
+         decoder.bitrate->rateType = rate;
 
          // symbol timing parameters
-         bitrate->symbolsPerSecond = BaseFrequency / (128 >> rate);
+         decoder.bitrate->symbolsPerSecond = BaseFrequency / (128 >> rate);
 
          // number of samples per symbol
-         bitrate->period1SymbolSamples = int(round(signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
-         bitrate->period2SymbolSamples = int(round(signalParams.sampleTimeUnit * (64 >> rate))); // half symbol samples
-         bitrate->period4SymbolSamples = int(round(signalParams.sampleTimeUnit * (32 >> rate))); // quarter of symbol...
-         bitrate->period8SymbolSamples = int(round(signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
+         decoder.bitrate->period1SymbolSamples = int(round(decoder.signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
+         decoder.bitrate->period2SymbolSamples = int(round(decoder.signalParams.sampleTimeUnit * (64 >> rate))); // half symbol samples
+         decoder.bitrate->period4SymbolSamples = int(round(decoder.signalParams.sampleTimeUnit * (32 >> rate))); // quarter of symbol...
+         decoder.bitrate->period8SymbolSamples = int(round(decoder.signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
          // delay guard for each symbol rate
-         bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
+         decoder.bitrate->symbolDelayDetect = rate > r106k ? decoder.bitrateParams[rate - 1].symbolDelayDetect + decoder.bitrateParams[rate - 1].period1SymbolSamples : 0;
 
          // moving average offsets
-         bitrate->offsetSignalIndex = SignalBufferLength - bitrate->symbolDelayDetect;
-         bitrate->offsetFilterIndex = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period2SymbolSamples;
-         bitrate->offsetSymbolIndex = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period1SymbolSamples;
-         bitrate->offsetDetectIndex = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
+         decoder.bitrate->offsetSignalIndex = SignalBufferLength - decoder.bitrate->symbolDelayDetect;
+         decoder.bitrate->offsetFilterIndex = SignalBufferLength - decoder.bitrate->symbolDelayDetect - decoder.bitrate->period2SymbolSamples;
+         decoder.bitrate->offsetSymbolIndex = SignalBufferLength - decoder.bitrate->symbolDelayDetect - decoder.bitrate->period1SymbolSamples;
+         decoder.bitrate->offsetDetectIndex = SignalBufferLength - decoder.bitrate->symbolDelayDetect - decoder.bitrate->period4SymbolSamples;
 
          // exponential symbol average
-         bitrate->symbolAverageW0 = float(1 - 5.0 / bitrate->period1SymbolSamples);
-         bitrate->symbolAverageW1 = float(1 - bitrate->symbolAverageW0);
+         decoder.bitrate->symbolAverageW0 = float(1 - 5.0 / decoder.bitrate->period1SymbolSamples);
+         decoder.bitrate->symbolAverageW1 = float(1 - decoder.bitrate->symbolAverageW0);
 
-         log.info("{} kpbs parameters:", {round(bitrate->symbolsPerSecond / 1E3)});
-         log.info("\tsymbolsPerSecond     {}", {bitrate->symbolsPerSecond});
-         log.info("\tperiod1SymbolSamples {} ({} us)", {bitrate->period1SymbolSamples, 1E6 * bitrate->period1SymbolSamples / sampleRate});
-         log.info("\tperiod2SymbolSamples {} ({} us)", {bitrate->period2SymbolSamples, 1E6 * bitrate->period2SymbolSamples / sampleRate});
-         log.info("\tperiod4SymbolSamples {} ({} us)", {bitrate->period4SymbolSamples, 1E6 * bitrate->period4SymbolSamples / sampleRate});
-         log.info("\tperiod8SymbolSamples {} ({} us)", {bitrate->period8SymbolSamples, 1E6 * bitrate->period8SymbolSamples / sampleRate});
-         log.info("\tsymbolDelayDetect    {} ({} us)", {bitrate->symbolDelayDetect, 1E6 * bitrate->symbolDelayDetect / sampleRate});
-         log.info("\toffsetSignalIndex    {}", {bitrate->offsetSignalIndex});
-         log.info("\toffsetFilterIndex    {}", {bitrate->offsetFilterIndex});
-         log.info("\toffsetSymbolIndex    {}", {bitrate->offsetSymbolIndex});
-         log.info("\toffsetDetectIndex    {}", {bitrate->offsetDetectIndex});
+         log.info("{} kpbs parameters:", {round(decoder.bitrate->symbolsPerSecond / 1E3)});
+         log.info("\tsymbolsPerSecond     {}", {decoder.bitrate->symbolsPerSecond});
+         log.info("\tperiod1SymbolSamples {} ({} us)", {decoder.bitrate->period1SymbolSamples, 1E6 * decoder.bitrate->period1SymbolSamples / decoder.sampleRate});
+         log.info("\tperiod2SymbolSamples {} ({} us)", {decoder.bitrate->period2SymbolSamples, 1E6 * decoder.bitrate->period2SymbolSamples / decoder.sampleRate});
+         log.info("\tperiod4SymbolSamples {} ({} us)", {decoder.bitrate->period4SymbolSamples, 1E6 * decoder.bitrate->period4SymbolSamples / decoder.sampleRate});
+         log.info("\tperiod8SymbolSamples {} ({} us)", {decoder.bitrate->period8SymbolSamples, 1E6 * decoder.bitrate->period8SymbolSamples / decoder.sampleRate});
+         log.info("\tsymbolDelayDetect    {} ({} us)", {decoder.bitrate->symbolDelayDetect, 1E6 * decoder.bitrate->symbolDelayDetect / decoder.sampleRate});
+         log.info("\toffsetSignalIndex    {}", {decoder.bitrate->offsetSignalIndex});
+         log.info("\toffsetFilterIndex    {}", {decoder.bitrate->offsetFilterIndex});
+         log.info("\toffsetSymbolIndex    {}", {decoder.bitrate->offsetSymbolIndex});
+         log.info("\toffsetDetectIndex    {}", {decoder.bitrate->offsetDetectIndex});
       }
 
       // initialize default protocol parameters for start decoding
-      protocolStatus.maxFrameSize = 256;
-      protocolStatus.startUpGuardTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
-      protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
-      protocolStatus.frameGuardTime = int(signalParams.sampleTimeUnit * 128 * 7);
-      protocolStatus.requestGuardTime = int(signalParams.sampleTimeUnit * 7000);
+      decoder.protocolStatus.maxFrameSize = 256;
+      decoder.protocolStatus.startUpGuardTime = int(decoder.signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
+      decoder.protocolStatus.frameWaitingTime = int(decoder.signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+      decoder.protocolStatus.frameGuardTime = int(decoder.signalParams.sampleTimeUnit * 128 * 7);
+      decoder.protocolStatus.requestGuardTime = int(decoder.signalParams.sampleTimeUnit * 7000);
 
       // initialize frame parameters to default protocol parameters
-      frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
-      frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
-      frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
-      frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
+      decoder.frameStatus.startUpGuardTime = decoder.protocolStatus.startUpGuardTime;
+      decoder.frameStatus.frameWaitingTime = decoder.protocolStatus.frameWaitingTime;
+      decoder.frameStatus.frameGuardTime = decoder.protocolStatus.frameGuardTime;
+      decoder.frameStatus.requestGuardTime = decoder.protocolStatus.requestGuardTime;
 
       // initialize exponential average factors for power value
-      signalParams.powerAverageW0 = float(1 - 1E3 / sampleRate);
-      signalParams.powerAverageW1 = float(1 - signalParams.powerAverageW0);
+      decoder.signalParams.powerAverageW0 = float(1 - 1E3 / decoder.sampleRate);
+      decoder.signalParams.powerAverageW1 = float(1 - decoder.signalParams.powerAverageW0);
 
       // initialize exponential average factors for signal average
-      signalParams.signalAverageW0 = float(1 - 1E5 / sampleRate);
-      signalParams.signalAverageW1 = float(1 - signalParams.signalAverageW0);
+      decoder.signalParams.signalAverageW0 = float(1 - 1E5 / decoder.sampleRate);
+      decoder.signalParams.signalAverageW1 = float(1 - decoder.signalParams.signalAverageW0);
 
       // initialize exponential average factors for signal variance
-      signalParams.signalVarianceW0 = float(1 - 1E5 / sampleRate);
-      signalParams.signalVarianceW1 = float(1 - signalParams.signalVarianceW0);
+      decoder.signalParams.signalVarianceW0 = float(1 - 1E5 / decoder.sampleRate);
+      decoder.signalParams.signalVarianceW1 = float(1 - decoder.signalParams.signalVarianceW0);
 
-      // starts width no modulation
-      modulation = nullptr;
+      // starts width no decoder.modulation
+      decoder.modulation = nullptr;
 
       log.info("Startup parameters");
-      log.info("\tmaxFrameSize {} bytes", {protocolStatus.maxFrameSize});
-      log.info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / sampleRate});
-      log.info("\tframeWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / sampleRate});
-      log.info("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / sampleRate});
+      log.info("\tmaxFrameSize {} bytes", {decoder.protocolStatus.maxFrameSize});
+      log.info("\tframeGuardTime {} samples ({} us)", {decoder.protocolStatus.frameGuardTime, 1000000.0 * decoder.protocolStatus.frameGuardTime / decoder.sampleRate});
+      log.info("\tframeWaitingTime {} samples ({} us)", {decoder.protocolStatus.frameWaitingTime, 1000000.0 * decoder.protocolStatus.frameWaitingTime / decoder.sampleRate});
+      log.info("\trequestGuardTime {} samples ({} us)", {decoder.protocolStatus.requestGuardTime, 1000000.0 * decoder.protocolStatus.requestGuardTime / decoder.sampleRate});
    }
 
 #ifdef DEBUG_SIGNAL
    log.warn("DECODER DEBUGGER ENABLED!, performance may be impacted");
-   decoderDebug = std::make_shared<DecoderDebug>(DEBUG_CHANNELS, sampleRate);
+   decoderDebug = std::make_shared<DecoderDebug>(DEBUG_CHANNELS, decoder.sampleRate);
 #endif
 }
 
@@ -692,7 +444,7 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
    if (samples.isValid())
    {
       // re-configure decoder parameters on sample rate changes
-      if (sampleRate != samples.sampleRate())
+      if (decoder.sampleRate != samples.sampleRate())
       {
          configure(samples.sampleRate());
       }
@@ -703,7 +455,7 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
 
       while (!samples.isEmpty())
       {
-         if (!modulation)
+         if (!decoder.modulation)
          {
             if (!detectModulation(samples, frames))
             {
@@ -711,16 +463,28 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
             }
          }
 
-         if (bitrate->techType == NfcA)
+         if (decoder.bitrate->techType == TechType::NfcA)
          {
-            if (frameStatus.frameType == PollFrame)
+            if (decoder.frameStatus.frameType == PollFrame)
             {
                decodeFrameDevNfcA(samples, frames);
             }
 
-            if (frameStatus.frameType == ListenFrame)
+            if (decoder.frameStatus.frameType == ListenFrame)
             {
                decodeFrameTagNfcA(samples, frames);
+            }
+         }
+         else if (decoder.bitrate->techType == TechType::NfcB)
+         {
+            if (decoder.frameStatus.frameType == PollFrame)
+            {
+               decodeFrameDevNfcB(samples, frames);
+            }
+
+            if (decoder.frameStatus.frameType == ListenFrame)
+            {
+               decodeFrameTagNfcB(samples, frames);
             }
          }
       }
@@ -733,32 +497,32 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
       // if sample buffer is not valid only process remain carrier detector
    else
    {
-      if (signalStatus.carrierOff)
+      if (decoder.signalStatus.carrierOff)
       {
-//         log.debug("detected carrier lost from {} to {}", {signalStatus.carrierOff, signalClock});
+//         log.debug("detected carrier lost from {} to {}", {decoder.signalStatus.carrierOff, decoder.signalClock});
 
-         NfcFrame silence = NfcFrame(NfcFrame::None, NfcFrame::NoCarrier);
+         NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
 
-         silence.setFramePhase(NfcFrame::CarrierFrame);
-         silence.setSampleStart(signalStatus.carrierOff);
-         silence.setSampleEnd(signalClock);
-         silence.setTimeStart(double(signalStatus.carrierOff) / double(sampleRate));
-         silence.setTimeEnd(double(signalClock) / double(sampleRate));
+         silence.setFramePhase(FramePhase::CarrierFrame);
+         silence.setSampleStart(decoder.signalStatus.carrierOff);
+         silence.setSampleEnd(decoder.signalClock);
+         silence.setTimeStart(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+         silence.setTimeEnd(double(decoder.signalClock) / double(decoder.sampleRate));
 
          frames.push_back(silence);
       }
 
-      else if (signalStatus.carrierOn)
+      else if (decoder.signalStatus.carrierOn)
       {
-//         log.debug("detected carrier present from {} to {}", {signalStatus.carrierOn, signalClock});
+//         log.debug("detected carrier present from {} to {}", {decoder.signalStatus.carrierOn, decoder.signalClock});
 
-         NfcFrame carrier = NfcFrame(NfcFrame::None, NfcFrame::EmptyFrame);
+         NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
 
-         carrier.setFramePhase(NfcFrame::CarrierFrame);
-         carrier.setSampleStart(signalStatus.carrierOn);
-         carrier.setSampleEnd(signalClock);
-         carrier.setTimeStart(double(signalStatus.carrierOn) / double(sampleRate));
-         carrier.setTimeEnd(double(signalClock) / double(sampleRate));
+         carrier.setFramePhase(FramePhase::CarrierFrame);
+         carrier.setSampleStart(decoder.signalStatus.carrierOn);
+         carrier.setSampleEnd(decoder.signalClock);
+         carrier.setTimeStart(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+         carrier.setTimeEnd(double(decoder.signalClock) / double(decoder.sampleRate));
 
          frames.push_back(carrier);
       }
@@ -773,186 +537,182 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
  */
 bool NfcDecoder::Impl::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
 {
-   symbolStatus.pattern = PatternType::Invalid;
+   decoder.symbolStatus.pattern = PatternType::Invalid;
 
-   while (nextSample(buffer) && symbolStatus.pattern == PatternType::Invalid)
+   while (nextSample(buffer) && decoder.symbolStatus.pattern == PatternType::Invalid)
    {
       // ignore low power signals
-      if (signalStatus.powerAverage > powerLevelThreshold)
+      if (decoder.signalStatus.powerAverage > decoder.powerLevelThreshold)
       {
          // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
          for (int rate = r106k; rate <= r424k; rate++)
          {
-            bitrate = bitrateParams + rate;
-            modulation = modulationStatus + rate;
+            decoder.bitrate = decoder.bitrateParams + rate;
+            decoder.modulation = decoder.modulationStatus + rate;
 
             // compute signal pointers
-            modulation->signalIndex = (bitrate->offsetSignalIndex + signalClock);
-            modulation->filterIndex = (bitrate->offsetFilterIndex + signalClock);
+            decoder.modulation->signalIndex = (decoder.bitrate->offsetSignalIndex + decoder.signalClock);
+            decoder.modulation->filterIndex = (decoder.bitrate->offsetFilterIndex + decoder.signalClock);
 
             // get signal samples
-            float currentData = signalStatus.signalData[modulation->signalIndex & (SignalBufferLength - 1)];
-            float delayedData = signalStatus.signalData[modulation->filterIndex & (SignalBufferLength - 1)];
+            float currentData = decoder.signalStatus.signalData[decoder.modulation->signalIndex & (SignalBufferLength - 1)];
+            float delayedData = decoder.signalStatus.signalData[decoder.modulation->filterIndex & (SignalBufferLength - 1)];
 
             // integrate signal data over 1/2 symbol
-            modulation->filterIntegrate += currentData; // add new value
-            modulation->filterIntegrate -= delayedData; // remove delayed value
+            decoder.modulation->filterIntegrate += currentData; // add new value
+            decoder.modulation->filterIntegrate -= delayedData; // remove delayed value
 
             // correlation points
-            modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-            modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-            modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+            decoder.modulation->filterPoint1 = (decoder.modulation->signalIndex % decoder.bitrate->period1SymbolSamples);
+            decoder.modulation->filterPoint2 = (decoder.modulation->signalIndex + decoder.bitrate->period2SymbolSamples) % decoder.bitrate->period1SymbolSamples;
+            decoder.modulation->filterPoint3 = (decoder.modulation->signalIndex + decoder.bitrate->period1SymbolSamples - 1) % decoder.bitrate->period1SymbolSamples;
 
             // store integrated signal in correlation buffer
-            modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+            decoder.modulation->correlationData[decoder.modulation->filterPoint1] = decoder.modulation->filterIntegrate;
 
             // compute correlation factors
-            modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-            modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
-            modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
+            decoder.modulation->correlatedS0 = decoder.modulation->correlationData[decoder.modulation->filterPoint1] - decoder.modulation->correlationData[decoder.modulation->filterPoint2];
+            decoder.modulation->correlatedS1 = decoder.modulation->correlationData[decoder.modulation->filterPoint2] - decoder.modulation->correlationData[decoder.modulation->filterPoint3];
+            decoder.modulation->correlatedSD = std::fabs(decoder.modulation->correlatedS0 - decoder.modulation->correlatedS1) / float(decoder.bitrate->period2SymbolSamples);
 
             // compute symbol average
-            modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
+            decoder.modulation->symbolAverage = decoder.modulation->symbolAverage * decoder.bitrate->symbolAverageW0 + currentData * decoder.bitrate->symbolAverageW1;
 
 #ifdef DEBUG_ASK_CORRELATION_CHANNEL
-            decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, modulation->correlatedSD);
+            decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, decoder.modulation->correlatedSD);
 #endif
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
             decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
 #endif
             // search for Pattern-Z in PCD to PICC request
-            if (modulation->correlatedSD > signalStatus.powerAverage * modulationThreshold)
+            if (decoder.modulation->correlatedSD > decoder.signalStatus.powerAverage * decoder.modulationThreshold)
             {
-               // calculate symbol modulation deep
-               float modulationDeep = (signalStatus.powerAverage - currentData) / signalStatus.powerAverage;
+               // calculate symbol decoder.modulation deep
+               float modulationDeep = (decoder.signalStatus.powerAverage - currentData) / decoder.signalStatus.powerAverage;
 
-               if (modulation->searchDeepValue < modulationDeep)
-                  modulation->searchDeepValue = modulationDeep;
+               if (decoder.modulation->searchDeepValue < modulationDeep)
+                  decoder.modulation->searchDeepValue = modulationDeep;
 
                // max correlation peak detector
-               if (modulation->correlatedSD > modulation->correlationPeek)
+               if (decoder.modulation->correlatedSD > decoder.modulation->correlationPeek)
                {
-                  modulation->searchPulseWidth++;
-                  modulation->searchPeakTime = signalClock;
-                  modulation->searchEndTime = signalClock + bitrate->period4SymbolSamples;
-                  modulation->correlationPeek = modulation->correlatedSD;
+                  decoder.modulation->searchPulseWidth++;
+                  decoder.modulation->searchPeakTime = decoder.signalClock;
+                  decoder.modulation->searchEndTime = decoder.signalClock + decoder.bitrate->period4SymbolSamples;
+                  decoder.modulation->correlationPeek = decoder.modulation->correlatedSD;
                }
             }
 
             // Check for SoF symbol
-            if (signalClock == modulation->searchEndTime)
+            if (decoder.signalClock == decoder.modulation->searchEndTime)
             {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
                decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
 #endif
-               // check modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
-               if (modulation->searchDeepValue > modulationThreshold)
+               // check decoder.modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
+               if (decoder.modulation->searchDeepValue > decoder.modulationThreshold)
                {
                   // set lower threshold to detect valid response pattern
-                  modulation->searchThreshold = signalStatus.powerAverage * modulationThreshold;
+                  decoder.modulation->searchThreshold = decoder.signalStatus.powerAverage * decoder.modulationThreshold;
 
                   // set pattern search window
-                  modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
-                  modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
+                  decoder.modulation->symbolStartTime = decoder.modulation->searchPeakTime - decoder.bitrate->period2SymbolSamples;
+                  decoder.modulation->symbolEndTime = decoder.modulation->searchPeakTime + decoder.bitrate->period2SymbolSamples;
 
                   // setup frame info
-                  frameStatus.frameType = PollFrame;
-                  frameStatus.symbolRate = bitrate->symbolsPerSecond;
-                  frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                  frameStatus.frameEnd = 0;
+                  decoder.frameStatus.frameType = PollFrame;
+                  decoder.frameStatus.symbolRate = decoder.bitrate->symbolsPerSecond;
+                  decoder.frameStatus.frameStart = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+                  decoder.frameStatus.frameEnd = 0;
 
                   // setup symbol info
-                  symbolStatus.value = 0;
-                  symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                  symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-                  symbolStatus.length = symbolStatus.end - symbolStatus.start;
-                  symbolStatus.pattern = PatternType::PatternZ;
+                  decoder.symbolStatus.value = 0;
+                  decoder.symbolStatus.start = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+                  decoder.symbolStatus.end = decoder.modulation->symbolEndTime - decoder.bitrate->symbolDelayDetect;
+                  decoder.symbolStatus.length = decoder.symbolStatus.end - decoder.symbolStatus.start;
+                  decoder.symbolStatus.pattern = PatternType::PatternZ;
 
                   break;
                }
 
-               // reset modulation to continue search
-               modulation->searchStartTime = 0;
-               modulation->searchEndTime = 0;
-               modulation->searchDeepValue = 0;
-               modulation->correlationPeek = 0;
+               // reset decoder.modulation to continue search
+               decoder.modulation->searchStartTime = 0;
+               decoder.modulation->searchEndTime = 0;
+               decoder.modulation->searchDeepValue = 0;
+               decoder.modulation->correlationPeek = 0;
             }
          }
       }
 
       // carrier edge detector
-      float edge = std::fabs(signalStatus.signalAverage - signalStatus.powerAverage);
+      float edge = std::fabs(decoder.signalStatus.signalAverage - decoder.signalStatus.powerAverage);
 
       // positive edge
-      if (signalStatus.signalAverage > edge && signalStatus.powerAverage > powerLevelThreshold)
+      if (decoder.signalStatus.signalAverage > edge && decoder.signalStatus.powerAverage > decoder.powerLevelThreshold)
       {
-         if (!signalStatus.carrierOn)
+         if (!decoder.signalStatus.carrierOn)
          {
-            signalStatus.carrierOn = signalClock;
+            decoder.signalStatus.carrierOn = decoder.signalClock;
 
-            if (signalStatus.carrierOff)
+            if (decoder.signalStatus.carrierOff)
             {
-//               log.debug("detected carrier lost from {} to {}", {signalStatus.carrierOff, signalStatus.carrierOn});
+               NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
 
-               NfcFrame silence = NfcFrame(NfcFrame::None, NfcFrame::NoCarrier);
-
-               silence.setFramePhase(NfcFrame::CarrierFrame);
-               silence.setSampleStart(signalStatus.carrierOff);
-               silence.setSampleEnd(signalStatus.carrierOn);
-               silence.setTimeStart(double(signalStatus.carrierOff) / double(sampleRate));
-               silence.setTimeEnd(double(signalStatus.carrierOn) / double(sampleRate));
+               silence.setFramePhase(FramePhase::CarrierFrame);
+               silence.setSampleStart(decoder.signalStatus.carrierOff);
+               silence.setSampleEnd(decoder.signalStatus.carrierOn);
+               silence.setTimeStart(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+               silence.setTimeEnd(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
 
                frames.push_back(silence);
             }
 
-            signalStatus.carrierOff = 0;
+            decoder.signalStatus.carrierOff = 0;
          }
       }
 
          // negative edge
-      else if (signalStatus.signalAverage < edge || signalStatus.powerAverage < powerLevelThreshold)
+      else if (decoder.signalStatus.signalAverage < edge || decoder.signalStatus.powerAverage < decoder.powerLevelThreshold)
       {
-         if (!signalStatus.carrierOff)
+         if (!decoder.signalStatus.carrierOff)
          {
-            signalStatus.carrierOff = signalClock;
+            decoder.signalStatus.carrierOff = decoder.signalClock;
 
-            if (signalStatus.carrierOn)
+            if (decoder.signalStatus.carrierOn)
             {
-//               log.debug("detected carrier present from {} to {}", {signalStatus.carrierOn, signalStatus.carrierOff});
+               NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
 
-               NfcFrame carrier = NfcFrame(NfcFrame::None, NfcFrame::EmptyFrame);
-
-               carrier.setFramePhase(NfcFrame::CarrierFrame);
-               carrier.setSampleStart(signalStatus.carrierOn);
-               carrier.setSampleEnd(signalStatus.carrierOff);
-               carrier.setTimeStart(double(signalStatus.carrierOn) / double(sampleRate));
-               carrier.setTimeEnd(double(signalStatus.carrierOff) / double(sampleRate));
+               carrier.setFramePhase(FramePhase::CarrierFrame);
+               carrier.setSampleStart(decoder.signalStatus.carrierOn);
+               carrier.setSampleEnd(decoder.signalStatus.carrierOff);
+               carrier.setTimeStart(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+               carrier.setTimeEnd(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
 
                frames.push_back(carrier);
             }
 
-            signalStatus.carrierOn = 0;
+            decoder.signalStatus.carrierOn = 0;
          }
       }
    }
 
-   if (symbolStatus.pattern != PatternType::Invalid)
+   if (decoder.symbolStatus.pattern != PatternType::Invalid)
    {
-      // reset modulation to continue search
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->searchDeepValue = 0;
-      modulation->correlationPeek = 0;
+      // reset decoder.modulation to continue search
+      decoder.modulation->searchStartTime = 0;
+      decoder.modulation->searchEndTime = 0;
+      decoder.modulation->searchDeepValue = 0;
+      decoder.modulation->correlationPeek = 0;
 
-      // modulation detected
+      // decoder.modulation detected
       return true;
    }
 
-   // no bitrate detected
-   bitrate = nullptr;
+   // no decoder.bitrate detected
+   decoder.bitrate = nullptr;
 
-   // no modulation detected
-   modulation = nullptr;
+   // no decoder.modulation detected
+   decoder.modulation = nullptr;
 
    return false;
 }
@@ -964,53 +724,53 @@ bool NfcDecoder::Impl::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<N
    // read NFC-A request request
    while ((pattern = decodeSymbolDevAskNfcA(buffer)) > PatternType::NoPattern)
    {
-      streamStatus.pattern = pattern;
+      decoder.streamStatus.pattern = pattern;
 
       // detect end of request (Pattern-Y after Pattern-Z)
-      if ((streamStatus.pattern == PatternType::PatternY && (streamStatus.previous == PatternType::PatternY || streamStatus.previous == PatternType::PatternZ)) || streamStatus.bytes == protocolStatus.maxFrameSize)
+      if ((decoder.streamStatus.pattern == PatternType::PatternY && (decoder.streamStatus.previous == PatternType::PatternY || decoder.streamStatus.previous == PatternType::PatternZ)) || decoder.streamStatus.bytes == decoder.protocolStatus.maxFrameSize)
       {
          // frames must contains at least one full byte or 7 bits for short frames
-         if (streamStatus.bytes > 0 || streamStatus.bits == 7)
+         if (decoder.streamStatus.bytes > 0 || decoder.streamStatus.bits == 7)
          {
             // add remaining byte to request
-            if (streamStatus.bits >= 7)
-               streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
+            if (decoder.streamStatus.bits >= 7)
+               decoder.streamStatus.buffer[decoder.streamStatus.bytes++] = decoder.streamStatus.data;
 
             // set last symbol timing
-            if (streamStatus.previous == PatternType::PatternZ)
-               frameStatus.frameEnd = symbolStatus.start - bitrate->period2SymbolSamples;
+            if (decoder.streamStatus.previous == PatternType::PatternZ)
+               decoder.frameStatus.frameEnd = decoder.symbolStatus.start - decoder.bitrate->period2SymbolSamples;
             else
-               frameStatus.frameEnd = symbolStatus.start - bitrate->period1SymbolSamples;
+               decoder.frameStatus.frameEnd = decoder.symbolStatus.start - decoder.bitrate->period1SymbolSamples;
 
             // build request frame
-            NfcFrame request = NfcFrame(NfcFrame::NfcA, NfcFrame::RequestFrame);
+            NfcFrame request = NfcFrame(TechType::NfcA, FrameType::PollFrame);
 
-            request.setFrameRate(frameStatus.symbolRate);
-            request.setSampleStart(frameStatus.frameStart);
-            request.setSampleEnd(frameStatus.frameEnd);
-            request.setTimeStart(double(frameStatus.frameStart) / double(sampleRate));
-            request.setTimeEnd(double(frameStatus.frameEnd) / double(sampleRate));
+            request.setFrameRate(decoder.frameStatus.symbolRate);
+            request.setSampleStart(decoder.frameStatus.frameStart);
+            request.setSampleEnd(decoder.frameStatus.frameEnd);
+            request.setTimeStart(double(decoder.frameStatus.frameStart) / double(decoder.sampleRate));
+            request.setTimeEnd(double(decoder.frameStatus.frameEnd) / double(decoder.sampleRate));
 
-            if (streamStatus.flags & ParityError)
-               request.setFrameFlags(NfcFrame::ParityError);
+            if (decoder.streamStatus.flags & ParityError)
+               request.setFrameFlags(FrameFlags::ParityError);
 
-            if (streamStatus.bytes == protocolStatus.maxFrameSize)
-               request.setFrameFlags(NfcFrame::Truncated);
+            if (decoder.streamStatus.bytes == decoder.protocolStatus.maxFrameSize)
+               request.setFrameFlags(FrameFlags::Truncated);
 
-            if (streamStatus.bytes == 1 && streamStatus.bits == 7)
-               request.setFrameFlags(NfcFrame::ShortFrame);
+            if (decoder.streamStatus.bytes == 1 && decoder.streamStatus.bits == 7)
+               request.setFrameFlags(FrameFlags::ShortFrame);
 
             // add bytes to frame and flip to prepare read
-            request.put(streamStatus.buffer, streamStatus.bytes).flip();
+            request.put(decoder.streamStatus.buffer, decoder.streamStatus.bytes).flip();
 
-            // clear modulation status for next frame search
-            modulation->symbolStartTime = 0;
-            modulation->symbolEndTime = 0;
-            modulation->filterIntegrate = 0;
-            modulation->phaseIntegrate = 0;
+            // clear decoder.modulation status for next frame search
+            decoder.modulation->symbolStartTime = 0;
+            decoder.modulation->symbolEndTime = 0;
+            decoder.modulation->filterIntegrate = 0;
+            decoder.modulation->phaseIntegrate = 0;
 
             // clear stream status
-            streamStatus = {0,};
+            decoder.streamStatus = {0,};
 
             // process frame
             process(request);
@@ -1022,35 +782,35 @@ bool NfcDecoder::Impl::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<N
             return true;
          }
 
-         // reset modulation and restart frame detection
+         // reset decoder.modulation and restart frame detection
          resetModulation();
 
          // no valid frame found
          return false;
       }
 
-      if (streamStatus.previous)
+      if (decoder.streamStatus.previous)
       {
-         int value = (streamStatus.previous == PatternType::PatternX);
+         int value = (decoder.streamStatus.previous == PatternType::PatternX);
 
          // decode next bit
-         if (streamStatus.bits < 8)
+         if (decoder.streamStatus.bits < 8)
          {
-            streamStatus.data = streamStatus.data | (value << streamStatus.bits++);
+            decoder.streamStatus.data = decoder.streamStatus.data | (value << decoder.streamStatus.bits++);
          }
 
             // store full byte in stream buffer and check parity
-         else if (streamStatus.bytes < protocolStatus.maxFrameSize)
+         else if (decoder.streamStatus.bytes < decoder.protocolStatus.maxFrameSize)
          {
-            streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
-            streamStatus.flags |= !checkParity(streamStatus.data, value) ? ParityError : 0;
-            streamStatus.data = streamStatus.bits = 0;
+            decoder.streamStatus.buffer[decoder.streamStatus.bytes++] = decoder.streamStatus.data;
+            decoder.streamStatus.flags |= !checkParity(decoder.streamStatus.data, value) ? ParityError : 0;
+            decoder.streamStatus.data = decoder.streamStatus.bits = 0;
          }
 
             // too many bytes in frame, abort decoder
          else
          {
-            // reset modulation status
+            // reset decoder.modulation status
             resetModulation();
 
             // no valid frame found
@@ -1059,7 +819,7 @@ bool NfcDecoder::Impl::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<N
       }
 
       // update previous command state
-      streamStatus.previous = streamStatus.pattern;
+      decoder.streamStatus.previous = decoder.streamStatus.pattern;
    }
 
    // no frame detected
@@ -1071,9 +831,9 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
    int pattern;
 
    // decode TAG ASK response
-   if (bitrate->rateType == r106k)
+   if (decoder.bitrate->rateType == r106k)
    {
-      if (!frameStatus.frameStart)
+      if (!decoder.frameStatus.frameStart)
       {
          // search Start Of Frame pattern
          pattern = decodeSymbolTagAskNfcA(buffer);
@@ -1081,11 +841,11 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
          // Pattern-D found, mark frame start time
          if (pattern == PatternType::PatternD)
          {
-            frameStatus.frameStart = symbolStatus.start;
+            decoder.frameStatus.frameStart = decoder.symbolStatus.start;
          }
          else
          {
-            //  end of frame waiting time, restart modulation search
+            //  end of frame waiting time, restart decoder.modulation search
             if (pattern == PatternType::NoPattern)
                resetModulation();
 
@@ -1094,44 +854,44 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
          }
       }
 
-      if (frameStatus.frameStart)
+      if (decoder.frameStatus.frameStart)
       {
          // decode remaining response
          while ((pattern = decodeSymbolTagAskNfcA(buffer)) > PatternType::NoPattern)
          {
             // detect end of response for ASK
-            if (pattern == PatternType::PatternF || streamStatus.bytes == protocolStatus.maxFrameSize)
+            if (pattern == PatternType::PatternF || decoder.streamStatus.bytes == decoder.protocolStatus.maxFrameSize)
             {
                // a valid response must contains at least 4 bits of data
-               if (streamStatus.bytes > 0 || streamStatus.bits == 4)
+               if (decoder.streamStatus.bytes > 0 || decoder.streamStatus.bits == 4)
                {
                   // add remaining byte to request
-                  if (streamStatus.bits == 4)
-                     streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
+                  if (decoder.streamStatus.bits == 4)
+                     decoder.streamStatus.buffer[decoder.streamStatus.bytes++] = decoder.streamStatus.data;
 
-                  frameStatus.frameEnd = symbolStatus.end;
+                  decoder.frameStatus.frameEnd = decoder.symbolStatus.end;
 
-                  NfcFrame response = NfcFrame(NfcFrame::NfcA, NfcFrame::ResponseFrame);
+                  NfcFrame response = NfcFrame(TechType::NfcA, FrameType::ListenFrame);
 
-                  response.setFrameRate(bitrate->symbolsPerSecond);
-                  response.setSampleStart(frameStatus.frameStart);
-                  response.setSampleEnd(frameStatus.frameEnd);
-                  response.setTimeStart(double(frameStatus.frameStart) / double(sampleRate));
-                  response.setTimeEnd(double(frameStatus.frameEnd) / double(sampleRate));
+                  response.setFrameRate(decoder.bitrate->symbolsPerSecond);
+                  response.setSampleStart(decoder.frameStatus.frameStart);
+                  response.setSampleEnd(decoder.frameStatus.frameEnd);
+                  response.setTimeStart(double(decoder.frameStatus.frameStart) / double(decoder.sampleRate));
+                  response.setTimeEnd(double(decoder.frameStatus.frameEnd) / double(decoder.sampleRate));
 
-                  if (streamStatus.flags & ParityError)
-                     response.setFrameFlags(NfcFrame::ParityError);
+                  if (decoder.streamStatus.flags & ParityError)
+                     response.setFrameFlags(FrameFlags::ParityError);
 
-                  if (streamStatus.bytes == protocolStatus.maxFrameSize)
-                     response.setFrameFlags(NfcFrame::Truncated);
+                  if (decoder.streamStatus.bytes == decoder.protocolStatus.maxFrameSize)
+                     response.setFrameFlags(FrameFlags::Truncated);
 
-                  if (streamStatus.bytes == 1 && streamStatus.bits == 4)
-                     response.setFrameFlags(NfcFrame::ShortFrame);
+                  if (decoder.streamStatus.bytes == 1 && decoder.streamStatus.bits == 4)
+                     response.setFrameFlags(FrameFlags::ShortFrame);
 
                   // add bytes to frame and flip to prepare read
-                  response.put(streamStatus.buffer, streamStatus.bytes).flip();
+                  response.put(decoder.streamStatus.buffer, decoder.streamStatus.bytes).flip();
 
-                  // reset modulation status
+                  // reset decoder.modulation status
                   resetModulation();
 
                   // process frame
@@ -1151,23 +911,23 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
             }
 
             // decode next bit
-            if (streamStatus.bits < 8)
+            if (decoder.streamStatus.bits < 8)
             {
-               streamStatus.data |= (symbolStatus.value << streamStatus.bits++);
+               decoder.streamStatus.data |= (decoder.symbolStatus.value << decoder.streamStatus.bits++);
             }
 
                // store full byte in stream buffer and check parity
-            else if (streamStatus.bytes < protocolStatus.maxFrameSize)
+            else if (decoder.streamStatus.bytes < decoder.protocolStatus.maxFrameSize)
             {
-               streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
-               streamStatus.flags |= !checkParity(streamStatus.data, symbolStatus.value) ? ParityError : 0;
-               streamStatus.data = streamStatus.bits = 0;
+               decoder.streamStatus.buffer[decoder.streamStatus.bytes++] = decoder.streamStatus.data;
+               decoder.streamStatus.flags |= !checkParity(decoder.streamStatus.data, decoder.symbolStatus.value) ? ParityError : 0;
+               decoder.streamStatus.data = decoder.streamStatus.bits = 0;
             }
 
                // too many bytes in frame, abort decoder
             else
             {
-               // reset modulation status
+               // reset decoder.modulation status
                resetModulation();
 
                // no valid frame found
@@ -1178,9 +938,9 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
    }
 
       // decode TAG BPSK response
-   else if (bitrate->rateType == r212k || bitrate->rateType == r424k)
+   else if (decoder.bitrate->rateType == r212k || decoder.bitrate->rateType == r424k)
    {
-      if (!frameStatus.frameStart)
+      if (!decoder.frameStatus.frameStart)
       {
          // detect first pattern
          pattern = decodeSymbolTagBpskNfcA(buffer);
@@ -1188,11 +948,11 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
          // Pattern-M found, mark frame start time
          if (pattern == PatternType::PatternM)
          {
-            frameStatus.frameStart = symbolStatus.start;
+            decoder.frameStatus.frameStart = decoder.symbolStatus.start;
          }
          else
          {
-            //  end of frame waiting time, restart modulation search
+            //  end of frame waiting time, restart decoder.modulation search
             if (pattern == PatternType::NoPattern)
                resetModulation();
 
@@ -1202,47 +962,47 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
       }
 
       // frame SoF detected, decode frame stream...
-      if (frameStatus.frameStart)
+      if (decoder.frameStatus.frameStart)
       {
          while ((pattern = decodeSymbolTagBpskNfcA(buffer)) > PatternType::NoPattern)
          {
             // detect end of response for BPSK
             if (pattern == PatternType::PatternO)
             {
-               if (streamStatus.bits == 9)
+               if (decoder.streamStatus.bits == 9)
                {
                   // store byte in stream buffer
-                  streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
+                  decoder.streamStatus.buffer[decoder.streamStatus.bytes++] = decoder.streamStatus.data;
 
                   // last byte has even parity
-                  streamStatus.flags |= checkParity(streamStatus.data, streamStatus.parity) ? ParityError : 0;
+                  decoder.streamStatus.flags |= checkParity(decoder.streamStatus.data, decoder.streamStatus.parity) ? ParityError : 0;
                }
 
                // frames must contains at least one full byte
-               if (streamStatus.bytes > 0)
+               if (decoder.streamStatus.bytes > 0)
                {
                   // mark frame end at star of EoF symbol
-                  frameStatus.frameEnd = symbolStatus.start;
+                  decoder.frameStatus.frameEnd = decoder.symbolStatus.start;
 
                   // build responde frame
-                  NfcFrame response = NfcFrame(NfcFrame::NfcA, NfcFrame::ResponseFrame);
+                  NfcFrame response = NfcFrame(TechType::NfcA, FrameType::ListenFrame);
 
-                  response.setFrameRate(bitrate->symbolsPerSecond);
-                  response.setSampleStart(frameStatus.frameStart);
-                  response.setSampleEnd(frameStatus.frameEnd);
-                  response.setTimeStart(double(frameStatus.frameStart) / double(sampleRate));
-                  response.setTimeEnd(double(frameStatus.frameEnd) / double(sampleRate));
+                  response.setFrameRate(decoder.bitrate->symbolsPerSecond);
+                  response.setSampleStart(decoder.frameStatus.frameStart);
+                  response.setSampleEnd(decoder.frameStatus.frameEnd);
+                  response.setTimeStart(double(decoder.frameStatus.frameStart) / double(decoder.sampleRate));
+                  response.setTimeEnd(double(decoder.frameStatus.frameEnd) / double(decoder.sampleRate));
 
-                  if (streamStatus.flags & ParityError)
-                     response.setFrameFlags(NfcFrame::ParityError);
+                  if (decoder.streamStatus.flags & ParityError)
+                     response.setFrameFlags(FrameFlags::ParityError);
 
-                  if (streamStatus.bytes == protocolStatus.maxFrameSize)
-                     response.setFrameFlags(NfcFrame::Truncated);
+                  if (decoder.streamStatus.bytes == decoder.protocolStatus.maxFrameSize)
+                     response.setFrameFlags(FrameFlags::Truncated);
 
                   // add bytes to frame and flip to prepare read
-                  response.put(streamStatus.buffer, streamStatus.bytes).flip();
+                  response.put(decoder.streamStatus.buffer, decoder.streamStatus.bytes).flip();
 
-                  // reset modulation status
+                  // reset decoder.modulation status
                   resetModulation();
 
                   // process frame
@@ -1254,7 +1014,7 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
                   return true;
                }
 
-               // reset modulation status
+               // reset decoder.modulation status
                resetModulation();
 
                // no valid frame found
@@ -1262,44 +1022,44 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
             }
 
             // decode next data bit
-            if (streamStatus.bits < 8)
+            if (decoder.streamStatus.bits < 8)
             {
-               streamStatus.data |= (symbolStatus.value << streamStatus.bits);
+               decoder.streamStatus.data |= (decoder.symbolStatus.value << decoder.streamStatus.bits);
             }
 
                // decode parity bit
-            else if (streamStatus.bits < 9)
+            else if (decoder.streamStatus.bits < 9)
             {
-               streamStatus.parity = symbolStatus.value;
+               decoder.streamStatus.parity = decoder.symbolStatus.value;
             }
 
                // store full byte in stream buffer and check parity
-            else if (streamStatus.bytes < protocolStatus.maxFrameSize)
+            else if (decoder.streamStatus.bytes < decoder.protocolStatus.maxFrameSize)
             {
                // store byte in stream buffer
-               streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
+               decoder.streamStatus.buffer[decoder.streamStatus.bytes++] = decoder.streamStatus.data;
 
                // frame bytes has odd parity
-               streamStatus.flags |= !checkParity(streamStatus.data, streamStatus.parity) ? ParityError : 0;
+               decoder.streamStatus.flags |= !checkParity(decoder.streamStatus.data, decoder.streamStatus.parity) ? ParityError : 0;
 
                // initialize next value from current symbol
-               streamStatus.data = symbolStatus.value;
+               decoder.streamStatus.data = decoder.symbolStatus.value;
 
                // reset bit counter
-               streamStatus.bits = 0;
+               decoder.streamStatus.bits = 0;
             }
 
                // too many bytes in frame, abort decoder
             else
             {
-               // reset modulation status
+               // reset decoder.modulation status
                resetModulation();
 
                // no valid frame found
                return false;
             }
 
-            streamStatus.bits++;
+            decoder.streamStatus.bits++;
          }
       }
    }
@@ -1310,130 +1070,130 @@ bool NfcDecoder::Impl::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<N
 
 int NfcDecoder::Impl::decodeSymbolDevAskNfcA(sdr::SignalBuffer &buffer)
 {
-   symbolStatus.pattern = PatternType::Invalid;
+   decoder.symbolStatus.pattern = PatternType::Invalid;
 
    while (nextSample(buffer))
    {
       // compute pointers
-      modulation->signalIndex = (bitrate->offsetSignalIndex + signalClock);
-      modulation->filterIndex = (bitrate->offsetFilterIndex + signalClock);
+      decoder.modulation->signalIndex = (decoder.bitrate->offsetSignalIndex + decoder.signalClock);
+      decoder.modulation->filterIndex = (decoder.bitrate->offsetFilterIndex + decoder.signalClock);
 
       // get signal samples
-      float currentData = signalStatus.signalData[modulation->signalIndex & (SignalBufferLength - 1)];
-      float delayedData = signalStatus.signalData[modulation->filterIndex & (SignalBufferLength - 1)];
+      float currentData = decoder.signalStatus.signalData[decoder.modulation->signalIndex & (SignalBufferLength - 1)];
+      float delayedData = decoder.signalStatus.signalData[decoder.modulation->filterIndex & (SignalBufferLength - 1)];
 
       // integrate signal data over 1/2 symbol
-      modulation->filterIntegrate += currentData; // add new value
-      modulation->filterIntegrate -= delayedData; // remove delayed value
+      decoder.modulation->filterIntegrate += currentData; // add new value
+      decoder.modulation->filterIntegrate -= delayedData; // remove delayed value
 
       // correlation pointers
-      modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-      modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-      modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+      decoder.modulation->filterPoint1 = (decoder.modulation->signalIndex % decoder.bitrate->period1SymbolSamples);
+      decoder.modulation->filterPoint2 = (decoder.modulation->signalIndex + decoder.bitrate->period2SymbolSamples) % decoder.bitrate->period1SymbolSamples;
+      decoder.modulation->filterPoint3 = (decoder.modulation->signalIndex + decoder.bitrate->period1SymbolSamples - 1) % decoder.bitrate->period1SymbolSamples;
 
       // store integrated signal in correlation buffer
-      modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+      decoder.modulation->correlationData[decoder.modulation->filterPoint1] = decoder.modulation->filterIntegrate;
 
       // compute correlation factors
-      modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-      modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
-      modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
+      decoder.modulation->correlatedS0 = decoder.modulation->correlationData[decoder.modulation->filterPoint1] - decoder.modulation->correlationData[decoder.modulation->filterPoint2];
+      decoder.modulation->correlatedS1 = decoder.modulation->correlationData[decoder.modulation->filterPoint2] - decoder.modulation->correlationData[decoder.modulation->filterPoint3];
+      decoder.modulation->correlatedSD = std::fabs(decoder.modulation->correlatedS0 - decoder.modulation->correlatedS1) / float(decoder.bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORRELATION_CHANNEL
-      decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, modulation->correlatedSD);
+      decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, decoder.modulation->correlatedSD);
 #endif
 
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
       decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
 #endif
       // compute symbol average
-      modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
+      decoder.modulation->symbolAverage = decoder.modulation->symbolAverage * decoder.bitrate->symbolAverageW0 + currentData * decoder.bitrate->symbolAverageW1;
 
       // set next search sync window from previous state
-      if (!modulation->searchStartTime)
+      if (!decoder.modulation->searchStartTime)
       {
          // estimated symbol start and end
-         modulation->symbolStartTime = modulation->symbolEndTime;
-         modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
+         decoder.modulation->symbolStartTime = decoder.modulation->symbolEndTime;
+         decoder.modulation->symbolEndTime = decoder.modulation->symbolStartTime + decoder.bitrate->period1SymbolSamples;
 
          // timig search window
-         modulation->searchStartTime = modulation->symbolEndTime - bitrate->period8SymbolSamples;
-         modulation->searchEndTime = modulation->symbolEndTime + bitrate->period8SymbolSamples;
+         decoder.modulation->searchStartTime = decoder.modulation->symbolEndTime - decoder.bitrate->period8SymbolSamples;
+         decoder.modulation->searchEndTime = decoder.modulation->symbolEndTime + decoder.bitrate->period8SymbolSamples;
 
          // reset symbol parameters
-         modulation->symbolCorr0 = 0;
-         modulation->symbolCorr1 = 0;
+         decoder.modulation->symbolCorr0 = 0;
+         decoder.modulation->symbolCorr1 = 0;
       }
 
       // search max correlation peak
-      if (signalClock >= modulation->searchStartTime && signalClock <= modulation->searchEndTime)
+      if (decoder.signalClock >= decoder.modulation->searchStartTime && decoder.signalClock <= decoder.modulation->searchEndTime)
       {
-         if (modulation->correlatedSD > modulation->correlationPeek)
+         if (decoder.modulation->correlatedSD > decoder.modulation->correlationPeek)
          {
-            modulation->correlationPeek = modulation->correlatedSD;
-            modulation->symbolCorr0 = modulation->correlatedS0;
-            modulation->symbolCorr1 = modulation->correlatedS1;
-            modulation->symbolEndTime = signalClock;
+            decoder.modulation->correlationPeek = decoder.modulation->correlatedSD;
+            decoder.modulation->symbolCorr0 = decoder.modulation->correlatedS0;
+            decoder.modulation->symbolCorr1 = decoder.modulation->correlatedS1;
+            decoder.modulation->symbolEndTime = decoder.signalClock;
          }
       }
 
       // capture next symbol
-      if (signalClock == modulation->searchEndTime)
+      if (decoder.signalClock == decoder.modulation->searchEndTime)
       {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
          decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.50f);
 #endif
-         // detect Pattern-Y when no modulation occurs (below search detection threshold)
-         if (modulation->correlationPeek < modulation->searchThreshold)
+         // detect Pattern-Y when no decoder.modulation occurs (below search detection threshold)
+         if (decoder.modulation->correlationPeek < decoder.modulation->searchThreshold)
          {
-            // estimate symbol end from start (peak detection not valid due lack of modulation)
-            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
+            // estimate symbol end from start (peak detection not valid due lack of decoder.modulation)
+            decoder.modulation->symbolEndTime = decoder.modulation->symbolStartTime + decoder.bitrate->period1SymbolSamples;
 
             // setup symbol info
-            symbolStatus.value = 1;
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
-            symbolStatus.pattern = PatternType::PatternY;
+            decoder.symbolStatus.value = 1;
+            decoder.symbolStatus.start = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+            decoder.symbolStatus.end = decoder.modulation->symbolEndTime - decoder.bitrate->symbolDelayDetect;
+            decoder.symbolStatus.length = decoder.symbolStatus.end - decoder.symbolStatus.start;
+            decoder.symbolStatus.pattern = PatternType::PatternY;
 
             break;
          }
 
          // detect Pattern-Z
-         if (modulation->symbolCorr0 > modulation->symbolCorr1)
+         if (decoder.modulation->symbolCorr0 > decoder.modulation->symbolCorr1)
          {
             // setup symbol info
-            symbolStatus.value = 0;
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
-            symbolStatus.pattern = PatternType::PatternZ;
+            decoder.symbolStatus.value = 0;
+            decoder.symbolStatus.start = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+            decoder.symbolStatus.end = decoder.modulation->symbolEndTime - decoder.bitrate->symbolDelayDetect;
+            decoder.symbolStatus.length = decoder.symbolStatus.end - decoder.symbolStatus.start;
+            decoder.symbolStatus.pattern = PatternType::PatternZ;
 
             break;
          }
 
          // detect Pattern-X, setup symbol info
-         symbolStatus.value = 1;
-         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-         symbolStatus.length = symbolStatus.end - symbolStatus.start;
-         symbolStatus.pattern = PatternType::PatternX;
+         decoder.symbolStatus.value = 1;
+         decoder.symbolStatus.start = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+         decoder.symbolStatus.end = decoder.modulation->symbolEndTime - decoder.bitrate->symbolDelayDetect;
+         decoder.symbolStatus.length = decoder.symbolStatus.end - decoder.symbolStatus.start;
+         decoder.symbolStatus.pattern = PatternType::PatternX;
 
          break;
       }
    }
 
    // reset search status if symbol has detected
-   if (symbolStatus.pattern != PatternType::Invalid)
+   if (decoder.symbolStatus.pattern != PatternType::Invalid)
    {
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->searchPulseWidth = 0;
-      modulation->correlationPeek = 0;
-      modulation->correlatedSD = 0;
+      decoder.modulation->searchStartTime = 0;
+      decoder.modulation->searchEndTime = 0;
+      decoder.modulation->searchPulseWidth = 0;
+      decoder.modulation->correlationPeek = 0;
+      decoder.modulation->correlatedSD = 0;
    }
 
-   return symbolStatus.pattern;
+   return decoder.symbolStatus.pattern;
 }
 
 int NfcDecoder::Impl::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
@@ -1443,48 +1203,48 @@ int NfcDecoder::Impl::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
    while (nextSample(buffer))
    {
       // compute pointers
-      modulation->signalIndex = (bitrate->offsetSignalIndex + signalClock);
-      modulation->detectIndex = (bitrate->offsetDetectIndex + signalClock);
+      decoder.modulation->signalIndex = (decoder.bitrate->offsetSignalIndex + decoder.signalClock);
+      decoder.modulation->detectIndex = (decoder.bitrate->offsetDetectIndex + decoder.signalClock);
 
       // get signal samples
-      float currentData = signalStatus.signalData[modulation->signalIndex & (SignalBufferLength - 1)];
+      float currentData = decoder.signalStatus.signalData[decoder.modulation->signalIndex & (SignalBufferLength - 1)];
 
       // compute symbol average (signal offset)
-      modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
+      decoder.modulation->symbolAverage = decoder.modulation->symbolAverage * decoder.bitrate->symbolAverageW0 + currentData * decoder.bitrate->symbolAverageW1;
 
       // signal value
-      currentData -= modulation->symbolAverage;
+      currentData -= decoder.modulation->symbolAverage;
 
       // store signal square in filter buffer
-      modulation->integrationData[modulation->signalIndex & (SignalBufferLength - 1)] = currentData * currentData;
+      decoder.modulation->integrationData[decoder.modulation->signalIndex & (SignalBufferLength - 1)] = currentData * currentData;
 
       // start correlation after frameGuardTime
-      if (signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
+      if (decoder.signalClock > (decoder.frameStatus.guardEnd - decoder.bitrate->period1SymbolSamples))
       {
          // compute correlation points
-         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+         decoder.modulation->filterPoint1 = (decoder.modulation->signalIndex % decoder.bitrate->period1SymbolSamples);
+         decoder.modulation->filterPoint2 = (decoder.modulation->signalIndex + decoder.bitrate->period2SymbolSamples) % decoder.bitrate->period1SymbolSamples;
+         decoder.modulation->filterPoint3 = (decoder.modulation->signalIndex + decoder.bitrate->period1SymbolSamples - 1) % decoder.bitrate->period1SymbolSamples;
 
          // integrate symbol (moving average)
-         modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (SignalBufferLength - 1)]; // add new value
-         modulation->filterIntegrate -= modulation->integrationData[modulation->detectIndex & (SignalBufferLength - 1)]; // remove delayed value
+         decoder.modulation->filterIntegrate += decoder.modulation->integrationData[decoder.modulation->signalIndex & (SignalBufferLength - 1)]; // add new value
+         decoder.modulation->filterIntegrate -= decoder.modulation->integrationData[decoder.modulation->detectIndex & (SignalBufferLength - 1)]; // remove delayed value
 
          // store integrated signal in correlation buffer
-         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+         decoder.modulation->correlationData[decoder.modulation->filterPoint1] = decoder.modulation->filterIntegrate;
 
          // compute correlation results for each symbol and distance
-         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
-         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
+         decoder.modulation->correlatedS0 = decoder.modulation->correlationData[decoder.modulation->filterPoint1] - decoder.modulation->correlationData[decoder.modulation->filterPoint2];
+         decoder.modulation->correlatedS1 = decoder.modulation->correlationData[decoder.modulation->filterPoint2] - decoder.modulation->correlationData[decoder.modulation->filterPoint3];
+         decoder.modulation->correlatedSD = std::fabs(decoder.modulation->correlatedS0 - decoder.modulation->correlatedS1);
       }
 
 #ifdef DEBUG_ASK_CORRELATION_CHANNEL
-      decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, modulation->correlatedSD);
+      decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, decoder.modulation->correlatedSD);
 #endif
 
 #ifdef DEBUG_ASK_INTEGRATION_CHANNEL
-      decoderDebug->value(DEBUG_ASK_INTEGRATION_CHANNEL, modulation->filterIntegrate);
+      decoderDebug->value(DEBUG_ASK_INTEGRATION_CHANNEL, decoder.modulation->filterIntegrate);
 #endif
 
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
@@ -1492,59 +1252,59 @@ int NfcDecoder::Impl::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
 #endif
 
       // search for Start Of Frame pattern (SoF)
-      if (!modulation->symbolEndTime)
+      if (!decoder.modulation->symbolEndTime)
       {
-         if (signalClock > frameStatus.guardEnd)
+         if (decoder.signalClock > decoder.frameStatus.guardEnd)
          {
-            if (modulation->correlatedSD > modulation->searchThreshold)
+            if (decoder.modulation->correlatedSD > decoder.modulation->searchThreshold)
             {
                // max correlation peak detector
-               if (modulation->correlatedSD > modulation->correlationPeek)
+               if (decoder.modulation->correlatedSD > decoder.modulation->correlationPeek)
                {
-                  modulation->searchPulseWidth++;
-                  modulation->searchPeakTime = signalClock;
-                  modulation->searchEndTime = signalClock + bitrate->period4SymbolSamples;
-                  modulation->correlationPeek = modulation->correlatedSD;
+                  decoder.modulation->searchPulseWidth++;
+                  decoder.modulation->searchPeakTime = decoder.signalClock;
+                  decoder.modulation->searchEndTime = decoder.signalClock + decoder.bitrate->period4SymbolSamples;
+                  decoder.modulation->correlationPeek = decoder.modulation->correlatedSD;
                }
             }
 
             // Check for SoF symbol
-            if (signalClock == modulation->searchEndTime)
+            if (decoder.signalClock == decoder.modulation->searchEndTime)
             {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
                decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
 #endif
-               if (modulation->searchPulseWidth > bitrate->period8SymbolSamples)
+               if (decoder.modulation->searchPulseWidth > decoder.bitrate->period8SymbolSamples)
                {
                   // set pattern search window
-                  modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
-                  modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
+                  decoder.modulation->symbolStartTime = decoder.modulation->searchPeakTime - decoder.bitrate->period2SymbolSamples;
+                  decoder.modulation->symbolEndTime = decoder.modulation->searchPeakTime + decoder.bitrate->period2SymbolSamples;
 
                   // setup symbol info
-                  symbolStatus.value = 1;
-                  symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                  symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-                  symbolStatus.length = symbolStatus.end - symbolStatus.start;
+                  decoder.symbolStatus.value = 1;
+                  decoder.symbolStatus.start = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+                  decoder.symbolStatus.end = decoder.modulation->symbolEndTime - decoder.bitrate->symbolDelayDetect;
+                  decoder.symbolStatus.length = decoder.symbolStatus.end - decoder.symbolStatus.start;
 
                   pattern = PatternType::PatternD;
                   break;
                }
 
                // reset search status
-               modulation->searchStartTime = 0;
-               modulation->searchEndTime = 0;
-               modulation->correlationPeek = 0;
-               modulation->searchPulseWidth = 0;
-               modulation->correlatedSD = 0;
+               decoder.modulation->searchStartTime = 0;
+               decoder.modulation->searchEndTime = 0;
+               decoder.modulation->correlationPeek = 0;
+               decoder.modulation->searchPulseWidth = 0;
+               decoder.modulation->correlatedSD = 0;
             }
          }
 
          // capture signal variance as lower level threshold
-         if (signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = signalStatus.signalVariance;
+         if (decoder.signalClock == decoder.frameStatus.guardEnd)
+            decoder.modulation->searchThreshold = decoder.signalStatus.signalVariance;
 
          // frame waiting time exceeded
-         if (signalClock == frameStatus.waitingEnd)
+         if (decoder.signalClock == decoder.frameStatus.waitingEnd)
          {
             pattern = PatternType::NoPattern;
             break;
@@ -1555,59 +1315,59 @@ int NfcDecoder::Impl::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
       else
       {
          // set next search sync window from previous
-         if (!modulation->searchStartTime)
+         if (!decoder.modulation->searchStartTime)
          {
             // estimated symbol start and end
-            modulation->symbolStartTime = modulation->symbolEndTime;
-            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
+            decoder.modulation->symbolStartTime = decoder.modulation->symbolEndTime;
+            decoder.modulation->symbolEndTime = decoder.modulation->symbolStartTime + decoder.bitrate->period1SymbolSamples;
 
             // timig search window
-            modulation->searchStartTime = modulation->symbolEndTime - bitrate->period8SymbolSamples;
-            modulation->searchEndTime = modulation->symbolEndTime + bitrate->period8SymbolSamples;
+            decoder.modulation->searchStartTime = decoder.modulation->symbolEndTime - decoder.bitrate->period8SymbolSamples;
+            decoder.modulation->searchEndTime = decoder.modulation->symbolEndTime + decoder.bitrate->period8SymbolSamples;
 
             // reset symbol parameters
-            modulation->symbolCorr0 = 0;
-            modulation->symbolCorr1 = 0;
+            decoder.modulation->symbolCorr0 = 0;
+            decoder.modulation->symbolCorr1 = 0;
          }
 
          // search symbol timings
-         if (signalClock >= modulation->searchStartTime && signalClock <= modulation->searchEndTime)
+         if (decoder.signalClock >= decoder.modulation->searchStartTime && decoder.signalClock <= decoder.modulation->searchEndTime)
          {
-            if (modulation->correlatedSD > modulation->correlationPeek)
+            if (decoder.modulation->correlatedSD > decoder.modulation->correlationPeek)
             {
-               modulation->correlationPeek = modulation->correlatedSD;
-               modulation->symbolCorr0 = modulation->correlatedS0;
-               modulation->symbolCorr1 = modulation->correlatedS1;
-               modulation->symbolEndTime = signalClock;
+               decoder.modulation->correlationPeek = decoder.modulation->correlatedSD;
+               decoder.modulation->symbolCorr0 = decoder.modulation->correlatedS0;
+               decoder.modulation->symbolCorr1 = decoder.modulation->correlatedS1;
+               decoder.modulation->symbolEndTime = decoder.signalClock;
             }
          }
 
          // capture next symbol
-         if (signalClock == modulation->searchEndTime)
+         if (decoder.signalClock == decoder.modulation->searchEndTime)
          {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
             decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.50f);
 #endif
-            if (modulation->correlationPeek > modulation->searchThreshold)
+            if (decoder.modulation->correlationPeek > decoder.modulation->searchThreshold)
             {
                // setup symbol info
-               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
+               decoder.symbolStatus.start = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+               decoder.symbolStatus.end = decoder.modulation->symbolEndTime - decoder.bitrate->symbolDelayDetect;
+               decoder.symbolStatus.length = decoder.symbolStatus.end - decoder.symbolStatus.start;
 
-               if (modulation->symbolCorr0 > modulation->symbolCorr1)
+               if (decoder.modulation->symbolCorr0 > decoder.modulation->symbolCorr1)
                {
-                  symbolStatus.value = 0;
+                  decoder.symbolStatus.value = 0;
                   pattern = PatternType::PatternE;
                   break;
                }
 
-               symbolStatus.value = 1;
+               decoder.symbolStatus.value = 1;
                pattern = PatternType::PatternD;
                break;
             }
 
-            // no modulation (End Of Frame) EoF
+            // no decoder.modulation (End Of Frame) EoF
             pattern = PatternType::PatternF;
             break;
          }
@@ -1617,13 +1377,13 @@ int NfcDecoder::Impl::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
    // reset search status
    if (pattern != PatternType::Invalid)
    {
-      symbolStatus.pattern = pattern;
+      decoder.symbolStatus.pattern = pattern;
 
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->correlationPeek = 0;
-      modulation->searchPulseWidth = 0;
-      modulation->correlatedSD = 0;
+      decoder.modulation->searchStartTime = 0;
+      decoder.modulation->searchEndTime = 0;
+      decoder.modulation->correlationPeek = 0;
+      decoder.modulation->searchPulseWidth = 0;
+      decoder.modulation->correlatedSD = 0;
    }
 
    return pattern;
@@ -1635,70 +1395,70 @@ int NfcDecoder::Impl::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
 
    while (nextSample(buffer))
    {
-      modulation->signalIndex = (bitrate->offsetSignalIndex + signalClock);
-      modulation->symbolIndex = (bitrate->offsetSymbolIndex + signalClock);
-      modulation->detectIndex = (bitrate->offsetDetectIndex + signalClock);
+      decoder.modulation->signalIndex = (decoder.bitrate->offsetSignalIndex + decoder.signalClock);
+      decoder.modulation->symbolIndex = (decoder.bitrate->offsetSymbolIndex + decoder.signalClock);
+      decoder.modulation->detectIndex = (decoder.bitrate->offsetDetectIndex + decoder.signalClock);
 
       // get signal samples
-      float currentSample = signalStatus.signalData[modulation->signalIndex & (SignalBufferLength - 1)];
-      float delayedSample = signalStatus.signalData[modulation->symbolIndex & (SignalBufferLength - 1)];
+      float currentSample = decoder.signalStatus.signalData[decoder.modulation->signalIndex & (SignalBufferLength - 1)];
+      float delayedSample = decoder.signalStatus.signalData[decoder.modulation->symbolIndex & (SignalBufferLength - 1)];
 
       // compute symbol average
-      modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentSample * bitrate->symbolAverageW1;
+      decoder.modulation->symbolAverage = decoder.modulation->symbolAverage * decoder.bitrate->symbolAverageW0 + currentSample * decoder.bitrate->symbolAverageW1;
 
       // multiply 1 symbol delayed signal with incoming signal
-      float phase = (currentSample - modulation->symbolAverage) * (delayedSample - modulation->symbolAverage);
+      float phase = (currentSample - decoder.modulation->symbolAverage) * (delayedSample - decoder.modulation->symbolAverage);
 
       // store signal phase in filter buffer
-      modulation->integrationData[modulation->signalIndex & (SignalBufferLength - 1)] = phase * 10;
+      decoder.modulation->integrationData[decoder.modulation->signalIndex & (SignalBufferLength - 1)] = phase * 10;
 
       // integrate response from PICC after guard time (TR0)
-      if (signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
+      if (decoder.signalClock > (decoder.frameStatus.guardEnd - decoder.bitrate->period1SymbolSamples))
       {
-         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (SignalBufferLength - 1)]; // add new value
-         modulation->phaseIntegrate -= modulation->integrationData[modulation->detectIndex & (SignalBufferLength - 1)]; // remove delayed value
+         decoder.modulation->phaseIntegrate += decoder.modulation->integrationData[decoder.modulation->signalIndex & (SignalBufferLength - 1)]; // add new value
+         decoder.modulation->phaseIntegrate -= decoder.modulation->integrationData[decoder.modulation->detectIndex & (SignalBufferLength - 1)]; // remove delayed value
       }
 
 #ifdef DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL
-      decoderDebug->value(DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL, modulation->phaseIntegrate);
+      decoderDebug->value(DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL, decoder.modulation->phaseIntegrate);
 #endif
 
 #ifdef DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL
       decoderDebug->value(DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL, phase * 10);
 #endif
       // search for Start Of Frame pattern (SoF)
-      if (!modulation->symbolEndTime)
+      if (!decoder.modulation->symbolEndTime)
       {
          // detect first zero-cross
-         if (modulation->phaseIntegrate > 0.00025f)
+         if (decoder.modulation->phaseIntegrate > 0.00025f)
          {
-            modulation->searchPeakTime = signalClock;
-            modulation->searchEndTime = signalClock + bitrate->period2SymbolSamples;
+            decoder.modulation->searchPeakTime = decoder.signalClock;
+            decoder.modulation->searchEndTime = decoder.signalClock + decoder.bitrate->period2SymbolSamples;
          }
 
-         if (signalClock == modulation->searchEndTime)
+         if (decoder.signalClock == decoder.modulation->searchEndTime)
          {
 #ifdef DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL
             decoderDebug->value(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.75);
 #endif
             // set symbol window
-            modulation->symbolStartTime = modulation->searchPeakTime;
-            modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
-            modulation->symbolPhase = modulation->phaseIntegrate;
-            modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
+            decoder.modulation->symbolStartTime = decoder.modulation->searchPeakTime;
+            decoder.modulation->symbolEndTime = decoder.modulation->searchPeakTime + decoder.bitrate->period1SymbolSamples;
+            decoder.modulation->symbolPhase = decoder.modulation->phaseIntegrate;
+            decoder.modulation->phaseThreshold = std::fabs(decoder.modulation->phaseIntegrate / 3);
 
             // set symbol info
-            symbolStatus.value = 0;
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+            decoder.symbolStatus.value = 0;
+            decoder.symbolStatus.start = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+            decoder.symbolStatus.end = decoder.modulation->symbolEndTime - decoder.bitrate->symbolDelayDetect;
+            decoder.symbolStatus.length = decoder.symbolStatus.end - decoder.symbolStatus.start;
 
             pattern = PatternType::PatternM;
             break;
          }
 
             // frame waiting time exceeded
-         else if (signalClock == frameStatus.waitingEnd)
+         else if (decoder.signalClock == decoder.frameStatus.waitingEnd)
          {
             pattern = PatternType::NoPattern;
             break;
@@ -1709,55 +1469,55 @@ int NfcDecoder::Impl::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
       else
       {
          // edge detector for re-synchronization
-         if ((modulation->phaseIntegrate > 0 && modulation->symbolPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0))
+         if ((decoder.modulation->phaseIntegrate > 0 && decoder.modulation->symbolPhase < 0) || (decoder.modulation->phaseIntegrate < 0 && decoder.modulation->symbolPhase > 0))
          {
-            modulation->searchPeakTime = signalClock;
-            modulation->searchEndTime = signalClock + bitrate->period2SymbolSamples;
-            modulation->symbolStartTime = signalClock;
-            modulation->symbolEndTime = signalClock + bitrate->period1SymbolSamples;
-            modulation->symbolPhase = modulation->phaseIntegrate;
+            decoder.modulation->searchPeakTime = decoder.signalClock;
+            decoder.modulation->searchEndTime = decoder.signalClock + decoder.bitrate->period2SymbolSamples;
+            decoder.modulation->symbolStartTime = decoder.signalClock;
+            decoder.modulation->symbolEndTime = decoder.signalClock + decoder.bitrate->period1SymbolSamples;
+            decoder.modulation->symbolPhase = decoder.modulation->phaseIntegrate;
          }
 
          // set next search sync window from previous
-         if (!modulation->searchEndTime)
+         if (!decoder.modulation->searchEndTime)
          {
             // estimated symbol start and end
-            modulation->symbolStartTime = modulation->symbolEndTime;
-            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
+            decoder.modulation->symbolStartTime = decoder.modulation->symbolEndTime;
+            decoder.modulation->symbolEndTime = decoder.modulation->symbolStartTime + decoder.bitrate->period1SymbolSamples;
 
             // timig next symbol
-            modulation->searchEndTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
+            decoder.modulation->searchEndTime = decoder.modulation->symbolStartTime + decoder.bitrate->period2SymbolSamples;
          }
 
             // search symbol timings
-         else if (signalClock == modulation->searchEndTime)
+         else if (decoder.signalClock == decoder.modulation->searchEndTime)
          {
 #ifdef DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL
             decoderDebug->value(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.5);
 #endif
-            modulation->symbolPhase = modulation->phaseIntegrate;
+            decoder.modulation->symbolPhase = decoder.modulation->phaseIntegrate;
 
             // setup symbol info
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+            decoder.symbolStatus.start = decoder.modulation->symbolStartTime - decoder.bitrate->symbolDelayDetect;
+            decoder.symbolStatus.end = decoder.modulation->symbolEndTime - decoder.bitrate->symbolDelayDetect;
+            decoder.symbolStatus.length = decoder.symbolStatus.end - decoder.symbolStatus.start;
 
             // no symbol change, keep previous symbol pattern
-            if (modulation->phaseIntegrate > modulation->phaseThreshold)
+            if (decoder.modulation->phaseIntegrate > decoder.modulation->phaseThreshold)
             {
-               pattern = symbolStatus.pattern;
+               pattern = decoder.symbolStatus.pattern;
                break;
             }
 
             // symbol change, invert pattern and value
-            if (modulation->phaseIntegrate < -modulation->phaseThreshold)
+            if (decoder.modulation->phaseIntegrate < -decoder.modulation->phaseThreshold)
             {
-               symbolStatus.value = !symbolStatus.value;
-               pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
+               decoder.symbolStatus.value = !decoder.symbolStatus.value;
+               pattern = (decoder.symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
                break;
             }
 
-            // no modulation detected, generate End Of Frame symbol
+            // no decoder.modulation detected, generate End Of Frame symbol
             pattern = PatternType::PatternO;
             break;
          }
@@ -1767,63 +1527,83 @@ int NfcDecoder::Impl::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
    // reset search status
    if (pattern != PatternType::Invalid)
    {
-      symbolStatus.pattern = pattern;
+      decoder.symbolStatus.pattern = pattern;
 
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->correlationPeek = 0;
-      modulation->searchPulseWidth = 0;
-      modulation->correlatedSD = 0;
+      decoder.modulation->searchStartTime = 0;
+      decoder.modulation->searchEndTime = 0;
+      decoder.modulation->correlationPeek = 0;
+      decoder.modulation->searchPulseWidth = 0;
+      decoder.modulation->correlatedSD = 0;
    }
 
    return pattern;
 }
 
+bool NfcDecoder::Impl::decodeFrameDevNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+bool NfcDecoder::Impl::decodeFrameTagNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+int NfcDecoder::Impl::decodeSymbolTagAskNfcB(sdr::SignalBuffer &buffer)
+{
+   return 0;
+}
+
+int NfcDecoder::Impl::decodeSymbolTagBpskNfcB(sdr::SignalBuffer &buffer)
+{
+   return 0;
+}
+
 void NfcDecoder::Impl::resetFrameSearch()
 {
    // reset frame search status
-   if (modulation)
+   if (decoder.modulation)
    {
-      modulation->symbolEndTime = 0;
-      modulation->searchPeakTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->correlationPeek = 0;
+      decoder.modulation->symbolEndTime = 0;
+      decoder.modulation->searchPeakTime = 0;
+      decoder.modulation->searchEndTime = 0;
+      decoder.modulation->correlationPeek = 0;
    }
 
    // reset frame start time
-   frameStatus.frameStart = 0;
+   decoder.frameStatus.frameStart = 0;
 }
 
 void NfcDecoder::Impl::resetModulation()
 {
-   // reset modulation detection for all rates
+   // reset decoder.modulation detection for all rates
    for (int rate = r106k; rate <= r424k; rate++)
    {
-      modulationStatus[rate].searchStartTime = 0;
-      modulationStatus[rate].searchEndTime = 0;
-      modulationStatus[rate].correlationPeek = 0;
-      modulationStatus[rate].searchPulseWidth = 0;
-      modulationStatus[rate].searchDeepValue = 0;
-      modulationStatus[rate].symbolAverage = 0;
-      modulationStatus[rate].symbolPhase = NAN;
+      decoder.modulationStatus[rate].searchStartTime = 0;
+      decoder.modulationStatus[rate].searchEndTime = 0;
+      decoder.modulationStatus[rate].correlationPeek = 0;
+      decoder.modulationStatus[rate].searchPulseWidth = 0;
+      decoder.modulationStatus[rate].searchDeepValue = 0;
+      decoder.modulationStatus[rate].symbolAverage = 0;
+      decoder.modulationStatus[rate].symbolPhase = NAN;
    }
 
    // clear stream status
-   streamStatus = {0,};
+   decoder.streamStatus = {0,};
 
    // clear stream status
-   symbolStatus = {0,};
+   decoder.symbolStatus = {0,};
 
    // clear frame status
-   frameStatus.frameType = 0;
-   frameStatus.frameStart = 0;
-   frameStatus.frameEnd = 0;
+   decoder.frameStatus.frameType = 0;
+   decoder.frameStatus.frameStart = 0;
+   decoder.frameStatus.frameEnd = 0;
 
-   // restore bitrate
-   bitrate = nullptr;
+   // restore decoder.bitrate
+   decoder.bitrate = nullptr;
 
-   // restore modulation
-   modulation = nullptr;
+   // restore decoder.modulation
+   decoder.modulation = nullptr;
 }
 
 bool NfcDecoder::Impl::nextSample(sdr::SignalBuffer &buffer)
@@ -1835,59 +1615,59 @@ bool NfcDecoder::Impl::nextSample(sdr::SignalBuffer &buffer)
    if (buffer.stride() == 1)
    {
       // read next sample data
-      buffer.get(signalStatus.signalValue);
+      buffer.get(decoder.signalStatus.signalValue);
    }
 
       // IQ channel signal
    else
    {
       // read next sample data
-      buffer.get(signalStatus.sampleData, 2);
+      buffer.get(decoder.signalStatus.sampleData, 2);
 
       // compute magnitude from IQ channels
-      auto i = double(signalStatus.sampleData[0]);
-      auto q = double(signalStatus.sampleData[1]);
+      auto i = double(decoder.signalStatus.sampleData[0]);
+      auto q = double(decoder.signalStatus.sampleData[1]);
 
-      signalStatus.signalValue = sqrtf(i * i + q * q);
+      decoder.signalStatus.signalValue = sqrtf(i * i + q * q);
    }
 
    // update signal clock
-   signalClock++;
+   decoder.signalClock++;
 
    // compute power average (exponential average)
-   signalStatus.powerAverage = signalStatus.powerAverage * signalParams.powerAverageW0 + signalStatus.signalValue * signalParams.powerAverageW1;
+   decoder.signalStatus.powerAverage = decoder.signalStatus.powerAverage * decoder.signalParams.powerAverageW0 + decoder.signalStatus.signalValue * decoder.signalParams.powerAverageW1;
 
    // compute signal average (exponential average)
-   signalStatus.signalAverage = signalStatus.signalAverage * signalParams.signalAverageW0 + signalStatus.signalValue * signalParams.signalAverageW1;
+   decoder.signalStatus.signalAverage = decoder.signalStatus.signalAverage * decoder.signalParams.signalAverageW0 + decoder.signalStatus.signalValue * decoder.signalParams.signalAverageW1;
 
    // compute signal variance (exponential variance)
-   signalStatus.signalVariance = signalStatus.signalVariance * signalParams.signalVarianceW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverage) * signalParams.signalVarianceW1;
+   decoder.signalStatus.signalVariance = decoder.signalStatus.signalVariance * decoder.signalParams.signalVarianceW0 + std::abs(decoder.signalStatus.signalValue - decoder.signalStatus.signalAverage) * decoder.signalParams.signalVarianceW1;
 
    // store next signal value in sample buffer
-   signalStatus.signalData[signalClock & (SignalBufferLength - 1)] = signalStatus.signalValue;
+   decoder.signalStatus.signalData[decoder.signalClock & (SignalBufferLength - 1)] = decoder.signalStatus.signalValue;
 
 #ifdef DEBUG_SIGNAL
-   decoderDebug->block(signalClock);
+   decoderDebug->block(decoder.signalClock);
 #endif
 
 #ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_VALUE_CHANNEL, signalStatus.signalValue);
+   decoderDebug->value(DEBUG_SIGNAL_VALUE_CHANNEL, decoder.signalStatus.signalValue);
 #endif
 
 #ifdef DEBUG_SIGNAL_POWER_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_POWER_CHANNEL, signalStatus.powerAverage);
+   decoderDebug->value(DEBUG_SIGNAL_POWER_CHANNEL, decoder.signalStatus.powerAverage);
 #endif
 
 #ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_AVERAGE_CHANNEL, signalStatus.signalAverage);
+   decoderDebug->value(DEBUG_SIGNAL_AVERAGE_CHANNEL, decoder.signalStatus.signalAverage);
 #endif
 
 #ifdef DEBUG_SIGNAL_VARIANCE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_VARIANCE_CHANNEL, signalStatus.signalVariance);
+   decoderDebug->value(DEBUG_SIGNAL_VARIANCE_CHANNEL, decoder.signalStatus.signalVariance);
 #endif
 
 #ifdef DEBUG_SIGNAL_EDGE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_EDGE_CHANNEL, signalStatus.signalAverage - signalStatus.powerAverage);
+   decoderDebug->value(DEBUG_SIGNAL_EDGE_CHANNEL, decoder.signalStatus.signalAverage - decoder.signalStatus.powerAverage);
 #endif
 
    return true;
@@ -1896,10 +1676,10 @@ bool NfcDecoder::Impl::nextSample(sdr::SignalBuffer &buffer)
 void NfcDecoder::Impl::process(NfcFrame frame)
 {
    // for request frame set default response timings, must be overridden by subsequent process functions
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
-      frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
-      frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+      decoder.frameStatus.frameWaitingTime = decoder.protocolStatus.frameWaitingTime;
+      decoder.frameStatus.frameWaitingTime = decoder.protocolStatus.frameWaitingTime;
    }
 
    while (true)
@@ -1910,7 +1690,7 @@ void NfcDecoder::Impl::process(NfcFrame frame)
       if (processHLTA(frame))
          break;
 
-      if (!(chainedFlags & NfcFrame::Encrypted))
+      if (!(decoder.chainedFlags & FrameFlags::Encrypted))
       {
          if (processSELn(frame))
             break;
@@ -1939,81 +1719,81 @@ void NfcDecoder::Impl::process(NfcFrame frame)
          // all encrypted frames are considered application frames
       else
       {
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
       }
 
       break;
    }
 
    // set chained flags
-   frame.setFrameFlags(chainedFlags);
+   frame.setFrameFlags(decoder.chainedFlags);
 
    // for request frame set response timings
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       // update frame timing parameters for receive PICC frame
-      if (bitrate)
+      if (decoder.bitrate)
       {
          // response guard time TR0min (PICC must not modulate reponse within this period)
-         frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime + bitrate->symbolDelayDetect;
+         decoder.frameStatus.guardEnd = decoder.frameStatus.frameEnd + decoder.frameStatus.frameGuardTime + decoder.bitrate->symbolDelayDetect;
 
          // response delay time WFT (PICC must reply to command before this period)
-         frameStatus.waitingEnd = frameStatus.frameEnd + frameStatus.frameWaitingTime + bitrate->symbolDelayDetect;
+         decoder.frameStatus.waitingEnd = decoder.frameStatus.frameEnd + decoder.frameStatus.frameWaitingTime + decoder.bitrate->symbolDelayDetect;
 
          // next frame must be ListenFrame
-         frameStatus.frameType = ListenFrame;
+         decoder.frameStatus.frameType = ListenFrame;
       }
    }
    else
    {
-      // switch to modulation search
-      frameStatus.frameType = 0;
+      // switch to decoder.modulation search
+      decoder.frameStatus.frameType = 0;
 
       // reset frame command
-      frameStatus.lastCommand = 0;
+      decoder.frameStatus.lastCommand = 0;
    }
 
    // mark last processed frame
-   lastFrameEnd = frameStatus.frameEnd;
+   decoder.lastFrameEnd = decoder.frameStatus.frameEnd;
 
    // reset farme start
-   frameStatus.frameStart = 0;
+   decoder.frameStatus.frameStart = 0;
 
    // reset farme end
-   frameStatus.frameEnd = 0;
+   decoder.frameStatus.frameEnd = 0;
 }
 
 bool NfcDecoder::Impl::processREQA(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if ((frame[0] == NFCA_REQA || frame[0] == NFCA_WUPA) && frame.limit() == 1)
       {
-         frame.setFramePhase(NfcFrame::SelectionFrame);
+         frame.setFramePhase(FramePhase::SelectionFrame);
 
-         frameStatus.lastCommand = frame[0];
+         decoder.frameStatus.lastCommand = frame[0];
 
          // This commands starts or wakeup card communication, so reset the protocol parameters to the default values
-         protocolStatus.maxFrameSize = 256;
-         protocolStatus.frameGuardTime = int(signalParams.sampleTimeUnit * 128 * 7);
-         protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+         decoder.protocolStatus.maxFrameSize = 256;
+         decoder.protocolStatus.frameGuardTime = int(decoder.signalParams.sampleTimeUnit * 128 * 7);
+         decoder.protocolStatus.frameWaitingTime = int(decoder.signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
 
          // The REQ-A Response must start exactly at 128 * n, n=9, decoder search between n=7 and n=18
-         frameStatus.frameGuardTime = signalParams.sampleTimeUnit * 128 * 7; // REQ-A response guard
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 128 * 18; // REQ-A response timeout
+         decoder.frameStatus.frameGuardTime = decoder.signalParams.sampleTimeUnit * 128 * 7; // REQ-A response guard
+         decoder.frameStatus.frameWaitingTime = decoder.signalParams.sampleTimeUnit * 128 * 18; // REQ-A response timeout
 
          // clear chained flags
-         chainedFlags = 0;
+         decoder.chainedFlags = 0;
 
          return true;
       }
    }
 
-   if (frame.isResponseFrame())
+   if (frame.isListenFrame())
    {
-      if (frameStatus.lastCommand == NFCA_REQA || frameStatus.lastCommand == NFCA_WUPA)
+      if (decoder.frameStatus.lastCommand == NFCA_REQA || decoder.frameStatus.lastCommand == NFCA_WUPA)
       {
-         frame.setFramePhase(NfcFrame::SelectionFrame);
+         frame.setFramePhase(FramePhase::SelectionFrame);
 
          return true;
       }
@@ -2024,24 +1804,24 @@ bool NfcDecoder::Impl::processREQA(NfcFrame &frame)
 
 bool NfcDecoder::Impl::processHLTA(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if (frame[0] == NFCA_HLTA && frame.limit() == 4)
       {
-         frame.setFramePhase(NfcFrame::SelectionFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::SelectionFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
-         frameStatus.lastCommand = frame[0];
+         decoder.frameStatus.lastCommand = frame[0];
 
          // After this command the PICC will stop and will not respond, set the protocol parameters to the default values
-         protocolStatus.maxFrameSize = 256;
-         protocolStatus.frameGuardTime = int(signalParams.sampleTimeUnit * 128 * 7);
-         protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+         decoder.protocolStatus.maxFrameSize = 256;
+         decoder.protocolStatus.frameGuardTime = int(decoder.signalParams.sampleTimeUnit * 128 * 7);
+         decoder.protocolStatus.frameWaitingTime = int(decoder.signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
 
          // clear chained flags
-         chainedFlags = 0;
+         decoder.chainedFlags = 0;
 
-         // reset modulation status
+         // reset decoder.modulation status
          resetModulation();
 
          return true;
@@ -2053,27 +1833,27 @@ bool NfcDecoder::Impl::processHLTA(NfcFrame &frame)
 
 bool NfcDecoder::Impl::processSELn(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if (frame[0] == NFCA_SEL1 || frame[0] == NFCA_SEL2 || frame[0] == NFCA_SEL3)
       {
-         frame.setFramePhase(NfcFrame::SelectionFrame);
+         frame.setFramePhase(FramePhase::SelectionFrame);
 
-         frameStatus.lastCommand = frame[0];
+         decoder.frameStatus.lastCommand = frame[0];
 
          // The selection commands has same timings as REQ-A
-         frameStatus.frameGuardTime = signalParams.sampleTimeUnit * 128 * 7;
-         frameStatus.frameWaitingTime = signalParams.sampleTimeUnit * 128 * 18;
+         decoder.frameStatus.frameGuardTime = decoder.signalParams.sampleTimeUnit * 128 * 7;
+         decoder.frameStatus.frameWaitingTime = decoder.signalParams.sampleTimeUnit * 128 * 18;
 
          return true;
       }
    }
 
-   if (frame.isResponseFrame())
+   if (frame.isListenFrame())
    {
-      if (frameStatus.lastCommand == NFCA_SEL1 || frameStatus.lastCommand == NFCA_SEL2 || frameStatus.lastCommand == NFCA_SEL3)
+      if (decoder.frameStatus.lastCommand == NFCA_SEL1 || decoder.frameStatus.lastCommand == NFCA_SEL2 || decoder.frameStatus.lastCommand == NFCA_SEL3)
       {
-         frame.setFramePhase(NfcFrame::SelectionFrame);
+         frame.setFramePhase(FramePhase::SelectionFrame);
 
          return true;
       }
@@ -2085,33 +1865,33 @@ bool NfcDecoder::Impl::processSELn(NfcFrame &frame)
 bool NfcDecoder::Impl::processRATS(NfcFrame &frame)
 {
    // capture parameters from ATS and reconfigure decoder timings
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if (frame[0] == NFCA_RATS)
       {
          auto fsdi = (frame[1] >> 4) & 0x0F;
 
-         frameStatus.lastCommand = frame[0];
+         decoder.frameStatus.lastCommand = frame[0];
 
          // sets maximum frame length requested by reader
-         protocolStatus.maxFrameSize = TABLE_FDS[fsdi];
+         decoder.protocolStatus.maxFrameSize = TABLE_FDS[fsdi];
 
          // sets the activation frame waiting time for ATS response, ISO/IEC 14443-4 defined a value of 65536/fc (~4833 μs).
-         frameStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 65536);
+         decoder.frameStatus.frameWaitingTime = int(decoder.signalParams.sampleTimeUnit * 65536);
 
          log.info("RATS frame parameters");
-         log.info("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
+         log.info("  maxFrameSize {} bytes", {decoder.protocolStatus.maxFrameSize});
 
-         frame.setFramePhase(NfcFrame::SelectionFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::SelectionFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
    }
 
-   if (frame.isResponseFrame())
+   if (frame.isListenFrame())
    {
-      if (frameStatus.lastCommand == NFCA_RATS)
+      if (decoder.frameStatus.lastCommand == NFCA_RATS)
       {
          auto offset = 0;
          auto tl = frame[offset++];
@@ -2144,23 +1924,23 @@ bool NfcDecoder::Impl::processRATS(NfcFrame &frame)
                   fwi = 4;
 
                // calculate timing parameters
-               protocolStatus.startUpGuardTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << sfgi));
-               protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << fwi));
+               decoder.protocolStatus.startUpGuardTime = int(decoder.signalParams.sampleTimeUnit * 256 * 16 * (1 << sfgi));
+               decoder.protocolStatus.frameWaitingTime = int(decoder.signalParams.sampleTimeUnit * 256 * 16 * (1 << fwi));
             }
             else
             {
                // if TB is not transmitted establish default timing parameters
-               protocolStatus.startUpGuardTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
-               protocolStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+               decoder.protocolStatus.startUpGuardTime = int(decoder.signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
+               decoder.protocolStatus.frameWaitingTime = int(decoder.signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
             }
 
             log.info("ATS protocol timing parameters");
-            log.info("  startUpGuardTime {} samples ({} us)", {frameStatus.startUpGuardTime, 1000000.0 * frameStatus.startUpGuardTime / sampleRate});
-            log.info("  frameWaitingTime {} samples ({} us)", {frameStatus.frameWaitingTime, 1000000.0 * frameStatus.frameWaitingTime / sampleRate});
+            log.info("  startUpGuardTime {} samples ({} us)", {decoder.frameStatus.startUpGuardTime, 1000000.0 * decoder.frameStatus.startUpGuardTime / decoder.sampleRate});
+            log.info("  frameWaitingTime {} samples ({} us)", {decoder.frameStatus.frameWaitingTime, 1000000.0 * decoder.frameStatus.frameWaitingTime / decoder.sampleRate});
          }
 
-         frame.setFramePhase(NfcFrame::SelectionFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::SelectionFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
@@ -2171,28 +1951,28 @@ bool NfcDecoder::Impl::processRATS(NfcFrame &frame)
 
 bool NfcDecoder::Impl::processPPSr(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if ((frame[0] & 0xF0) == NFCA_PPS)
       {
-         frameStatus.lastCommand = frame[0] & 0xF0;
+         decoder.frameStatus.lastCommand = frame[0] & 0xF0;
 
          // Set PPS response waiting time to protocol default
-         frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+         decoder.frameStatus.frameWaitingTime = decoder.protocolStatus.frameWaitingTime;
 
-         frame.setFramePhase(NfcFrame::SelectionFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::SelectionFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
    }
 
-   if (frame.isResponseFrame())
+   if (frame.isListenFrame())
    {
-      if (frameStatus.lastCommand == NFCA_PPS)
+      if (decoder.frameStatus.lastCommand == NFCA_PPS)
       {
-         frame.setFramePhase(NfcFrame::SelectionFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::SelectionFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
@@ -2203,39 +1983,39 @@ bool NfcDecoder::Impl::processPPSr(NfcFrame &frame)
 
 bool NfcDecoder::Impl::processAUTH(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if (frame[0] == NFCA_AUTH1 || frame[0] == NFCA_AUTH2)
       {
-         frameStatus.lastCommand = frame[0];
-//         frameStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
+         decoder.frameStatus.lastCommand = frame[0];
+//         decoder.frameStatus.frameWaitingTime = int(signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
 
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
-//      if (!frameStatus.lastCommand)
+//      if (!decoder.frameStatus.lastCommand)
 //      {
-//         crypto1_init(&frameStatus.crypto1, 0x521284223154);
+//         crypto1_init(&decoder.frameStatus.crypto1, 0x521284223154);
 //      }
 
          return true;
       }
    }
 
-   if (frame.isResponseFrame())
+   if (frame.isListenFrame())
    {
-      if (frameStatus.lastCommand == NFCA_AUTH1 || frameStatus.lastCommand == NFCA_AUTH2)
+      if (decoder.frameStatus.lastCommand == NFCA_AUTH1 || decoder.frameStatus.lastCommand == NFCA_AUTH2)
       {
          //      unsigned int uid = 0x1e47fc35;
 //      unsigned int nc = frame[0] << 24 || frame[1] << 16 || frame[2] << 8 || frame[0];
 //
-//      crypto1_word(&frameStatus.crypto1, uid ^ nc, 0);
+//      crypto1_word(&decoder.frameStatus.crypto1, uid ^ nc, 0);
 
          // set chained flags
 
-         chainedFlags = NfcFrame::Encrypted;
+         decoder.chainedFlags = FrameFlags::Encrypted;
 
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
 
          return true;
       }
@@ -2246,25 +2026,25 @@ bool NfcDecoder::Impl::processAUTH(NfcFrame &frame)
 
 bool NfcDecoder::Impl::processIBlock(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if ((frame[0] & 0xE2) == NFCA_IBLOCK)
       {
-         frameStatus.lastCommand = frame[0] & 0xE2;
+         decoder.frameStatus.lastCommand = frame[0] & 0xE2;
 
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
    }
 
-   if (frame.isResponseFrame())
+   if (frame.isListenFrame())
    {
-      if (frameStatus.lastCommand == NFCA_IBLOCK)
+      if (decoder.frameStatus.lastCommand == NFCA_IBLOCK)
       {
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
@@ -2275,25 +2055,25 @@ bool NfcDecoder::Impl::processIBlock(NfcFrame &frame)
 
 bool NfcDecoder::Impl::processRBlock(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if ((frame[0] & 0xE6) == NFCA_RBLOCK)
       {
-         frameStatus.lastCommand = frame[0] & 0xE6;
+         decoder.frameStatus.lastCommand = frame[0] & 0xE6;
 
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
    }
 
-   if (frame.isResponseFrame())
+   if (frame.isListenFrame())
    {
-      if (frameStatus.lastCommand == NFCA_RBLOCK)
+      if (decoder.frameStatus.lastCommand == NFCA_RBLOCK)
       {
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
@@ -2304,25 +2084,25 @@ bool NfcDecoder::Impl::processRBlock(NfcFrame &frame)
 
 bool NfcDecoder::Impl::processSBlock(NfcFrame &frame)
 {
-   if (frame.isRequestFrame())
+   if (frame.isPollFrame())
    {
       if ((frame[0] & 0xC7) == NFCA_SBLOCK)
       {
-         frameStatus.lastCommand = frame[0] & 0xC7;
+         decoder.frameStatus.lastCommand = frame[0] & 0xC7;
 
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
    }
 
-   if (frame.isResponseFrame())
+   if (frame.isListenFrame())
    {
-      if (frameStatus.lastCommand == NFCA_SBLOCK)
+      if (decoder.frameStatus.lastCommand == NFCA_SBLOCK)
       {
-         frame.setFramePhase(NfcFrame::ApplicationFrame);
-         frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+         frame.setFramePhase(FramePhase::ApplicationFrame);
+         frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
          return true;
       }
@@ -2333,8 +2113,8 @@ bool NfcDecoder::Impl::processSBlock(NfcFrame &frame)
 
 void NfcDecoder::Impl::processOther(NfcFrame &frame)
 {
-   frame.setFramePhase(NfcFrame::ApplicationFrame);
-   frame.setFrameFlags(!checkCrc(frame) ? NfcFrame::CrcError : 0);
+   frame.setFramePhase(FramePhase::ApplicationFrame);
+   frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 }
 
 bool NfcDecoder::Impl::checkCrc(NfcFrame &frame)
