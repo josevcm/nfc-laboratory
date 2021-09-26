@@ -22,4 +22,50 @@
 
 */
 
-#include "nfc/NfcB.h"
+#include "NfcB.h"
+
+namespace nfc {
+
+NfcB::NfcB(DecoderStatus *decoder) : decoder(decoder)
+{
+}
+
+void NfcB::configure(long sampleRate)
+{
+}
+
+void NfcB::decodeFrameNfcB(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+{
+//   if (self->frameStatus.frameType == PollFrame)
+//   {
+//      decodeFrameDevNfcA(samples, frames);
+//   }
+//
+//   if (self->frameStatus.frameType == ListenFrame)
+//   {
+//      decodeFrameTagNfcA(samples, frames);
+//   }
+}
+
+bool NfcB::decodeFrameDevNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+bool NfcB::decodeFrameTagNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+int NfcB::decodeSymbolTagAskNfcB(sdr::SignalBuffer &buffer)
+{
+   return 0;
+}
+
+int NfcB::decodeSymbolTagBpskNfcB(sdr::SignalBuffer &buffer)
+{
+   return 0;
+}
+
+
+}

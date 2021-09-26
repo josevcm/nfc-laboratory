@@ -25,16 +25,40 @@
 #ifndef NFC_LAB_NFCB_H
 #define NFC_LAB_NFCB_H
 
+#include <list>
+
+#include <rt/Logger.h>
+
+#include <sdr/SignalBuffer.h>
+
+#include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 
-#include "nfc/Nfc.h"
+#include "NfcStatus.h"
 
 namespace nfc {
 
 struct NfcB
-      {
+{
+   rt::Logger log {"NfcB"};
 
-      };
+   DecoderStatus *decoder;
+
+   explicit NfcB(DecoderStatus *decoder);
+
+   void configure(long sampleRate);
+
+   void decodeFrameNfcB(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
+
+   bool decodeFrameDevNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+
+   bool decodeFrameTagNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+
+   int decodeSymbolTagAskNfcB(sdr::SignalBuffer &buffer);
+
+   int decodeSymbolTagBpskNfcB(sdr::SignalBuffer &buffer);
+};
+
 }
 
 #endif //NFC_LAB_NFCB_H

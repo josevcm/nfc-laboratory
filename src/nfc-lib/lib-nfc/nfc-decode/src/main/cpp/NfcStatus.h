@@ -22,8 +22,8 @@
 
 */
 
-#ifndef NFC_LAB_NFCSIGNAL_H
-#define NFC_LAB_NFCSIGNAL_H
+#ifndef NFC_LAB_NFCSTATUS_H
+#define NFC_LAB_NFCSTATUS_H
 
 namespace nfc {
 
@@ -237,31 +237,13 @@ struct DecoderStatus
    // signal parameters
    SignalParams signalParams {0,};
 
-   // bitrate parameters
-   BitrateParams bitrateParams[4] {0,};
-
    // signal processing status
    SignalStatus signalStatus {0,};
 
-   // detected symbol status
-   SymbolStatus symbolStatus {0,};
-
-   // bit stream status
-   StreamStatus streamStatus {0,};
-
-   // frame processing status
-   FrameStatus frameStatus {0,};
-
-   // protocol processing status
-   ProtocolStatus protocolStatus {0,};
-
-   // modulation status for each bitrate
-   ModulationStatus modulationStatus[4] {0,};
-
-   // current detected bitrate
+   // detected signal bitrate
    BitrateParams *bitrate = nullptr;
 
-   // current detected modulation
+   // detected modulation
    ModulationStatus *modulation = nullptr;
 
    // signal sample rate
@@ -269,12 +251,6 @@ struct DecoderStatus
 
    // signal master clock
    unsigned int signalClock = 0;
-
-   // last detected frame end
-   unsigned int lastFrameEnd = 0;
-
-   // chained frame flags
-   unsigned int chainedFlags = 0;
 
    // minimum signal level
    float powerLevelThreshold = 0.010f;
@@ -285,4 +261,4 @@ struct DecoderStatus
 
 }
 
-#endif //NFC_LAB_NFCSIGNAL_H
+#endif //NFC_LAB_NFCSTATUS_H
