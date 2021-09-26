@@ -93,7 +93,7 @@ integration process over a quarter of a symbol r(t).
 Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat
 more complex since timing and synchronization must be considered.
 
-### Signal quality analisys
+### Signal quality analysis
 
 This version includes a OpenGL spectrum analyzer and IQ graph to show the quality of the received signal.
 
@@ -285,27 +285,29 @@ serves as an example to test demodulation.
 
 Thanks to bvernoux for this instructions:
 
-Working solution is to use Qt Creator (Tested with latest Qt Creator 4.15.2 with Qt 5.15.2 + mingw81_64 ) then import the nfc-laboratory/CMakeLists.txt project and built it with MinGW 64-bit (Tested with success with Qt 5.15.2 + mingw81_64 on Windows10Pro 21H1)
+Working solution is to use Qt Creator (Tested with latest Qt Creator 5.0.1 with Qt 5.15.2 + mingw81_64 ) then import the nfc-laboratory/CMakeLists.txt project and built it with MinGW 64-bit (Tested with success with Qt 5.15.2 + mingw81_64 on Windows10Pro 21H1)
 Example of batch used(requires msys2/linux cp/rm commands) to do the deployment (after build of the release version with Qt Creator)
 
 ```
 set qtpath=C:\Qt\5.15.2\mingw81_64\bin\
 set PATH=%qtpath%;%PATH%
 set execpath="%qtpath%\windeployqt.exe"
-set nflabpath=D:\_proj\__Lab_Tools\NFC\nfc-laboratory
-set build_path=%nflabpath%\..\build-nfc-laboratory-Desktop_Qt_5_15_2_MinGW_64_bit-Release\src\nfc-app\app-qt
+set nflab_git_path=D:\_proj\__Lab_Tools\NFC\nfc-laboratory
+set build_path=%nflab_git_path%\..\build-nfc-laboratory-Desktop_Qt_5_15_2_MinGW_64_bit-Release\src\nfc-app\app-qt
 
-cp -a %build_path%/. ./
-rm -rf CMakeFiles nfc-lab_autogen installerResources cmake_install.cmake libnfc-lab.dll.a
-%execpath% nfc-lab.exe
+cp %build_path%/nfc-lab.exe ./
+%execpath% --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw nfc-lab.exe
 
 cp %qtpath%\libgcc_s_seh-1.dll ./
 cp %qtpath%\libwinpthread-1.dll ./
 cp %qtpath%\libstdc++-6.dll ./
 
-cp %nflabpath%\dll\glew-2.1.0\x86_64-w64-mingw32\bin\libglew32.dll ./
-cp %nflabpath%\dll\freetype-2.11.0\x86_64-w64-mingw32\bin\libfreetype.dll ./
-cp %nflabpath%\dll\usb-1.0.20\x86_64-w64-mingw32\bin\libusb-1.0.dll ./
+cp -a %nflab_git_path%\dat\conf ./
+cp -a %nflab_git_path%\dat\fonts ./
+
+cp %nflab_git_path%\dll\glew-2.1.0\x86_64-w64-mingw32\bin\libglew32.dll ./
+cp %nflab_git_path%\dll\freetype-2.11.0\x86_64-w64-mingw32\bin\libfreetype.dll ./
+cp %nflab_git_path%\dll\usb-1.0.20\x86_64-w64-mingw32\bin\libusb-1.0.dll ./
 ```
 ### Build from Jetbrains CLion
 

@@ -32,6 +32,9 @@
 #include <utility>
 #include <chrono>
 #include <cstring>
+#include <iostream>
+// this include do not work in mingw64!
+//#include <filesystem>
 
 #include <rt/Logger.h>
 #include <rt/Format.h>
@@ -203,9 +206,9 @@ struct LogWriter
    std::ofstream stream;
 
    // events queue
-   BlockingQueue<LogEvent*> queue;
+   BlockingQueue<LogEvent *> queue;
 
-   LogWriter() : thread([this] { this->exec(); }), shutdown(false), stream("log/nfc-lab.log", std::ios::out | std::ios::app)
+   LogWriter() : thread([this] { this->exec(); }), shutdown(false)
    {
       sched_param param {0};
 
@@ -217,9 +220,6 @@ struct LogWriter
 
    ~LogWriter()
    {
-      // close file
-      stream.close();
-
       // signal shutdown
       shutdown = true;
 
@@ -234,9 +234,14 @@ struct LogWriter
 
    void exec()
    {
+//      std::filesystem::create_directories("log");
+
+      // open log file
+      stream.open("log/nfc-lab.log", std::ios::out | std::ios::app);
+
       while (!shutdown)
       {
-         while (auto event = queue.get(50))
+         while (auto event = queue.get(100))
          {
             if (stream)
             {
@@ -244,6 +249,9 @@ struct LogWriter
             }
          }
       }
+
+      // close file
+      stream.close();
    }
 
    void write(LogEvent *event)
