@@ -22,8 +22,25 @@
 
 */
 
-#ifndef NFC_LAB_NFCSTATUS_H
-#define NFC_LAB_NFCSTATUS_H
+#ifndef NFC_NFCSTATUS_H
+#define NFC_NFCSTATUS_H
+
+#include <cmath>
+
+#include <sdr/RecordDevice.h>
+
+#define DEBUG_SIGNAL
+
+#ifdef DEBUG_SIGNAL
+#define DEBUG_CHANNELS 4
+
+#define DEBUG_SIGNAL_VALUE_CHANNEL 0
+//#define DEBUG_SIGNAL_POWER_CHANNEL 1
+//#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
+//#define DEBUG_SIGNAL_VARIANCE_CHANNEL 3
+//#define DEBUG_SIGNAL_EDGE_CHANNEL 4
+
+#endif
 
 namespace nfc {
 
@@ -32,6 +49,76 @@ constexpr static const unsigned int BaseFrequency = 13.56E6;
 
 // buffer for signal integration, must be power of 2^n
 constexpr static const unsigned int SignalBufferLength = 512;
+
+/*
+ * Signal debugger
+ */
+struct SignalDebug
+{
+   unsigned int channels;
+   unsigned int clock;
+
+   sdr::RecordDevice *recorder;
+   sdr::SignalBuffer buffer;
+
+   float values[10] {0,};
+
+   SignalDebug(unsigned int channels, unsigned int sampleRate) : channels(channels), clock(0)
+   {
+      char file[128];
+      struct tm timeinfo {};
+
+      std::time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+      localtime_s(&timeinfo, &rawTime);
+      strftime(file, sizeof(file), "decoder-%Y%m%d%H%M%S.wav", &timeinfo);
+
+      recorder = new sdr::RecordDevice(file);
+      recorder->setChannelCount(channels);
+      recorder->setSampleRate(sampleRate);
+      recorder->open(sdr::RecordDevice::Write);
+   }
+
+   ~SignalDebug()
+   {
+      delete recorder;
+   }
+
+   void block(unsigned int time)
+   {
+      if (clock != time)
+      {
+         // store sample buffer
+         buffer.put(values, recorder->channelCount());
+
+         // clear sample buffer
+         for (auto &f : values)
+         {
+            f = 0;
+         }
+
+         clock = time;
+      }
+   }
+
+   void set(int channel, float value)
+   {
+      if (channel >= 0 && channel < recorder->channelCount())
+      {
+         values[channel] = value;
+      }
+   }
+
+   void begin(int sampleCount)
+   {
+      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate());
+   }
+
+   void write()
+   {
+      buffer.flip();
+      recorder->write(buffer);
+   }
+};
 
 /*
  * baseband processor signal parameters
@@ -257,8 +344,80 @@ struct DecoderStatus
 
    // minimum modulation threshold to detect valid signal (default 5%)
    float modulationThreshold = 0.850f;
+
+   // signal debugger
+   std::shared_ptr<SignalDebug> debug;
+
+   // process next sample from signal buffer
+   inline bool nextSample(sdr::SignalBuffer &buffer)
+   {
+      if (buffer.available() == 0)
+         return false;
+
+      // real-value signal
+      if (buffer.stride() == 1)
+      {
+         // read next sample data
+         buffer.get(signalStatus.signalValue);
+      }
+
+      // IQ channel signal
+      else
+      {
+         // read next sample data
+         buffer.get(signalStatus.sampleData, 2);
+
+         // compute magnitude from IQ channels
+         auto i = double(signalStatus.sampleData[0]);
+         auto q = double(signalStatus.sampleData[1]);
+
+         signalStatus.signalValue = sqrtf(i * i + q * q);
+      }
+
+      // update signal clock
+      signalClock++;
+
+      // compute power average (exponential average)
+      signalStatus.powerAverage = signalStatus.powerAverage * signalParams.powerAverageW0 + signalStatus.signalValue * signalParams.powerAverageW1;
+
+      // compute signal average (exponential average)
+      signalStatus.signalAverage = signalStatus.signalAverage * signalParams.signalAverageW0 + signalStatus.signalValue * signalParams.signalAverageW1;
+
+      // compute signal variance (exponential variance)
+      signalStatus.signalVariance = signalStatus.signalVariance * signalParams.signalVarianceW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverage) * signalParams.signalVarianceW1;
+
+      // store next signal value in sample buffer
+      signalStatus.signalData[signalClock & (SignalBufferLength - 1)] = signalStatus.signalValue;
+
+#ifdef DEBUG_SIGNAL
+      debug->block(signalClock);
+#endif
+
+#ifdef DEBUG_SIGNAL_VALUE_CHANNEL
+      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalStatus.signalValue);
+#endif
+
+#ifdef DEBUG_SIGNAL_POWER_CHANNEL
+      debug->set(DEBUG_SIGNAL_POWER_CHANNEL, signalStatus.powerAverage);
+#endif
+
+#ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL
+      debug->set(DEBUG_SIGNAL_AVERAGE_CHANNEL, signalStatus.signalAverage);
+#endif
+
+#ifdef DEBUG_SIGNAL_VARIANCE_CHANNEL
+      debug->set(DEBUG_SIGNAL_VARIANCE_CHANNEL, signalStatus.signalVariance);
+#endif
+
+#ifdef DEBUG_SIGNAL_EDGE_CHANNEL
+      debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, signalStatus.signalAverage - decoder.signalStatus.powerAverage);
+#endif
+
+      return true;
+   }
 };
+
 
 }
 
-#endif //NFC_LAB_NFCSTATUS_H
+#endif //NFC_NFCSTATUS_H

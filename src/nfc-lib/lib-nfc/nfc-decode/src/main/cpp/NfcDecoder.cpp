@@ -23,7 +23,6 @@
 */
 
 #include <cmath>
-#include <chrono>
 #include <functional>
 
 #include <rt/Logger.h>
@@ -32,104 +31,13 @@
 #include <nfc/NfcDecoder.h>
 
 #include "NfcStatus.h"
-#include "NfcA.h"
-#include "NfcB.h"
 
-//#define DEBUG_SIGNAL
-
-#ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNELS 8
-
-#define DEBUG_SIGNAL_VALUE_CHANNEL 0
-#define DEBUG_SIGNAL_POWER_CHANNEL 1
-#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
-#define DEBUG_SIGNAL_VARIANCE_CHANNEL 3
-#define DEBUG_SIGNAL_EDGE_CHANNEL 4
-
-#define DEBUG_ASK_CORRELATION_CHANNEL 5
-#define DEBUG_ASK_INTEGRATION_CHANNEL 6
-#define DEBUG_ASK_SYNCHRONIZATION_CHANNEL 7
-
-#define DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL 5
-#define DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL 4
-#define DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL 7
-#endif
-
+#include "type/NfcA.h"
+#include "type/NfcB.h"
+#include "type/NfcF.h"
+#include "type/NfcV.h"
 
 namespace nfc {
-
-/*
- * Signal debugger
- */
-#ifdef DEBUG_SIGNAL
-struct DecoderDebug
-{
-   unsigned int channels;
-   unsigned int clock;
-
-   sdr::RecordDevice *recorder;
-   sdr::SignalBuffer buffer;
-
-   float values[10] {0,};
-
-   DecoderDebug(unsigned int channels, unsigned int decoder.sampleRate) : channels(channels), clock(0)
-   {
-      char file[128];
-      struct tm timeinfo {};
-
-      std::time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-      localtime_s(&timeinfo, &rawTime);
-      strftime(file, sizeof(file), "decoder-%Y%m%d%H%M%S.wav", &timeinfo);
-
-      recorder = new sdr::RecordDevice(file);
-      recorder->setChannelCount(channels);
-      recorder->setSampleRate(decoder.sampleRate);
-      recorder->open(sdr::RecordDevice::Write);
-   }
-
-   ~DecoderDebug()
-   {
-      delete recorder;
-   }
-
-   void block(unsigned int time)
-   {
-      if (clock != time)
-      {
-         // store sample buffer
-         buffer.put(values, recorder->channelCount());
-
-         // clear sample buffer
-         for (auto &f : values)
-         {
-            f = 0;
-         }
-
-         clock = time;
-      }
-   }
-
-   void value(int channel, float value)
-   {
-      if (channel >= 0 && channel < recorder->channelCount())
-      {
-         values[channel] = value;
-      }
-   }
-
-   void begin(int sampleCount)
-   {
-      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->decoder.sampleRate());
-   }
-
-   void commit()
-   {
-      buffer.flip();
-
-      recorder->write(buffer);
-   }
-};
-#endif
 
 struct NfcDecoder::Impl
 {
@@ -138,22 +46,20 @@ struct NfcDecoder::Impl
 
    rt::Logger log {"NfcDecoder"};
 
-   // global decoder status
-   struct DecoderStatus decoder;
-
    // NFC-A Decoder
    struct NfcA nfca;
 
    // NFC-B Decoder
    struct NfcB nfcb;
 
-   // decoder signal debugging
-#ifdef DEBUG_SIGNAL
-   std::shared_ptr<DecoderDebug> decoderDebug;
-#endif
+   // NFC-F Decoder
+   struct NfcF nfcf;
 
-   // frame handlers
-//   std::vector<FrameHandler> frameHandlers;
+   // NFC-V Decoder
+   struct NfcV nfcv;
+
+   // global decoder status
+   struct DecoderStatus decoder;
 
    Impl();
 
@@ -161,9 +67,7 @@ struct NfcDecoder::Impl
 
    inline std::list<NfcFrame> nextFrames(sdr::SignalBuffer &samples);
 
-   inline bool detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
-
-   inline bool nextSample(sdr::SignalBuffer &buffer);
+   inline void detectCarrier(std::list<NfcFrame> &frames);
 };
 
 NfcDecoder::NfcDecoder() : impl(std::make_shared<Impl>())
@@ -205,7 +109,7 @@ float NfcDecoder::signalStrength() const
    return impl->decoder.signalStatus.powerAverage;
 }
 
-NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder)
+NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder), nfcf(&decoder), nfcv(&decoder)
 {
 }
 
@@ -234,6 +138,15 @@ void NfcDecoder::Impl::configure(long newSampleRate)
 
       // configure NFC-A decoder
       nfca.configure(newSampleRate);
+
+      // configure NFC-B decoder
+      nfcb.configure(newSampleRate);
+
+      // configure NFC-F decoder
+      nfcf.configure(newSampleRate);
+
+      // configure NFC-V decoder
+      nfcv.configure(newSampleRate);
    }
 
    // starts without bitrate
@@ -243,8 +156,8 @@ void NfcDecoder::Impl::configure(long newSampleRate)
    decoder.modulation = nullptr;
 
 #ifdef DEBUG_SIGNAL
-   log.warn("DECODER DEBUGGER ENABLED!, performance may be impacted");
-   decoderDebug = std::make_shared<DecoderDebug>(DEBUG_CHANNELS, decoder.sampleRate);
+   log.warn("SIGNAL DEBUGGER ENABLED!, highly affected performance!");
+   decoder.debug = std::make_shared<SignalDebug>(DEBUG_CHANNELS, decoder.sampleRate);
 #endif
 }
 
@@ -266,31 +179,63 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
       }
 
 #ifdef DEBUG_SIGNAL
-      decoderDebug->begin(samples.elements());
+      decoder.debug->begin(samples.elements());
 #endif
 
-      while (!samples.isEmpty())
+      do
       {
          if (!decoder.modulation)
          {
-            if (!nfca.detectModulation(samples, frames))
+            // clear bitrate
+            decoder.bitrate = nullptr;
+
+            // NFC modulation detector for NFC-A / B / F / V
+            while (decoder.nextSample(samples))
             {
-               break;
+               // carrier detector
+               detectCarrier(frames);
+
+               // modulation detector
+               if (nfca.detectModulation())
+                  break;
+
+               if (nfcb.detectModulation())
+                  break;
+
+               if (nfcf.detectModulation())
+                  break;
+
+               if (nfcv.detectModulation())
+                  break;
             }
          }
 
-         if (decoder.bitrate->techType == TechType::NfcA)
+         if (decoder.bitrate)
          {
-            nfca.decodeFrameNfcA(samples, frames);
+            switch (decoder.bitrate->techType)
+            {
+               case TechType::NfcA:
+                  nfca.decodeFrame(samples, frames);
+                  break;
+
+               case TechType::NfcB:
+                  nfcb.decodeFrame(samples, frames);
+                  break;
+
+               case TechType::NfcF:
+                  nfcf.decodeFrame(samples, frames);
+                  break;
+
+               case TechType::NfcV:
+                  nfcv.decodeFrame(samples, frames);
+                  break;
+            }
          }
-         else if (decoder.bitrate->techType == TechType::NfcB)
-         {
-            nfcb.decodeFrameNfcB(samples, frames);
-         }
-      }
+
+      } while (!samples.isEmpty());
 
 #ifdef DEBUG_SIGNAL
-      decoderDebug->commit();
+      decoder.debug->write();
 #endif
    }
 
@@ -328,71 +273,60 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
    return frames;
 }
 
-bool NfcDecoder::Impl::nextSample(sdr::SignalBuffer &buffer)
+void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
 {
-   if (buffer.available() == 0)
-      return false;
+   /*
+    * carrier presence detector
+    */
+   float edge = std::fabs(decoder.signalStatus.signalAverage - decoder.signalStatus.powerAverage);
 
-   // real-value signal
-   if (buffer.stride() == 1)
+   // positive edge
+   if (decoder.signalStatus.signalAverage > edge && decoder.signalStatus.powerAverage > decoder.powerLevelThreshold)
    {
-      // read next sample data
-      buffer.get(decoder.signalStatus.signalValue);
+      if (!decoder.signalStatus.carrierOn)
+      {
+         decoder.signalStatus.carrierOn = decoder.signalClock;
+
+         if (decoder.signalStatus.carrierOff)
+         {
+            NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
+
+            silence.setFramePhase(FramePhase::CarrierFrame);
+            silence.setSampleStart(decoder.signalStatus.carrierOff);
+            silence.setSampleEnd(decoder.signalStatus.carrierOn);
+            silence.setTimeStart(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+            silence.setTimeEnd(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+
+            frames.push_back(silence);
+         }
+
+         decoder.signalStatus.carrierOff = 0;
+      }
    }
 
-      // IQ channel signal
-   else
+      // negative edge
+   else if (decoder.signalStatus.signalAverage < edge || decoder.signalStatus.powerAverage < decoder.powerLevelThreshold)
    {
-      // read next sample data
-      buffer.get(decoder.signalStatus.sampleData, 2);
+      if (!decoder.signalStatus.carrierOff)
+      {
+         decoder.signalStatus.carrierOff = decoder.signalClock;
 
-      // compute magnitude from IQ channels
-      auto i = double(decoder.signalStatus.sampleData[0]);
-      auto q = double(decoder.signalStatus.sampleData[1]);
+         if (decoder.signalStatus.carrierOn)
+         {
+            NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
 
-      decoder.signalStatus.signalValue = sqrtf(i * i + q * q);
+            carrier.setFramePhase(FramePhase::CarrierFrame);
+            carrier.setSampleStart(decoder.signalStatus.carrierOn);
+            carrier.setSampleEnd(decoder.signalStatus.carrierOff);
+            carrier.setTimeStart(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+            carrier.setTimeEnd(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+
+            frames.push_back(carrier);
+         }
+
+         decoder.signalStatus.carrierOn = 0;
+      }
    }
-
-   // update signal clock
-   decoder.signalClock++;
-
-   // compute power average (exponential average)
-   decoder.signalStatus.powerAverage = decoder.signalStatus.powerAverage * decoder.signalParams.powerAverageW0 + decoder.signalStatus.signalValue * decoder.signalParams.powerAverageW1;
-
-   // compute signal average (exponential average)
-   decoder.signalStatus.signalAverage = decoder.signalStatus.signalAverage * decoder.signalParams.signalAverageW0 + decoder.signalStatus.signalValue * decoder.signalParams.signalAverageW1;
-
-   // compute signal variance (exponential variance)
-   decoder.signalStatus.signalVariance = decoder.signalStatus.signalVariance * decoder.signalParams.signalVarianceW0 + std::abs(decoder.signalStatus.signalValue - decoder.signalStatus.signalAverage) * decoder.signalParams.signalVarianceW1;
-
-   // store next signal value in sample buffer
-   decoder.signalStatus.signalData[decoder.signalClock & (SignalBufferLength - 1)] = decoder.signalStatus.signalValue;
-
-#ifdef DEBUG_SIGNAL
-   decoderDebug->block(decoder.signalClock);
-#endif
-
-#ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_VALUE_CHANNEL, decoder.signalStatus.signalValue);
-#endif
-
-#ifdef DEBUG_SIGNAL_POWER_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_POWER_CHANNEL, decoder.signalStatus.powerAverage);
-#endif
-
-#ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_AVERAGE_CHANNEL, decoder.signalStatus.signalAverage);
-#endif
-
-#ifdef DEBUG_SIGNAL_VARIANCE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_VARIANCE_CHANNEL, decoder.signalStatus.signalVariance);
-#endif
-
-#ifdef DEBUG_SIGNAL_EDGE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_EDGE_CHANNEL, decoder.signalStatus.signalAverage - decoder.signalStatus.powerAverage);
-#endif
-
-   return true;
 }
 
 }

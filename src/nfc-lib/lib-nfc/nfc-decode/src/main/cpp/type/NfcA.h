@@ -22,8 +22,8 @@
 
 */
 
-#ifndef NFC_LAB_NFCA_H
-#define NFC_LAB_NFCA_H
+#ifndef NFC_NFCA_H
+#define NFC_NFCA_H
 
 #include <list>
 
@@ -41,6 +41,8 @@ namespace nfc {
 struct NfcA
 {
    struct Impl;
+
+   Impl *self;
 
    enum PatternType
    {
@@ -80,25 +82,23 @@ struct NfcA
 
    void configure(long sampleRate);
 
-   bool detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+   bool detectModulation();
 
-   void decodeFrameNfcA(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
+   void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
 
-   bool decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+   bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
 
-   bool decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+   bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
 
-   int decodeSymbolDevAskNfcA(sdr::SignalBuffer &buffer);
+   int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
 
-   int decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer);
+   int decodeListenFrameSymbolAsk(sdr::SignalBuffer &buffer);
 
-   int decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer);
+   int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
 
    void resetFrameSearch();
 
    void resetModulation();
-
-   bool nextSample(sdr::SignalBuffer &buffer);
 
    void process(NfcFrame frame);
 
@@ -125,10 +125,8 @@ struct NfcA
    static bool checkCrc(NfcFrame &frame);
 
    static bool checkParity(unsigned int value, unsigned int parity);
-
-   Impl *self;
 };
 
 }
 
-#endif //NFC_LAB_NFCA_H
+#endif //NFC_NFCA_H

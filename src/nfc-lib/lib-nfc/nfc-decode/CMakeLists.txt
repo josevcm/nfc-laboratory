@@ -4,8 +4,10 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 set(PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
 add_library(nfc-decode STATIC
-        src/main/cpp/NfcA.cpp
-        src/main/cpp/NfcB.cpp
+        src/main/cpp/type/NfcA.cpp
+        src/main/cpp/type/NfcB.cpp
+        src/main/cpp/type/NfcF.cpp
+        src/main/cpp/type/NfcV.cpp
         src/main/cpp/NfcFrame.cpp
         src/main/cpp/NfcDecoder.cpp
         )

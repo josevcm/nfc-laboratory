@@ -22,50 +22,47 @@
 
 */
 
-#include "NfcB.h"
+#ifndef NFC_NFCV_H
+#define NFC_NFCV_H
+
+#include <list>
+
+#include <rt/Logger.h>
+
+#include <sdr/SignalBuffer.h>
+
+#include <nfc/Nfc.h>
+#include <nfc/NfcFrame.h>
+
+#include "NfcStatus.h"
 
 namespace nfc {
 
-NfcB::NfcB(DecoderStatus *decoder) : decoder(decoder)
+struct NfcV
 {
-}
+   struct Impl;
 
-void NfcB::configure(long sampleRate)
-{
-}
+   Impl *self;
 
-void NfcB::decodeFrameNfcB(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
-{
-//   if (self->frameStatus.frameType == PollFrame)
-//   {
-//      decodeFrameDevNfcA(samples, frames);
-//   }
-//
-//   if (self->frameStatus.frameType == ListenFrame)
-//   {
-//      decodeFrameTagNfcA(samples, frames);
-//   }
-}
+   explicit NfcV(DecoderStatus *decoder);
 
-bool NfcB::decodeFrameDevNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
-{
-   return false;
-}
+   ~NfcV();
 
-bool NfcB::decodeFrameTagNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
-{
-   return false;
-}
+   void configure(long sampleRate);
 
-int NfcB::decodeSymbolTagAskNfcB(sdr::SignalBuffer &buffer)
-{
-   return 0;
-}
+   bool detectModulation();
 
-int NfcB::decodeSymbolTagBpskNfcB(sdr::SignalBuffer &buffer)
-{
-   return 0;
-}
+   void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
 
+   bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+
+   bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+
+   int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
+
+   int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
+};
 
 }
+
+#endif //NFC_NFCV_H

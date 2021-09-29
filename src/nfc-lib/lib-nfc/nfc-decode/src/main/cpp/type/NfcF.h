@@ -22,52 +22,47 @@
 
 */
 
-#ifndef NFC_NFC_H
-#define NFC_NFC_H
+#ifndef NFC_NFCF_H
+#define NFC_NFCF_H
+
+#include <list>
+
+#include <rt/Logger.h>
+
+#include <sdr/SignalBuffer.h>
+
+#include <nfc/Nfc.h>
+#include <nfc/NfcFrame.h>
+
+#include "NfcStatus.h"
 
 namespace nfc {
 
-enum TechType
+struct NfcF
 {
-   None = 0,
-   NfcA = 1,
-   NfcB = 2,
-   NfcF = 3,
-   NfcV = 4
-};
+   struct Impl;
 
-enum RateType
-{
-   r106k = 0,
-   r212k = 1,
-   r424k = 2,
-   r848k = 3
-};
+   Impl *self;
 
-enum FrameType
-{
-   NoCarrier = 0,
-   EmptyFrame = 1,
-   PollFrame = 2,
-   ListenFrame = 3
-};
+   explicit NfcF(DecoderStatus *decoder);
 
-enum FrameFlags
-{
-   ShortFrame = 0x01,
-   Encrypted = 0x08,
-   ParityError = 0x20,
-   CrcError = 0x40,
-   Truncated = 0x80
-};
+   ~NfcF();
 
-enum FramePhase
-{
-   CarrierFrame = 0,
-   SelectionFrame = 1,
-   ApplicationFrame = 2
+   void configure(long sampleRate);
+
+   bool detectModulation();
+
+   void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
+
+   bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+
+   bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+
+   int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
+
+   int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
 };
 
 }
 
-#endif //NFC_LAB_NFC_H
+#endif //NFC_NFCF_H
