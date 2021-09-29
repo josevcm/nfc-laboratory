@@ -34,7 +34,12 @@ void NfcB::configure(long sampleRate)
 {
 }
 
-void NfcB::decodeFrameNfcB(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+bool NfcB::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+void NfcB::decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
 {
 //   if (self->frameStatus.frameType == PollFrame)
 //   {
@@ -47,22 +52,22 @@ void NfcB::decodeFrameNfcB(sdr::SignalBuffer &samples, std::list<NfcFrame> &fram
 //   }
 }
 
-bool NfcB::decodeFrameDevNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+bool NfcB::decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
 {
    return false;
 }
 
-bool NfcB::decodeFrameTagNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+bool NfcB::decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
 {
    return false;
 }
 
-int NfcB::decodeSymbolTagAskNfcB(sdr::SignalBuffer &buffer)
+int NfcB::decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
 {
    return 0;
 }
 
-int NfcB::decodeSymbolTagBpskNfcB(sdr::SignalBuffer &buffer)
+int NfcB::decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer)
 {
    return 0;
 }

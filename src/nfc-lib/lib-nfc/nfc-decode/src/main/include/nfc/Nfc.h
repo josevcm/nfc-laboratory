@@ -22,8 +22,8 @@
 
 */
 
-#ifndef NFC_LAB_NFC_H
-#define NFC_LAB_NFC_H
+#ifndef NFC_NFC_H
+#define NFC_NFC_H
 
 namespace nfc {
 

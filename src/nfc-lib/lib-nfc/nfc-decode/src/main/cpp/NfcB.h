@@ -22,8 +22,8 @@
 
 */
 
-#ifndef NFC_LAB_NFCB_H
-#define NFC_LAB_NFCB_H
+#ifndef NFC_NFCB_H
+#define NFC_NFCB_H
 
 #include <list>
 
@@ -48,15 +48,17 @@ struct NfcB
 
    void configure(long sampleRate);
 
-   void decodeFrameNfcB(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
+   bool detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
 
-   bool decodeFrameDevNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+   void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
 
-   bool decodeFrameTagNfcB(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+   bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
 
-   int decodeSymbolTagAskNfcB(sdr::SignalBuffer &buffer);
+   bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
 
-   int decodeSymbolTagBpskNfcB(sdr::SignalBuffer &buffer);
+   int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
+
+   int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
 };
 
 }

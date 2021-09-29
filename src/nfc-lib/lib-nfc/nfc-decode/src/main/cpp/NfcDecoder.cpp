@@ -35,101 +35,7 @@
 #include "NfcA.h"
 #include "NfcB.h"
 
-//#define DEBUG_SIGNAL
-
-#ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNELS 8
-
-#define DEBUG_SIGNAL_VALUE_CHANNEL 0
-#define DEBUG_SIGNAL_POWER_CHANNEL 1
-#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
-#define DEBUG_SIGNAL_VARIANCE_CHANNEL 3
-#define DEBUG_SIGNAL_EDGE_CHANNEL 4
-
-#define DEBUG_ASK_CORRELATION_CHANNEL 5
-#define DEBUG_ASK_INTEGRATION_CHANNEL 6
-#define DEBUG_ASK_SYNCHRONIZATION_CHANNEL 7
-
-#define DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL 5
-#define DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL 4
-#define DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL 7
-#endif
-
-
 namespace nfc {
-
-/*
- * Signal debugger
- */
-#ifdef DEBUG_SIGNAL
-struct DecoderDebug
-{
-   unsigned int channels;
-   unsigned int clock;
-
-   sdr::RecordDevice *recorder;
-   sdr::SignalBuffer buffer;
-
-   float values[10] {0,};
-
-   DecoderDebug(unsigned int channels, unsigned int decoder.sampleRate) : channels(channels), clock(0)
-   {
-      char file[128];
-      struct tm timeinfo {};
-
-      std::time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-      localtime_s(&timeinfo, &rawTime);
-      strftime(file, sizeof(file), "decoder-%Y%m%d%H%M%S.wav", &timeinfo);
-
-      recorder = new sdr::RecordDevice(file);
-      recorder->setChannelCount(channels);
-      recorder->setSampleRate(decoder.sampleRate);
-      recorder->open(sdr::RecordDevice::Write);
-   }
-
-   ~DecoderDebug()
-   {
-      delete recorder;
-   }
-
-   void block(unsigned int time)
-   {
-      if (clock != time)
-      {
-         // store sample buffer
-         buffer.put(values, recorder->channelCount());
-
-         // clear sample buffer
-         for (auto &f : values)
-         {
-            f = 0;
-         }
-
-         clock = time;
-      }
-   }
-
-   void value(int channel, float value)
-   {
-      if (channel >= 0 && channel < recorder->channelCount())
-      {
-         values[channel] = value;
-      }
-   }
-
-   void begin(int sampleCount)
-   {
-      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->decoder.sampleRate());
-   }
-
-   void commit()
-   {
-      buffer.flip();
-
-      recorder->write(buffer);
-   }
-};
-#endif
 
 struct NfcDecoder::Impl
 {
@@ -138,14 +44,14 @@ struct NfcDecoder::Impl
 
    rt::Logger log {"NfcDecoder"};
 
-   // global decoder status
-   struct DecoderStatus decoder;
-
    // NFC-A Decoder
    struct NfcA nfca;
 
    // NFC-B Decoder
    struct NfcB nfcb;
+
+   // global decoder status
+   struct DecoderStatus decoder;
 
    // decoder signal debugging
 #ifdef DEBUG_SIGNAL
@@ -160,8 +66,6 @@ struct NfcDecoder::Impl
    inline void configure(long sampleRate);
 
    inline std::list<NfcFrame> nextFrames(sdr::SignalBuffer &samples);
-
-   inline bool detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
 
    inline bool nextSample(sdr::SignalBuffer &buffer);
 };
@@ -234,6 +138,9 @@ void NfcDecoder::Impl::configure(long newSampleRate)
 
       // configure NFC-A decoder
       nfca.configure(newSampleRate);
+
+      // configure NFC-B decoder
+      nfcb.configure(newSampleRate);
    }
 
    // starts without bitrate
@@ -243,8 +150,8 @@ void NfcDecoder::Impl::configure(long newSampleRate)
    decoder.modulation = nullptr;
 
 #ifdef DEBUG_SIGNAL
-   log.warn("DECODER DEBUGGER ENABLED!, performance may be impacted");
-   decoderDebug = std::make_shared<DecoderDebug>(DEBUG_CHANNELS, decoder.sampleRate);
+   log.warn("DECODER DEBUGGER ENABLED!, highly affected performance!");
+   decoder.debug = std::make_shared<DecoderDebug>(DEBUG_CHANNELS, decoder.sampleRate);
 #endif
 }
 
@@ -266,7 +173,7 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
       }
 
 #ifdef DEBUG_SIGNAL
-      decoderDebug->begin(samples.elements());
+      decoder.debug->begin(samples.elements());
 #endif
 
       while (!samples.isEmpty())
@@ -275,22 +182,25 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
          {
             if (!nfca.detectModulation(samples, frames))
             {
-               break;
+//               if (!nfcb.detectModulation(samples, frames))
+               {
+                  break;
+               }
             }
          }
 
          if (decoder.bitrate->techType == TechType::NfcA)
          {
-            nfca.decodeFrameNfcA(samples, frames);
+            nfca.decodeFrame(samples, frames);
          }
          else if (decoder.bitrate->techType == TechType::NfcB)
          {
-            nfcb.decodeFrameNfcB(samples, frames);
+            nfcb.decodeFrame(samples, frames);
          }
       }
 
 #ifdef DEBUG_SIGNAL
-      decoderDebug->commit();
+      decoder.debug->write();
 #endif
    }
 
@@ -369,27 +279,27 @@ bool NfcDecoder::Impl::nextSample(sdr::SignalBuffer &buffer)
    decoder.signalStatus.signalData[decoder.signalClock & (SignalBufferLength - 1)] = decoder.signalStatus.signalValue;
 
 #ifdef DEBUG_SIGNAL
-   decoderDebug->block(decoder.signalClock);
+   decoder.debug->block(decoder.signalClock);
 #endif
 
 #ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_VALUE_CHANNEL, decoder.signalStatus.signalValue);
+   decoder.debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, decoder.signalStatus.signalValue);
 #endif
 
 #ifdef DEBUG_SIGNAL_POWER_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_POWER_CHANNEL, decoder.signalStatus.powerAverage);
+   decoder.debug->set(DEBUG_SIGNAL_POWER_CHANNEL, decoder.signalStatus.powerAverage);
 #endif
 
 #ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_AVERAGE_CHANNEL, decoder.signalStatus.signalAverage);
+   decoder.debug->set(DEBUG_SIGNAL_AVERAGE_CHANNEL, decoder.signalStatus.signalAverage);
 #endif
 
 #ifdef DEBUG_SIGNAL_VARIANCE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_VARIANCE_CHANNEL, decoder.signalStatus.signalVariance);
+   decoder.debug->set(DEBUG_SIGNAL_VARIANCE_CHANNEL, decoder.signalStatus.signalVariance);
 #endif
 
 #ifdef DEBUG_SIGNAL_EDGE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_EDGE_CHANNEL, decoder.signalStatus.signalAverage - decoder.signalStatus.powerAverage);
+   decoder.debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, decoder.signalStatus.signalAverage - decoder.signalStatus.powerAverage);
 #endif
 
    return true;

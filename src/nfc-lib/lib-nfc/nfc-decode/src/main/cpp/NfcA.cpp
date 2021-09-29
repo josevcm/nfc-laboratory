@@ -231,10 +231,10 @@ bool NfcA::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fram
             self->decoder->modulation->symbolAverage = self->decoder->modulation->symbolAverage * self->decoder->bitrate->symbolAverageW0 + currentData * self->decoder->bitrate->symbolAverageW1;
 
 #ifdef DEBUG_ASK_CORRELATION_CHANNEL
-            decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, self->decoder->modulation->correlatedSD);
+            self->decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, self->decoder->modulation->correlatedSD);
 #endif
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-            decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
+            self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
 #endif
             // search for Pattern-Z in PCD to PICC request
             if (self->decoder->modulation->correlatedSD > self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold)
@@ -259,7 +259,7 @@ bool NfcA::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fram
             if (self->decoder->signalClock == self->decoder->modulation->searchEndTime)
             {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-               decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
+               self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
 #endif
                // check self->decoder->modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
                if (self->decoder->modulation->searchDeepValue > self->decoder->modulationThreshold)
@@ -369,25 +369,31 @@ bool NfcA::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fram
    return false;
 }
 
-void NfcA::decodeFrameNfcA(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+/*
+ * Decode next poll or listen frame
+ */
+void NfcA::decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
 {
    if (self->frameStatus.frameType == PollFrame)
    {
-      decodeFrameDevNfcA(samples, frames);
+      decodePollFrame(samples, frames);
    }
 
    if (self->frameStatus.frameType == ListenFrame)
    {
-      decodeFrameTagNfcA(samples, frames);
+      decodeListenFrame(samples, frames);
    }
 }
 
-bool NfcA::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+/*
+ * Decode next poll frame
+ */
+bool NfcA::decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
 {
    int pattern;
 
    // read NFC-A request request
-   while ((pattern = decodeSymbolDevAskNfcA(buffer)) > PatternType::NoPattern)
+   while ((pattern = decodePollFrameSymbolAsk(buffer)) > PatternType::NoPattern)
    {
       self->streamStatus.pattern = pattern;
 
@@ -491,7 +497,10 @@ bool NfcA::decodeFrameDevNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fr
    return false;
 }
 
-bool NfcA::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+/*
+ * Decode next listen frame
+ */
+bool NfcA::decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
 {
    int pattern;
 
@@ -501,7 +510,7 @@ bool NfcA::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fr
       if (!self->frameStatus.frameStart)
       {
          // search Start Of Frame pattern
-         pattern = decodeSymbolTagAskNfcA(buffer);
+         pattern = decodeListenFrameSymbolAsk(buffer);
 
          // Pattern-D found, mark frame start time
          if (pattern == PatternType::PatternD)
@@ -522,7 +531,7 @@ bool NfcA::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fr
       if (self->frameStatus.frameStart)
       {
          // decode remaining response
-         while ((pattern = decodeSymbolTagAskNfcA(buffer)) > PatternType::NoPattern)
+         while ((pattern = decodeListenFrameSymbolAsk(buffer)) > PatternType::NoPattern)
          {
             // detect end of response for ASK
             if (pattern == PatternType::PatternF || self->streamStatus.bytes == self->protocolStatus.maxFrameSize)
@@ -608,7 +617,7 @@ bool NfcA::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fr
       if (!self->frameStatus.frameStart)
       {
          // detect first pattern
-         pattern = decodeSymbolTagBpskNfcA(buffer);
+         pattern = decodeListenFrameSymbolBpsk(buffer);
 
          // Pattern-M found, mark frame start time
          if (pattern == PatternType::PatternM)
@@ -629,7 +638,7 @@ bool NfcA::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fr
       // frame SoF detected, decode frame stream...
       if (self->frameStatus.frameStart)
       {
-         while ((pattern = decodeSymbolTagBpskNfcA(buffer)) > PatternType::NoPattern)
+         while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > PatternType::NoPattern)
          {
             // detect end of response for BPSK
             if (pattern == PatternType::PatternO)
@@ -733,7 +742,10 @@ bool NfcA::decodeFrameTagNfcA(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fr
    return false;
 }
 
-int NfcA::decodeSymbolDevAskNfcA(sdr::SignalBuffer &buffer)
+/*
+ * Decode one ASK modulated poll frame symbol
+ */
+int NfcA::decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
 {
    self->symbolStatus.pattern = PatternType::Invalid;
 
@@ -765,11 +777,11 @@ int NfcA::decodeSymbolDevAskNfcA(sdr::SignalBuffer &buffer)
       self->decoder->modulation->correlatedSD = std::fabs(self->decoder->modulation->correlatedS0 - self->decoder->modulation->correlatedS1) / float(self->decoder->bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORRELATION_CHANNEL
-      decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, self->decoder->modulation->correlatedSD);
+      self->decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, self->decoder->modulation->correlatedSD);
 #endif
 
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-      decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
+      self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
 #endif
       // compute symbol average
       self->decoder->modulation->symbolAverage = self->decoder->modulation->symbolAverage * self->decoder->bitrate->symbolAverageW0 + currentData * self->decoder->bitrate->symbolAverageW1;
@@ -806,7 +818,7 @@ int NfcA::decodeSymbolDevAskNfcA(sdr::SignalBuffer &buffer)
       if (self->decoder->signalClock == self->decoder->modulation->searchEndTime)
       {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-         decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.50f);
+         self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.50f);
 #endif
          // detect Pattern-Y when no self->decoder->modulation occurs (below search detection threshold)
          if (self->decoder->modulation->correlationPeek < self->decoder->modulation->searchThreshold)
@@ -861,7 +873,10 @@ int NfcA::decodeSymbolDevAskNfcA(sdr::SignalBuffer &buffer)
    return self->symbolStatus.pattern;
 }
 
-int NfcA::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
+/*
+ * Decode one ASK modulated listen frame symbol
+ */
+int NfcA::decodeListenFrameSymbolAsk(sdr::SignalBuffer &buffer)
 {
    int pattern = PatternType::Invalid;
 
@@ -905,15 +920,15 @@ int NfcA::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
       }
 
 #ifdef DEBUG_ASK_CORRELATION_CHANNEL
-      decoderDebug->value(DEBUG_ASK_CORRELATION_CHANNEL, self->decoder->modulation->correlatedSD);
+      self->decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, self->decoder->modulation->correlatedSD);
 #endif
 
 #ifdef DEBUG_ASK_INTEGRATION_CHANNEL
-      decoderDebug->value(DEBUG_ASK_INTEGRATION_CHANNEL, self->decoder->modulation->filterIntegrate);
+      self->decoder->debug->set(DEBUG_ASK_INTEGRATION_CHANNEL, self->decoder->modulation->filterIntegrate);
 #endif
 
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-      decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
+      self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
 #endif
 
       // search for Start Of Frame pattern (SoF)
@@ -937,7 +952,7 @@ int NfcA::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
             if (self->decoder->signalClock == self->decoder->modulation->searchEndTime)
             {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-               decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
+               self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
 #endif
                if (self->decoder->modulation->searchPulseWidth > self->decoder->bitrate->period8SymbolSamples)
                {
@@ -1011,7 +1026,7 @@ int NfcA::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
          if (self->decoder->signalClock == self->decoder->modulation->searchEndTime)
          {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-            decoderDebug->value(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.50f);
+            self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.50f);
 #endif
             if (self->decoder->modulation->correlationPeek > self->decoder->modulation->searchThreshold)
             {
@@ -1054,7 +1069,10 @@ int NfcA::decodeSymbolTagAskNfcA(sdr::SignalBuffer &buffer)
    return pattern;
 }
 
-int NfcA::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
+/*
+ * Decode one BPSK modulated listen frame symbol
+ */
+int NfcA::decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer)
 {
    int pattern = PatternType::Invalid;
 
@@ -1085,11 +1103,11 @@ int NfcA::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
       }
 
 #ifdef DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL
-      decoderDebug->value(DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL, self->decoder->modulation->phaseIntegrate);
+      self->decoder->debug->set(DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL, self->decoder->modulation->phaseIntegrate);
 #endif
 
 #ifdef DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL
-      decoderDebug->value(DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL, phase * 10);
+      self->decoder->debug->set(DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL, phase * 10);
 #endif
       // search for Start Of Frame pattern (SoF)
       if (!self->decoder->modulation->symbolEndTime)
@@ -1104,7 +1122,7 @@ int NfcA::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
          if (self->decoder->signalClock == self->decoder->modulation->searchEndTime)
          {
 #ifdef DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL
-            decoderDebug->value(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.75);
+            self->decoder->debug->set(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.75);
 #endif
             // set symbol window
             self->decoder->modulation->symbolStartTime = self->decoder->modulation->searchPeakTime;
@@ -1158,7 +1176,7 @@ int NfcA::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
          else if (self->decoder->signalClock == self->decoder->modulation->searchEndTime)
          {
 #ifdef DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL
-            decoderDebug->value(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.5);
+            self->decoder->debug->set(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.5);
 #endif
             self->decoder->modulation->symbolPhase = self->decoder->modulation->phaseIntegrate;
 
@@ -1204,6 +1222,9 @@ int NfcA::decodeSymbolTagBpskNfcA(sdr::SignalBuffer &buffer)
    return pattern;
 }
 
+/*
+ * Reset frame search status
+ */
 void NfcA::resetFrameSearch()
 {
    // reset frame search status
@@ -1219,6 +1240,9 @@ void NfcA::resetFrameSearch()
    self->frameStatus.frameStart = 0;
 }
 
+/*
+ * Reset modulation status
+ */
 void NfcA::resetModulation()
 {
    // reset self->decoder->modulation detection for all rates
@@ -1251,6 +1275,9 @@ void NfcA::resetModulation()
    self->decoder->modulation = nullptr;
 }
 
+/*
+ * Process next signal sample
+ */
 bool NfcA::nextSample(sdr::SignalBuffer &buffer)
 {
    if (buffer.available() == 0)
@@ -1292,27 +1319,27 @@ bool NfcA::nextSample(sdr::SignalBuffer &buffer)
    self->decoder->signalStatus.signalData[self->decoder->signalClock & (SignalBufferLength - 1)] = self->decoder->signalStatus.signalValue;
 
 #ifdef DEBUG_SIGNAL
-   decoderDebug->block(self->decoder->signalClock);
+   self->decoder->debug->block(self->decoder->signalClock);
 #endif
 
 #ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_VALUE_CHANNEL, self->decoder->signalStatus.signalValue);
+   self->decoder->debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, self->decoder->signalStatus.signalValue);
 #endif
 
 #ifdef DEBUG_SIGNAL_POWER_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_POWER_CHANNEL, self->decoder->signalStatus.powerAverage);
+   self->decoder->debug->set(DEBUG_SIGNAL_POWER_CHANNEL, self->decoder->signalStatus.powerAverage);
 #endif
 
 #ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_AVERAGE_CHANNEL, self->decoder->signalStatus.signalAverage);
+   self->decoder->debug->set(DEBUG_SIGNAL_AVERAGE_CHANNEL, self->decoder->signalStatus.signalAverage);
 #endif
 
 #ifdef DEBUG_SIGNAL_VARIANCE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_VARIANCE_CHANNEL, self->decoder->signalStatus.signalVariance);
+   self->decoder->debug->set(DEBUG_SIGNAL_VARIANCE_CHANNEL, self->decoder->signalStatus.signalVariance);
 #endif
 
 #ifdef DEBUG_SIGNAL_EDGE_CHANNEL
-   decoderDebug->value(DEBUG_SIGNAL_EDGE_CHANNEL, self->decoder->signalStatus.signalAverage - self->decoder->signalStatus.powerAverage);
+   self->decoder->debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, self->decoder->signalStatus.signalAverage - self->decoder->signalStatus.powerAverage);
 #endif
 
    return true;

@@ -22,8 +22,31 @@
 
 */
 
-#ifndef NFC_LAB_NFCSTATUS_H
-#define NFC_LAB_NFCSTATUS_H
+#ifndef NFC_NFCSTATUS_H
+#define NFC_NFCSTATUS_H
+
+#include <sdr/RecordDevice.h>
+
+//#define DEBUG_SIGNAL
+
+#ifdef DEBUG_SIGNAL
+#define DEBUG_CHANNELS 8
+
+#define DEBUG_SIGNAL_VALUE_CHANNEL 0
+#define DEBUG_SIGNAL_POWER_CHANNEL 1
+#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
+#define DEBUG_SIGNAL_VARIANCE_CHANNEL 3
+#define DEBUG_SIGNAL_EDGE_CHANNEL 4
+
+#define DEBUG_ASK_CORRELATION_CHANNEL 5
+#define DEBUG_ASK_INTEGRATION_CHANNEL 6
+#define DEBUG_ASK_SYNCHRONIZATION_CHANNEL 7
+
+#define DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL 5
+#define DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL 4
+#define DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL 7
+
+#endif
 
 namespace nfc {
 
@@ -32,6 +55,76 @@ constexpr static const unsigned int BaseFrequency = 13.56E6;
 
 // buffer for signal integration, must be power of 2^n
 constexpr static const unsigned int SignalBufferLength = 512;
+
+/*
+ * Signal debugger
+ */
+struct DecoderDebug
+{
+   unsigned int channels;
+   unsigned int clock;
+
+   sdr::RecordDevice *recorder;
+   sdr::SignalBuffer buffer;
+
+   float values[10] {0,};
+
+   DecoderDebug(unsigned int channels, unsigned int sampleRate) : channels(channels), clock(0)
+   {
+      char file[128];
+      struct tm timeinfo {};
+
+      std::time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+      localtime_s(&timeinfo, &rawTime);
+      strftime(file, sizeof(file), "decoder-%Y%m%d%H%M%S.wav", &timeinfo);
+
+      recorder = new sdr::RecordDevice(file);
+      recorder->setChannelCount(channels);
+      recorder->setSampleRate(sampleRate);
+      recorder->open(sdr::RecordDevice::Write);
+   }
+
+   ~DecoderDebug()
+   {
+      delete recorder;
+   }
+
+   void block(unsigned int time)
+   {
+      if (clock != time)
+      {
+         // store sample buffer
+         buffer.put(values, recorder->channelCount());
+
+         // clear sample buffer
+         for (auto &f : values)
+         {
+            f = 0;
+         }
+
+         clock = time;
+      }
+   }
+
+   void set(int channel, float value)
+   {
+      if (channel >= 0 && channel < recorder->channelCount())
+      {
+         values[channel] = value;
+      }
+   }
+
+   void begin(int sampleCount)
+   {
+      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate());
+   }
+
+   void write()
+   {
+      buffer.flip();
+      recorder->write(buffer);
+   }
+};
 
 /*
  * baseband processor signal parameters
@@ -257,7 +350,11 @@ struct DecoderStatus
 
    // minimum modulation threshold to detect valid signal (default 5%)
    float modulationThreshold = 0.850f;
+
+   // signal debugger
+   std::shared_ptr<DecoderDebug> debug;
 };
+
 
 }
 
