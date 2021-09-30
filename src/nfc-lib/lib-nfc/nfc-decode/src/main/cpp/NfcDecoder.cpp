@@ -149,6 +149,12 @@ void NfcDecoder::Impl::configure(long newSampleRate)
 
       // configure NFC-B decoder
       nfcb.configure(newSampleRate);
+
+      // configure NFC-F decoder
+      nfcf.configure(newSampleRate);
+
+      // configure NFC-V decoder
+      nfcv.configure(newSampleRate);
    }
 
    // starts without bitrate
