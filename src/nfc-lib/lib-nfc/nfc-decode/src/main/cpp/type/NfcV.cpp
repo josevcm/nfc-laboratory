@@ -22,45 +22,55 @@
 
 */
 
-#ifndef NFC_NFCB_H
-#define NFC_NFCB_H
-
-#include <list>
-
-#include <rt/Logger.h>
-
-#include <sdr/SignalBuffer.h>
-
-#include <nfc/Nfc.h>
-#include <nfc/NfcFrame.h>
-
-#include "NfcStatus.h"
+#include "NfcV.h"
 
 namespace nfc {
 
-struct NfcB
+NfcV::NfcV(DecoderStatus *decoder) : decoder(decoder)
 {
-   rt::Logger log {"NfcB"};
-
-   DecoderStatus *decoder;
-
-   explicit NfcB(DecoderStatus *decoder);
-
-   void configure(long sampleRate);
-
-   bool detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
-
-   void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
-
-   bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
-
-   bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
-
-   int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
-
-   int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
-};
-
 }
 
-#endif //NFC_LAB_NFCB_H
+void NfcV::configure(long sampleRate)
+{
+}
+
+bool NfcV::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+void NfcV::decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+{
+   //   if (self->frameStatus.frameType == PollFrame)
+   //   {
+   //      decodeFrameDevNfcA(samples, frames);
+   //   }
+   //
+   //   if (self->frameStatus.frameType == ListenFrame)
+   //   {
+   //      decodeFrameTagNfcA(samples, frames);
+   //   }
+}
+
+bool NfcV::decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+bool NfcV::decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+int NfcV::decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
+{
+   return 0;
+}
+
+int NfcV::decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer)
+{
+   return 0;
+}
+
+
+}

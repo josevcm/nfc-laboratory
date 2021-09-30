@@ -22,52 +22,55 @@
 
 */
 
-#ifndef NFC_NFC_H
-#define NFC_NFC_H
+#include "NfcF.h"
 
 namespace nfc {
 
-enum TechType
+NfcF::NfcF(DecoderStatus *decoder) : decoder(decoder)
 {
-   None = 0,
-   NfcA = 1,
-   NfcB = 2,
-   NfcF = 3,
-   NfcV = 4
-};
-
-enum RateType
-{
-   r106k = 0,
-   r212k = 1,
-   r424k = 2,
-   r848k = 3
-};
-
-enum FrameType
-{
-   NoCarrier = 0,
-   EmptyFrame = 1,
-   PollFrame = 2,
-   ListenFrame = 3
-};
-
-enum FrameFlags
-{
-   ShortFrame = 0x01,
-   Encrypted = 0x08,
-   ParityError = 0x20,
-   CrcError = 0x40,
-   Truncated = 0x80
-};
-
-enum FramePhase
-{
-   CarrierFrame = 0,
-   SelectionFrame = 1,
-   ApplicationFrame = 2
-};
-
 }
 
-#endif //NFC_LAB_NFC_H
+void NfcF::configure(long sampleRate)
+{
+}
+
+bool NfcF::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+void NfcF::decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+{
+   //   if (self->frameStatus.frameType == PollFrame)
+   //   {
+   //      decodeFrameDevNfcA(samples, frames);
+   //   }
+   //
+   //   if (self->frameStatus.frameType == ListenFrame)
+   //   {
+   //      decodeFrameTagNfcA(samples, frames);
+   //   }
+}
+
+bool NfcF::decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+bool NfcF::decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+{
+   return false;
+}
+
+int NfcF::decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
+{
+   return 0;
+}
+
+int NfcF::decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer)
+{
+   return 0;
+}
+
+
+}

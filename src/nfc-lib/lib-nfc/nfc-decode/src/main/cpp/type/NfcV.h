@@ -22,8 +22,8 @@
 
 */
 
-#ifndef NFC_NFCA_H
-#define NFC_NFCA_H
+#ifndef NFC_NFCV_H
+#define NFC_NFCV_H
 
 #include <list>
 
@@ -38,45 +38,13 @@
 
 namespace nfc {
 
-struct NfcA
+struct NfcV
 {
-   struct Impl;
+   rt::Logger log {"NfcV"};
 
-   enum PatternType
-   {
-      Invalid = 0,
-      NoPattern = 1,
-      PatternX = 2,
-      PatternY = 3,
-      PatternZ = 4,
-      PatternD = 5,
-      PatternE = 6,
-      PatternF = 7,
-      PatternM = 8,
-      PatternN = 9,
-      PatternO = 10
-   };
+   DecoderStatus *decoder;
 
-   enum CommandType
-   {
-      NFCA_REQA = 0x26,
-      NFCA_HLTA = 0x50,
-      NFCA_WUPA = 0x52,
-      NFCA_AUTH1 = 0x60,
-      NFCA_AUTH2 = 0x61,
-      NFCA_SEL1 = 0x93,
-      NFCA_SEL2 = 0x95,
-      NFCA_SEL3 = 0x97,
-      NFCA_RATS = 0xE0,
-      NFCA_PPS = 0xD0,
-      NFCA_IBLOCK = 0x02,
-      NFCA_RBLOCK = 0xA2,
-      NFCA_SBLOCK = 0xC2
-   };
-
-   explicit NfcA(DecoderStatus *decoder);
-
-   ~NfcA();
+   explicit NfcV(DecoderStatus *decoder);
 
    void configure(long sampleRate);
 
@@ -90,45 +58,9 @@ struct NfcA
 
    int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
 
-   int decodeListenFrameSymbolAsk(sdr::SignalBuffer &buffer);
-
    int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
-
-   void resetFrameSearch();
-
-   void resetModulation();
-
-   bool nextSample(sdr::SignalBuffer &buffer);
-
-   void process(NfcFrame frame);
-
-   bool processREQA(NfcFrame &frame);
-
-   bool processHLTA(NfcFrame &frame);
-
-   bool processSELn(NfcFrame &frame);
-
-   bool processRATS(NfcFrame &frame);
-
-   bool processPPSr(NfcFrame &frame);
-
-   bool processAUTH(NfcFrame &frame);
-
-   bool processIBlock(NfcFrame &frame);
-
-   bool processRBlock(NfcFrame &frame);
-
-   bool processSBlock(NfcFrame &frame);
-
-   void processOther(NfcFrame &frame);
-
-   static bool checkCrc(NfcFrame &frame);
-
-   static bool checkParity(unsigned int value, unsigned int parity);
-
-   Impl *self;
 };
 
 }
 
-#endif //NFC_LAB_NFCA_H
+#endif //NFC_NFCV_H

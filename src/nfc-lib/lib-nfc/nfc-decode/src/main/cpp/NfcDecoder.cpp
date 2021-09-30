@@ -23,7 +23,6 @@
 */
 
 #include <cmath>
-#include <chrono>
 #include <functional>
 
 #include <rt/Logger.h>
@@ -32,8 +31,11 @@
 #include <nfc/NfcDecoder.h>
 
 #include "NfcStatus.h"
-#include "NfcA.h"
-#include "NfcB.h"
+
+#include "type/NfcA.h"
+#include "type/NfcB.h"
+#include "type/NfcF.h"
+#include "type/NfcV.h"
 
 namespace nfc {
 
@@ -49,6 +51,12 @@ struct NfcDecoder::Impl
 
    // NFC-B Decoder
    struct NfcB nfcb;
+
+   // NFC-F Decoder
+   struct NfcB nfcf;
+
+   // NFC-V Decoder
+   struct NfcB nfcv;
 
    // global decoder status
    struct DecoderStatus decoder;
@@ -109,7 +117,7 @@ float NfcDecoder::signalStrength() const
    return impl->decoder.signalStatus.powerAverage;
 }
 
-NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder)
+NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder), nfcf(&decoder), nfcv(&decoder)
 {
 }
 
@@ -176,28 +184,46 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
       decoder.debug->begin(samples.elements());
 #endif
 
-      while (!samples.isEmpty())
+      do
       {
-         if (!decoder.modulation)
+         while (!samples.isEmpty() && !decoder.modulation)
          {
-            if (!nfca.detectModulation(samples, frames))
+            if (nfca.detectModulation(samples, frames))
+               break;
+
+            if (nfcb.detectModulation(samples, frames))
+               break;
+
+            if (nfcf.detectModulation(samples, frames))
+               break;
+
+            if (nfcv.detectModulation(samples, frames))
+               break;
+         }
+
+         if (decoder.bitrate)
+         {
+            switch (decoder.bitrate->techType)
             {
-//               if (!nfcb.detectModulation(samples, frames))
-               {
+               case TechType::NfcA:
+                  nfca.decodeFrame(samples, frames);
                   break;
-               }
+
+               case TechType::NfcB:
+                  nfcb.decodeFrame(samples, frames);
+                  break;
+
+               case TechType::NfcF:
+                  nfcf.decodeFrame(samples, frames);
+                  break;
+
+               case TechType::NfcV:
+                  nfcv.decodeFrame(samples, frames);
+                  break;
             }
          }
 
-         if (decoder.bitrate->techType == TechType::NfcA)
-         {
-            nfca.decodeFrame(samples, frames);
-         }
-         else if (decoder.bitrate->techType == TechType::NfcB)
-         {
-            nfcb.decodeFrame(samples, frames);
-         }
-      }
+      } while (!samples.isEmpty());
 
 #ifdef DEBUG_SIGNAL
       decoder.debug->write();
