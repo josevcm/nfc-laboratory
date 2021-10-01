@@ -108,15 +108,4 @@ bool NfcF::decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &fra
    return false;
 }
 
-int NfcF::decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
-{
-   return 0;
-}
-
-int NfcF::decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer)
-{
-   return 0;
-}
-
-
 }

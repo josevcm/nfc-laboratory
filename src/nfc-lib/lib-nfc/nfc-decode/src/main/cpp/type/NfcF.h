@@ -59,4 +59,5 @@ struct NfcF
    bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
 };
 
+}
 #endif //NFC_NFCF_H
