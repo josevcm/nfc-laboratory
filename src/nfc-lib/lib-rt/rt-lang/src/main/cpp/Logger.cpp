@@ -42,8 +42,8 @@
 
 //#define NULL_LOG
 //#define STDERR_LOG
-//#define STDOUT_LOG
-#define FSTREAM_LOG
+#define STDOUT_LOG
+//#define FSTREAM_LOG
 
 namespace rt {
 

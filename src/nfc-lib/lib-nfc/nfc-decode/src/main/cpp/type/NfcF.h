@@ -48,7 +48,7 @@ struct NfcF
 
    void configure(long sampleRate);
 
-   bool detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
+   bool detectModulation();
 
    void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
 

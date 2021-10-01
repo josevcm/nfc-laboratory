@@ -75,6 +75,8 @@ struct NfcDecoder::Impl
 
    inline std::list<NfcFrame> nextFrames(sdr::SignalBuffer &samples);
 
+   inline void detectCarrier(std::list<NfcFrame> &frames);
+
    inline bool nextSample(sdr::SignalBuffer &buffer);
 };
 
@@ -192,19 +194,29 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
 
       do
       {
-         while (!samples.isEmpty() && !decoder.modulation)
+         if (!decoder.modulation)
          {
-            if (nfca.detectModulation(samples, frames))
-               break;
+            // clear bitrate
+            decoder.bitrate = nullptr;
 
-            if (nfcb.detectModulation(samples, frames))
-               break;
+            while (nextSample(samples))
+            {
+               // carrier detector
+               detectCarrier(frames);
 
-            if (nfcf.detectModulation(samples, frames))
-               break;
+               // modulation detector
+               if (nfca.detectModulation())
+                  break;
 
-            if (nfcv.detectModulation(samples, frames))
-               break;
+               if (nfcb.detectModulation())
+                  break;
+
+               if (nfcf.detectModulation())
+                  break;
+
+               if (nfcv.detectModulation())
+                  break;
+            }
          }
 
          if (decoder.bitrate)
@@ -268,6 +280,62 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
 
    // return frame list
    return frames;
+}
+
+void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
+{
+   /*
+    * carrier presence detector
+    */
+   float edge = std::fabs(decoder.signalStatus.signalAverage - decoder.signalStatus.powerAverage);
+
+   // positive edge
+   if (decoder.signalStatus.signalAverage > edge && decoder.signalStatus.powerAverage > decoder.powerLevelThreshold)
+   {
+      if (!decoder.signalStatus.carrierOn)
+      {
+         decoder.signalStatus.carrierOn = decoder.signalClock;
+
+         if (decoder.signalStatus.carrierOff)
+         {
+            NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
+
+            silence.setFramePhase(FramePhase::CarrierFrame);
+            silence.setSampleStart(decoder.signalStatus.carrierOff);
+            silence.setSampleEnd(decoder.signalStatus.carrierOn);
+            silence.setTimeStart(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+            silence.setTimeEnd(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+
+            frames.push_back(silence);
+         }
+
+         decoder.signalStatus.carrierOff = 0;
+      }
+   }
+
+      // negative edge
+   else if (decoder.signalStatus.signalAverage < edge || decoder.signalStatus.powerAverage < decoder.powerLevelThreshold)
+   {
+      if (!decoder.signalStatus.carrierOff)
+      {
+         decoder.signalStatus.carrierOff = decoder.signalClock;
+
+         if (decoder.signalStatus.carrierOn)
+         {
+            NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
+
+            carrier.setFramePhase(FramePhase::CarrierFrame);
+            carrier.setSampleStart(decoder.signalStatus.carrierOn);
+            carrier.setSampleEnd(decoder.signalStatus.carrierOff);
+            carrier.setTimeStart(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+            carrier.setTimeEnd(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+
+            frames.push_back(carrier);
+         }
+
+         decoder.signalStatus.carrierOn = 0;
+      }
+   }
 }
 
 bool NfcDecoder::Impl::nextSample(sdr::SignalBuffer &buffer)

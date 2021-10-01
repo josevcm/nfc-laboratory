@@ -187,184 +187,302 @@ void NfcA::configure(long sampleRate)
 /*
  * Search for NFC-A modulated signal
  */
-bool NfcA::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+//bool NfcA::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+//{
+//   self->symbolStatus.pattern = PatternType::Invalid;
+//
+//   while (nextSample(buffer) && self->symbolStatus.pattern == PatternType::Invalid)
+//   {
+//      // ignore low power signals
+//      if (self->decoder->signalStatus.powerAverage > self->decoder->powerLevelThreshold)
+//      {
+//         // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
+//         for (int rate = r106k; rate <= r424k; rate++)
+//         {
+//            self->decoder->bitrate = self->bitrateParams + rate;
+//            self->decoder->modulation = self->modulationStatus + rate;
+//
+//            // compute signal pointers
+//            self->decoder->modulation->signalIndex = (self->decoder->bitrate->offsetSignalIndex + self->decoder->signalClock);
+//            self->decoder->modulation->filterIndex = (self->decoder->bitrate->offsetFilterIndex + self->decoder->signalClock);
+//
+//            // get signal samples
+//            float currentData = self->decoder->signalStatus.signalData[self->decoder->modulation->signalIndex & (SignalBufferLength - 1)];
+//            float delayedData = self->decoder->signalStatus.signalData[self->decoder->modulation->filterIndex & (SignalBufferLength - 1)];
+//
+//            // integrate signal data over 1/2 symbol
+//            self->decoder->modulation->filterIntegrate += currentData; // add new value
+//            self->decoder->modulation->filterIntegrate -= delayedData; // remove delayed value
+//
+//            // correlation points
+//            self->decoder->modulation->filterPoint1 = (self->decoder->modulation->signalIndex % self->decoder->bitrate->period1SymbolSamples);
+//            self->decoder->modulation->filterPoint2 = (self->decoder->modulation->signalIndex + self->decoder->bitrate->period2SymbolSamples) % self->decoder->bitrate->period1SymbolSamples;
+//            self->decoder->modulation->filterPoint3 = (self->decoder->modulation->signalIndex + self->decoder->bitrate->period1SymbolSamples - 1) % self->decoder->bitrate->period1SymbolSamples;
+//
+//            // store integrated signal in correlation buffer
+//            self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint1] = self->decoder->modulation->filterIntegrate;
+//
+//            // compute correlation factors
+//            self->decoder->modulation->correlatedS0 = self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint1] - self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint2];
+//            self->decoder->modulation->correlatedS1 = self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint2] - self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint3];
+//            self->decoder->modulation->correlatedSD = std::fabs(self->decoder->modulation->correlatedS0 - self->decoder->modulation->correlatedS1) / float(self->decoder->bitrate->period2SymbolSamples);
+//
+//            // compute symbol average
+//            self->decoder->modulation->symbolAverage = self->decoder->modulation->symbolAverage * self->decoder->bitrate->symbolAverageW0 + currentData * self->decoder->bitrate->symbolAverageW1;
+//
+//#ifdef DEBUG_ASK_CORRELATION_CHANNEL
+//            self->decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, self->decoder->modulation->correlatedSD);
+//#endif
+//#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
+//            self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
+//#endif
+//            // search for Pattern-Z in PCD to PICC request
+//            if (self->decoder->modulation->correlatedSD > self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold)
+//            {
+//               // calculate symbol self->decoder->modulation deep
+//               float modulationDeep = (self->decoder->signalStatus.powerAverage - currentData) / self->decoder->signalStatus.powerAverage;
+//
+//               if (self->decoder->modulation->searchDeepValue < modulationDeep)
+//                  self->decoder->modulation->searchDeepValue = modulationDeep;
+//
+//               // max correlation peak detector
+//               if (self->decoder->modulation->correlatedSD > self->decoder->modulation->correlationPeek)
+//               {
+//                  self->decoder->modulation->searchPulseWidth++;
+//                  self->decoder->modulation->searchPeakTime = self->decoder->signalClock;
+//                  self->decoder->modulation->searchEndTime = self->decoder->signalClock + self->decoder->bitrate->period4SymbolSamples;
+//                  self->decoder->modulation->correlationPeek = self->decoder->modulation->correlatedSD;
+//               }
+//            }
+//
+//            // Check for SoF symbol
+//            if (self->decoder->signalClock == self->decoder->modulation->searchEndTime)
+//            {
+//#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
+//               self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
+//#endif
+//               // check self->decoder->modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
+//               if (self->decoder->modulation->searchDeepValue > self->decoder->modulationThreshold)
+//               {
+//                  // set lower threshold to detect valid response pattern
+//                  self->decoder->modulation->searchThreshold = self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold;
+//
+//                  // set pattern search window
+//                  self->decoder->modulation->symbolStartTime = self->decoder->modulation->searchPeakTime - self->decoder->bitrate->period2SymbolSamples;
+//                  self->decoder->modulation->symbolEndTime = self->decoder->modulation->searchPeakTime + self->decoder->bitrate->period2SymbolSamples;
+//
+//                  // setup frame info
+//                  self->frameStatus.frameType = PollFrame;
+//                  self->frameStatus.symbolRate = self->decoder->bitrate->symbolsPerSecond;
+//                  self->frameStatus.frameStart = self->decoder->modulation->symbolStartTime - self->decoder->bitrate->symbolDelayDetect;
+//                  self->frameStatus.frameEnd = 0;
+//
+//                  // setup symbol info
+//                  self->symbolStatus.value = 0;
+//                  self->symbolStatus.start = self->decoder->modulation->symbolStartTime - self->decoder->bitrate->symbolDelayDetect;
+//                  self->symbolStatus.end = self->decoder->modulation->symbolEndTime - self->decoder->bitrate->symbolDelayDetect;
+//                  self->symbolStatus.length = self->symbolStatus.end - self->symbolStatus.start;
+//                  self->symbolStatus.pattern = PatternType::PatternZ;
+//
+//                  break;
+//               }
+//
+//               // reset self->decoder->modulation to continue search
+//               self->decoder->modulation->searchStartTime = 0;
+//               self->decoder->modulation->searchEndTime = 0;
+//               self->decoder->modulation->searchDeepValue = 0;
+//               self->decoder->modulation->correlationPeek = 0;
+//            }
+//         }
+//      }
+//
+//      // carrier edge detector
+//      float edge = std::fabs(self->decoder->signalStatus.signalAverage - self->decoder->signalStatus.powerAverage);
+//
+//      // positive edge
+//      if (self->decoder->signalStatus.signalAverage > edge && self->decoder->signalStatus.powerAverage > self->decoder->powerLevelThreshold)
+//      {
+//         if (!self->decoder->signalStatus.carrierOn)
+//         {
+//            self->decoder->signalStatus.carrierOn = self->decoder->signalClock;
+//
+//            if (self->decoder->signalStatus.carrierOff)
+//            {
+//               NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
+//
+//               silence.setFramePhase(FramePhase::CarrierFrame);
+//               silence.setSampleStart(self->decoder->signalStatus.carrierOff);
+//               silence.setSampleEnd(self->decoder->signalStatus.carrierOn);
+//               silence.setTimeStart(double(self->decoder->signalStatus.carrierOff) / double(self->decoder->sampleRate));
+//               silence.setTimeEnd(double(self->decoder->signalStatus.carrierOn) / double(self->decoder->sampleRate));
+//
+//               frames.push_back(silence);
+//            }
+//
+//            self->decoder->signalStatus.carrierOff = 0;
+//         }
+//      }
+//
+//         // negative edge
+//      else if (self->decoder->signalStatus.signalAverage < edge || self->decoder->signalStatus.powerAverage < self->decoder->powerLevelThreshold)
+//      {
+//         if (!self->decoder->signalStatus.carrierOff)
+//         {
+//            self->decoder->signalStatus.carrierOff = self->decoder->signalClock;
+//
+//            if (self->decoder->signalStatus.carrierOn)
+//            {
+//               NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
+//
+//               carrier.setFramePhase(FramePhase::CarrierFrame);
+//               carrier.setSampleStart(self->decoder->signalStatus.carrierOn);
+//               carrier.setSampleEnd(self->decoder->signalStatus.carrierOff);
+//               carrier.setTimeStart(double(self->decoder->signalStatus.carrierOn) / double(self->decoder->sampleRate));
+//               carrier.setTimeEnd(double(self->decoder->signalStatus.carrierOff) / double(self->decoder->sampleRate));
+//
+//               frames.push_back(carrier);
+//            }
+//
+//            self->decoder->signalStatus.carrierOn = 0;
+//         }
+//      }
+//   }
+//
+//   if (self->symbolStatus.pattern != PatternType::Invalid)
+//   {
+//      // reset modulation to continue search
+//      self->decoder->modulation->searchStartTime = 0;
+//      self->decoder->modulation->searchEndTime = 0;
+//      self->decoder->modulation->searchDeepValue = 0;
+//      self->decoder->modulation->correlationPeek = 0;
+//
+//      // self->decoder->modulation detected
+//      return true;
+//   }
+//
+//   // no bitrate detected
+//   self->decoder->bitrate = nullptr;
+//
+//   // no modulation detected
+//   self->decoder->modulation = nullptr;
+//
+//   return false;
+//}
+
+bool NfcA::detectModulation()
 {
-   self->symbolStatus.pattern = PatternType::Invalid;
-
-   while (nextSample(buffer) && self->symbolStatus.pattern == PatternType::Invalid)
+   // ignore low power signals
+   if (self->decoder->signalStatus.powerAverage > self->decoder->powerLevelThreshold)
    {
-      // ignore low power signals
-      if (self->decoder->signalStatus.powerAverage > self->decoder->powerLevelThreshold)
+      // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
+      for (int rate = r106k; rate <= r424k; rate++)
       {
-         // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
-         for (int rate = r106k; rate <= r424k; rate++)
-         {
-            self->decoder->bitrate = self->bitrateParams + rate;
-            self->decoder->modulation = self->modulationStatus + rate;
+         BitrateParams *bitrate = self->bitrateParams + rate;
+         ModulationStatus *modulation = self->modulationStatus + rate;
 
-            // compute signal pointers
-            self->decoder->modulation->signalIndex = (self->decoder->bitrate->offsetSignalIndex + self->decoder->signalClock);
-            self->decoder->modulation->filterIndex = (self->decoder->bitrate->offsetFilterIndex + self->decoder->signalClock);
+         // compute signal pointers
+         modulation->signalIndex = (bitrate->offsetSignalIndex + self->decoder->signalClock);
+         modulation->filterIndex = (bitrate->offsetFilterIndex + self->decoder->signalClock);
 
-            // get signal samples
-            float currentData = self->decoder->signalStatus.signalData[self->decoder->modulation->signalIndex & (SignalBufferLength - 1)];
-            float delayedData = self->decoder->signalStatus.signalData[self->decoder->modulation->filterIndex & (SignalBufferLength - 1)];
+         // get signal samples
+         float currentData = self->decoder->signalStatus.signalData[modulation->signalIndex & (SignalBufferLength - 1)];
+         float delayedData = self->decoder->signalStatus.signalData[modulation->filterIndex & (SignalBufferLength - 1)];
 
-            // integrate signal data over 1/2 symbol
-            self->decoder->modulation->filterIntegrate += currentData; // add new value
-            self->decoder->modulation->filterIntegrate -= delayedData; // remove delayed value
+         // integrate signal data over 1/2 symbol
+         modulation->filterIntegrate += currentData; // add new value
+         modulation->filterIntegrate -= delayedData; // remove delayed value
 
-            // correlation points
-            self->decoder->modulation->filterPoint1 = (self->decoder->modulation->signalIndex % self->decoder->bitrate->period1SymbolSamples);
-            self->decoder->modulation->filterPoint2 = (self->decoder->modulation->signalIndex + self->decoder->bitrate->period2SymbolSamples) % self->decoder->bitrate->period1SymbolSamples;
-            self->decoder->modulation->filterPoint3 = (self->decoder->modulation->signalIndex + self->decoder->bitrate->period1SymbolSamples - 1) % self->decoder->bitrate->period1SymbolSamples;
+         // correlation points
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
-            // store integrated signal in correlation buffer
-            self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint1] = self->decoder->modulation->filterIntegrate;
+         // store integrated signal in correlation buffer
+         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
 
-            // compute correlation factors
-            self->decoder->modulation->correlatedS0 = self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint1] - self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint2];
-            self->decoder->modulation->correlatedS1 = self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint2] - self->decoder->modulation->correlationData[self->decoder->modulation->filterPoint3];
-            self->decoder->modulation->correlatedSD = std::fabs(self->decoder->modulation->correlatedS0 - self->decoder->modulation->correlatedS1) / float(self->decoder->bitrate->period2SymbolSamples);
+         // compute correlation factors
+         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
 
-            // compute symbol average
-            self->decoder->modulation->symbolAverage = self->decoder->modulation->symbolAverage * self->decoder->bitrate->symbolAverageW0 + currentData * self->decoder->bitrate->symbolAverageW1;
+         // compute symbol average
+         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
 
 #ifdef DEBUG_ASK_CORRELATION_CHANNEL
-            self->decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, self->decoder->modulation->correlatedSD);
+         self->decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, modulation->correlatedSD);
 #endif
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-            self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
+         self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
 #endif
-            // search for Pattern-Z in PCD to PICC request
-            if (self->decoder->modulation->correlatedSD > self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold)
+         // search for Pattern-Z in PCD to PICC request
+         if (modulation->correlatedSD > self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold)
+         {
+            // calculate symbol modulation deep
+            float modulationDeep = (self->decoder->signalStatus.powerAverage - currentData) / self->decoder->signalStatus.powerAverage;
+
+            if (modulation->searchDeepValue < modulationDeep)
+               modulation->searchDeepValue = modulationDeep;
+
+            // max correlation peak detector
+            if (modulation->correlatedSD > modulation->correlationPeek)
             {
-               // calculate symbol self->decoder->modulation deep
-               float modulationDeep = (self->decoder->signalStatus.powerAverage - currentData) / self->decoder->signalStatus.powerAverage;
-
-               if (self->decoder->modulation->searchDeepValue < modulationDeep)
-                  self->decoder->modulation->searchDeepValue = modulationDeep;
-
-               // max correlation peak detector
-               if (self->decoder->modulation->correlatedSD > self->decoder->modulation->correlationPeek)
-               {
-                  self->decoder->modulation->searchPulseWidth++;
-                  self->decoder->modulation->searchPeakTime = self->decoder->signalClock;
-                  self->decoder->modulation->searchEndTime = self->decoder->signalClock + self->decoder->bitrate->period4SymbolSamples;
-                  self->decoder->modulation->correlationPeek = self->decoder->modulation->correlatedSD;
-               }
+               modulation->searchPulseWidth++;
+               modulation->searchPeakTime = self->decoder->signalClock;
+               modulation->searchEndTime = self->decoder->signalClock + bitrate->period4SymbolSamples;
+               modulation->correlationPeek = modulation->correlatedSD;
             }
+         }
 
-            // Check for SoF symbol
-            if (self->decoder->signalClock == self->decoder->modulation->searchEndTime)
-            {
+         // Check for SoF symbol
+         if (self->decoder->signalClock == modulation->searchEndTime)
+         {
 #ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-               self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
+            self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
 #endif
-               // check self->decoder->modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
-               if (self->decoder->modulation->searchDeepValue > self->decoder->modulationThreshold)
-               {
-                  // set lower threshold to detect valid response pattern
-                  self->decoder->modulation->searchThreshold = self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold;
-
-                  // set pattern search window
-                  self->decoder->modulation->symbolStartTime = self->decoder->modulation->searchPeakTime - self->decoder->bitrate->period2SymbolSamples;
-                  self->decoder->modulation->symbolEndTime = self->decoder->modulation->searchPeakTime + self->decoder->bitrate->period2SymbolSamples;
-
-                  // setup frame info
-                  self->frameStatus.frameType = PollFrame;
-                  self->frameStatus.symbolRate = self->decoder->bitrate->symbolsPerSecond;
-                  self->frameStatus.frameStart = self->decoder->modulation->symbolStartTime - self->decoder->bitrate->symbolDelayDetect;
-                  self->frameStatus.frameEnd = 0;
-
-                  // setup symbol info
-                  self->symbolStatus.value = 0;
-                  self->symbolStatus.start = self->decoder->modulation->symbolStartTime - self->decoder->bitrate->symbolDelayDetect;
-                  self->symbolStatus.end = self->decoder->modulation->symbolEndTime - self->decoder->bitrate->symbolDelayDetect;
-                  self->symbolStatus.length = self->symbolStatus.end - self->symbolStatus.start;
-                  self->symbolStatus.pattern = PatternType::PatternZ;
-
-                  break;
-               }
-
-               // reset self->decoder->modulation to continue search
-               self->decoder->modulation->searchStartTime = 0;
-               self->decoder->modulation->searchEndTime = 0;
-               self->decoder->modulation->searchDeepValue = 0;
-               self->decoder->modulation->correlationPeek = 0;
-            }
-         }
-      }
-
-      // carrier edge detector
-      float edge = std::fabs(self->decoder->signalStatus.signalAverage - self->decoder->signalStatus.powerAverage);
-
-      // positive edge
-      if (self->decoder->signalStatus.signalAverage > edge && self->decoder->signalStatus.powerAverage > self->decoder->powerLevelThreshold)
-      {
-         if (!self->decoder->signalStatus.carrierOn)
-         {
-            self->decoder->signalStatus.carrierOn = self->decoder->signalClock;
-
-            if (self->decoder->signalStatus.carrierOff)
+            // check modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
+            if (modulation->searchDeepValue > self->decoder->modulationThreshold)
             {
-               NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
+               // set lower threshold to detect valid response pattern
+               modulation->searchThreshold = self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold;
 
-               silence.setFramePhase(FramePhase::CarrierFrame);
-               silence.setSampleStart(self->decoder->signalStatus.carrierOff);
-               silence.setSampleEnd(self->decoder->signalStatus.carrierOn);
-               silence.setTimeStart(double(self->decoder->signalStatus.carrierOff) / double(self->decoder->sampleRate));
-               silence.setTimeEnd(double(self->decoder->signalStatus.carrierOn) / double(self->decoder->sampleRate));
+               // set pattern search window
+               modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
+               modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
 
-               frames.push_back(silence);
+               // setup frame info
+               self->frameStatus.frameType = PollFrame;
+               self->frameStatus.symbolRate = bitrate->symbolsPerSecond;
+               self->frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+               self->frameStatus.frameEnd = 0;
+
+               // setup symbol info
+               self->symbolStatus.value = 0;
+               self->symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+               self->symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+               self->symbolStatus.length = self->symbolStatus.end - self->symbolStatus.start;
+               self->symbolStatus.pattern = PatternType::PatternZ;
+
+               // reset modulation to continue search
+               modulation->searchStartTime = 0;
+               modulation->searchEndTime = 0;
+               modulation->searchDeepValue = 0;
+               modulation->correlationPeek = 0;
+
+               // modulation detected
+               self->decoder->bitrate = bitrate;
+               self->decoder->modulation = modulation;
+
+               return true;
             }
 
-            self->decoder->signalStatus.carrierOff = 0;
-         }
-      }
-
-         // negative edge
-      else if (self->decoder->signalStatus.signalAverage < edge || self->decoder->signalStatus.powerAverage < self->decoder->powerLevelThreshold)
-      {
-         if (!self->decoder->signalStatus.carrierOff)
-         {
-            self->decoder->signalStatus.carrierOff = self->decoder->signalClock;
-
-            if (self->decoder->signalStatus.carrierOn)
-            {
-               NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
-
-               carrier.setFramePhase(FramePhase::CarrierFrame);
-               carrier.setSampleStart(self->decoder->signalStatus.carrierOn);
-               carrier.setSampleEnd(self->decoder->signalStatus.carrierOff);
-               carrier.setTimeStart(double(self->decoder->signalStatus.carrierOn) / double(self->decoder->sampleRate));
-               carrier.setTimeEnd(double(self->decoder->signalStatus.carrierOff) / double(self->decoder->sampleRate));
-
-               frames.push_back(carrier);
-            }
-
-            self->decoder->signalStatus.carrierOn = 0;
+            // reset modulation to continue search
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->searchDeepValue = 0;
+            modulation->correlationPeek = 0;
          }
       }
    }
-
-   if (self->symbolStatus.pattern != PatternType::Invalid)
-   {
-      // reset self->decoder->modulation to continue search
-      self->decoder->modulation->searchStartTime = 0;
-      self->decoder->modulation->searchEndTime = 0;
-      self->decoder->modulation->searchDeepValue = 0;
-      self->decoder->modulation->correlationPeek = 0;
-
-      // self->decoder->modulation detected
-      return true;
-   }
-
-   // no self->decoder->bitrate detected
-   self->decoder->bitrate = nullptr;
-
-   // no self->decoder->modulation detected
-   self->decoder->modulation = nullptr;
 
    return false;
 }

@@ -34,7 +34,7 @@ void NfcB::configure(long sampleRate)
 {
 }
 
-bool NfcB::detectModulation(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+bool NfcB::detectModulation()
 {
    return false;
 }
