@@ -57,12 +57,6 @@ struct NfcF
    bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
 
    bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
-
-   int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
-
-   int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
 };
-
-}
 
 #endif //NFC_NFCF_H
