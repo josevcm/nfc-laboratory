@@ -65,6 +65,44 @@ struct NfcF::Impl
    Impl(DecoderStatus *decoder) : decoder(decoder)
    {
    }
+
+   inline void configure(long sampleRate)
+   {
+      log.info("--------------------------------------------");
+      log.info("initializing NFC-F decoder");
+      log.info("--------------------------------------------");
+      log.info("\tsignalSampleRate     {}", {decoder->sampleRate});
+      log.info("\tpowerLevelThreshold  {}", {decoder->powerLevelThreshold});
+      log.info("\tmodulationThreshold  {} -> {}", {minimumModulationThreshold, maximumModulationThreshold});
+   }
+
+   inline bool detectModulation()
+   {
+      return false;
+   }
+
+   inline void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+   {
+      if (frameStatus.frameType == PollFrame)
+      {
+         decodePollFrame(samples, frames);
+      }
+
+      if (frameStatus.frameType == ListenFrame)
+      {
+         decodeListenFrame(samples, frames);
+      }
+   }
+
+   inline bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+   {
+      return false;
+   }
+
+   inline bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+   {
+      return false;
+   }
 };
 
 NfcF::NfcF(DecoderStatus *decoder) : self(new Impl(decoder))
@@ -84,40 +122,17 @@ void NfcF::setModulationThreshold(float min, float max)
 
 void NfcF::configure(long sampleRate)
 {
-   self->log.info("--------------------------------------------");
-   self->log.info("initializing NFC-F decoder");
-   self->log.info("--------------------------------------------");
-   self->log.info("\tsignalSampleRate     {}", {self->decoder->sampleRate});
-   self->log.info("\tpowerLevelThreshold  {}", {self->decoder->powerLevelThreshold});
-   self->log.info("\tmodulationThreshold  {} -> {}", {self->minimumModulationThreshold, self->maximumModulationThreshold});
+   self->configure(sampleRate);
 }
 
-bool NfcF::detectModulation()
+bool NfcF::detect()
 {
-   return false;
+   return self->detectModulation();
 }
 
-void NfcF::decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+void NfcF::decode(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
 {
-   if (self->frameStatus.frameType == PollFrame)
-   {
-      decodePollFrame(samples, frames);
-   }
-
-   if (self->frameStatus.frameType == ListenFrame)
-   {
-      decodeListenFrame(samples, frames);
-   }
-}
-
-bool NfcF::decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
-{
-   return false;
-}
-
-bool NfcF::decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
-{
-   return false;
+   self->decodeFrame(samples, frames);
 }
 
 }

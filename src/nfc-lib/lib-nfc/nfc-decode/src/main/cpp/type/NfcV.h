@@ -52,17 +52,9 @@ struct NfcV
 
    void configure(long sampleRate);
 
-   bool detectModulation();
+   bool detect();
 
-   void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
-
-   bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
-
-   bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames);
-
-   int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
-
-   int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
+   void decode(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
 };
 
 }

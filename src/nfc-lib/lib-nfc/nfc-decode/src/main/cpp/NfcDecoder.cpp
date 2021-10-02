@@ -219,22 +219,22 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
                detectCarrier(frames);
 
 #ifdef ENABLE_NFC_A_DECODER
-               if (nfca.detectModulation())
+               if (nfca.detect())
                   break;
 #endif
 
 #ifdef ENABLE_NFC_B_DECODER
-               if (nfcb.detectModulation())
+               if (nfcb.detect())
                   break;
 #endif
 
 #ifdef ENABLE_NFC_F_DECODER
-               if (nfcf.detectModulation())
+               if (nfcf.detect())
                   break;
 #endif
 
 #ifdef ENABLE_NFC_V_DECODER
-               if (nfcv.detectModulation())
+               if (nfcv.detect())
                   break;
 #endif
             }
@@ -246,25 +246,25 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
             {
 #ifdef ENABLE_NFC_A_DECODER
                case TechType::NfcA:
-                  nfca.decodeFrame(samples, frames);
+                  nfca.decode(samples, frames);
                   break;
 #endif
 
 #ifdef ENABLE_NFC_B_DECODER
                case TechType::NfcB:
-                  nfcb.decodeFrame(samples, frames);
+                  nfcb.decode(samples, frames);
                   break;
 #endif
 
 #ifdef ENABLE_NFC_F_DECODER
                   case TechType::NfcF:
-                     nfcf.decodeFrame(samples, frames);
+                     nfcf.decode(samples, frames);
                      break;
 #endif
 
 #ifdef ENABLE_NFC_V_DECODER
                   case TechType::NfcV:
-                     nfcv.decodeFrame(samples, frames);
+                     nfcv.decode(samples, frames);
                      break;
 #endif
             }

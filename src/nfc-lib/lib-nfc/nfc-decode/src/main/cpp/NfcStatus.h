@@ -83,7 +83,7 @@ struct SignalDebug
       delete recorder;
    }
 
-   void block(unsigned int time)
+   inline void block(unsigned int time)
    {
       if (clock != time)
       {
@@ -100,7 +100,7 @@ struct SignalDebug
       }
    }
 
-   void set(int channel, float value)
+   inline void set(int channel, float value)
    {
       if (channel >= 0 && channel < recorder->channelCount())
       {
@@ -108,12 +108,12 @@ struct SignalDebug
       }
    }
 
-   void begin(int sampleCount)
+   inline void begin(int sampleCount)
    {
       buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate());
    }
 
-   void write()
+   inline void write()
    {
       buffer.flip();
       recorder->write(buffer);
@@ -214,6 +214,7 @@ struct ModulationStatus
    // symbol parameters
    unsigned int symbolStartTime;
    unsigned int symbolEndTime;
+   unsigned int symbolSyncTime;
    float symbolCorr0;
    float symbolCorr1;
    float symbolPhase;
@@ -388,6 +389,9 @@ struct DecoderStatus
       // compute signal variance (exponential variance)
       signalStatus.signalVariance = signalStatus.signalVariance * signalParams.signalVarianceW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverage) * signalParams.signalVarianceW1;
 
+      // signal modulation deep
+//      signalStatus.modulationDeep = (signalStatus.powerAverage - signalStatus.signalValue) / signalStatus.powerAverage;
+
       // store next signal value in sample buffer
       signalStatus.signalData[signalClock & (SignalBufferLength - 1)] = signalStatus.signalValue;
 
@@ -418,7 +422,6 @@ struct DecoderStatus
       return true;
    }
 };
-
 
 }
 

@@ -62,6 +62,55 @@ struct NfcV::Impl
    Impl(DecoderStatus *decoder) : decoder(decoder)
    {
    }
+
+   inline void configure(long sampleRate)
+   {
+      log.info("--------------------------------------------");
+      log.info("initializing NFC-V decoder");
+      log.info("--------------------------------------------");
+      log.info("\tsignalSampleRate     {}", {decoder->sampleRate});
+      log.info("\tpowerLevelThreshold  {}", {decoder->powerLevelThreshold});
+      log.info("\tmodulationThreshold  {}", {minimumModulationThreshold});
+   }
+
+   inline bool detectModulation()
+   {
+      return false;
+   }
+
+   inline void decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+   {
+      if (frameStatus.frameType == PollFrame)
+      {
+         decodePollFrame(samples, frames);
+      }
+
+      if (frameStatus.frameType == ListenFrame)
+      {
+         decodeListenFrame(samples, frames);
+      }
+   }
+
+   inline bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+   {
+      return false;
+   }
+
+   inline bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
+   {
+      return false;
+   }
+
+   inline int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
+   {
+      return 0;
+   }
+
+   inline int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer)
+   {
+      return 0;
+   }
+
 };
 
 NfcV::NfcV(DecoderStatus *decoder) : self(new Impl(decoder))
@@ -80,51 +129,17 @@ void NfcV::setModulationThreshold(float min)
 
 void NfcV::configure(long sampleRate)
 {
-   self->log.info("--------------------------------------------");
-   self->log.info("initializing NFC-V decoder");
-   self->log.info("--------------------------------------------");
-   self->log.info("\tsignalSampleRate     {}", {self->decoder->sampleRate});
-   self->log.info("\tpowerLevelThreshold  {}", {self->decoder->powerLevelThreshold});
-   self->log.info("\tmodulationThreshold  {}", {self->minimumModulationThreshold});
+   self->configure(sampleRate);
 }
 
-bool NfcV::detectModulation()
+bool NfcV::detect()
 {
-   return false;
+   return self->detectModulation();
 }
 
-void NfcV::decodeFrame(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
+void NfcV::decode(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames)
 {
-   if (self->frameStatus.frameType == PollFrame)
-   {
-      decodePollFrame(samples, frames);
-   }
-
-   if (self->frameStatus.frameType == ListenFrame)
-   {
-      decodeListenFrame(samples, frames);
-   }
+   self->decodeFrame(samples, frames);
 }
-
-bool NfcV::decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
-{
-   return false;
-}
-
-bool NfcV::decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
-{
-   return false;
-}
-
-int NfcV::decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
-{
-   return 0;
-}
-
-int NfcV::decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer)
-{
-   return 0;
-}
-
 
 }

@@ -27,11 +27,16 @@
 #include <rt/Subject.h>
 #include <rt/Event.h>
 
+#include <sdr/RecordDevice.h>
+
 #include <nfc/SignalReceiverTask.h>
 #include <nfc/SignalRecorderTask.h>
 #include <nfc/FrameDecoderTask.h>
 #include <nfc/FrameStorageTask.h>
 #include <nfc/FourierProcessTask.h>
+
+#include <nfc/NfcFrame.h>
+#include <nfc/NfcDecoder.h>
 
 #include "QtApplication.h"
 
@@ -73,29 +78,27 @@ int startTest(int argc, char *argv[])
    root.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    root.info("***********************************************************************");
 
-   // create executor service
-   Executor executor(128, 10);
+   nfc::NfcDecoder decoder;
 
-   // startup signal decoder task
-   executor.submit(nfc::FrameDecoderTask::construct());
+   sdr::RecordDevice source(argv[1]);
 
-   // startup frame writer task
-   executor.submit(nfc::FrameStorageTask::construct());
+   if (source.open(sdr::RecordDevice::OpenMode::Read))
+   {
+      while (!source.isEof())
+      {
+         sdr::SignalBuffer samples(65536 * source.channelCount(), source.channelCount(), source.sampleRate());
 
-   // startup signal reader task
-   executor.submit(nfc::SignalRecorderTask::construct());
+         if (source.read(samples) > 0)
+         {
+            std::list<nfc::NfcFrame> frames = decoder.nextFrames(samples);
 
-   // startup signal receiver task
-   executor.submit(nfc::SignalReceiverTask::construct());
-
-   // create decoder control subject
-   auto receiverCommandSubject = rt::Subject<rt::Event>::name("receiver.command");
-
-   receiverCommandSubject->next({nfc::SignalReceiverTask::Start});
-
-   int n;
-
-   scanf("%d", &n);
+            for (const nfc::NfcFrame &frame : frames)
+            {
+               root.info("frame at {} -> {}", {frame.sampleStart(), frame.sampleEnd()});
+            }
+         }
+      }
+   }
 
    return 0;
 }
@@ -139,6 +142,7 @@ int startApp(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-   return startApp(argc, argv);
+   return startTest(argc, argv);
+//   return startApp(argc, argv);
 }
 
