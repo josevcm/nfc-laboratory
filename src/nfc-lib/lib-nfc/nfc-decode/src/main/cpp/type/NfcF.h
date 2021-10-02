@@ -48,6 +48,8 @@ struct NfcF
 
    ~NfcF();
 
+   void setModulationThreshold(float min, float max);
+
    void configure(long sampleRate);
 
    bool detectModulation();

@@ -50,6 +50,12 @@ struct NfcF::Impl
    // modulation status for each bitrate
    ModulationStatus modulationStatus[4] {0,};
 
+   // minimum modulation threshold to detect valid signal for NFC-B (default 10%)
+   float minimumModulationThreshold = 0.10f;
+
+   // minimum modulation threshold to detect valid signal for NFC-B (default 25%)
+   float maximumModulationThreshold = 0.25f;
+
    // last detected frame end
    unsigned int lastFrameEnd = 0;
 
@@ -70,6 +76,12 @@ NfcF::~NfcF()
    delete self;
 }
 
+void NfcF::setModulationThreshold(float min, float max)
+{
+   self->minimumModulationThreshold = min;
+   self->maximumModulationThreshold = max;
+}
+
 void NfcF::configure(long sampleRate)
 {
    self->log.info("--------------------------------------------");
@@ -77,7 +89,7 @@ void NfcF::configure(long sampleRate)
    self->log.info("--------------------------------------------");
    self->log.info("\tsignalSampleRate     {}", {self->decoder->sampleRate});
    self->log.info("\tpowerLevelThreshold  {}", {self->decoder->powerLevelThreshold});
-   self->log.info("\tmodulationThreshold  {}", {self->decoder->modulationThreshold});
+   self->log.info("\tmodulationThreshold  {} -> {}", {self->minimumModulationThreshold, self->maximumModulationThreshold});
 }
 
 bool NfcF::detectModulation()

@@ -48,6 +48,8 @@ struct NfcV
 
    ~NfcV();
 
+   void setModulationThreshold(float min);
+
    void configure(long sampleRate);
 
    bool detectModulation();

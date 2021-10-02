@@ -47,6 +47,7 @@ struct NfcA::Impl
 {
    rt::Logger log {"NfcA"};
 
+   // global signal status
    DecoderStatus *decoder;
 
    // bitrate parameters
@@ -66,6 +67,9 @@ struct NfcA::Impl
 
    // modulation status for each bitrate
    ModulationStatus modulationStatus[4] {0,};
+
+   // minimum modulation threshold to detect valid signal for NFC-A (default 85%)
+   float minimumModulationThreshold = 0.850f;
 
    // last detected frame end
    unsigned int lastFrameEnd = 0;
@@ -87,6 +91,11 @@ NfcA::~NfcA()
    delete self;
 }
 
+void NfcA::setModulationThreshold(float min)
+{
+   self->minimumModulationThreshold = min;
+}
+
 void NfcA::configure(long sampleRate)
 {
    self->log.info("--------------------------------------------");
@@ -94,7 +103,7 @@ void NfcA::configure(long sampleRate)
    self->log.info("--------------------------------------------");
    self->log.info("\tsignalSampleRate     {}", {self->decoder->sampleRate});
    self->log.info("\tpowerLevelThreshold  {}", {self->decoder->powerLevelThreshold});
-   self->log.info("\tmodulationThreshold  {}", {self->decoder->modulationThreshold});
+   self->log.info("\tmodulationThreshold  {}", {self->minimumModulationThreshold});
 
    // clear detected symbol status
    self->symbolStatus = {0,};
@@ -141,8 +150,8 @@ void NfcA::configure(long sampleRate)
 
       // moving average offsets
       bitrate->offsetSignalIndex = SignalBufferLength - bitrate->symbolDelayDetect;
-      bitrate->offsetFilterIndex = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period2SymbolSamples;
       bitrate->offsetSymbolIndex = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period1SymbolSamples;
+      bitrate->offsetFilterIndex = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period2SymbolSamples;
       bitrate->offsetDetectIndex = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
 
       // exponential symbol average
@@ -157,8 +166,8 @@ void NfcA::configure(long sampleRate)
       self->log.info("\tperiod8SymbolSamples {} ({} us)", {bitrate->period8SymbolSamples, 1E6 * bitrate->period8SymbolSamples / self->decoder->sampleRate});
       self->log.info("\tsymbolDelayDetect    {} ({} us)", {bitrate->symbolDelayDetect, 1E6 * bitrate->symbolDelayDetect / self->decoder->sampleRate});
       self->log.info("\toffsetSignalIndex    {}", {bitrate->offsetSignalIndex});
-      self->log.info("\toffsetFilterIndex    {}", {bitrate->offsetFilterIndex});
       self->log.info("\toffsetSymbolIndex    {}", {bitrate->offsetSymbolIndex});
+      self->log.info("\toffsetFilterIndex    {}", {bitrate->offsetFilterIndex});
       self->log.info("\toffsetDetectIndex    {}", {bitrate->offsetDetectIndex});
    }
 
@@ -240,7 +249,7 @@ bool NfcA::detectModulation()
          self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
 #endif
          // search for Pattern-Z in PCD to PICC request
-         if (modulation->correlatedSD > self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold)
+         if (modulation->correlatedSD > self->decoder->signalStatus.powerAverage * self->minimumModulationThreshold)
          {
             // calculate symbol modulation deep
             float modulationDeep = (self->decoder->signalStatus.powerAverage - currentData) / self->decoder->signalStatus.powerAverage;
@@ -265,10 +274,10 @@ bool NfcA::detectModulation()
             self->decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
 #endif
             // check modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
-            if (modulation->searchDeepValue > self->decoder->modulationThreshold)
+            if (modulation->searchDeepValue > self->minimumModulationThreshold)
             {
                // set lower threshold to detect valid response pattern
-               modulation->searchThreshold = self->decoder->signalStatus.powerAverage * self->decoder->modulationThreshold;
+               modulation->searchThreshold = self->decoder->signalStatus.powerAverage * self->minimumModulationThreshold;
 
                // set pattern search window
                modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;

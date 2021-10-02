@@ -50,6 +50,9 @@ struct NfcV::Impl
    // modulation status for each bitrate
    ModulationStatus modulationStatus[4] {0,};
 
+   // minimum modulation threshold to detect valid signal for NFC-V (default 85%)
+   float minimumModulationThreshold = 0.850f;
+
    // last detected frame end
    unsigned int lastFrameEnd = 0;
 
@@ -70,6 +73,11 @@ NfcV::~NfcV()
    delete self;
 }
 
+void NfcV::setModulationThreshold(float min)
+{
+   self->minimumModulationThreshold = min;
+}
+
 void NfcV::configure(long sampleRate)
 {
    self->log.info("--------------------------------------------");
@@ -77,7 +85,7 @@ void NfcV::configure(long sampleRate)
    self->log.info("--------------------------------------------");
    self->log.info("\tsignalSampleRate     {}", {self->decoder->sampleRate});
    self->log.info("\tpowerLevelThreshold  {}", {self->decoder->powerLevelThreshold});
-   self->log.info("\tmodulationThreshold  {}", {self->decoder->modulationThreshold});
+   self->log.info("\tmodulationThreshold  {}", {self->minimumModulationThreshold});
 }
 
 bool NfcV::detectModulation()

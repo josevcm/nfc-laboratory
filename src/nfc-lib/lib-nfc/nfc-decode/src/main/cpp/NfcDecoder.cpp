@@ -37,6 +37,11 @@
 #include "type/NfcF.h"
 #include "type/NfcV.h"
 
+//#define ENABLE_NFC_A_DECODER
+#define ENABLE_NFC_B_DECODER
+//#define ENABLE_NFC_F_DECODER
+//#define ENABLE_NFC_V_DECODER
+
 namespace nfc {
 
 struct NfcDecoder::Impl
@@ -89,19 +94,29 @@ void NfcDecoder::setPowerLevelThreshold(float value)
    impl->decoder.powerLevelThreshold = value;
 }
 
+void NfcDecoder::setModulationThresholdNfcA(float min)
+{
+   impl->nfca.setModulationThreshold(min);
+}
+
+void NfcDecoder::setModulationThresholdNfcB(float min, float max)
+{
+   impl->nfcb.setModulationThreshold(min, max);
+}
+
+void NfcDecoder::setModulationThresholdNfcF(float min, float max)
+{
+   impl->nfcf.setModulationThreshold(min, max);
+}
+
+void NfcDecoder::setModulationThresholdNfcV(float min)
+{
+   impl->nfcv.setModulationThreshold(min);
+}
+
 float NfcDecoder::powerLevelThreshold() const
 {
    return impl->decoder.powerLevelThreshold;
-}
-
-void NfcDecoder::setModulationThreshold(float value)
-{
-   impl->decoder.modulationThreshold = value;
-}
-
-float NfcDecoder::modulationThreshold() const
-{
-   return impl->decoder.modulationThreshold;
 }
 
 float NfcDecoder::signalStrength() const
@@ -136,17 +151,30 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       // calculate sample time unit, (equivalent to 1/fc in ISO/IEC 14443-3 specifications)
       decoder.signalParams.sampleTimeUnit = double(decoder.sampleRate) / double(BaseFrequency);
 
+#ifdef ENABLE_NFC_A_DECODER
       // configure NFC-A decoder
       nfca.configure(newSampleRate);
+#endif
 
+#ifdef ENABLE_NFC_B_DECODER
       // configure NFC-B decoder
       nfcb.configure(newSampleRate);
+#endif
 
+#ifdef ENABLE_NFC_F_DECODER
       // configure NFC-F decoder
       nfcf.configure(newSampleRate);
+#endif
 
+#ifdef ENABLE_NFC_V_DECODER
       // configure NFC-V decoder
       nfcv.configure(newSampleRate);
+#endif
+
+#ifdef DEBUG_SIGNAL
+      log.warn("SIGNAL DEBUGGER ENABLED!, highly affected performance!");
+      decoder.debug = std::make_shared<SignalDebug>(DEBUG_CHANNELS, decoder.sampleRate);
+#endif
    }
 
    // starts without bitrate
@@ -154,11 +182,6 @@ void NfcDecoder::Impl::configure(long newSampleRate)
 
    // starts without modulation
    decoder.modulation = nullptr;
-
-#ifdef DEBUG_SIGNAL
-   log.warn("SIGNAL DEBUGGER ENABLED!, highly affected performance!");
-   decoder.debug = std::make_shared<SignalDebug>(DEBUG_CHANNELS, decoder.sampleRate);
-#endif
 }
 
 /**
@@ -195,18 +218,25 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
                // carrier detector
                detectCarrier(frames);
 
-               // modulation detector
+#ifdef ENABLE_NFC_A_DECODER
                if (nfca.detectModulation())
                   break;
+#endif
 
+#ifdef ENABLE_NFC_B_DECODER
                if (nfcb.detectModulation())
                   break;
+#endif
 
+#ifdef ENABLE_NFC_F_DECODER
                if (nfcf.detectModulation())
                   break;
+#endif
 
+#ifdef ENABLE_NFC_V_DECODER
                if (nfcv.detectModulation())
                   break;
+#endif
             }
          }
 
@@ -214,21 +244,29 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
          {
             switch (decoder.bitrate->techType)
             {
+#ifdef ENABLE_NFC_A_DECODER
                case TechType::NfcA:
                   nfca.decodeFrame(samples, frames);
                   break;
+#endif
 
+#ifdef ENABLE_NFC_B_DECODER
                case TechType::NfcB:
                   nfcb.decodeFrame(samples, frames);
                   break;
+#endif
 
-               case TechType::NfcF:
-                  nfcf.decodeFrame(samples, frames);
-                  break;
+#ifdef ENABLE_NFC_F_DECODER
+                  case TechType::NfcF:
+                     nfcf.decodeFrame(samples, frames);
+                     break;
+#endif
 
-               case TechType::NfcV:
-                  nfcv.decodeFrame(samples, frames);
-                  break;
+#ifdef ENABLE_NFC_V_DECODER
+                  case TechType::NfcV:
+                     nfcv.decodeFrame(samples, frames);
+                     break;
+#endif
             }
          }
 

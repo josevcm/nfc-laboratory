@@ -203,12 +203,13 @@ struct SignalStatus
 struct ModulationStatus
 {
    // symbol search status
-   unsigned int searchStartTime;   // sample start of symbol search window
-   unsigned int searchEndTime;     // sample end of symbol search window
-   unsigned int searchPeakTime;    // sample time for for maximum correlation peak
-   unsigned int searchPulseWidth;         // detected signal pulse width
-   float searchDeepValue;          // signal modulation deep during search
-   float searchThreshold;          // signal threshold
+   unsigned int searchStage;        // search stage control
+   unsigned int searchStartTime;    // sample start of symbol search window
+   unsigned int searchEndTime;      // sample end of symbol search window
+   unsigned int searchPeakTime;     // sample time for maximum correlation peak
+   unsigned int searchPulseWidth;   // detected signal pulse width
+   float searchDeepValue;           // signal modulation deep during search
+   float searchThreshold;           // signal threshold
 
    // symbol parameters
    unsigned int symbolStartTime;
@@ -220,6 +221,7 @@ struct ModulationStatus
 
    // integrator processor
    float filterIntegrate;
+   float detectIntegrate;
    float phaseIntegrate;
    float phaseThreshold;
 
@@ -234,11 +236,14 @@ struct ModulationStatus
    unsigned int filterPoint2;
    unsigned int filterPoint3;
 
-   // correlation processor
+   // correlation values
    float correlatedS0;
    float correlatedS1;
    float correlatedSD;
    float correlationPeek;
+
+   // edge detector values
+   float detectorPeek;
 
    float integrationData[SignalBufferLength];
    float correlationData[SignalBufferLength];
@@ -341,9 +346,6 @@ struct DecoderStatus
 
    // minimum signal level
    float powerLevelThreshold = 0.010f;
-
-   // minimum modulation threshold to detect valid signal (default 5%)
-   float modulationThreshold = 0.850f;
 
    // signal debugger
    std::shared_ptr<SignalDebug> debug;

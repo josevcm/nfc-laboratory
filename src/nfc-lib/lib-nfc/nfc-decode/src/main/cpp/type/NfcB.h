@@ -44,9 +44,19 @@ struct NfcB
 
    Impl *self;
 
+   enum PatternType
+   {
+      Invalid = 0,
+      PatternS = 1,
+      Pattern0 = 2,
+      Pattern1 = 3,
+   };
+
    explicit NfcB(DecoderStatus *decoder);
 
    ~NfcB();
+
+   void setModulationThreshold(float min, float max);
 
    void configure(long sampleRate);
 
@@ -61,6 +71,8 @@ struct NfcB
    int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer);
 
    int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer);
+
+   void resetModulation();
 };
 
 }
