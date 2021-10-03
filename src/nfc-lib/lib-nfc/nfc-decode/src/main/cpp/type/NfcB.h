@@ -46,7 +46,8 @@ struct NfcB
 
    enum CommandType
    {
-      NFCA_REQB = 0x05,
+      NFCB_REQB = 0x05,
+      NFCB_ATTRIB = 0x1d
    };
 
    explicit NfcB(DecoderStatus *decoder);

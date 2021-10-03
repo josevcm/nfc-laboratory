@@ -29,7 +29,7 @@
 
 #include <sdr/RecordDevice.h>
 
-//#define DEBUG_SIGNAL
+#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
@@ -162,9 +162,10 @@ struct BitrateParams
    // modulation parameters
    unsigned int symbolDelayDetect;
    unsigned int offsetSignalIndex;
-   unsigned int offsetFilterIndex;
-   unsigned int offsetSymbolIndex;
-   unsigned int offsetDetectIndex;
+   unsigned int offsetDelay2Index;
+   unsigned int offsetDelay1Index;
+   unsigned int offsetDelay4Index;
+   unsigned int offsetDelay8Index;
 };
 
 /*
@@ -228,9 +229,10 @@ struct ModulationStatus
 
    // integration indexes
    unsigned int signalIndex;
-   unsigned int filterIndex;
-   unsigned int symbolIndex;
-   unsigned int detectIndex;
+   unsigned int delay1Index;
+   unsigned int delay2Index;
+   unsigned int delay4Index;
+   unsigned int delay8Index;
 
    // correlation indexes
    unsigned int filterPoint1;
