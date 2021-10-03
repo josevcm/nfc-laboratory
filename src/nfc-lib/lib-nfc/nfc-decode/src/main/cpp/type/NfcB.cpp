@@ -770,9 +770,6 @@ struct NfcB::Impl
 
       while (decoder->nextSample(buffer))
       {
-         if (decoder->signalClock == 12055170)
-            log.info("12055170");
-
          modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
          modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
          modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
