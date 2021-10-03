@@ -1089,7 +1089,7 @@ struct NfcA::Impl
                modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
             }
 
-            // frame waiting time exceeded without detect modulation
+               // frame waiting time exceeded without detect modulation
             else if (decoder->signalClock == frameStatus.waitingEnd)
             {
                pattern = PatternType::NoPattern;
@@ -1102,6 +1102,7 @@ struct NfcA::Impl
                decoder->debug->set(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.75);
 #endif
                // set symbol window
+               modulation->symbolSyncTime = 0;
                modulation->symbolStartTime = modulation->searchPeakTime;
                modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
                modulation->symbolPhase = modulation->phaseIntegrate;
@@ -1116,7 +1117,6 @@ struct NfcA::Impl
                pattern = PatternType::PatternM;
                break;
             }
-
          }
 
             // search Response Bit Stream
@@ -1126,25 +1126,23 @@ struct NfcA::Impl
             if ((modulation->phaseIntegrate > 0 && modulation->symbolPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0))
             {
                modulation->searchPeakTime = decoder->signalClock;
-               modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
                modulation->symbolStartTime = decoder->signalClock;
                modulation->symbolEndTime = decoder->signalClock + bitrate->period1SymbolSamples;
+               modulation->symbolSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
                modulation->symbolPhase = modulation->phaseIntegrate;
             }
 
             // set next search sync window from previous
-            if (!modulation->searchEndTime)
+            if (!modulation->symbolSyncTime)
             {
                // estimated symbol start and end
                modulation->symbolStartTime = modulation->symbolEndTime;
                modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
-
-               // timing next symbol
-               modulation->searchEndTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
+               modulation->symbolSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
             }
 
                // search symbol timings
-            else if (decoder->signalClock == modulation->searchEndTime)
+            else if (decoder->signalClock == modulation->symbolSyncTime)
             {
 #ifdef DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL
                decoder->debug->set(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.5);
@@ -1185,6 +1183,7 @@ struct NfcA::Impl
 
          modulation->searchStartTime = 0;
          modulation->searchEndTime = 0;
+         modulation->symbolSyncTime = 0;
          modulation->correlationPeek = 0;
          modulation->searchPulseWidth = 0;
          modulation->correlatedSD = 0;
