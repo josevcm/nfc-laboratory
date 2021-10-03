@@ -55,6 +55,10 @@ static QMap<int, QString> NfcACmd = {
       {0xE0, "RATS"}
 };
 
+static QMap<int, QString> NfcBCmd = {
+      {0x05, "REQB"} // ISO/IEC 14443
+};
+
 struct StreamModel::Impl
 {
    // fonts
@@ -125,24 +129,32 @@ struct StreamModel::Impl
          // raw protocol commands
          if (!frame->isEncrypted())
          {
-            if (NfcACmd.contains(command))
-               return NfcACmd[command];
+            if (frame->isNfcA())
+            {
+               if (NfcACmd.contains(command))
+                  return NfcACmd[command];
 
-            // Protocol Parameter Selection
-            if ((command & 0xF0) == 0xD0)
-               return "PPS";
+               // Protocol Parameter Selection
+               if ((command & 0xF0) == 0xD0)
+                  return "PPS";
 
-            // ISO-DEP protocol I-Block
-            if ((command & 0xE2) == 0x02)
-               return "I-Block";
+               // ISO-DEP protocol I-Block
+               if ((command & 0xE2) == 0x02)
+                  return "I-Block";
 
-            // ISO-DEP protocol R-Block
-            if ((command & 0xE6) == 0xA2)
-               return "R-Block";
+               // ISO-DEP protocol R-Block
+               if ((command & 0xE6) == 0xA2)
+                  return "R-Block";
 
-            // ISO-DEP protocol S-Block
-            if ((command & 0xC7) == 0xC2)
-               return "S-Block";
+               // ISO-DEP protocol S-Block
+               if ((command & 0xC7) == 0xC2)
+                  return "S-Block";
+            }
+            else if (frame->isNfcB())
+            {
+               if (NfcBCmd.contains(command))
+                  return NfcBCmd[command];
+            }
          }
       }
 

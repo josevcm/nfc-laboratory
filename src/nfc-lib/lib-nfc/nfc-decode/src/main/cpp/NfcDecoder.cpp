@@ -37,7 +37,7 @@
 #include "type/NfcF.h"
 #include "type/NfcV.h"
 
-//#define ENABLE_NFC_A_DECODER
+#define ENABLE_NFC_A_DECODER
 #define ENABLE_NFC_B_DECODER
 //#define ENABLE_NFC_F_DECODER
 //#define ENABLE_NFC_V_DECODER
