@@ -142,7 +142,7 @@ int startApp(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-   return startTest(argc, argv);
-//   return startApp(argc, argv);
+//   return startTest(argc, argv);
+   return startApp(argc, argv);
 }
 
