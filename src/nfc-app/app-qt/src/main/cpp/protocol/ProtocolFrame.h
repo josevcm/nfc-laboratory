@@ -85,9 +85,9 @@ class ProtocolFrame : public QObject
 
       int columnCount() const;
 
-      void appendChild(ProtocolFrame *child);
+      ProtocolFrame *appendChild(ProtocolFrame *child);
 
-      void prependChild(ProtocolFrame *child);
+      ProtocolFrame *prependChild(ProtocolFrame *child);
 
       bool insertChilds(int position, int count, int columns);
 

@@ -551,11 +551,11 @@ struct NfcB::Impl
       {
          while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > PatternType::NoPattern)
          {
-            // frame ends if found 10 ETU width Pattern-L (10 consecutive bits at value 0)
+            // frame ends if found 10 ETU width Pattern-M (10 consecutive bits at value 0)
             if (streamStatus.bits == 9 && !streamStatus.data && pattern == PatternType::PatternM)
                frameEnd = true;
 
-            // frame ends width stream error if start bit is PatternH or end bit is pattern L
+            // frame stream error if start bit is PatternN (1) or end bit is pattern M (0)
             else if ((streamStatus.bits == 0 && pattern == PatternType::PatternN) || (streamStatus.bits == 9 && pattern == PatternType::PatternM))
                streamError = true;
 
