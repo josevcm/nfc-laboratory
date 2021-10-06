@@ -149,7 +149,7 @@ void NfcDecoder::Impl::configure(long newSampleRate)
    if (decoder.sampleRate > 0)
    {
       // calculate sample time unit, (equivalent to 1/fc in ISO/IEC 14443-3 specifications)
-      decoder.signalParams.sampleTimeUnit = double(decoder.sampleRate) / double(BaseFrequency);
+      decoder.signalParams.sampleTimeUnit = double(decoder.sampleRate) / double(NFC_FC);
 
 #ifdef ENABLE_NFC_A_DECODER
       // configure NFC-A decoder

@@ -40,9 +40,6 @@
 
 namespace nfc {
 
-// FSDI to FSD conversion (frame size)
-static const int TABLE_FDS[] = {16, 24, 32, 40, 48, 64, 96, 128, 256, 0, 0, 0, 0, 0, 0, 256};
-
 enum PatternType
 {
    Invalid = 0,
@@ -140,7 +137,7 @@ struct NfcA::Impl
          bitrate->rateType = rate;
 
          // symbol timing parameters
-         bitrate->symbolsPerSecond = BaseFrequency / (128 >> rate);
+         bitrate->symbolsPerSecond = NFC_FC / (128 >> rate);
 
          // number of samples per symbol
          bitrate->period1SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
@@ -152,11 +149,11 @@ struct NfcA::Impl
          bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
 
          // moving average offsets
-         bitrate->offsetSignalIndex = SignalBufferLength - bitrate->symbolDelayDetect;
-         bitrate->offsetDelay1Index = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period1SymbolSamples;
-         bitrate->offsetDelay2Index = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period2SymbolSamples;
-         bitrate->offsetDelay4Index = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
-         bitrate->offsetDelay8Index = SignalBufferLength - bitrate->symbolDelayDetect - bitrate->period8SymbolSamples;
+         bitrate->offsetSignalIndex = BUFFER_SIZE - bitrate->symbolDelayDetect;
+         bitrate->offsetDelay1Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period1SymbolSamples;
+         bitrate->offsetDelay2Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period2SymbolSamples;
+         bitrate->offsetDelay4Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
+         bitrate->offsetDelay8Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period8SymbolSamples;
 
          // exponential symbol average
          bitrate->symbolAverageW0 = float(1 - 5.0 / bitrate->period1SymbolSamples);
@@ -227,8 +224,8 @@ struct NfcA::Impl
             modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
 
             // get signal samples
-            float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (SignalBufferLength - 1)];
-            float delay2Data = decoder->signalStatus.signalData[modulation->delay2Index & (SignalBufferLength - 1)];
+            float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+            float delay2Data = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
 
             // integrate signal data over 1/2 symbol
             modulation->filterIntegrate += signalData; // add new value
@@ -720,8 +717,8 @@ struct NfcA::Impl
          decoder->modulation->delay2Index = (decoder->bitrate->offsetDelay2Index + decoder->signalClock);
 
          // get signal samples
-         float currentData = decoder->signalStatus.signalData[decoder->modulation->signalIndex & (SignalBufferLength - 1)];
-         float delayedData = decoder->signalStatus.signalData[decoder->modulation->delay2Index & (SignalBufferLength - 1)];
+         float currentData = decoder->signalStatus.signalData[decoder->modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float delayedData = decoder->signalStatus.signalData[decoder->modulation->delay2Index & (BUFFER_SIZE - 1)];
 
          // integrate signal data over 1/2 symbol
          decoder->modulation->filterIntegrate += currentData; // add new value
@@ -854,7 +851,7 @@ struct NfcA::Impl
          modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (SignalBufferLength - 1)];
+         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -863,7 +860,7 @@ struct NfcA::Impl
          signalData -= modulation->symbolAverage;
 
          // store signal square in filter buffer
-         modulation->integrationData[modulation->signalIndex & (SignalBufferLength - 1)] = signalData * signalData;
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
          // start correlation after frameGuardTime
          if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
@@ -874,8 +871,8 @@ struct NfcA::Impl
             modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
             // integrate symbol (moving average)
-            modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (SignalBufferLength - 1)]; // add new value
-            modulation->filterIntegrate -= modulation->integrationData[modulation->delay4Index & (SignalBufferLength - 1)]; // remove delayed value
+            modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+            modulation->filterIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
             // store integrated signal in correlation buffer
             modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
@@ -1053,8 +1050,8 @@ struct NfcA::Impl
          modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (SignalBufferLength - 1)];
-         float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (SignalBufferLength - 1)];
+         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -1063,13 +1060,13 @@ struct NfcA::Impl
          float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage);
 
          // store signal phase in filter buffer
-         modulation->integrationData[modulation->signalIndex & (SignalBufferLength - 1)] = phase * 10;
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
 
          // integrate response from PICC after guard time (TR0)
          if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
          {
-            modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (SignalBufferLength - 1)]; // add new value
-            modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (SignalBufferLength - 1)]; // remove delayed value
+            modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+            modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
          }
 
 #ifdef DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL
@@ -1460,7 +1457,7 @@ struct NfcA::Impl
             frameStatus.lastCommand = frame[0];
 
             // sets maximum frame length requested by reader
-            protocolStatus.maxFrameSize = TABLE_FDS[fsdi];
+            protocolStatus.maxFrameSize = NFC_FDS_TABLE[fsdi];
 
             // sets the activation frame waiting time for ATS response, ISO/IEC 14443-4 defined a value of 65536/fc (~4833 μs).
             frameStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 65536);
@@ -1522,8 +1519,8 @@ struct NfcA::Impl
                }
 
                log.info("ATS protocol timing parameters");
-               log.info("  startUpGuardTime {} samples ({} us)", {frameStatus.startUpGuardTime, 1000000.0 * frameStatus.startUpGuardTime / decoder->sampleRate});
-               log.info("  frameWaitingTime {} samples ({} us)", {frameStatus.frameWaitingTime, 1000000.0 * frameStatus.frameWaitingTime / decoder->sampleRate});
+               log.info("  startUpGuardTime {} samples ({} us)", {protocolStatus.startUpGuardTime, 1000000.0 * protocolStatus.startUpGuardTime / decoder->sampleRate});
+               log.info("  frameWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / decoder->sampleRate});
             }
 
             frame.setFramePhase(FramePhase::SelectionFrame);

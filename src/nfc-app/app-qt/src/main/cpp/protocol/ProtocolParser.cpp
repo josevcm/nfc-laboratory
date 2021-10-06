@@ -23,12 +23,11 @@
 */
 
 #include <QDebug>
-#include <QVector>
+
+#include <nfc/Nfc.h>
 
 #include "ProtocolParser.h"
 #include "ProtocolFrame.h"
-
-#define FS 13.56E6
 
 struct Parser
 {
@@ -204,15 +203,6 @@ struct Parser
 
 struct ParserNfcA : Parser
 {
-   // FSDI to FSD conversion (frame size)
-   constexpr static const int NFCA_FDS[] = {16, 24, 32, 40, 48, 64, 96, 128, 256, 0, 0, 0, 0, 0, 0, 0};
-
-   // Start-up Frame Guard Time (SFGT = (256 x 16 / fc) * 2 ^ SFGI)
-   constexpr static const float NFCA_SFGT[] = {0.000302065, 0.00060413, 0.00120826, 0.002416519, 0.004833038, 0.009666077, 0.019332153, 0.038664307, 0.077328614, 0.154657227, 0.309314454, 0.618628909, 1.237257817, 2.474515634, 4.949031268, 9.898062537};
-
-   // Frame waiting time (FWT = (256 x 16 / fc) * 2 ^ FWI)
-   constexpr static const float NFCA_FWT[] = {0.000302065, 0.00060413, 0.00120826, 0.002416519, 0.004833038, 0.009666077, 0.019332153, 0.038664307, 0.077328614, 0.154657227, 0.309314454, 0.618628909, 1.237257817, 2.474515634, 4.949031268, 9.898062537};
-
    ProtocolFrame *parse(unsigned int frameCount, const nfc::NfcFrame &frame)
    {
       this->frameCount = frameCount;
@@ -402,7 +392,7 @@ struct ParserNfcA : Parser
 
       if (ProtocolFrame *param = root->appendChild(buildFieldInfo("PARAM", QString("%1 [%2]").arg(par, 2, 16, QChar('0')).arg(par, 8, 2, QChar('0')))))
       {
-         param->appendChild(buildFieldInfo(QString("[%1....] FSD max frame size %2").arg(fsdi, 4, 2, QChar('0')).arg(NFCA_FDS[fsdi])));
+         param->appendChild(buildFieldInfo(QString("[%1....] FSD max frame size %2").arg(fsdi, 4, 2, QChar('0')).arg(NFC_FDS_TABLE[fsdi])));
          param->appendChild(buildFieldInfo(QString("[....%1] CDI logical channel %2").arg(cdi, 4, 2, QChar('0')).arg(cdi)));
       }
 
@@ -711,7 +701,7 @@ struct ParserNfcA : Parser
 
             if (ProtocolFrame *t0f = ats->appendChild(buildFieldInfo("T0", QString("%1 [%2]").arg(t0, 2, 16, QChar('0')).arg(t0, 8, 2, QChar('0')))))
             {
-               t0f->appendChild(buildFieldInfo(QString("[....%1] max frame size %2").arg(fsci, 4, 2, QChar('0')).arg(NFCA_FDS[fsci])));
+               t0f->appendChild(buildFieldInfo(QString("[....%1] max frame size %2").arg(fsci, 4, 2, QChar('0')).arg(NFC_FDS_TABLE[fsci])));
 
                // TA is transmitted, if bit 4 is set to 1
                if (t0 & 0x10)
@@ -759,11 +749,11 @@ struct ParserNfcA : Parser
 
                   if (ProtocolFrame *tbf = ats->appendChild(buildFieldInfo("TB", QString("%1 [%2]").arg(tb, 2, 16, QChar('0')).arg(tb, 8, 2, QChar('0')))))
                   {
-                     int sfgi = (tb & 0x0f);
                      int fwi = (tb >> 4) & 0x0f;
+                     int sfgi = (tb & 0x0f);
 
-                     float sfgt = NFCA_SFGT[sfgi] * 1000;
-                     float fwt = NFCA_FWT[fwi] * 1000;
+                     float fwt = NFC_FWT_TABLE[fwi] * 1000;
+                     float sfgt = NFC_SFGT_TABLE[sfgi] * 1000;
 
                      tbf->appendChild(buildFieldInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(fwt, 0, 'f', 2)));
                      tbf->appendChild(buildFieldInfo(QString("[....%1] start-up frame guard time SFGT = %2 ms").arg(sfgi, 4, 2, QChar('0')).arg(sfgt, 0, 'f', 2)));
@@ -894,19 +884,19 @@ struct ParserNfcA : Parser
 struct ParserNfcB : Parser
 {
    // FSDI to FSD conversion (frame size)
-   constexpr static const int NFCB_FDS[] = {16, 24, 32, 40, 48, 64, 96, 128, 256, 0, 0, 0, 0, 0, 0, 0};
+   constexpr static const int NFCB_FDS[] = {16, 24, 32, 40, 48, 64, 96, 128, 256, 512, 1024, 2048, 4096, 0, 0, 0};
 
    // Frame waiting time (FWT = (256 x 16 / fc) * 2 ^ FWI)
    constexpr static const float NFCB_FWT[] = {0.000302065, 0.00060413, 0.00120826, 0.002416519, 0.004833038, 0.009666077, 0.019332153, 0.038664307, 0.077328614, 0.154657227, 0.309314454, 0.618628909, 1.237257817, 2.474515634, 4.949031268, 9.898062537};
 
    // Number of Slots
-   constexpr static const float NFCB_REQB_SLOTS[] = {1, 2, 4, 8, 16, 0, 0, 0};
+   constexpr static const float NFCB_SLOTS[] = {1, 2, 4, 8, 16, 0, 0, 0};
 
    // TR0min
-   constexpr static const float NFCB_TR0_MIN[] = {0, 48 / FS, 16 / FS, 0};
+   constexpr static const float NFCB_TR0_MIN[] = {0, 48 / NFC_FS, 16 / NFC_FS, 0};
 
    // TR1min
-   constexpr static const float NFCB_TR1_MIN[] = {0, 64 / FS, 16 / FS, 0};
+   constexpr static const float NFCB_TR1_MIN[] = {0, 64 / NFC_FS, 16 / NFC_FS, 0};
 
    ProtocolFrame *parse(unsigned int frameCount, const nfc::NfcFrame &frame)
    {
@@ -926,6 +916,10 @@ struct ParserNfcB : Parser
          else if (command == 0x1d)
             info = parseRequestATTRIB(frame);
 
+            // Attrib request
+         else if (command == 0x50)
+            info = parseRequestHLTB(frame);
+
             // Unknown frame...
          else
             info = parseRequestUnknown(frame);
@@ -943,6 +937,10 @@ struct ParserNfcB : Parser
             // Attrib response
          else if (command == 0x1d)
             info = parseResponseATTRIB(frame);
+
+            // Attrib response
+         else if (command == 0x50)
+            info = parseResponseHLTB(frame);
 
             // Unknown frame...
          else
@@ -1001,7 +999,7 @@ struct ParserNfcB : Parser
          else
             paramf->appendChild(buildFieldInfo("[....0...] REQB command"));
 
-         paramf->appendChild(buildFieldInfo(QString("[.....%1] Number of slots: %2").arg(nslot, 3, 2, QChar('0')).arg(NFCB_REQB_SLOTS[nslot])));
+         paramf->appendChild(buildFieldInfo(QString("[.....%1] number of slots: %2").arg(nslot, 3, 2, QChar('0')).arg(NFCB_SLOTS[nslot])));
       }
 
       root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
@@ -1029,24 +1027,24 @@ struct ParserNfcB : Parser
          int tr1min = (param1 >> 4) & 0x3;
 
          if (tr0min)
-            param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR0, %2 us").arg(tr0min, 2, 2, QChar('0')).arg(NFCB_TR0_MIN[tr0min] * 1E6, 0, 'f', 2)));
+            param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, %2 us").arg(tr0min, 2, 2, QChar('0')).arg(NFCB_TR0_MIN[tr0min] * 1E6, 0, 'f', 2)));
          else
-            param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR0, DEFAULT").arg(tr0min, 2, 2, QChar('0'))));
+            param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, DEFAULT").arg(tr0min, 2, 2, QChar('0'))));
 
          if (tr1min)
-            param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(NFCB_TR1_MIN[tr1min] * 1E6, 0, 'f', 2)));
+            param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(NFCB_TR1_MIN[tr1min] * 1E6, 0, 'f', 2)));
          else
-            param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR1, DEFAULT").arg(tr1min, 2, 2, QChar('0'))));
+            param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, DEFAULT").arg(tr1min, 2, 2, QChar('0'))));
 
          if (param1 & 0x08)
-            param1f->appendChild(buildFieldInfo(QString("[....1..] EOF required: No")));
+            param1f->appendChild(buildFieldInfo(QString("[....1..] suppression of the EOF: Yes")));
          else
-            param1f->appendChild(buildFieldInfo(QString("[....0..] EOF required: Yes")));
+            param1f->appendChild(buildFieldInfo(QString("[....0..] suppression of the EOF: No")));
 
          if (param1 & 0x04)
-            param1f->appendChild(buildFieldInfo(QString("[....1..] SOF required: No")));
+            param1f->appendChild(buildFieldInfo(QString("[....1..] suppression of the SOF: Yes")));
          else
-            param1f->appendChild(buildFieldInfo(QString("[....0..] SOF required: Yes")));
+            param1f->appendChild(buildFieldInfo(QString("[....0..] suppression of the SOF: No")));
       }
 
       if (ProtocolFrame *param2f = root->appendChild(buildFieldInfo("PARAM2", QString("%1 [%2]").arg(param2, 2, 16, QChar('0')).arg(param2, 8, 2, QChar('0')))))
@@ -1077,14 +1075,31 @@ struct ParserNfcB : Parser
 
       if (ProtocolFrame *param3f = root->appendChild(buildFieldInfo("PARAM3", QString("%1 [%2]").arg(param3, 2, 16, QChar('0')).arg(param3, 8, 2, QChar('0')))))
       {
-
+         if (param3 & 1)
+            param3f->appendChild(buildFieldInfo("[.......1] PICC compliant with ISO/IEC 14443-4"));
+         else
+            param3f->appendChild(buildFieldInfo("[.......0] PICC not compliant with ISO/IEC 14443-4"));
       }
 
       if (ProtocolFrame *param4f = root->appendChild(buildFieldInfo("PARAM4", QString("%1 [%2]").arg(param4, 2, 16, QChar('0')).arg(param4, 8, 2, QChar('0')))))
       {
+         int cid = param4 & 0x0f;
 
+         param4f->appendChild(buildFieldInfo(QString("[....%1] card identifier (CID) = %2").arg(cid, 4, 2, QChar('0')).arg(cid)));
       }
 
+      root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+
+      return root;
+   }
+
+   ProtocolFrame *parseRequestHLTB(const nfc::NfcFrame &frame)
+   {
+      int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
+
+      ProtocolFrame *root = buildFrameInfo("HLTB", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
+
+      root->appendChild(buildFieldInfo("PUPI", toByteArray(frame, 1, 4)));
       root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
 
       return root;
@@ -1196,6 +1211,28 @@ struct ParserNfcB : Parser
 
       ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
 
+      int mbli = (frame[0] >> 4) & 0x0f;
+      int cid = frame[0] & 0x0f;
+
+      root->appendChild(buildFieldInfo("MBLI", mbli));
+      root->appendChild(buildFieldInfo("CID", cid));
+
+      if (frame.limit() > 3)
+      {
+         root->appendChild(buildFieldInfo("INF", toByteArray(frame, 1, frame.limit() - 3)));
+      }
+
+      root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+
+      return root;
+   }
+
+   ProtocolFrame *parseResponseHLTB(const nfc::NfcFrame &frame)
+   {
+      int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
+
+      ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
+
       root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
 
       return root;
@@ -1205,7 +1242,14 @@ struct ParserNfcB : Parser
    {
       int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
 
-      return buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
+      ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
+
+      if (frame.limit() > 2)
+      {
+         root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+      }
+
+      return root;
    }
 };
 

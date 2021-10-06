@@ -29,6 +29,8 @@
 
 #include <sdr/RecordDevice.h>
 
+#include <nfc/Nfc.h>
+
 //#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
@@ -44,11 +46,8 @@
 
 namespace nfc {
 
-// carrier frequency (13.56 Mhz)
-constexpr static const unsigned int BaseFrequency = 13.56E6;
-
-// buffer for signal integration, must be power of 2^n
-constexpr static const unsigned int SignalBufferLength = 512;
+// Buffer length for signal integration, must be power of 2^n
+#define BUFFER_SIZE 512
 
 /*
  * Signal debugger
@@ -189,7 +188,7 @@ struct SignalStatus
    float signalVariance;
 
    // signal data buffer
-   float signalData[SignalBufferLength];
+   float signalData[BUFFER_SIZE];
 
    // silence start (no modulation detected)
    unsigned int carrierOff;
@@ -248,8 +247,8 @@ struct ModulationStatus
    // edge detector values
    float detectorPeek;
 
-   float integrationData[SignalBufferLength];
-   float correlationData[SignalBufferLength];
+   float integrationData[BUFFER_SIZE];
+   float correlationData[BUFFER_SIZE];
 };
 
 /*
@@ -395,7 +394,7 @@ struct DecoderStatus
 //      signalStatus.modulationDeep = (signalStatus.powerAverage - signalStatus.signalValue) / signalStatus.powerAverage;
 
       // store next signal value in sample buffer
-      signalStatus.signalData[signalClock & (SignalBufferLength - 1)] = signalStatus.signalValue;
+      signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
 
 #ifdef DEBUG_SIGNAL
       debug->block(signalClock);

@@ -94,7 +94,14 @@ int startTest(int argc, char *argv[])
 
             for (const nfc::NfcFrame &frame : frames)
             {
-               root.info("frame at {} -> {}", {frame.sampleStart(), frame.sampleEnd()});
+               if (frame.isPollFrame())
+               {
+                  root.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+               }
+               else if (frame.isListenFrame())
+               {
+                  root.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+               }
             }
          }
       }
