@@ -262,7 +262,7 @@ struct ParserNfcA : Parser
                info = parseRequestRBlock(frame);
 
                // ISO-DEP protocol S-Block
-            else if ((command & 0xC7) == 0xC2)
+            else if ((command & 0xC0) == 0xC0)
                info = parseRequestSBlock(frame);
 
                // Unknown frame...
@@ -1034,19 +1034,19 @@ struct ParserNfcB : Parser
             param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR0, DEFAULT").arg(tr0min, 2, 2, QChar('0'))));
 
          if (tr1min)
-            param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR0, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(NFCB_TR1_MIN[tr1min] * 1E6, 0, 'f', 2)));
+            param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(NFCB_TR1_MIN[tr1min] * 1E6, 0, 'f', 2)));
          else
-            param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR0, DEFAULT").arg(tr1min, 2, 2, QChar('0'))));
+            param1f->appendChild(buildFieldInfo(QString("[%1.....] Minimum TR1, DEFAULT").arg(tr1min, 2, 2, QChar('0'))));
 
          if (param1 & 0x08)
-            param1f->appendChild(buildFieldInfo(QString("[....%1..] EOF required: No").arg(param1 & 0x08 >> 2, 1, 2, QChar('0')).arg(param1 & 0x08 ? "No" : "Yes")));
+            param1f->appendChild(buildFieldInfo(QString("[....1..] EOF required: No")));
          else
-            param1f->appendChild(buildFieldInfo(QString("[....%1..] EOF required: Yes").arg(param1 & 0x08 >> 2, 1, 2, QChar('0')).arg(param1 & 0x08 ? "No" : "Yes")));
+            param1f->appendChild(buildFieldInfo(QString("[....0..] EOF required: Yes")));
 
          if (param1 & 0x04)
-            param1f->appendChild(buildFieldInfo(QString("[....%1..] SOF required: No").arg(param1 & 0x04 >> 3, 1, 2, QChar('0')).arg(param1 & 0x04 ? "No" : "Yes")));
+            param1f->appendChild(buildFieldInfo(QString("[....1..] SOF required: No")));
          else
-            param1f->appendChild(buildFieldInfo(QString("[....%1..] SOF required: Yes").arg(param1 & 0x08 >> 2, 1, 2, QChar('0')).arg(param1 & 0x08 ? "No" : "Yes")));
+            param1f->appendChild(buildFieldInfo(QString("[....0..] SOF required: Yes")));
       }
 
       if (ProtocolFrame *param2f = root->appendChild(buildFieldInfo("PARAM2", QString("%1 [%2]").arg(param2, 2, 16, QChar('0')).arg(param2, 8, 2, QChar('0')))))

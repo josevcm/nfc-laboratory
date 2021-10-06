@@ -58,7 +58,7 @@ struct NfcA
       NFCA_PPS = 0xD0,
       NFCA_IBLOCK = 0x02,
       NFCA_RBLOCK = 0xA2,
-      NFCA_SBLOCK = 0xC2
+      NFCA_SBLOCK = 0xC0
    };
 
    explicit NfcA(DecoderStatus *decoder);

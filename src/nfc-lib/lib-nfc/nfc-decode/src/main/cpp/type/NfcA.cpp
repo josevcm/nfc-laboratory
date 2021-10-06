@@ -1257,7 +1257,7 @@ struct NfcA::Impl
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
       }
 
-      while (true)
+      do
       {
          if (processREQA(frame))
             break;
@@ -1296,9 +1296,8 @@ struct NfcA::Impl
          {
             frame.setFramePhase(FramePhase::ApplicationFrame);
          }
-
-         break;
       }
+      while(false);
 
       // set chained flags
       frame.setFrameFlags(chainedFlags);

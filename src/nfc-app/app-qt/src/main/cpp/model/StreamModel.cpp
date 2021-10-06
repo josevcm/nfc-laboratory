@@ -56,7 +56,9 @@ static QMap<int, QString> NfcACmd = {
 };
 
 static QMap<int, QString> NfcBCmd = {
-      {0x05, "REQB"} // ISO/IEC 14443
+      {0x05, "REQB"},
+      {0x1d, "ATTRIB"},
+      {0x50, "HLTB"}
 };
 
 struct StreamModel::Impl

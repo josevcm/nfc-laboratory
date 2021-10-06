@@ -555,11 +555,11 @@ struct NfcB::Impl
             if (streamStatus.bits == 9 && !streamStatus.data && pattern == PatternType::PatternM)
                frameEnd = true;
 
-            // frame stream error if start bit is PatternN (1) or end bit is pattern M (0)
+               // frame stream error if start bit is PatternN (1) or end bit is pattern M (0)
             else if ((streamStatus.bits == 0 && pattern == PatternType::PatternN) || (streamStatus.bits == 9 && pattern == PatternType::PatternM))
                streamError = true;
 
-            // frame ends width truncate error max frame size is reached
+               // frame ends width truncate error max frame size is reached
             else if (streamStatus.bytes == protocolStatus.maxFrameSize)
                truncateError = true;
 
@@ -613,7 +613,7 @@ struct NfcB::Impl
 
                streamStatus.bits++;
             }
-            // store full byte in stream buffer
+               // store full byte in stream buffer
             else
             {
                streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
@@ -861,7 +861,7 @@ struct NfcB::Impl
                      }
                   }
 
-                     // during SOF there must not be modulation changes
+                  // during SOF there must not be modulation changes
 //                  else if (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0)
 //                  {
 //                     modulation->searchStage = SOF_BEGIN;
@@ -1044,7 +1044,7 @@ struct NfcB::Impl
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
       }
 
-      while (true)
+      do
       {
          if (processREQB(frame))
             break;
@@ -1052,34 +1052,9 @@ struct NfcB::Impl
          if (processATTRIB(frame))
             break;
 
-         //      if (processHLTA(frame))
-         //         break;
-         //
-         //      if (processSELn(frame))
-         //         break;
-         //
-         //      if (processRATS(frame))
-         //         break;
-         //
-         //      if (processPPSr(frame))
-         //         break;
-         //
-         //      if (processAUTH(frame))
-         //         break;
-         //
-         //      if (processIBlock(frame))
-         //         break;
-         //
-         //      if (processRBlock(frame))
-         //         break;
-         //
-         //      if (processSBlock(frame))
-         //         break;
-
          processOther(frame);
 
-         break;
-      }
+      } while (false);
 
       // set chained flags
       frame.setFrameFlags(chainedFlags);
