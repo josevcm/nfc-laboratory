@@ -30,14 +30,14 @@
 #include <nfc/Nfc.h>
 #include <nfc/NfcDecoder.h>
 
-#include "NfcStatus.h"
+#include <NfcTech.h>
 
-#include "type/NfcA.h"
-#include "type/NfcB.h"
-#include "type/NfcF.h"
-#include "type/NfcV.h"
+#include <tech/NfcA.h>
+#include <tech/NfcB.h>
+#include <tech/NfcF.h>
+#include <tech/NfcV.h>
 
-#define ENABLE_NFC_A_DECODER
+//#define ENABLE_NFC_A_DECODER
 #define ENABLE_NFC_B_DECODER
 //#define ENABLE_NFC_F_DECODER
 //#define ENABLE_NFC_V_DECODER

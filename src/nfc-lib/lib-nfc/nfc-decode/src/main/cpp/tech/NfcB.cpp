@@ -22,12 +22,11 @@
 
 */
 
-#include "NfcB.h"
+#include <tech/NfcB.h>
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_ASK_EDGE_CHANNEL 1
 #define DEBUG_ASK_SYNC_CHANNEL 2
-
 #define DEBUG_BPSK_PHASE_CHANNEL 1
 #define DEBUG_BPSK_SYNC_CHANNEL 2
 #endif
@@ -172,10 +171,10 @@ struct NfcB::Impl
 
       // initialize default protocol parameters for start decoding
       protocolStatus.maxFrameSize = 256;
-      protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
-      protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
-      protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * 128 * 7);
-      protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * 7000);
+      protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_SFGT_DEF);
+      protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF);
+      protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCB_FWT_DEF);
+      protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_RGT_DEF);
 
       // initialize frame parameters to default protocol parameters
       frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
@@ -207,6 +206,9 @@ struct NfcB::Impl
     */
    inline bool detectModulation()
    {
+      if (decoder->signalClock == 14305117)
+         log.info("STOP");
+
       // ignore low power signals
       if (decoder->signalStatus.powerAverage > decoder->powerLevelThreshold)
       {
@@ -890,7 +892,7 @@ struct NfcB::Impl
                }
 
                   // frame waiting time exceeded without detect modulation
-               else if (decoder->signalClock == frameStatus.waitingEnd)
+               else if (decoder->signalClock >= frameStatus.waitingEnd)
                {
                   pattern = PatternType::NoPattern;
                }
@@ -948,7 +950,7 @@ struct NfcB::Impl
                         modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
                         modulation->searchPeakTime = 0;
                      }
-                        // if no edge found, reset modulation
+                        // if no edge found, continue searching SOF again
                      else
                      {
                         modulation->searchStage = SOF_BEGIN;
@@ -957,7 +959,8 @@ struct NfcB::Impl
                         modulation->searchPeakTime = 0;
                         modulation->symbolStartTime = 0;
                         modulation->symbolEndTime = 0;
-                        pattern = PatternType::NoPattern;
+                        continue;
+                        //                        pattern = PatternType::NoPattern;
                      }
                   }
                }
@@ -1010,7 +1013,7 @@ struct NfcB::Impl
 
                         pattern = PatternType::PatternS;
                      }
-                        // no edge found! reset modulation
+                     // if no edge found, continue searching SOF again
                      else
                      {
                         modulation->searchStage = SOF_BEGIN;
@@ -1019,7 +1022,8 @@ struct NfcB::Impl
                         modulation->searchPeakTime = 0;
                         modulation->symbolStartTime = 0;
                         modulation->symbolEndTime = 0;
-                        pattern = PatternType::NoPattern;
+                        continue;
+//                        pattern = PatternType::NoPattern;
                      }
                   }
                }
@@ -1085,8 +1089,11 @@ struct NfcB::Impl
       // for request frame set default response timings, must be overridden by subsequent process functions
       if (frame.isPollFrame())
       {
-         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+         // initialize frame parameters to default protocol parameters
+         frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+         frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
       }
 
       do
@@ -1152,14 +1159,14 @@ struct NfcB::Impl
 
             // This commands starts or wakeup card communication, so reset the protocol parameters to the default values
             protocolStatus.maxFrameSize = 256;
-            protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN * 16);
-            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+            protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_SFGT_DEF);
+            protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF);
+            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCB_FWT_DEF);
+            protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_RGT_DEF);
 
-            // The REQ-B Response must start after TR0 MIN
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN * 16; // REQ-B response guard
-
-            // The maximum value of TR0 is 256/fs for ATQB and the maximum value of TR1 is 200/fs.
-            frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * (256 + 200) * 16; // REQ-B response timeout
+            // The REQ-A Response must start between this range
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN; // ATQ-B response guard
+            frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCB_FWT_ATQB; // ATQ-B response timeout
 
             // clear chained flags
             chainedFlags = 0;
@@ -1181,14 +1188,14 @@ struct NfcB::Impl
 
             // This commands update protocol parameters
             protocolStatus.maxFrameSize = NFC_FDS_TABLE[fdsi];
-            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << fwi));
+            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFC_FWT_TABLE[fwi]);
 
             frame.setFramePhase(FramePhase::SelectionFrame);
             frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
             log.info("ATQB protocol timing parameters");
             log.info("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
-            log.info("  frameWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / decoder->sampleRate});
+            log.info("  frameWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1E6 * protocolStatus.frameWaitingTime / decoder->sampleRate});
 
             return true;
          }
@@ -1218,9 +1225,12 @@ struct NfcB::Impl
             protocolStatus.maxFrameSize = NFC_FDS_TABLE[fdsi];
 
             if (!tr0i)
-               protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN * 16); // default value
+               protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF); // default value
             else
-               protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_TR0_MIN_TABLE[tr0i] * 16);
+               protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_TR0_MIN_TABLE[tr0i]);
+
+            // sets the activation frame waiting time for ATTRIB response
+            frameStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFC_FWT_ACTIVATION);
 
             // clear chained flags
             chainedFlags = 0;

@@ -22,8 +22,8 @@
 
 */
 
-#ifndef NFC_NFCA_H
-#define NFC_NFCA_H
+#ifndef NFC_NFCF_H
+#define NFC_NFCF_H
 
 #include <list>
 
@@ -34,38 +34,21 @@
 #include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 
-#include "NfcStatus.h"
+#include <NfcTech.h>
 
 namespace nfc {
 
-struct NfcA
+struct NfcF
 {
    struct Impl;
 
    Impl *self;
 
-   enum CommandType
-   {
-      NFCA_REQA = 0x26,
-      NFCA_HLTA = 0x50,
-      NFCA_WUPA = 0x52,
-      NFCA_AUTH1 = 0x60,
-      NFCA_AUTH2 = 0x61,
-      NFCA_SEL1 = 0x93,
-      NFCA_SEL2 = 0x95,
-      NFCA_SEL3 = 0x97,
-      NFCA_RATS = 0xE0,
-      NFCA_PPS = 0xD0,
-      NFCA_IBLOCK = 0x02,
-      NFCA_RBLOCK = 0xA2,
-      NFCA_SBLOCK = 0xC0
-   };
+   explicit NfcF(DecoderStatus *decoder);
 
-   explicit NfcA(DecoderStatus *decoder);
+   ~NfcF();
 
-   ~NfcA();
-
-   void setModulationThreshold(float min);
+   void setModulationThreshold(float min, float max);
 
    void configure(long sampleRate);
 
@@ -75,5 +58,4 @@ struct NfcA
 };
 
 }
-
-#endif //NFC_NFCA_H
+#endif //NFC_NFCF_H

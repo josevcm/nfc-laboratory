@@ -41,8 +41,8 @@
 #include <rt/BlockingQueue.h>
 
 //#define NULL_LOG
-#define STDERR_LOG
-//#define STDOUT_LOG
+//#define STDERR_LOG
+#define STDOUT_LOG
 //#define FSTREAM_LOG
 
 namespace rt {

@@ -26,16 +26,13 @@
 #include <chrono>
 #include <functional>
 
-#include "NfcA.h"
+#include <tech/NfcA.h>
 
 #ifdef DEBUG_SIGNAL
-//#define DEBUG_ASK_CORRELATION_CHANNEL 5
-//#define DEBUG_ASK_INTEGRATION_CHANNEL 6
-//#define DEBUG_ASK_SYNCHRONIZATION_CHANNEL 7
-
-//#define DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL 5
-//#define DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL 4
-//#define DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL 7
+#define DEBUG_ASK_CORR_CHANNEL 1
+#define DEBUG_ASK_SYNC_CHANNEL 2
+#define DEBUG_BPSK_PHASE_CHANNEL 1
+#define DEBUG_BPSK_SYNC_CHANNEL 2
 #endif
 
 namespace nfc {
@@ -175,10 +172,10 @@ struct NfcA::Impl
 
       // initialize default protocol parameters for start decoding
       protocolStatus.maxFrameSize = 256;
-      protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
-      protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
-      protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * 128 * 7);
-      protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * 7000);
+      protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
+      protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
+      protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
+      protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
 
       // initialize frame parameters to default protocol parameters
       frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
@@ -247,11 +244,11 @@ struct NfcA::Impl
             // compute symbol average
             modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
-#ifdef DEBUG_ASK_CORRELATION_CHANNEL
-            decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, modulation->correlatedSD);
+#ifdef DEBUG_ASK_CORR_CHANNEL
+            decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
-#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
 #endif
             // search for Pattern-Z in PCD to PICC request
             if (modulation->correlatedSD > decoder->signalStatus.powerAverage * minimumModulationThreshold)
@@ -275,8 +272,8 @@ struct NfcA::Impl
             // Check for SoF symbol
             if (decoder->signalClock == modulation->searchEndTime)
             {
-#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-               decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+               decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.750f);
 #endif
                // check modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
                if (modulation->searchDeepValue > minimumModulationThreshold)
@@ -737,12 +734,12 @@ struct NfcA::Impl
          decoder->modulation->correlatedS1 = decoder->modulation->correlationData[decoder->modulation->filterPoint2] - decoder->modulation->correlationData[decoder->modulation->filterPoint3];
          decoder->modulation->correlatedSD = std::fabs(decoder->modulation->correlatedS0 - decoder->modulation->correlatedS1) / float(decoder->bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_ASK_CORRELATION_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, decoder->modulation->correlatedSD);
+#ifdef DEBUG_ASK_CORR_CHANNEL
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, decoder->modulation->correlatedSD);
 #endif
 
-#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
 #endif
          // compute symbol average
          decoder->modulation->symbolAverage = decoder->modulation->symbolAverage * decoder->bitrate->symbolAverageW0 + currentData * decoder->bitrate->symbolAverageW1;
@@ -778,8 +775,8 @@ struct NfcA::Impl
          // capture next symbol
          if (decoder->signalClock == decoder->modulation->searchEndTime)
          {
-#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.50f);
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
             // detect Pattern-Y when no modulation occurs (below search detection threshold)
             if (decoder->modulation->correlationPeek < decoder->modulation->searchThreshold)
@@ -883,18 +880,13 @@ struct NfcA::Impl
             modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
          }
 
-#ifdef DEBUG_ASK_CORRELATION_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORRELATION_CHANNEL, modulation->correlatedSD);
+#ifdef DEBUG_ASK_CORR_CHANNEL
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
 
-#ifdef DEBUG_ASK_INTEGRATION_CHANNEL
-         decoder->debug->set(DEBUG_ASK_INTEGRATION_CHANNEL, modulation->filterIntegrate);
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
 #endif
-
-#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.0f);
-#endif
-
          // search for Start Of Frame pattern (SoF)
          if (!modulation->symbolEndTime)
          {
@@ -915,8 +907,8 @@ struct NfcA::Impl
                // Check for SoF symbol
                if (decoder->signalClock == modulation->searchEndTime)
                {
-#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-                  decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.75f);
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+                  decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
 #endif
                   if (modulation->searchPulseWidth > bitrate->period8SymbolSamples)
                   {
@@ -944,7 +936,7 @@ struct NfcA::Impl
             }
 
             // capture signal variance as lower level threshold
-            if (decoder->signalClock == frameStatus.guardEnd)
+            else if (decoder->signalClock == frameStatus.guardEnd)
                modulation->searchThreshold = decoder->signalStatus.signalVariance;
 
             // frame waiting time exceeded
@@ -989,8 +981,8 @@ struct NfcA::Impl
             // capture next symbol
             if (decoder->signalClock == modulation->searchEndTime)
             {
-#ifdef DEBUG_ASK_SYNCHRONIZATION_CHANNEL
-               decoder->debug->set(DEBUG_ASK_SYNCHRONIZATION_CHANNEL, 0.50f);
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+               decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
                if (modulation->correlationPeek > modulation->searchThreshold)
                {
@@ -1069,13 +1061,10 @@ struct NfcA::Impl
             modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
          }
 
-#ifdef DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_INTEGRATION_CHANNEL, modulation->phaseIntegrate);
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
 #endif
 
-#ifdef DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_DEMODULATION_CHANNEL, phase * 10);
-#endif
          // search for Start Of Frame pattern (SoF)
          if (!modulation->symbolEndTime)
          {
@@ -1095,8 +1084,8 @@ struct NfcA::Impl
 
             if (decoder->signalClock == modulation->searchEndTime)
             {
-#ifdef DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL
-               decoder->debug->set(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.75);
+#ifdef DEBUG_BPSK_SYNC_CHANNEL
+               decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
 #endif
                // set symbol window
                modulation->symbolSyncTime = 0;
@@ -1141,8 +1130,8 @@ struct NfcA::Impl
                // search symbol timings
             else if (decoder->signalClock == modulation->symbolSyncTime)
             {
-#ifdef DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL
-               decoder->debug->set(DEBUG_BPSK_PHASE_SYNCHRONIZATION_CHANNEL, 0.5);
+#ifdef DEBUG_BPSK_SYNC_CHANNEL
+               decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.50f);
 #endif
                modulation->symbolPhase = modulation->phaseIntegrate;
 
@@ -1250,6 +1239,7 @@ struct NfcA::Impl
       // for request frame set default response timings, must be overridden by subsequent process functions
       if (frame.isPollFrame())
       {
+         // initialize frame parameters to default protocol parameters
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
       }
@@ -1293,8 +1283,7 @@ struct NfcA::Impl
          {
             frame.setFramePhase(FramePhase::ApplicationFrame);
          }
-      }
-      while(false);
+      } while (false);
 
       // set chained flags
       frame.setFrameFlags(chainedFlags);
@@ -1349,12 +1338,14 @@ struct NfcA::Impl
 
             // This commands starts or wakeup card communication, so reset the protocol parameters to the default values
             protocolStatus.maxFrameSize = 256;
-            protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * 128 * 7);
-            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+            protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
+            protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
+            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
+            protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
 
             // The REQ-A Response must start exactly at 128 * n, n=9, decoder search between n=7 and n=18
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * 128 * 7; // REQ-A response guard
-            frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * 128 * 18; // REQ-A response timeout
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN; // ATQ-A response guard
+            frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCA_FWT_ATQA; // ATQ-A response timeout
 
             // clear chained flags
             chainedFlags = 0;
@@ -1392,8 +1383,10 @@ struct NfcA::Impl
 
             // After this command the PICC will stop and will not respond, set the protocol parameters to the default values
             protocolStatus.maxFrameSize = 256;
-            protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * 128 * 7);
-            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+            protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
+            protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
+            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
+            protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
 
             // clear chained flags
             chainedFlags = 0;
@@ -1422,8 +1415,8 @@ struct NfcA::Impl
             frameStatus.lastCommand = frame[0];
 
             // The selection commands has same timings as REQ-A
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * 128 * 7;
-            frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * 128 * 18;
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN;
+            frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCA_FWT_ATQA;
 
             return true;
          }
@@ -1459,8 +1452,8 @@ struct NfcA::Impl
             // sets maximum frame length requested by reader
             protocolStatus.maxFrameSize = NFC_FDS_TABLE[fsdi];
 
-            // sets the activation frame waiting time for ATS response, ISO/IEC 14443-4 defined a value of 65536/fc (~4833 μs).
-            frameStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 65536);
+            // sets the activation frame waiting time for ATS response
+            frameStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFC_FWT_ACTIVATION);
 
             log.info("RATS frame parameters");
             log.info("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
@@ -1508,14 +1501,14 @@ struct NfcA::Impl
                      fwi = 4;
 
                   // calculate timing parameters
-                  protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << sfgi));
-                  protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << fwi));
+                  protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * NFC_SFGT_TABLE[sfgi]);
+                  protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFC_FWT_TABLE[fwi]);
                }
                else
                {
                   // if TB is not transmitted establish default timing parameters
-                  protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 0));
-                  protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * 256 * 16 * (1 << 4));
+                  protocolStatus.startUpGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
+                  protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
                }
 
                log.info("ATS protocol timing parameters");
@@ -1543,9 +1536,6 @@ struct NfcA::Impl
          if ((frame[0] & 0xF0) == CommandType::NFCA_PPS)
          {
             frameStatus.lastCommand = frame[0] & 0xF0;
-
-            // Set PPS response waiting time to protocol default
-            frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
 
             frame.setFramePhase(FramePhase::SelectionFrame);
             frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);

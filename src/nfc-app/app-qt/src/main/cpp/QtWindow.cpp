@@ -553,7 +553,7 @@ struct QtWindow::Impl
 
    void toggleFollow()
    {
-      setFollowEnabled(followEnabled);
+      setFollowEnabled(!followEnabled);
    }
 
    void toggleFilter()

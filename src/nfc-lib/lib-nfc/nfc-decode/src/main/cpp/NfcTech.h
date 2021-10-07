@@ -22,8 +22,8 @@
 
 */
 
-#ifndef NFC_NFCSTATUS_H
-#define NFC_NFCSTATUS_H
+#ifndef NFC_NFCTECH_H
+#define NFC_NFCTECH_H
 
 #include <cmath>
 
@@ -35,13 +35,7 @@
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
-
-#define DEBUG_SIGNAL_VALUE_CHANNEL 0
-//#define DEBUG_SIGNAL_POWER_CHANNEL 1
-//#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
-//#define DEBUG_SIGNAL_VARIANCE_CHANNEL 3
-//#define DEBUG_SIGNAL_EDGE_CHANNEL 4
-
+#define DEBUG_SIGNAL_CHANNEL 0
 #endif
 
 namespace nfc {
@@ -400,24 +394,20 @@ struct DecoderStatus
       debug->block(signalClock);
 #endif
 
-#ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalStatus.signalValue);
+#ifdef DEBUG_SIGNAL_CHANNEL
+      debug->set(DEBUG_SIGNAL_CHANNEL, signalStatus.signalValue);
 #endif
 
-#ifdef DEBUG_SIGNAL_POWER_CHANNEL
-      debug->set(DEBUG_SIGNAL_POWER_CHANNEL, signalStatus.powerAverage);
+#ifdef DEBUG_POWER_CHANNEL
+      debug->set(DEBUG_POWER_CHANNEL, signalStatus.powerAverage);
 #endif
 
-#ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL
-      debug->set(DEBUG_SIGNAL_AVERAGE_CHANNEL, signalStatus.signalAverage);
+#ifdef DEBUG_AVERAGE_CHANNEL
+      debug->set(DEBUG_AVERAGE_CHANNEL, signalStatus.signalAverage);
 #endif
 
-#ifdef DEBUG_SIGNAL_VARIANCE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VARIANCE_CHANNEL, signalStatus.signalVariance);
-#endif
-
-#ifdef DEBUG_SIGNAL_EDGE_CHANNEL
-      debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, signalStatus.signalAverage - decoder.signalStatus.powerAverage);
+#ifdef DEBUG_VARIANCE_CHANNEL
+      debug->set(DEBUG_VARIANCE_CHANNEL, signalStatus.signalVariance);
 #endif
 
       return true;

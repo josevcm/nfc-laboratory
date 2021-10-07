@@ -22,8 +22,8 @@
 
 */
 
-#ifndef NFC_NFCF_H
-#define NFC_NFCF_H
+#ifndef NFC_NFCV_H
+#define NFC_NFCV_H
 
 #include <list>
 
@@ -34,21 +34,21 @@
 #include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 
-#include "NfcStatus.h"
+#include <NfcTech.h>
 
 namespace nfc {
 
-struct NfcF
+struct NfcV
 {
    struct Impl;
 
    Impl *self;
 
-   explicit NfcF(DecoderStatus *decoder);
+   explicit NfcV(DecoderStatus *decoder);
 
-   ~NfcF();
+   ~NfcV();
 
-   void setModulationThreshold(float min, float max);
+   void setModulationThreshold(float min);
 
    void configure(long sampleRate);
 
@@ -58,4 +58,5 @@ struct NfcF
 };
 
 }
-#endif //NFC_NFCF_H
+
+#endif //NFC_NFCV_H

@@ -22,7 +22,7 @@
 
 */
 
-#include "NfcF.h"
+#include <tech/NfcF.h>
 
 namespace nfc {
 
