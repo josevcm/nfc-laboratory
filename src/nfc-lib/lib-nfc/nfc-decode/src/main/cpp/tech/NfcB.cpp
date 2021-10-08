@@ -981,9 +981,13 @@ struct NfcB::Impl
                   {
                      if (modulation->searchPeakTime)
                      {
+#ifdef DEBUG_BPSK_SYNC_CHANNEL
+                        decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
+#endif
                         // if found, set SOF symbol end and reference phase
                         modulation->symbolEndTime = modulation->searchPeakTime;
                         modulation->symbolPhase = modulation->phaseIntegrate;
+                        modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
 
                         // reset modulation to continue search
                         modulation->searchStage = SOF_BEGIN;
