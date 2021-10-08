@@ -35,7 +35,13 @@
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
+//#define DEBUG_POWER_CHANNEL 0
 #define DEBUG_SIGNAL_CHANNEL 0
+//#define DEBUG_AVERAGE_CHANNEL 1
+//#define DEBUG_VARIANCE_CHANNEL 2
+//#define DEBUG_SLOW_AVERAGE_CHANNEL 1
+//#define DEBUG_FAST_AVERAGE_CHANNEL 2
+//#define DEBUG_EDGE_CHANNEL 3
 #endif
 
 namespace nfc {
@@ -130,6 +136,14 @@ struct SignalParams
    float signalVarianceW0;
    float signalVarianceW1;
 
+   // exponential factors for edge detector
+   float slowAverageW0;
+   float slowAverageW1;
+
+   // exponential factors for variance integrator
+   float fastAverageW0;
+   float fastAverageW1;
+
    // default decoder parameters
    double sampleTimeUnit;
 };
@@ -169,17 +183,19 @@ struct SignalStatus
    // raw IQ sample data
    float sampleData[2];
 
-   // signal normalized value
+   // signal value
    float signalValue;
 
-   // exponential power integrator
+   // exponential averages
    float powerAverage;
-
-   // exponential average integrator
    float signalAverage;
 
-   // exponential variance integrator
+   // exponential signal variance
    float signalVariance;
+
+   // exponential average for edge detector
+   float slowAverage;
+   float fastAverage;
 
    // signal data buffer
    float signalData[BUFFER_SIZE];
@@ -241,6 +257,11 @@ struct ModulationStatus
    // edge detector values
    float detectorPeek;
 
+   // exponential averages
+   float slowAverage;
+   float fastAverage;
+
+   // data buffers
    float integrationData[BUFFER_SIZE];
    float correlationData[BUFFER_SIZE];
 };
@@ -359,7 +380,7 @@ struct DecoderStatus
          buffer.get(signalStatus.signalValue);
       }
 
-      // IQ channel signal
+         // IQ channel signal
       else
       {
          // read next sample data
@@ -384,8 +405,10 @@ struct DecoderStatus
       // compute signal variance (exponential variance)
       signalStatus.signalVariance = signalStatus.signalVariance * signalParams.signalVarianceW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverage) * signalParams.signalVarianceW1;
 
-      // signal modulation deep
-//      signalStatus.modulationDeep = (signalStatus.powerAverage - signalStatus.signalValue) / signalStatus.powerAverage;
+//      // compute signal edge detector
+//      signalStatus.slowAverage = signalStatus.slowAverage * signalParams.slowAverageW0 + signalStatus.signalValue * signalParams.slowAverageW1;
+//      signalStatus.fastAverage = signalStatus.fastAverage * signalParams.fastAverageW0 + signalStatus.signalValue * signalParams.fastAverageW1;
+//      signalStatus.signalEdge = signalStatus.slowAverage - signalStatus.fastAverage;
 
       // store next signal value in sample buffer
       signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
@@ -394,12 +417,12 @@ struct DecoderStatus
       debug->block(signalClock);
 #endif
 
-#ifdef DEBUG_SIGNAL_CHANNEL
-      debug->set(DEBUG_SIGNAL_CHANNEL, signalStatus.signalValue);
-#endif
-
 #ifdef DEBUG_POWER_CHANNEL
       debug->set(DEBUG_POWER_CHANNEL, signalStatus.powerAverage);
+#endif
+
+#ifdef DEBUG_SIGNAL_CHANNEL
+      debug->set(DEBUG_SIGNAL_CHANNEL, signalStatus.signalValue);
 #endif
 
 #ifdef DEBUG_AVERAGE_CHANNEL
@@ -410,10 +433,22 @@ struct DecoderStatus
       debug->set(DEBUG_VARIANCE_CHANNEL, signalStatus.signalVariance);
 #endif
 
+#ifdef DEBUG_SLOW_AVERAGE_CHANNEL
+      debug->set(DEBUG_SLOW_AVERAGE_CHANNEL, signalStatus.slowAverage);
+#endif
+
+#ifdef DEBUG_FAST_AVERAGE_CHANNEL
+      debug->set(DEBUG_FAST_AVERAGE_CHANNEL, signalStatus.fastAverage);
+#endif
+
+#ifdef DEBUG_EDGE_CHANNEL
+      debug->set(DEBUG_EDGE_CHANNEL, signalStatus.signalEdge);
+#endif
+
       return true;
    }
 };
 
 }
 
-#endif //NFC_NFCSTATUS_H
+#endif

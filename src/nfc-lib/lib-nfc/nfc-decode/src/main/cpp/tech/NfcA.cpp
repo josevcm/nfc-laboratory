@@ -183,18 +183,6 @@ struct NfcA::Impl
       frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
       frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
 
-      // initialize exponential average factors for power value
-      decoder->signalParams.powerAverageW0 = float(1 - 1E3 / decoder->sampleRate);
-      decoder->signalParams.powerAverageW1 = float(1 - decoder->signalParams.powerAverageW0);
-
-      // initialize exponential average factors for signal average
-      decoder->signalParams.signalAverageW0 = float(1 - 1E5 / decoder->sampleRate);
-      decoder->signalParams.signalAverageW1 = float(1 - decoder->signalParams.signalAverageW0);
-
-      // initialize exponential average factors for signal variance
-      decoder->signalParams.signalVarianceW0 = float(1 - 1E5 / decoder->sampleRate);
-      decoder->signalParams.signalVarianceW1 = float(1 - decoder->signalParams.signalVarianceW0);
-
       log.info("Startup parameters");
       log.info("\tmaxFrameSize {} bytes", {protocolStatus.maxFrameSize});
       log.info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / decoder->sampleRate});

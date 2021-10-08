@@ -182,18 +182,6 @@ struct NfcB::Impl
       frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
       frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
 
-      // initialize exponential average factors for power value
-      decoder->signalParams.powerAverageW0 = float(1 - 1E3 / decoder->sampleRate);
-      decoder->signalParams.powerAverageW1 = float(1 - decoder->signalParams.powerAverageW0);
-
-      // initialize exponential average factors for signal average
-      decoder->signalParams.signalAverageW0 = float(1 - 1E5 / decoder->sampleRate);
-      decoder->signalParams.signalAverageW1 = float(1 - decoder->signalParams.signalAverageW0);
-
-      // initialize exponential average factors for signal variance
-      decoder->signalParams.signalVarianceW0 = float(1 - 1E5 / decoder->sampleRate);
-      decoder->signalParams.signalVarianceW1 = float(1 - decoder->signalParams.signalVarianceW0);
-
       log.info("Startup parameters");
       log.info("\tmaxFrameSize {} bytes", {protocolStatus.maxFrameSize});
       log.info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / decoder->sampleRate});
@@ -206,6 +194,9 @@ struct NfcB::Impl
     */
    inline bool detectModulation()
    {
+      if (decoder->signalClock == 17511738)
+         log.info("stop");
+
       // ignore low power signals
       if (decoder->signalStatus.powerAverage > decoder->powerLevelThreshold)
       {
@@ -217,30 +208,35 @@ struct NfcB::Impl
 
             // compute signal pointers for edge detector, current index, slow average, and fast average
             modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-            modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock); // 1/4 symbol delay
-            modulation->delay8Index = (bitrate->offsetDelay8Index + decoder->signalClock); // 1/8 symbol delay
+//            modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock); // 1/4 symbol delay
+//            modulation->delay8Index = (bitrate->offsetDelay8Index + decoder->signalClock); // 1/8 symbol delay
 
             // get signal samples
             float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-            float delay4Data = decoder->signalStatus.signalData[modulation->delay4Index & (BUFFER_SIZE - 1)];
-            float delay8Data = decoder->signalStatus.signalData[modulation->delay8Index & (BUFFER_SIZE - 1)];
+//            float delay4Data = decoder->signalStatus.signalData[modulation->delay4Index & (BUFFER_SIZE - 1)];
+//            float delay8Data = decoder->signalStatus.signalData[modulation->delay8Index & (BUFFER_SIZE - 1)];
 
-            // integrate signal data over 1/4 symbol (slow average)
-            modulation->filterIntegrate += signalData; // add new value
-            modulation->filterIntegrate -= delay4Data; // remove delayed value
+            modulation->slowAverage = modulation->slowAverage * decoder->signalParams.slowAverageW0 + signalData * decoder->signalParams.slowAverageW1;
+            modulation->fastAverage = modulation->fastAverage * decoder->signalParams.fastAverageW0 + signalData * decoder->signalParams.fastAverageW1;
 
-            // integrate signal data over 1/8 symbol (fast average)
-            modulation->detectIntegrate += signalData; // add new value
-            modulation->detectIntegrate -= delay8Data; // remove delayed value
+            float edgeDetector = modulation->fastAverage - modulation->slowAverage;
+
+//            // integrate signal data over 1/4 symbol (slow average)
+//            modulation->filterIntegrate += signalData; // add new value
+//            modulation->filterIntegrate -= delay4Data; // remove delayed value
+//
+//            // integrate signal data over 1/8 symbol (fast average)
+//            modulation->detectIntegrate += signalData; // add new value
+//            modulation->detectIntegrate -= delay8Data; // remove delayed value
 
             // signal edge detector
-            float edgeDetector = (modulation->filterIntegrate / bitrate->period4SymbolSamples) - (modulation->detectIntegrate / bitrate->period8SymbolSamples);
+//            float edgeDetector = (modulation->filterIntegrate / bitrate->period4SymbolSamples) - (modulation->detectIntegrate / bitrate->period8SymbolSamples);
 
             // signal modulation deep
             float modulationDeep = (decoder->signalStatus.powerAverage - signalData) / decoder->signalStatus.powerAverage;
 
 #ifdef DEBUG_ASK_EDGE_CHANNEL
-            decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL, edgeDetector);
+            decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL + rate, edgeDetector);
 #endif
 
             // reset modulation if exceed limits
@@ -640,24 +636,29 @@ struct NfcB::Impl
       {
          // compute signal pointers for edge detector, current index, slow average, and fast average
          modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
-         modulation->delay8Index = (bitrate->offsetDelay8Index + decoder->signalClock);
+//         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+//         modulation->delay8Index = (bitrate->offsetDelay8Index + decoder->signalClock);
 
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // current signal value
-         float delay4Data = decoder->signalStatus.signalData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // 1/4 symbol delay (slow average)
-         float delay8Data = decoder->signalStatus.signalData[modulation->delay8Index & (BUFFER_SIZE - 1)]; // 1/8 symbol delay (fast average)
+//         float delay4Data = decoder->signalStatus.signalData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // 1/4 symbol delay (slow average)
+//         float delay8Data = decoder->signalStatus.signalData[modulation->delay8Index & (BUFFER_SIZE - 1)]; // 1/8 symbol delay (fast average)
 
-         // moving average over 1/4 symbol (slow average)
-         modulation->filterIntegrate += signalData; // add new value
-         modulation->filterIntegrate -= delay4Data; // remove delayed value
+         modulation->slowAverage = modulation->slowAverage * decoder->signalParams.slowAverageW0 + signalData * decoder->signalParams.slowAverageW1;
+         modulation->fastAverage = modulation->fastAverage * decoder->signalParams.fastAverageW0 + signalData * decoder->signalParams.fastAverageW1;
 
-         // moving average over 1/8 symbol (fast average)
-         modulation->detectIntegrate += signalData; // add new value
-         modulation->detectIntegrate -= delay8Data; // remove delayed value
+         float edgeDetector = std::fabs(modulation->slowAverage - modulation->fastAverage);
 
-         // subtract fast average from slow average to get signal edge
-         float edgeDetector = std::fabs((modulation->filterIntegrate / bitrate->period4SymbolSamples) - (modulation->detectIntegrate / decoder->bitrate->period8SymbolSamples));
+//         // moving average over 1/4 symbol (slow average)
+//         modulation->filterIntegrate += signalData; // add new value
+//         modulation->filterIntegrate -= delay4Data; // remove delayed value
+//
+//         // moving average over 1/8 symbol (fast average)
+//         modulation->detectIntegrate += signalData; // add new value
+//         modulation->detectIntegrate -= delay8Data; // remove delayed value
+//
+//         // subtract fast average from slow average to get signal edge
+//         float edgeDetector = std::fabs((modulation->filterIntegrate / bitrate->period4SymbolSamples) - (modulation->detectIntegrate / decoder->bitrate->period8SymbolSamples));
 
          // signal modulation deep
          float modulationDeep = (decoder->signalStatus.powerAverage - signalData) / decoder->signalStatus.powerAverage;
