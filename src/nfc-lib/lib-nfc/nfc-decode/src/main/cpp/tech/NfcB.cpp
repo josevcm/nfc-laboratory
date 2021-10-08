@@ -206,14 +206,11 @@ struct NfcB::Impl
     */
    inline bool detectModulation()
    {
-      if (decoder->signalClock == 14305117)
-         log.info("STOP");
-
       // ignore low power signals
       if (decoder->signalStatus.powerAverage > decoder->powerLevelThreshold)
       {
          // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
-         for (int rate = r106k; rate <= r106k; rate++)
+         for (int rate = r106k; rate <= r424k; rate++)
          {
             BitrateParams *bitrate = bitrateParams + rate;
             ModulationStatus *modulation = modulationStatus + rate;
@@ -273,13 +270,12 @@ struct NfcB::Impl
                   // first edge detect finished
                   if (decoder->signalClock == modulation->searchEndTime)
                   {
-                     // if no edge found, reset modulation
                      if (modulation->searchPeakTime)
                      {
-                        // sets frame start
+                        // sets SOF symbol frame start (also frame start)
                         modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
 
-                        // trigger next stage
+                        // and triger next stage
                         modulation->searchStage = SOF_IDLE;
                         modulation->searchStartTime = modulation->searchPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
                         modulation->searchEndTime = modulation->searchPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
@@ -288,6 +284,7 @@ struct NfcB::Impl
                      }
                      else
                      {
+                        // if no edge found, reset search
                         modulation->searchStartTime = 0;
                         modulation->searchEndTime = 0;
                      }
@@ -311,9 +308,9 @@ struct NfcB::Impl
                      // first edge detect finished
                      if (decoder->signalClock == modulation->searchEndTime)
                      {
-                        // if no edge found, reset modulation
                         if (modulation->searchPeakTime)
                         {
+                           // trigger last search stage
                            modulation->searchStage = SOF_END;
                            modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
                            modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
@@ -322,6 +319,7 @@ struct NfcB::Impl
                         }
                         else
                         {
+                           // if no edge found, restart search
                            modulation->searchStage = SOF_BEGIN;
                            modulation->searchStartTime = 0;
                            modulation->searchEndTime = 0;
@@ -333,9 +331,9 @@ struct NfcB::Impl
                      }
                   }
 
-                     // during SOF there must not be modulation changes
                   else if (fabs(edgeDetector) > 0.001)
                   {
+                     // during SOF there must not be modulation changes
                      modulation->searchStage = SOF_BEGIN;
                      modulation->searchStartTime = 0;
                      modulation->searchEndTime = 0;
@@ -363,25 +361,24 @@ struct NfcB::Impl
                      // last edge search finished
                      if (decoder->signalClock == modulation->searchEndTime)
                      {
-                        // no edge found! reset modulation
                         if (modulation->searchPeakTime)
                         {
                            // set SOF symbol parameters
                            modulation->symbolEndTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
                            modulation->symbolSyncTime = 0;
 
-                           // setup frame info
-                           frameStatus.frameType = PollFrame;
-                           frameStatus.symbolRate = bitrate->symbolsPerSecond;
-                           frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                           frameStatus.frameEnd = 0;
-
-                           // reset modulation to continue search
+                           // reset modulation for next search
                            modulation->searchStage = SOF_BEGIN;
                            modulation->searchStartTime = 0;
                            modulation->searchEndTime = 0;
                            modulation->searchDeepValue = 0;
                            modulation->detectorPeek = 0;
+
+                           // setup frame info
+                           frameStatus.frameType = PollFrame;
+                           frameStatus.symbolRate = bitrate->symbolsPerSecond;
+                           frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+                           frameStatus.frameEnd = 0;
 
                            // modulation detected
                            decoder->bitrate = bitrate;
@@ -391,6 +388,7 @@ struct NfcB::Impl
                         }
                         else
                         {
+                           // no edge found! reset search
                            modulation->searchStage = SOF_BEGIN;
                            modulation->searchStartTime = 0;
                            modulation->searchEndTime = 0;
@@ -530,7 +528,7 @@ struct NfcB::Impl
       if (!frameStatus.frameStart)
       {
          // detect SOF pattern
-         pattern = decodeListenFrameSOFBpsk(buffer);
+         pattern = decodeListenFrameStartBpsk(buffer);
 
          // Pattern-S found, mark frame start time
          if (pattern == PatternType::PatternS)
@@ -843,7 +841,7 @@ struct NfcB::Impl
    /*
     * Decode SOF BPSK modulated listen frame symbol
     */
-   inline int decodeListenFrameSOFBpsk(sdr::SignalBuffer &buffer)
+   inline int decodeListenFrameStartBpsk(sdr::SignalBuffer &buffer)
    {
       int pattern = PatternType::Invalid;
 
@@ -891,12 +889,6 @@ struct NfcB::Impl
                   modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
                }
 
-                  // frame waiting time exceeded without detect modulation
-               else if (decoder->signalClock >= frameStatus.waitingEnd)
-               {
-                  pattern = PatternType::NoPattern;
-               }
-
                if (decoder->signalClock == modulation->searchEndTime)
                {
                   if (modulation->searchPeakTime)
@@ -904,22 +896,28 @@ struct NfcB::Impl
 #ifdef DEBUG_BPSK_SYNC_CHANNEL
                      decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
 #endif
-                     // sets frame start
+                     // if edge found, set SOF symbol start
                      modulation->symbolStartTime = modulation->searchPeakTime;
 
-                     // trigger next stage
+                     // and trigger next stage
                      modulation->searchStage = SOF_IDLE;
                      modulation->searchStartTime = modulation->searchPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
                      modulation->searchEndTime = modulation->searchPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
                      modulation->searchPeakTime = 0;
                   }
-                     // if no edge found, reset modulation
                   else
                   {
+                     // if no edge is found, finish...
                      modulation->searchStartTime = 0;
                      modulation->searchEndTime = 0;
                      pattern = PatternType::NoPattern;
                   }
+               }
+
+               // frame waiting time exceeded without detect modulation
+               if (decoder->signalClock >= frameStatus.waitingEnd)
+               {
+                  pattern = PatternType::NoPattern;
                }
 
                break;
@@ -936,46 +934,32 @@ struct NfcB::Impl
                      modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
                   }
 
-                  // first edge detect finished
+                  // first edge search finished
                   if (decoder->signalClock == modulation->searchEndTime)
                   {
 #ifdef DEBUG_BPSK_SYNC_CHANNEL
                      decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
 #endif
-                     // if no edge found, reset modulation
                      if (modulation->searchPeakTime)
                      {
+                        // if edge found, synchronize symbol and check for end of SOF
                         modulation->searchStage = SOF_END;
                         modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
                         modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
                         modulation->searchPeakTime = 0;
                      }
-                        // if no edge found, continue searching SOF again
                      else
                      {
+                        // if no edge is found, we restart SOF search
                         modulation->searchStage = SOF_BEGIN;
                         modulation->searchStartTime = 0;
                         modulation->searchEndTime = 0;
                         modulation->searchPeakTime = 0;
                         modulation->symbolStartTime = 0;
                         modulation->symbolEndTime = 0;
-                        continue;
-                        //                        pattern = PatternType::NoPattern;
                      }
                   }
                }
-
-               // during SOF there must not be modulation changes
-               //                  else if (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0)
-               //                  {
-               //                     modulation->searchStage = SOF_BEGIN;
-               //                     modulation->searchStartTime = 0;
-               //                     modulation->searchEndTime = 0;
-               //                     modulation->searchPeakTime = 0;
-               //                     modulation->symbolStartTime = 0;
-               //                     modulation->symbolEndTime = 0;
-               //                     pattern = PatternType::NoPattern;
-               //                  }
 
                break;
 
@@ -996,7 +980,7 @@ struct NfcB::Impl
                   {
                      if (modulation->searchPeakTime)
                      {
-                        // set SOF symbol parameters
+                        // if found, set SOF symbol end and reference phase
                         modulation->symbolEndTime = modulation->searchPeakTime;
                         modulation->symbolPhase = modulation->phaseIntegrate;
 
@@ -1005,7 +989,7 @@ struct NfcB::Impl
                         modulation->searchStartTime = 0;
                         modulation->searchEndTime = 0;
 
-                        // set symbol info
+                        // set reference symbol info
                         symbolStatus.value = 1;
                         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
                         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
@@ -1013,17 +997,15 @@ struct NfcB::Impl
 
                         pattern = PatternType::PatternS;
                      }
-                     // if no edge found, continue searching SOF again
                      else
                      {
+                        // if no edge is found, we restart SOF search
                         modulation->searchStage = SOF_BEGIN;
                         modulation->searchStartTime = 0;
                         modulation->searchEndTime = 0;
                         modulation->searchPeakTime = 0;
                         modulation->symbolStartTime = 0;
                         modulation->symbolEndTime = 0;
-                        continue;
-//                        pattern = PatternType::NoPattern;
                      }
                   }
                }

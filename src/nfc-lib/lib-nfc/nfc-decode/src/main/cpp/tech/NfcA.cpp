@@ -926,7 +926,7 @@ struct NfcA::Impl
                      break;
                   }
 
-                  // reset search status
+                  // if no valid modulation is found, we restart SOF search
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
                   modulation->correlationPeek = 0;
@@ -940,7 +940,7 @@ struct NfcA::Impl
                modulation->searchThreshold = decoder->signalStatus.signalVariance;
 
             // frame waiting time exceeded
-            if (decoder->signalClock == frameStatus.waitingEnd)
+            if (decoder->signalClock >= frameStatus.waitingEnd)
             {
                pattern = PatternType::NoPattern;
                break;
