@@ -76,8 +76,8 @@ struct NfcB::Impl
    // minimum modulation threshold to detect valid signal for NFC-B (default 10%)
    float minimumModulationThreshold = 0.10f;
 
-   // minimum modulation threshold to detect valid signal for NFC-B (default 25%)
-   float maximumModulationThreshold = 0.50f;
+   // minimum modulation threshold to detect valid signal for NFC-B (default 75%)
+   float maximumModulationThreshold = 0.75f;
 
    // last detected frame end
    unsigned int lastFrameEnd = 0;
