@@ -53,7 +53,7 @@ class ParserModel : public QAbstractItemModel
 
       enum Columns
       {
-         Type = 0, Flags = 1, Data = 2
+         Cmd = 0, Flags = 1, Data = 2
       };
 
    public:

@@ -123,7 +123,7 @@ struct FrameStorageTask::Impl : FrameStorageTask, AbstractTask
                nfc::NfcFrame nfcFrame;
 
                nfcFrame.setTechType(nfc::TechType::NfcA);
-               nfcFrame.setFrameType(frame["frameType"]);
+               nfcFrame.setFrameType(frame["frameCmd"]);
                nfcFrame.setFramePhase(frame["framePhase"]);
                nfcFrame.setFrameFlags(frame["frameFlags"]);
                nfcFrame.setFrameRate(frame["frameRate"]);
@@ -176,7 +176,7 @@ struct FrameStorageTask::Impl : FrameStorageTask, AbstractTask
                                       {"sampleEnd",   frame.sampleEnd()},
                                       {"timeStart",   frame.timeStart()},
                                       {"timeEnd",     frame.timeEnd()},
-                                      {"frameType",   frame.frameType()},
+                                      {"frameCmd",   frame.frameType()},
                                       {"frameRate",   frame.frameRate()},
                                       {"frameFlags",  frame.frameFlags()},
                                       {"framePhase",  frame.framePhase()},
