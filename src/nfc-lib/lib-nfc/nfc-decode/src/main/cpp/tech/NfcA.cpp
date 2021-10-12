@@ -241,11 +241,11 @@ struct NfcA::Impl
             // search for Pattern-Z in PCD to PICC request
             if (modulation->correlatedSD > decoder->signalStatus.powerAverage * minimumModulationThreshold)
             {
-               // calculate symbol modulation deep
-               float modulationDeep = (decoder->signalStatus.powerAverage - signalData) / decoder->signalStatus.powerAverage;
+               // signal modulation deep value
+               float deepValue = decoder->signalStatus.deepData[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
-               if (modulation->searchDeepValue < modulationDeep)
-                  modulation->searchDeepValue = modulationDeep;
+               if (modulation->searchDeepValue < deepValue)
+                  modulation->searchDeepValue = deepValue;
 
                // max correlation peak detector
                if (modulation->correlatedSD > modulation->correlationPeek)

@@ -124,25 +124,23 @@ struct SignalDebug
  */
 struct SignalParams
 {
-   // exponential factors for power integrator
+   // factors for exponential signal power
    float powerAverageW0;
    float powerAverageW1;
 
-   // exponential factors for average integrator
+   // factors for exponential signal average
    float signalAverageW0;
    float signalAverageW1;
 
-   // exponential factors for variance integrator
+   // factors for exponential signal variance
    float signalVarianceW0;
    float signalVarianceW1;
 
-   // exponential factors for edge detector
-   float slowAverageW0;
-   float slowAverageW1;
-
-   // exponential factors for variance integrator
-   float fastAverageW0;
-   float fastAverageW1;
+   // factors for exponential edge detector
+   float signalFilterW0;
+   float signalFilterW1;
+   float signalFilterW2;
+   float signalFilterW3;
 
    // default decoder parameters
    double sampleTimeUnit;
@@ -194,11 +192,17 @@ struct SignalStatus
    float signalVariance;
 
    // exponential average for edge detector
-   float slowAverage;
-   float fastAverage;
+   float signalFilter0;
+   float signalFilter1;
 
    // signal data buffer
    float signalData[BUFFER_SIZE];
+
+   // edge detector buffer
+   float edgeData[BUFFER_SIZE];
+
+   // modulation deep buffer
+   float deepData[BUFFER_SIZE];
 
    // silence start (no modulation detected)
    unsigned int carrierOff;
@@ -405,13 +409,18 @@ struct DecoderStatus
       // compute signal variance (exponential variance)
       signalStatus.signalVariance = signalStatus.signalVariance * signalParams.signalVarianceW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverage) * signalParams.signalVarianceW1;
 
-//      // compute signal edge detector
-//      signalStatus.slowAverage = signalStatus.slowAverage * signalParams.slowAverageW0 + signalStatus.signalValue * signalParams.slowAverageW1;
-//      signalStatus.fastAverage = signalStatus.fastAverage * signalParams.fastAverageW0 + signalStatus.signalValue * signalParams.fastAverageW1;
-//      signalStatus.signalEdge = signalStatus.slowAverage - signalStatus.fastAverage;
+      // compute signal edge detector
+      signalStatus.signalFilter0 = signalStatus.signalFilter0 * signalParams.signalFilterW0 + signalStatus.signalValue * signalParams.signalFilterW1;
+      signalStatus.signalFilter1 = signalStatus.signalFilter1 * signalParams.signalFilterW2 + signalStatus.signalValue * signalParams.signalFilterW3;
 
       // store next signal value in sample buffer
       signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
+
+      // store next edge value in sample buffer
+      signalStatus.edgeData[signalClock & (BUFFER_SIZE - 1)] = std::fabs(signalStatus.signalFilter0 - signalStatus.signalFilter1);
+
+      // store next edge value in sample buffer
+      signalStatus.deepData[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.powerAverage - signalStatus.signalValue) / signalStatus.powerAverage;
 
 #ifdef DEBUG_SIGNAL
       debug->block(signalClock);
@@ -442,7 +451,7 @@ struct DecoderStatus
 #endif
 
 #ifdef DEBUG_EDGE_CHANNEL
-      debug->set(DEBUG_EDGE_CHANNEL, signalStatus.signalEdge);
+      debug->set(DEBUG_EDGE_CHANNEL, signalStatus.slowAverage - signalStatus.fastAverage);
 #endif
 
       return true;

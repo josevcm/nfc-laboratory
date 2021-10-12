@@ -37,7 +37,7 @@
 #include <tech/NfcF.h>
 #include <tech/NfcV.h>
 
-//#define ENABLE_NFC_A_DECODER
+#define ENABLE_NFC_A_DECODER
 #define ENABLE_NFC_B_DECODER
 //#define ENABLE_NFC_F_DECODER
 //#define ENABLE_NFC_V_DECODER
@@ -164,10 +164,10 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.signalVarianceW1 = float(1 - decoder.signalParams.signalVarianceW0);
 
       // initialize exponential average factors for edge detector
-      decoder.signalParams.slowAverageW0 = float(1 - 4E6 / decoder.sampleRate);
-      decoder.signalParams.slowAverageW1 = float(1 - decoder.signalParams.slowAverageW0);
-      decoder.signalParams.fastAverageW0 = float(1 - 3E6 / decoder.sampleRate);
-      decoder.signalParams.fastAverageW1 = float(1 - decoder.signalParams.fastAverageW0);
+      decoder.signalParams.signalFilterW0 = float(1 - 4E6 / decoder.sampleRate);
+      decoder.signalParams.signalFilterW1 = float(1 - decoder.signalParams.signalFilterW0);
+      decoder.signalParams.signalFilterW2 = float(1 - 3E6 / decoder.sampleRate);
+      decoder.signalParams.signalFilterW3 = float(1 - decoder.signalParams.signalFilterW2);
 
 #ifdef ENABLE_NFC_A_DECODER
       // configure NFC-A decoder
