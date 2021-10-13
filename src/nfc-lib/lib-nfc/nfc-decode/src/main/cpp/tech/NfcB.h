@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,50 +22,47 @@
 
 */
 
-#ifndef NFC_NFCDECODER_H
-#define NFC_NFCDECODER_H
+#ifndef NFC_NFCB_H
+#define NFC_NFCB_H
 
 #include <list>
 
-#include <rt/FloatBuffer.h>
+#include <rt/Logger.h>
 
 #include <sdr/SignalBuffer.h>
 
+#include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
+
+#include <NfcTech.h>
 
 namespace nfc {
 
-class NfcDecoder
+struct NfcB
 {
-      struct Impl;
+   struct Impl;
 
-   public:
+   Impl *self;
 
-      NfcDecoder();
+   enum CommandType
+   {
+      NFCB_REQB = 0x05,
+      NFCB_ATTRIB = 0x1d
+   };
 
-      std::list<NfcFrame> nextFrames(sdr::SignalBuffer samples);
+   explicit NfcB(DecoderStatus *decoder);
 
-      void setSampleRate(long sampleRate);
+   ~NfcB();
 
-      void setPowerLevelThreshold(float value);
+   void setModulationThreshold(float min, float max);
 
-      void setModulationThresholdNfcA(float min);
+   void configure(long sampleRate);
 
-      void setModulationThresholdNfcB(float min, float max);
+   bool detect();
 
-      void setModulationThresholdNfcF(float min, float max);
-
-      void setModulationThresholdNfcV(float min);
-
-      float powerLevelThreshold() const;
-
-      float signalStrength() const;
-
-   private:
-
-      std::shared_ptr<Impl> impl;
+   void decode(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
 };
 
 }
 
-#endif //NFC_LAB_NFCDECODER_H
+#endif //NFC_NFCB_H

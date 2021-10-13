@@ -29,6 +29,7 @@
 #include <rt/Format.h>
 #include <rt/BlockingQueue.h>
 
+#include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 #include <nfc/FrameStorageTask.h>
 
@@ -121,7 +122,7 @@ struct FrameStorageTask::Impl : FrameStorageTask, AbstractTask
             {
                nfc::NfcFrame nfcFrame;
 
-               nfcFrame.setTechType(nfc::NfcFrame::NfcA);
+               nfcFrame.setTechType(nfc::TechType::NfcA);
                nfcFrame.setFrameType(frame["frameType"]);
                nfcFrame.setFramePhase(frame["framePhase"]);
                nfcFrame.setFrameFlags(frame["frameFlags"]);
@@ -162,7 +163,7 @@ struct FrameStorageTask::Impl : FrameStorageTask, AbstractTask
 
          for (const auto &frame : frameQueue)
          {
-            if (frame.isRequestFrame() || frame.isResponseFrame())
+            if (frame.isPollFrame() || frame.isListenFrame())
             {
                char buffer[4096];
 

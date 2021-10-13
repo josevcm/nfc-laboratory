@@ -94,18 +94,22 @@ int ProtocolFrame::columnCount() const
    return impl->data.count();
 }
 
-void ProtocolFrame::appendChild(ProtocolFrame *item)
+ProtocolFrame *ProtocolFrame::appendChild(ProtocolFrame *item)
 {
    item->impl->parent = this;
 
    impl->childs.append(item);
+
+   return item;
 }
 
-void ProtocolFrame::prependChild(ProtocolFrame *item)
+ProtocolFrame *ProtocolFrame::prependChild(ProtocolFrame *item)
 {
    item->impl->parent = this;
 
    impl->childs.prepend(item);
+
+   return item;
 }
 
 bool ProtocolFrame::insertChilds(int position, int count, int columns)

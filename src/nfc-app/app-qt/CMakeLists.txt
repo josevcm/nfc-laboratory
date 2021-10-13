@@ -8,7 +8,8 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 
 find_package(Qt5 COMPONENTS Core Widgets PrintSupport OpenGL REQUIRED)
 
-add_executable(nfc-lab
+add_executable(nfc-lab WIN32
+#add_executable(nfc-lab
         src/main/cpp/main.cpp
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp

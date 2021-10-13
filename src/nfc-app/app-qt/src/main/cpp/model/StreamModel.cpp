@@ -55,6 +55,12 @@ static QMap<int, QString> NfcACmd = {
       {0xE0, "RATS"}
 };
 
+static QMap<int, QString> NfcBCmd = {
+      {0x05, "REQB"},
+      {0x1d, "ATTRIB"},
+      {0x50, "HLTB"}
+};
+
 struct StreamModel::Impl
 {
    // fonts
@@ -76,7 +82,7 @@ struct StreamModel::Impl
 
    Impl()
    {
-      headers << "#" << "Time" << "Delta" << "Rate" << "Type" << "" << "Frame";
+      headers << "#" << "Time" << "Delta" << "Rate" << "Type" << "Cmd" << "" << "Frame";
 
       // request fonts
       requestDefaultFont.setBold(true);
@@ -116,21 +122,43 @@ struct StreamModel::Impl
       return QString("%1k").arg(double(frame->frameRate() / 1000.0f), 3, 'f', 0);
    }
 
-   inline static QString frameType(const nfc::NfcFrame *frame)
+   inline static QString frameTech(const nfc::NfcFrame *frame)
    {
-      if (frame->isRequestFrame())
+      if (frame->isNfcA())
+         return "NfcA";
+
+      if (frame->isNfcB())
+         return "NfcB";
+
+      if (frame->isNfcF())
+         return "NfcF";
+
+      return {};
+   }
+
+   inline static QString frameCmd(const nfc::NfcFrame *frame)
+   {
+      if (frame->isPollFrame())
       {
          int command = (*frame)[0];
 
          // raw protocol commands
          if (!frame->isEncrypted())
          {
-            if (NfcACmd.contains(command))
-               return NfcACmd[command];
+            if (frame->isNfcA())
+            {
+               if (NfcACmd.contains(command))
+                  return NfcACmd[command];
 
-            // Protocol Parameter Selection
-            if ((command & 0xF0) == 0xD0)
-               return "PPS";
+               // Protocol Parameter Selection
+               if ((command & 0xF0) == 0xD0)
+                  return "PPS";
+            }
+            else if (frame->isNfcB())
+            {
+               if (NfcBCmd.contains(command))
+                  return NfcBCmd[command];
+            }
 
             // ISO-DEP protocol I-Block
             if ((command & 0xE2) == 0x02)
@@ -146,7 +174,7 @@ struct StreamModel::Impl
          }
       }
 
-      return QString();
+      return {};
    }
 
    inline static int frameFlags(const nfc::NfcFrame *frame)
@@ -193,7 +221,7 @@ int StreamModel::columnCount(const QModelIndex &parent) const
 QVariant StreamModel::data(const QModelIndex &index, int role) const
 {
    if (!index.isValid() || index.row() >= impl->frames.size() || index.row() < 0)
-      return QVariant();
+      return {};
 
    nfc::NfcFrame *prev = nullptr;
 
@@ -218,8 +246,11 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
          case Columns::Rate:
             return impl->frameRate(frame);
 
-         case Columns::Type:
-            return impl->frameType(frame);
+         case Columns::Tech:
+            return impl->frameTech(frame);
+
+         case Columns::Cmd:
+            return impl->frameCmd(frame);
 
          case Columns::Flags:
             return impl->frameFlags(frame);
@@ -228,7 +259,7 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
             return impl->frameData(frame);
       }
 
-      return QVariant();
+      return {};
    }
 
    else if (role == Qt::FontRole)
@@ -237,10 +268,10 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
       {
          case Columns::Data:
          {
-            if (frame->isRequestFrame())
+            if (frame->isPollFrame())
                return impl->requestDefaultFont;
 
-            if (frame->isResponseFrame())
+            if (frame->isListenFrame())
                return impl->responseDefaultFont;
          }
       }
@@ -250,7 +281,7 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
    {
       if (index.column() == Columns::Data)
       {
-         if (frame->isResponseFrame())
+         if (frame->isListenFrame())
             return QColor(Qt::darkGray);
       }
    }
@@ -271,7 +302,7 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
       return Qt::AlignLeft;
    }
 
-   return QVariant();
+   return {};
 }
 
 Qt::ItemFlags StreamModel::flags(const QModelIndex &index) const
@@ -287,13 +318,13 @@ QVariant StreamModel::headerData(int section, Qt::Orientation orientation, int r
    if (orientation == Qt::Horizontal && role == Qt::DisplayRole)
       return impl->headers.value(section);
 
-   return QVariant();
+   return {};
 }
 
 QModelIndex StreamModel::index(int row, int column, const QModelIndex &parent) const
 {
    if (!hasIndex(row, column, parent))
-      return QModelIndex();
+      return {};
 
    return createIndex(row, column, impl->frames[row]);
 }

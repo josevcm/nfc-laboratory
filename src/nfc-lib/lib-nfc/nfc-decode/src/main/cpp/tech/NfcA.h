@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,50 +22,58 @@
 
 */
 
-#ifndef NFC_NFCDECODER_H
-#define NFC_NFCDECODER_H
+#ifndef NFC_NFCA_H
+#define NFC_NFCA_H
 
 #include <list>
 
-#include <rt/FloatBuffer.h>
+#include <rt/Logger.h>
 
 #include <sdr/SignalBuffer.h>
 
+#include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
+
+#include <NfcTech.h>
 
 namespace nfc {
 
-class NfcDecoder
+struct NfcA
 {
-      struct Impl;
+   struct Impl;
 
-   public:
+   Impl *self;
 
-      NfcDecoder();
+   enum CommandType
+   {
+      NFCA_REQA = 0x26,
+      NFCA_HLTA = 0x50,
+      NFCA_WUPA = 0x52,
+      NFCA_AUTH1 = 0x60,
+      NFCA_AUTH2 = 0x61,
+      NFCA_SEL1 = 0x93,
+      NFCA_SEL2 = 0x95,
+      NFCA_SEL3 = 0x97,
+      NFCA_RATS = 0xE0,
+      NFCA_PPS = 0xD0,
+      NFCA_IBLOCK = 0x02,
+      NFCA_RBLOCK = 0xA2,
+      NFCA_SBLOCK = 0xC0
+   };
 
-      std::list<NfcFrame> nextFrames(sdr::SignalBuffer samples);
+   explicit NfcA(DecoderStatus *decoder);
 
-      void setSampleRate(long sampleRate);
+   ~NfcA();
 
-      void setPowerLevelThreshold(float value);
+   void setModulationThreshold(float min);
 
-      void setModulationThresholdNfcA(float min);
+   void configure(long sampleRate);
 
-      void setModulationThresholdNfcB(float min, float max);
+   bool detect();
 
-      void setModulationThresholdNfcF(float min, float max);
-
-      void setModulationThresholdNfcV(float min);
-
-      float powerLevelThreshold() const;
-
-      float signalStrength() const;
-
-   private:
-
-      std::shared_ptr<Impl> impl;
+   void decode(sdr::SignalBuffer &samples, std::list<NfcFrame> &frames);
 };
 
 }
 
-#endif //NFC_LAB_NFCDECODER_H
+#endif //NFC_NFCA_H
