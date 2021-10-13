@@ -26,6 +26,7 @@
 #include <QMouseEvent>
 #include <QVBoxLayout>
 
+#include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 
 #include <support/QCustomPlot.h>
@@ -327,25 +328,25 @@ struct TimingWidget::Impl
 
       switch (frame.framePhase())
       {
-         case nfc::NfcFrame::CarrierFrame:
+         case nfc::FramePhase::CarrierFrame:
          {
             graphChannel = 0;
             graphValue = 1;
             graphHeigth = frame.isEmptyFrame() ? 0.25 : 0.0;
             break;
          }
-         case nfc::NfcFrame::SelectionFrame:
+         case nfc::FramePhase::SelectionFrame:
          {
             graphChannel = 1;
             graphValue = 2;
-            graphHeigth = frame.isRequestFrame() ? 0.25 : 0.15;
+            graphHeigth = frame.isPollFrame() ? 0.25 : 0.15;
             break;
          }
          default:
          {
             graphChannel = 2;
             graphValue = 3;
-            graphHeigth = frame.isRequestFrame() ? 0.25 : 0.15;
+            graphHeigth = frame.isPollFrame() ? 0.25 : 0.15;
          }
       }
 

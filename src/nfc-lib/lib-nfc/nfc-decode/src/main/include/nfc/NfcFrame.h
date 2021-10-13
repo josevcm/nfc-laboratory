@@ -35,38 +35,6 @@ class NfcFrame : public rt::ByteBuffer
 
    public:
 
-      enum TechType
-      {
-         None = 0,
-         NfcA = 1,
-         NfcB = 2,
-         NfcF = 3
-      };
-
-      enum FrameType
-      {
-         NoCarrier = 0,
-         EmptyFrame = 1,
-         RequestFrame = 2,
-         ResponseFrame = 3
-      };
-
-      enum FramePhase
-      {
-         CarrierFrame = 0,
-         SelectionFrame = 1,
-         ApplicationFrame = 2
-      };
-
-      enum FrameFlags
-      {
-         ShortFrame = 0x01,
-         Encrypted = 0x08,
-         ParityError = 0x20,
-         CrcError = 0x40,
-         Truncated = 0x80
-      };
-
       static const NfcFrame Nil;
 
    public:
@@ -93,9 +61,9 @@ class NfcFrame : public rt::ByteBuffer
 
       bool isEmptyFrame() const;
 
-      bool isRequestFrame() const;
+      bool isPollFrame() const;
 
-      bool isResponseFrame() const;
+      bool isListenFrame() const;
 
       bool isShortFrame() const;
 

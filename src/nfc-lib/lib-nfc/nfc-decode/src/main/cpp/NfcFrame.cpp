@@ -22,6 +22,7 @@
 
 */
 
+#include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 
 namespace nfc {
@@ -106,14 +107,14 @@ bool NfcFrame::isEmptyFrame() const
    return impl->frameType == FrameType::EmptyFrame;
 }
 
-bool NfcFrame::isRequestFrame() const
+bool NfcFrame::isPollFrame() const
 {
-   return impl->frameType == FrameType::RequestFrame;
+   return impl->frameType == FrameType::PollFrame;
 }
 
-bool NfcFrame::isResponseFrame() const
+bool NfcFrame::isListenFrame() const
 {
-   return impl->frameType == FrameType::ResponseFrame;
+   return impl->frameType == FrameType::ListenFrame;
 }
 
 bool NfcFrame::isShortFrame() const

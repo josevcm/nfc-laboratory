@@ -51,7 +51,7 @@ struct ParserModel::Impl
    {
       QVector<QVariant> rootData;
 
-      rootData << "Type" << "" << "Data";
+      rootData << "Cmd" << "" << "Data";
 
       // root data
       root = new ProtocolFrame(rootData);
@@ -114,7 +114,7 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
       {
          qInfo() << "UserRole" << col;
 
-         case Columns::Type:
+         case Columns::Cmd:
             return frame->data(ProtocolFrame::Type);
 
          case Columns::Flags:
@@ -129,7 +129,7 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
    {
       switch (col)
       {
-         case Columns::Type:
+         case Columns::Cmd:
          {
             return frame->data(ProtocolFrame::Type);
          }
@@ -165,7 +165,7 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
    {
       switch (col)
       {
-         case Columns::Type:
+         case Columns::Cmd:
          {
             if (frame->isFrameField())
                return impl->fieldFont;
