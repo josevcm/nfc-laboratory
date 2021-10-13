@@ -36,9 +36,7 @@ struct Parser
       IS_APDU = 1
    };
 
-   unsigned int frameChain = 0;
    unsigned int lastCommand = 0;
-   nfc::NfcFrame lastFrame;
 
    virtual ProtocolFrame *parse(unsigned int frameCount, const nfc::NfcFrame &frame)
    {
@@ -51,9 +49,8 @@ struct Parser
       return nullptr;
    }
 
-   void reset()
+   virtual void reset()
    {
-      frameChain = 0;
       lastCommand = 0;
    }
 
@@ -250,10 +247,8 @@ struct ParserIsoDep : Parser
             info = Parser::parse(frameCount, frame);
 
          } while (false);
-
-         lastCommand = frame[0];
       }
-      else
+      else if (frame.isListenFrame())
       {
          do
          {
@@ -275,18 +270,16 @@ struct ParserIsoDep : Parser
          } while (false);
       }
 
-      lastFrame = frame;
-
       return info;
    }
 
    inline ProtocolFrame *parseRequestIBlock(unsigned int frameCount, const nfc::NfcFrame &frame)
    {
+      if ((frame[0] & 0xE2) != 0x02)
+         return nullptr;
+
       int pcb = frame[0], offset = 1;
       int flags = 0;
-
-      if ((pcb & 0xE2) != 0x02)
-         return nullptr;
 
       flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
       flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
@@ -376,11 +369,11 @@ struct ParserIsoDep : Parser
 
    inline ProtocolFrame *parseRequestRBlock(unsigned int frameCount, const nfc::NfcFrame &frame)
    {
+      if ((frame[0] & 0xE6) != 0xA2)
+         return nullptr;
+
       int pcb = frame[0], offset = 1;
       int flags = 0;
-
-      if ((pcb & 0xE6) != 0xA2)
-         return nullptr;
 
       ProtocolFrame *root;
 
@@ -415,11 +408,11 @@ struct ParserIsoDep : Parser
 
    inline ProtocolFrame *parseRequestSBlock(unsigned int frameCount, const nfc::NfcFrame &frame)
    {
+      if ((frame[0] & 0xC7) != 0xC2)
+         return nullptr;
+
       int pcb = frame[0], offset = 1;
       int flags = 0;
-
-      if ((pcb & 0xC0) != 0xC0)
-         return nullptr;
 
       flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
       flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
@@ -450,6 +443,8 @@ struct ParserIsoDep : Parser
 
 struct ParserNfcA : ParserIsoDep
 {
+   unsigned int frameChain = 0;
+
    ProtocolFrame *parse(unsigned int frameCount, const nfc::NfcFrame &frame) override
    {
       ProtocolFrame *info = nullptr;
@@ -505,7 +500,6 @@ struct ParserNfcA : ParserIsoDep
       {
          do
          {
-
             // Request Command, Type A
             if ((info = parseResponseREQA(frameCount, frame)))
                break;
@@ -540,9 +534,14 @@ struct ParserNfcA : ParserIsoDep
          } while (false);
       }
 
-      lastFrame = frame;
-
       return info;
+   }
+
+   void reset() override
+   {
+      ParserIsoDep::reset();
+
+      frameChain = 0;
    }
 
    inline ProtocolFrame *parseRequestREQA(unsigned int frameCount, const nfc::NfcFrame &frame)
@@ -1047,8 +1046,6 @@ struct ParserNfcB : ParserIsoDep
 
          } while (false);
       }
-
-      lastFrame = frame;
 
       return info;
    }
