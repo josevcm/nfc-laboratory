@@ -152,13 +152,14 @@ struct QtWindow::Impl
       ui->streamView->setColumnWidth(StreamModel::Time, 100);
       ui->streamView->setColumnWidth(StreamModel::Delta, 75);
       ui->streamView->setColumnWidth(StreamModel::Rate, 60);
-      ui->streamView->setColumnWidth(StreamModel::Type, 75);
+      ui->streamView->setColumnWidth(StreamModel::Tech, 60);
+      ui->streamView->setColumnWidth(StreamModel::Cmd, 75);
       ui->streamView->setColumnWidth(StreamModel::Flags, 48);
       ui->streamView->setItemDelegate(new StreamStyle(ui->streamView));
 
       // setup protocol view model
       ui->parserView->setModel(parserModel);
-      ui->parserView->setColumnWidth(ParserModel::Type, 120);
+      ui->parserView->setColumnWidth(ParserModel::Cmd, 120);
       ui->parserView->setColumnWidth(ParserModel::Flags, 32);
       ui->parserView->setItemDelegate(new ParserStyle(ui->parserView));
 
@@ -223,7 +224,7 @@ struct QtWindow::Impl
       const auto &frame = event->frame();
 
       // add data frames to stream model (omit carrier lost and empty frames)
-      if (frame.isRequestFrame() || frame.isResponseFrame())
+      if (frame.isPollFrame() || frame.isListenFrame())
       {
          streamModel->append(frame);
       }
@@ -553,7 +554,7 @@ struct QtWindow::Impl
 
    void toggleFollow()
    {
-      setFollowEnabled(followEnabled);
+      setFollowEnabled(!followEnabled);
    }
 
    void toggleFilter()
@@ -656,7 +657,7 @@ struct QtWindow::Impl
 
          if (auto firstFrame = streamModel->frame(firstIndex))
          {
-            if (firstFrame->isRequestFrame())
+            if (firstFrame->isPollFrame())
             {
                parserModel->append(*firstFrame);
 
@@ -666,14 +667,14 @@ struct QtWindow::Impl
                {
                   if (auto secondFrame = streamModel->frame(secondIndex))
                   {
-                     if (secondFrame->isResponseFrame())
+                     if (secondFrame->isListenFrame())
                      {
                         parserModel->append(*secondFrame);
                      }
                   }
                }
             }
-            else if (firstFrame->isResponseFrame())
+            else if (firstFrame->isListenFrame())
             {
                auto secondIndex = streamModel->index(firstIndex.row() - 1, 0);
 
@@ -681,7 +682,7 @@ struct QtWindow::Impl
                {
                   if (auto secondFrame = streamModel->frame(secondIndex))
                   {
-                     if (secondFrame->isRequestFrame())
+                     if (secondFrame->isPollFrame())
                      {
                         parserModel->append(*secondFrame);
                         parserModel->append(*firstFrame);

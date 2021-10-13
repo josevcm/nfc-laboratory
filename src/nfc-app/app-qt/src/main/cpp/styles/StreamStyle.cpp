@@ -91,9 +91,9 @@ void StreamStyle::paint(QPainter *painter, const QStyleOptionViewItem &option, c
                QRect typeRect = impl->type.adjusted(option.rect.x(), option.rect.y(), option.rect.x(), option.rect.y());
                QRect flagRect = impl->flag.adjusted(option.rect.x(), option.rect.y(), option.rect.x(), option.rect.y());
 
-               if (frame->isRequestFrame())
+               if (frame->isPollFrame())
                   painter->drawPixmap(typeRect, impl->requestIcon);
-               else if (frame->isResponseFrame())
+               else if (frame->isListenFrame())
                   painter->drawPixmap(typeRect, impl->responseIcon);
 
                if (frame->isEncrypted())

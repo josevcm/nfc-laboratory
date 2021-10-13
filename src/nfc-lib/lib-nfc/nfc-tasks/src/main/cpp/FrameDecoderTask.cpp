@@ -154,7 +154,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             decoder->setPowerLevelThreshold(config["powerLevelThreshold"]);
 
          if (config.contains("modulationThreshold"))
-            decoder->setModulationThreshold(config["modulationThreshold"]);
+            decoder->setModulationThresholdNfcA(config["modulationThreshold"]);
 
          command.resolve();
       }
