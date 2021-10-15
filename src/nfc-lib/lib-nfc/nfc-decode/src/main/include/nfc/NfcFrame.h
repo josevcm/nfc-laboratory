@@ -57,6 +57,8 @@ class NfcFrame : public rt::ByteBuffer
 
       bool isNfcF() const;
 
+      bool isNfcV() const;
+
       bool isNoCarrier() const;
 
       bool isEmptyFrame() const;

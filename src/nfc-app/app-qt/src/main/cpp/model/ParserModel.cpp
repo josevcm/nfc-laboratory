@@ -288,9 +288,12 @@ void ParserModel::resetModel()
 
 void ParserModel::append(const nfc::NfcFrame &frame)
 {
-   beginInsertRows(QModelIndex(), 0, 0);
-   impl->root->appendChild(impl->parser->parse(frame));
-   endInsertRows();
+   if (auto child = impl->parser->parse(frame))
+   {
+      beginInsertRows(QModelIndex(), 0, 0);
+      impl->root->appendChild(child);
+      endInsertRows();
+   }
 }
 
 ProtocolFrame *ParserModel::frame(const QModelIndex &index) const
