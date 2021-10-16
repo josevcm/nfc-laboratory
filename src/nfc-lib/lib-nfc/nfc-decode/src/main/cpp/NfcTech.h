@@ -31,7 +31,7 @@
 
 #include <nfc/Nfc.h>
 
-//#define DEBUG_SIGNAL
+#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
@@ -120,6 +120,16 @@ struct SignalDebug
 };
 
 /*
+ * pulse slot parameters (for pulse position modulation NFC-V)
+ */
+struct PulseSlot
+{
+   int start;
+   int end;
+   int value;
+};
+
+/*
  * baseband processor signal parameters
  */
 struct SignalParams
@@ -171,6 +181,17 @@ struct BitrateParams
    unsigned int offsetDelay1Index;
    unsigned int offsetDelay4Index;
    unsigned int offsetDelay8Index;
+};
+
+/*
+ * pulse position modulation parameters (for NFC-V)
+ */
+struct PulseParams
+{
+   int bits;
+   int length;
+   int periods;
+   PulseSlot slots[256];
 };
 
 /*
@@ -245,7 +266,6 @@ struct ModulationStatus
    unsigned int delay1Index;
    unsigned int delay2Index;
    unsigned int delay4Index;
-   unsigned int delay8Index;
 
    // correlation indexes
    unsigned int filterPoint1;
@@ -352,6 +372,9 @@ struct DecoderStatus
 
    // signal processing status
    SignalStatus signalStatus {0,};
+
+   // detected pulse code (for NFC-V)
+   PulseParams *pulse = nullptr;
 
    // detected signal bitrate
    BitrateParams *bitrate = nullptr;

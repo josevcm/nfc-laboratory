@@ -45,6 +45,14 @@ class NfcDecoder
 
       std::list<NfcFrame> nextFrames(sdr::SignalBuffer samples);
 
+      void setEnableNfcA(bool value);
+
+      void setEnableNfcB(bool value);
+
+      void setEnableNfcF(bool value);
+
+      void setEnableNfcV(bool value);
+
       void setSampleRate(long sampleRate);
 
       void setPowerLevelThreshold(float value);

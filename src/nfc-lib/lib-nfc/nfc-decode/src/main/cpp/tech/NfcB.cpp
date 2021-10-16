@@ -101,6 +101,12 @@ struct NfcB::Impl
       log.info("\tpowerLevelThreshold  {}", {decoder->powerLevelThreshold});
       log.info("\tmodulationThreshold  {} -> {}", {minimumModulationThreshold, maximumModulationThreshold});
 
+      // clear last detected frame end
+      lastFrameEnd = 0;
+
+      // clear chained flags
+      chainedFlags = 0;
+
       // clear detected symbol status
       symbolStatus = {0,};
 
@@ -109,12 +115,6 @@ struct NfcB::Impl
 
       // clear frame processing status
       frameStatus = {0,};
-
-      // clear last detected frame end
-      lastFrameEnd = 0;
-
-      // clear chained flags
-      chainedFlags = 0;
 
       // compute symbol parameters for 106Kbps, 212Kbps, 424Kbps and 848Kbps
       for (int rate = r106k; rate <= r424k; rate++)
@@ -195,117 +195,89 @@ struct NfcB::Impl
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.powerAverage > decoder->powerLevelThreshold)
+      if (decoder->signalStatus.powerAverage < decoder->powerLevelThreshold)
+         return false;
+
+
+      // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
+      for (int rate = r106k; rate <= r424k; rate++)
       {
-         // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
-         for (int rate = r106k; rate <= r424k; rate++)
-         {
-            BitrateParams *bitrate = bitrateParams + rate;
-            ModulationStatus *modulation = modulationStatus + rate;
+         BitrateParams *bitrate = bitrateParams + rate;
+         ModulationStatus *modulation = modulationStatus + rate;
 
-            // compute signal pointer
-            modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         // compute signal pointer
+         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
 
-            // signal edge detector value
-            float edgeValue = decoder->signalStatus.edgeData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         // signal edge detector value
+         float edgeValue = decoder->signalStatus.edgeData[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
-            // signal modulation deep value
-            float deepValue = decoder->signalStatus.deepData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         // signal modulation deep value
+         float deepValue = decoder->signalStatus.deepData[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_EDGE_CHANNEL
-            decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL + rate, edgeValue * 10);
+         decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL + rate, edgeValue * 10);
 #endif
-            // reset modulation if exceed limits
-            if (deepValue > maximumModulationThreshold)
-            {
-               modulation->searchStage = SOF_BEGIN;
-               modulation->searchStartTime = 0;
-               modulation->searchEndTime = 0;
+         // reset modulation if exceed limits
+         if (deepValue > maximumModulationThreshold)
+         {
+            modulation->searchStage = SOF_BEGIN;
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->detectorPeek = 0;
+
+            return false;
+         }
+
+         // search for first falling edge
+         switch (modulation->searchStage)
+         {
+            case SOF_BEGIN:
+
+               // detect edge at maximum peak
+               if (modulation->detectorPeek < edgeValue && edgeValue > 0.001 && deepValue > minimumModulationThreshold)
+               {
+                  modulation->detectorPeek = edgeValue;
+                  modulation->searchPeakTime = decoder->signalClock;
+                  modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               }
+
+               // wait until search finished
+               if (decoder->signalClock != modulation->searchEndTime)
+                  break;
+
+               // sets SOF symbol frame start (also frame start)
+               modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
+
+               // and triger next stage
+               modulation->searchStage = SOF_IDLE;
+               modulation->searchStartTime = modulation->searchPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+               modulation->searchEndTime = modulation->searchPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+               modulation->searchPeakTime = 0;
                modulation->detectorPeek = 0;
 
-               return false;
-            }
+               break;
 
-            // search for first falling edge
-            switch (modulation->searchStage)
-            {
-               case SOF_BEGIN:
+            case SOF_IDLE:
 
+               // rising edge must be between 10 and 11 etus
+               if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
+               {
                   // detect edge at maximum peak
-                  if (modulation->detectorPeek < edgeValue && edgeValue > 0.001 && deepValue > minimumModulationThreshold)
+                  if (edgeValue > 0.001 && modulation->detectorPeek < edgeValue)
                   {
                      modulation->detectorPeek = edgeValue;
                      modulation->searchPeakTime = decoder->signalClock;
                      modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
                   }
 
-                  // first edge detect finished
-                  if (decoder->signalClock == modulation->searchEndTime)
+                  // wait until search finished
+                  if (decoder->signalClock != modulation->searchEndTime)
+                     break;
+
+                  // if no edge detected reset modulation search
+                  if (!modulation->searchPeakTime)
                   {
-                     if (modulation->searchPeakTime)
-                     {
-                        // sets SOF symbol frame start (also frame start)
-                        modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
-
-                        // and triger next stage
-                        modulation->searchStage = SOF_IDLE;
-                        modulation->searchStartTime = modulation->searchPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                        modulation->searchEndTime = modulation->searchPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                        modulation->searchPeakTime = 0;
-                        modulation->detectorPeek = 0;
-                     }
-                     else
-                     {
-                        // if no edge found, reset search
-                        modulation->searchStartTime = 0;
-                        modulation->searchEndTime = 0;
-                     }
-                  }
-
-                  break;
-
-               case SOF_IDLE:
-
-                  // rising edge must be between 10 and 11 etus
-                  if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
-                  {
-                     // detect edge at maximum peak
-                     if (edgeValue > 0.001 && modulation->detectorPeek < edgeValue)
-                     {
-                        modulation->detectorPeek = edgeValue;
-                        modulation->searchPeakTime = decoder->signalClock;
-                        modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-                     }
-
-                     // first edge detect finished
-                     if (decoder->signalClock == modulation->searchEndTime)
-                     {
-                        if (modulation->searchPeakTime)
-                        {
-                           // trigger last search stage
-                           modulation->searchStage = SOF_END;
-                           modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                           modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                           modulation->searchPeakTime = 0;
-                           modulation->detectorPeek = 0;
-                        }
-                        else
-                        {
-                           // if no edge found, restart search
-                           modulation->searchStage = SOF_BEGIN;
-                           modulation->searchStartTime = 0;
-                           modulation->searchEndTime = 0;
-                           modulation->searchPeakTime = 0;
-                           modulation->detectorPeek = 0;
-                           modulation->symbolStartTime = 0;
-                           modulation->symbolEndTime = 0;
-                        }
-                     }
-                  }
-
-                  else if (edgeValue > 0.001)
-                  {
-                     // during SOF there must not be modulation changes
+                     // if no edge found, restart search
                      modulation->searchStage = SOF_BEGIN;
                      modulation->searchStartTime = 0;
                      modulation->searchEndTime = 0;
@@ -313,65 +285,86 @@ struct NfcB::Impl
                      modulation->detectorPeek = 0;
                      modulation->symbolStartTime = 0;
                      modulation->symbolEndTime = 0;
+
+                     break;
                   }
 
-                  break;
+                  // trigger last search stage
+                  modulation->searchStage = SOF_END;
+                  modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->searchPeakTime = 0;
+                  modulation->detectorPeek = 0;
+               }
 
-               case SOF_END:
+               else if (edgeValue > 0.001)
+               {
+                  // during SOF there must not be modulation changes
+                  modulation->searchStage = SOF_BEGIN;
+                  modulation->searchStartTime = 0;
+                  modulation->searchEndTime = 0;
+                  modulation->searchPeakTime = 0;
+                  modulation->detectorPeek = 0;
+                  modulation->symbolStartTime = 0;
+                  modulation->symbolEndTime = 0;
+               }
 
-                  // falling edge must be between 2 and 3 etus
-                  if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
+               break;
+
+            case SOF_END:
+
+               // falling edge must be between 2 and 3 etus
+               if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
+               {
+                  // detect edge at maximum peak
+                  if (edgeValue > 0.001 && modulation->detectorPeek < edgeValue && deepValue > minimumModulationThreshold)
                   {
-                     // detect edge at maximum peak
-                     if (edgeValue > 0.001 && modulation->detectorPeek < edgeValue && deepValue > minimumModulationThreshold)
-                     {
-                        modulation->detectorPeek = edgeValue;
-                        modulation->searchPeakTime = decoder->signalClock;
-                        modulation->searchEndTime = decoder->signalClock + bitrate->period8SymbolSamples;
-                     }
-
-                     // last edge search finished
-                     if (decoder->signalClock == modulation->searchEndTime)
-                     {
-                        if (modulation->searchPeakTime)
-                        {
-                           // set SOF symbol parameters
-                           modulation->symbolEndTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
-                           modulation->symbolSyncTime = 0;
-
-                           // reset modulation for next search
-                           modulation->searchStage = SOF_BEGIN;
-                           modulation->searchStartTime = 0;
-                           modulation->searchEndTime = 0;
-                           modulation->searchDeepValue = 0;
-                           modulation->detectorPeek = 0;
-
-                           // setup frame info
-                           frameStatus.frameType = PollFrame;
-                           frameStatus.symbolRate = bitrate->symbolsPerSecond;
-                           frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                           frameStatus.frameEnd = 0;
-
-                           // modulation detected
-                           decoder->bitrate = bitrate;
-                           decoder->modulation = modulation;
-
-                           return true;
-                        }
-                        else
-                        {
-                           // no edge found! reset search
-                           modulation->searchStage = SOF_BEGIN;
-                           modulation->searchStartTime = 0;
-                           modulation->searchEndTime = 0;
-                           modulation->searchPeakTime = 0;
-                           modulation->detectorPeek = 0;
-                           modulation->symbolStartTime = 0;
-                           modulation->symbolEndTime = 0;
-                        }
-                     }
+                     modulation->detectorPeek = edgeValue;
+                     modulation->searchPeakTime = decoder->signalClock;
+                     modulation->searchEndTime = decoder->signalClock + bitrate->period8SymbolSamples;
                   }
-            }
+
+                  // wait until search finished
+                  if (decoder->signalClock != modulation->searchEndTime)
+                     break;
+
+                  // if no edge detected reset modulation search
+                  if (!modulation->searchPeakTime)
+                  {
+                     modulation->searchStage = SOF_BEGIN;
+                     modulation->searchStartTime = 0;
+                     modulation->searchEndTime = 0;
+                     modulation->searchPeakTime = 0;
+                     modulation->detectorPeek = 0;
+                     modulation->symbolStartTime = 0;
+                     modulation->symbolEndTime = 0;
+
+                     break;
+                  }
+
+                  // set SOF symbol parameters
+                  modulation->symbolEndTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
+                  modulation->symbolSyncTime = 0;
+
+                  // reset modulation for next search
+                  modulation->searchStage = SOF_BEGIN;
+                  modulation->searchStartTime = 0;
+                  modulation->searchEndTime = 0;
+                  modulation->searchDeepValue = 0;
+                  modulation->detectorPeek = 0;
+
+                  // setup frame info
+                  frameStatus.frameType = PollFrame;
+                  frameStatus.symbolRate = bitrate->symbolsPerSecond;
+                  frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+                  frameStatus.frameEnd = 0;
+
+                  // modulation detected
+                  decoder->bitrate = bitrate;
+                  decoder->modulation = modulation;
+
+                  return true;
+               }
          }
       }
 

@@ -37,19 +37,19 @@
 #include <tech/NfcF.h>
 #include <tech/NfcV.h>
 
-#define ENABLE_NFC_A_DECODER
-#define ENABLE_NFC_B_DECODER
-//#define ENABLE_NFC_F_DECODER
-//#define ENABLE_NFC_V_DECODER
-
 namespace nfc {
 
 struct NfcDecoder::Impl
 {
-   // frame handler
-   typedef std::function<bool(nfc::NfcFrame &frame)> FrameHandler;
-
    rt::Logger log {"NfcDecoder"};
+
+   static constexpr int ENABLED_NFCA = 0; //1 << 0;
+   static constexpr int ENABLED_NFCB = 0; //1 << 1;
+   static constexpr int ENABLED_NFCF = 0; //1 << 2;
+   static constexpr int ENABLED_NFCV = 1 << 3;
+
+   // all tech enabled by default
+   int enabledTech = ENABLED_NFCA | ENABLED_NFCB | ENABLED_NFCF | ENABLED_NFCV;
 
    // NFC-A Decoder
    struct NfcA nfca;
@@ -82,6 +82,38 @@ NfcDecoder::NfcDecoder() : impl(std::make_shared<Impl>())
 std::list<NfcFrame> NfcDecoder::nextFrames(sdr::SignalBuffer samples)
 {
    return impl->nextFrames(samples);
+}
+
+void NfcDecoder::setEnableNfcA(bool value)
+{
+   if (value)
+      impl->enabledTech |= Impl::ENABLED_NFCA;
+   else
+      impl->enabledTech &= ~Impl::ENABLED_NFCA;
+}
+
+void NfcDecoder::setEnableNfcB(bool value)
+{
+   if (value)
+      impl->enabledTech |= Impl::ENABLED_NFCB;
+   else
+      impl->enabledTech &= ~Impl::ENABLED_NFCB;
+}
+
+void NfcDecoder::setEnableNfcF(bool value)
+{
+   if (value)
+      impl->enabledTech |= Impl::ENABLED_NFCF;
+   else
+      impl->enabledTech &= ~Impl::ENABLED_NFCF;
+}
+
+void NfcDecoder::setEnableNfcV(bool value)
+{
+   if (value)
+      impl->enabledTech |= Impl::ENABLED_NFCV;
+   else
+      impl->enabledTech &= ~Impl::ENABLED_NFCV;
 }
 
 void NfcDecoder::setSampleRate(long sampleRate)
@@ -169,25 +201,29 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.signalFilterW2 = float(1 - 3E6 / decoder.sampleRate);
       decoder.signalParams.signalFilterW3 = float(1 - decoder.signalParams.signalFilterW2);
 
-#ifdef ENABLE_NFC_A_DECODER
       // configure NFC-A decoder
-      nfca.configure(newSampleRate);
-#endif
+      if (enabledTech & ENABLED_NFCA)
+         nfca.configure(newSampleRate);
+      else
+         log.info("NFC-A decoder is disabled");
 
-#ifdef ENABLE_NFC_B_DECODER
       // configure NFC-B decoder
-      nfcb.configure(newSampleRate);
-#endif
+      if (enabledTech & ENABLED_NFCB)
+         nfcb.configure(newSampleRate);
+      else
+         log.info("NFC-B decoder is disabled");
 
-#ifdef ENABLE_NFC_F_DECODER
       // configure NFC-F decoder
-      nfcf.configure(newSampleRate);
-#endif
+      if (enabledTech & ENABLED_NFCF)
+         nfcf.configure(newSampleRate);
+      else
+         log.info("NFC-F decoder is disabled");
 
-#ifdef ENABLE_NFC_V_DECODER
       // configure NFC-V decoder
-      nfcv.configure(newSampleRate);
-#endif
+      if (enabledTech & ENABLED_NFCV)
+         nfcv.configure(newSampleRate);
+      else
+         log.info("NFC-V decoder is disabled");
 
 #ifdef DEBUG_SIGNAL
       log.warn("SIGNAL DEBUGGER ENABLED!, highly affected performance!");
@@ -236,25 +272,17 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
                // carrier detector
                detectCarrier(frames);
 
-#ifdef ENABLE_NFC_A_DECODER
-               if (nfca.detect())
+               if ((enabledTech & ENABLED_NFCA) && nfca.detect())
                   break;
-#endif
 
-#ifdef ENABLE_NFC_B_DECODER
-               if (nfcb.detect())
+               if ((enabledTech & ENABLED_NFCB) && nfcb.detect())
                   break;
-#endif
 
-#ifdef ENABLE_NFC_F_DECODER
-               if (nfcf.detect())
+               if ((enabledTech & ENABLED_NFCF) && nfcf.detect())
                   break;
-#endif
 
-#ifdef ENABLE_NFC_V_DECODER
-               if (nfcv.detect())
+               if ((enabledTech & ENABLED_NFCV) && nfcv.detect())
                   break;
-#endif
             }
          }
 
@@ -262,29 +290,21 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
          {
             switch (decoder.bitrate->techType)
             {
-#ifdef ENABLE_NFC_A_DECODER
                case TechType::NfcA:
                   nfca.decode(samples, frames);
                   break;
-#endif
 
-#ifdef ENABLE_NFC_B_DECODER
                case TechType::NfcB:
                   nfcb.decode(samples, frames);
                   break;
-#endif
 
-#ifdef ENABLE_NFC_F_DECODER
-                  case TechType::NfcF:
-                     nfcf.decode(samples, frames);
-                     break;
-#endif
+               case TechType::NfcF:
+                  nfcf.decode(samples, frames);
+                  break;
 
-#ifdef ENABLE_NFC_V_DECODER
-                  case TechType::NfcV:
-                     nfcv.decode(samples, frames);
-                     break;
-#endif
+               case TechType::NfcV:
+                  nfcv.decode(samples, frames);
+                  break;
             }
          }
 

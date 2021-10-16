@@ -91,6 +91,18 @@ constexpr float NFCB_TR0_MIN_TABLE[] = {0, 48 * 16, 16 * 16, 0};
 // TR1min, in 1/FC units
 constexpr float NFCB_TR1_MIN_TABLE[] = {0, 64 * 16, 16 * 16, 0};
 
+// NFC-V Default Request Guard Time
+constexpr int NFCV_FGT_DEF = NFC_TR0_MIN;
+
+// NFC-V Default Frame Waiting Time
+constexpr int NFCV_FWT_DEF = 256 * 16 * (1 << 4);
+
+// NFC-V Default Start-up Frame Guard Time
+constexpr int NFCV_SFGT_DEF = 256 * 16 * (1 << 0);
+
+// NFC-V Default Request Guard Time, defined as the minimum time between the start bits of two consecutive REQV commands.
+constexpr int NFCV_RGT_DEF = 7000;
+
 namespace nfc {
 
 enum TechType
