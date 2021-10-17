@@ -43,9 +43,9 @@ struct NfcDecoder::Impl
 {
    rt::Logger log {"NfcDecoder"};
 
-   static constexpr int ENABLED_NFCA = 0; //1 << 0;
-   static constexpr int ENABLED_NFCB = 0; //1 << 1;
-   static constexpr int ENABLED_NFCF = 0; //1 << 2;
+   static constexpr int ENABLED_NFCA = 0 << 0;
+   static constexpr int ENABLED_NFCB = 0 << 1;
+   static constexpr int ENABLED_NFCF = 0 << 2;
    static constexpr int ENABLED_NFCV = 1 << 3;
 
    // all tech enabled by default

@@ -836,7 +836,7 @@ struct NfcA::Impl
       {
          // compute pointers
          modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
 
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
@@ -844,7 +844,7 @@ struct NfcA::Impl
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
-         // signal value
+         // remove DC offset from signal value
          signalData -= modulation->symbolAverage;
 
          // store signal square in filter buffer
@@ -860,7 +860,7 @@ struct NfcA::Impl
 
             // integrate symbol (moving average)
             modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-            modulation->filterIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+            modulation->filterIntegrate -= modulation->integrationData[modulation->delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
             // store integrated signal in correlation buffer
             modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
@@ -872,11 +872,11 @@ struct NfcA::Impl
          }
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
+         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, modulation->filterIntegrate);
 #endif
          // search for Start Of Frame pattern (SoF)
          if (!modulation->symbolEndTime)

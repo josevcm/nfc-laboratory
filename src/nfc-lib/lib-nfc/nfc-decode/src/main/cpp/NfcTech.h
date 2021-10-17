@@ -35,8 +35,8 @@
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
-//#define DEBUG_POWER_CHANNEL 0
 #define DEBUG_SIGNAL_CHANNEL 0
+//#define DEBUG_POWER_CHANNEL 0
 //#define DEBUG_AVERAGE_CHANNEL 1
 //#define DEBUG_VARIANCE_CHANNEL 2
 //#define DEBUG_SLOW_AVERAGE_CHANNEL 1
@@ -169,6 +169,7 @@ struct BitrateParams
 
    // symbol parameters
    unsigned int symbolsPerSecond;
+   unsigned int period0SymbolSamples;
    unsigned int period1SymbolSamples;
    unsigned int period2SymbolSamples;
    unsigned int period4SymbolSamples;
@@ -177,8 +178,9 @@ struct BitrateParams
    // modulation parameters
    unsigned int symbolDelayDetect;
    unsigned int offsetSignalIndex;
-   unsigned int offsetDelay2Index;
+   unsigned int offsetDelay0Index;
    unsigned int offsetDelay1Index;
+   unsigned int offsetDelay2Index;
    unsigned int offsetDelay4Index;
    unsigned int offsetDelay8Index;
 };
