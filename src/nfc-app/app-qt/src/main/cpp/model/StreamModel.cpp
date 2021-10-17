@@ -133,6 +133,9 @@ struct StreamModel::Impl
       if (frame->isNfcF())
          return "NfcF";
 
+      if (frame->isNfcV())
+         return "NfcV";
+
       return {};
    }
 

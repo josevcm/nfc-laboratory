@@ -33,5 +33,52 @@ void ParserNfcV::reset()
 
 ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
 {
-   return nullptr;
+   ProtocolFrame *info = nullptr;
+
+   if (frame.isPollFrame())
+   {
+      do
+      {
+//         // Request Command
+//         if ((info = parseRequestREQB(frame)))
+//            break;
+//
+//         // Attrib request
+//         if ((info = parseRequestATTRIB(frame)))
+//            break;
+//
+//         // Halt request
+//         if ((info = parseRequestHLTB(frame)))
+//            break;
+
+         // Unknown frame...
+         info = ParserNfc::parse(frame);
+
+      } while (false);
+
+      lastCommand = frame[0];
+   }
+   else
+   {
+      do
+      {
+//         // Request Command
+//         if ((info = parseResponseREQB(frame)))
+//            break;
+//
+//         // Attrib request
+//         if ((info = parseResponseATTRIB(frame)))
+//            break;
+//
+//         // Halt request
+//         if ((info = parseResponseHLTB(frame)))
+//            break;
+
+         // Unknown frame...
+         info = ParserNfc::parse(frame);
+
+      } while (false);
+   }
+
+   return info;
 }

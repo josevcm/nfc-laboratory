@@ -1231,8 +1231,10 @@ struct NfcA::Impl
       if (frame.isPollFrame())
       {
          // initialize frame parameters to default protocol parameters
-         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+         frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+         frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
       }
 
       do

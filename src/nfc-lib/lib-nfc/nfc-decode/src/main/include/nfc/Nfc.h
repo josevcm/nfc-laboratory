@@ -80,16 +80,16 @@ constexpr int NFC_FDS_TABLE[] = {16, 24, 32, 40, 48, 64, 96, 128, 256, 512, 1024
 constexpr int NFC_SFGT_TABLE[] = {4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728};
 
 // Frame waiting time FWT = 256 x 16 * (2 ^ FWI) in 1/fc units
-constexpr float NFC_FWT_TABLE[] = {4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728};
+constexpr int NFC_FWT_TABLE[] = {4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728};
 
 // Number of Slots
-constexpr float NFCB_SLOT_TABLE[] = {1, 2, 4, 8, 16, 0, 0, 0};
+constexpr int NFCB_SLOT_TABLE[] = {1, 2, 4, 8, 16, 0, 0, 0};
 
 // TR0min, in 1/FC units
-constexpr float NFCB_TR0_MIN_TABLE[] = {0, 48 * 16, 16 * 16, 0};
+constexpr int NFCB_TR0_MIN_TABLE[] = {0, 48 * 16, 16 * 16, 0};
 
 // TR1min, in 1/FC units
-constexpr float NFCB_TR1_MIN_TABLE[] = {0, 64 * 16, 16 * 16, 0};
+constexpr int NFCB_TR1_MIN_TABLE[] = {0, 64 * 16, 16 * 16, 0};
 
 // NFC-V Default Request Guard Time
 constexpr int NFCV_FGT_DEF = NFC_TR0_MIN;

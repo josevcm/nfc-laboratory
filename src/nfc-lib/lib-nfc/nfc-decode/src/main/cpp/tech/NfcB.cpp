@@ -1219,7 +1219,7 @@ struct NfcB::Impl
    /*
     * Check NFC-B crc
     */
-   inline bool checkCrc(NfcFrame &frame)
+   static inline bool checkCrc(NfcFrame &frame)
    {
       unsigned short crc = 0xFFFF; // NFC-B ISO/IEC 13239
       unsigned short res = 0;

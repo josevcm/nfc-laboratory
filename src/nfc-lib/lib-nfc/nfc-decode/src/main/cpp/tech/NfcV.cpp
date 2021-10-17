@@ -179,11 +179,14 @@ struct NfcV::Impl
    {
       pulse->bits = bits;
       pulse->periods = 1 << bits;
-      pulse->length = pulse->periods * 256 / NFC_FC;
+      pulse->length = int(round(pulse->periods * decoder->signalParams.sampleTimeUnit * 256));
 
       for (int i = 0; i < pulse->periods; i++)
       {
-         pulse->slots[i] = {.start = i * (256 / NFC_FC), .end = (i + 1) * (256 / NFC_FC), .value = i};
+         pulse->slots[i] = {
+               .start = int(round(i * decoder->signalParams.sampleTimeUnit * 256)),
+               .end = int(round((i + 1) * decoder->signalParams.sampleTimeUnit * 256)),
+               .value = i};
       }
    }
 
@@ -243,6 +246,16 @@ struct NfcV::Impl
             // wait until search finished
             if (decoder->signalClock != modulation->searchEndTime)
                break;
+
+            // before search, signal must not be modulated (in high state)
+            if (currentData < decoder->signalStatus.powerAverage * minimumModulationThreshold)
+            {
+               modulation->searchPeakTime = 0;
+               modulation->searchEndTime = 0;
+               modulation->correlationPeek = 0;
+
+               break;
+            }
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
@@ -392,6 +405,11 @@ struct NfcV::Impl
             // a valid frame must contain at least one byte of data
             if (streamStatus.bytes > 0)
             {
+               // add remaining byte to request
+               if (streamStatus.bits == 8)
+                  streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
+
+               // set last symbol timing
                frameStatus.frameEnd = symbolStatus.end;
 
                NfcFrame response = NfcFrame(TechType::NfcV, FrameType::PollFrame);
@@ -411,10 +429,10 @@ struct NfcV::Impl
                // clear modulation status for next frame search
                decoder->modulation->symbolStartTime = 0;
                decoder->modulation->symbolEndTime = 0;
-               decoder->modulation->symbolSyncTime = 0;
+//               decoder->modulation->symbolSyncTime = 0;
                decoder->modulation->filterIntegrate = 0;
-               decoder->modulation->detectIntegrate = 0;
-               decoder->modulation->phaseIntegrate = 0;
+//               decoder->modulation->detectIntegrate = 0;
+//               decoder->modulation->phaseIntegrate = 0;
                decoder->modulation->searchStartTime = 0;
                decoder->modulation->searchEndTime = 0;
 
@@ -437,21 +455,17 @@ struct NfcV::Impl
             return false;
          }
 
-//         // decode next bit
-//         if (streamStatus.bits < 9)
-//         {
-//            if (streamStatus.bits > 0)
-//               streamStatus.data |= (symbolStatus.value << (streamStatus.bits - 1));
-//
-//            streamStatus.bits++;
-//         }
-//            // store full byte in stream buffer
-//         else
-//         {
-//            streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
-//            streamStatus.data = 0;
-//            streamStatus.bits = 0;
-//         }
+         // store full byte in stream buffer
+         if (streamStatus.bits == 8)
+         {
+            streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
+            streamStatus.data = 0;
+            streamStatus.bits = 0;
+         }
+
+         // decode next bit
+         streamStatus.data |= (symbolStatus.value << streamStatus.bits);
+         streamStatus.bits += decoder->pulse->bits;
       }
 
       // no frame detected
@@ -509,7 +523,7 @@ struct NfcV::Impl
          {
             // estimated symbol start and end
             modulation->symbolStartTime = modulation->symbolEndTime;
-            modulation->symbolEndTime = modulation->symbolStartTime + 4 * bitrate->period1SymbolSamples;
+            modulation->symbolEndTime = modulation->symbolStartTime + pulse->length;
 
             // timing search window
             modulation->searchStartTime = modulation->symbolStartTime;
@@ -524,11 +538,12 @@ struct NfcV::Impl
          // search max correlation peak
          if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
          {
-            if (modulation->correlatedS0 > modulation->correlationPeek)
+            // max correlation peak detector
+            if (modulation->correlatedS0 > decoder->signalStatus.powerAverage * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
             {
-               modulation->correlationPeek = modulation->correlatedS0;
-               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
                modulation->searchPeakTime = decoder->signalClock;
+               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               modulation->correlationPeek = modulation->correlatedS0;
             }
          }
 
@@ -536,7 +551,7 @@ struct NfcV::Impl
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         // detect Pattern-S when modulation occurs in the first part of the second slot
+         // detect EOF when modulation occurs in the first part of the second slot
          if (modulation->searchPeakTime > (modulation->symbolStartTime + 1 * bitrate->period1SymbolSamples + bitrate->period4SymbolSamples) &&
              modulation->searchPeakTime < (modulation->symbolStartTime + 2 * bitrate->period1SymbolSamples - bitrate->period4SymbolSamples))
          {
@@ -572,6 +587,10 @@ struct NfcV::Impl
             if (modulation->searchPeakTime > (modulation->symbolStartTime + slot->end - bitrate->period4SymbolSamples) &&
                 modulation->searchPeakTime < (modulation->symbolStartTime + slot->end + bitrate->period4SymbolSamples))
             {
+               // re-synchronize
+               modulation->symbolStartTime = modulation->searchPeakTime - slot->end;
+               modulation->symbolEndTime = modulation->symbolStartTime + pulse->length;
+
                // setup symbol info
                symbolStatus.value = slot->value;
                symbolStatus.start = modulation->symbolStartTime;
@@ -641,6 +660,102 @@ struct NfcV::Impl
 */
    inline void process(NfcFrame &frame)
    {
+      // for request frame set default response timings, must be overridden by subsequent process functions
+      if (frame.isPollFrame())
+      {
+         // initialize frame parameters to default protocol parameters
+         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+         frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+      }
+
+      do
+      {
+//         if (processREQA(frame))
+//            break;
+//
+//         if (processHLTA(frame))
+//            break;
+
+         processOther(frame);
+
+      } while (false);
+
+      // set chained flags
+      frame.setFrameFlags(chainedFlags);
+
+      // for request frame set response timings
+      if (frame.isPollFrame())
+      {
+         // update frame timing parameters for receive PICC frame
+         if (decoder->bitrate)
+         {
+            // response guard time TR0min (PICC must not modulate reponse within this period)
+            frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime;
+
+            // response delay time WFT (PICC must reply to command before this period)
+            frameStatus.waitingEnd = frameStatus.frameEnd + frameStatus.frameWaitingTime;
+
+            // next frame must be ListenFrame
+            frameStatus.frameType = ListenFrame;
+         }
+      }
+      else
+      {
+         // switch to modulation search
+         frameStatus.frameType = 0;
+
+         // reset frame command
+         frameStatus.lastCommand = 0;
+      }
+
+      // mark last processed frame
+      lastFrameEnd = frameStatus.frameEnd;
+
+      // reset frame start
+      frameStatus.frameStart = 0;
+
+      // reset frame end
+      frameStatus.frameEnd = 0;
+   }
+
+   /*
+    * Process other frames
+    */
+   inline void processOther(NfcFrame &frame)
+   {
+      frame.setFramePhase(FramePhase::ApplicationFrame);
+      frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+   }
+
+   /*
+    * Check NFC-V crc
+    */
+   inline bool checkCrc(NfcFrame &frame)
+   {
+      unsigned short crc = 0xFFFF; // NFC-B ISO/IEC 13239
+      unsigned short res = 0;
+
+      int length = frame.limit();
+
+      if (length <= 2)
+         return false;
+
+      for (int i = 0; i < length - 2; i++)
+      {
+         auto d = (unsigned char) frame[i];
+
+         d = (d ^ (unsigned int) (crc & 0xff));
+         d = (d ^ (d << 4));
+
+         crc = (crc >> 8) ^ ((unsigned short) (d << 8)) ^ ((unsigned short) (d << 3)) ^ ((unsigned short) (d >> 4));
+      }
+
+      crc = ~crc;
+
+      res |= ((unsigned int) frame[length - 2] & 0xff);
+      res |= ((unsigned int) frame[length - 1] & 0xff) << 8;
+
+      return res == crc;
    }
 };
 
