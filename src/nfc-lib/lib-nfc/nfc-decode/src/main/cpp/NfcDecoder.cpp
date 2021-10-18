@@ -46,7 +46,7 @@ struct NfcDecoder::Impl
    static constexpr int ENABLED_NFCA = 1 << 0;
    static constexpr int ENABLED_NFCB = 1 << 1;
    static constexpr int ENABLED_NFCF = 0 << 2;
-   static constexpr int ENABLED_NFCV = 0 << 3;
+   static constexpr int ENABLED_NFCV = 1 << 3;
 
    // all tech enabled by default
    int enabledTech = ENABLED_NFCA | ENABLED_NFCB | ENABLED_NFCF | ENABLED_NFCV;
@@ -84,33 +84,33 @@ std::list<NfcFrame> NfcDecoder::nextFrames(sdr::SignalBuffer samples)
    return impl->nextFrames(samples);
 }
 
-void NfcDecoder::setEnableNfcA(bool value)
+void NfcDecoder::setEnableNfcA(bool enabled)
 {
-   if (value)
+   if (enabled)
       impl->enabledTech |= Impl::ENABLED_NFCA;
    else
       impl->enabledTech &= ~Impl::ENABLED_NFCA;
 }
 
-void NfcDecoder::setEnableNfcB(bool value)
+void NfcDecoder::setEnableNfcB(bool enabled)
 {
-   if (value)
+   if (enabled)
       impl->enabledTech |= Impl::ENABLED_NFCB;
    else
       impl->enabledTech &= ~Impl::ENABLED_NFCB;
 }
 
-void NfcDecoder::setEnableNfcF(bool value)
+void NfcDecoder::setEnableNfcF(bool enabled)
 {
-   if (value)
+   if (enabled)
       impl->enabledTech |= Impl::ENABLED_NFCF;
    else
       impl->enabledTech &= ~Impl::ENABLED_NFCF;
 }
 
-void NfcDecoder::setEnableNfcV(bool value)
+void NfcDecoder::setEnableNfcV(bool enabled)
 {
-   if (value)
+   if (enabled)
       impl->enabledTech |= Impl::ENABLED_NFCV;
    else
       impl->enabledTech &= ~Impl::ENABLED_NFCV;
