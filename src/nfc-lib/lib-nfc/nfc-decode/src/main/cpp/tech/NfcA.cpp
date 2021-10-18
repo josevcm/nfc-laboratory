@@ -258,54 +258,56 @@ struct NfcA::Impl
             }
          }
 
-         // Check for SoF symbol
-         if (decoder->signalClock == modulation->searchEndTime)
-         {
+         // wait until search finished
+         if (decoder->signalClock != modulation->searchEndTime)
+            continue;
+
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.750f);
+         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.750f);
 #endif
-            // check modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
-            if (modulation->searchDeepValue > minimumModulationThreshold)
-            {
-               // set lower threshold to detect valid response pattern
-               modulation->searchThreshold = decoder->signalStatus.powerAverage * minimumModulationThreshold;
-
-               // set pattern search window
-               modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
-               modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
-
-               // setup frame info
-               frameStatus.frameType = PollFrame;
-               frameStatus.symbolRate = bitrate->symbolsPerSecond;
-               frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-               frameStatus.frameEnd = 0;
-
-               // setup symbol info
-               symbolStatus.value = 0;
-               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
-               symbolStatus.pattern = PatternType::PatternZ;
-
-               // reset modulation to continue search
-               modulation->searchStartTime = 0;
-               modulation->searchEndTime = 0;
-               modulation->searchDeepValue = 0;
-               modulation->correlationPeek = 0;
-
-               // modulation detected
-               decoder->bitrate = bitrate;
-               decoder->modulation = modulation;
-
-               return true;
-            }
-
+         // check minimum modulation deep
+         if (modulation->searchDeepValue < minimumModulationThreshold)
+         {
             // reset modulation to continue search
             modulation->searchStartTime = 0;
             modulation->searchEndTime = 0;
             modulation->searchDeepValue = 0;
             modulation->correlationPeek = 0;
+
+            continue;
          }
+
+         // set lower threshold to detect valid response pattern
+         modulation->searchThreshold = decoder->signalStatus.powerAverage * minimumModulationThreshold;
+
+         // set pattern search window
+         modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
+         modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
+
+         // setup frame info
+         frameStatus.frameType = PollFrame;
+         frameStatus.symbolRate = bitrate->symbolsPerSecond;
+         frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         frameStatus.frameEnd = 0;
+
+         // setup symbol info
+         symbolStatus.value = 0;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.length = symbolStatus.end - symbolStatus.start;
+         symbolStatus.pattern = PatternType::PatternZ;
+
+         // reset modulation to continue search
+         modulation->searchStartTime = 0;
+         modulation->searchEndTime = 0;
+         modulation->searchDeepValue = 0;
+         modulation->correlationPeek = 0;
+
+         // modulation detected
+         decoder->bitrate = bitrate;
+         decoder->modulation = modulation;
+
+         return true;
       }
 
       return false;
@@ -333,14 +335,21 @@ struct NfcA::Impl
    inline bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
    {
       int pattern;
+      bool frameEnd = false, truncateError = false;
 
       // read NFC-A request request
       while ((pattern = decodePollFrameSymbolAsk(buffer)) > PatternType::NoPattern)
       {
          streamStatus.pattern = pattern;
 
+         if (streamStatus.pattern == PatternType::PatternY && (streamStatus.previous == PatternType::PatternY || streamStatus.previous == PatternType::PatternZ))
+            frameEnd = true;
+
+         else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+            truncateError = true;
+
          // detect end of request (Pattern-Y after Pattern-Z)
-         if ((streamStatus.pattern == PatternType::PatternY && (streamStatus.previous == PatternType::PatternY || streamStatus.previous == PatternType::PatternZ)) || streamStatus.bytes == protocolStatus.maxFrameSize)
+         if (frameEnd || truncateError)
          {
             // frames must contain at least one full byte or 7 bits for short frames
             if (streamStatus.bytes > 0 || streamStatus.bits == 7)
@@ -367,7 +376,7 @@ struct NfcA::Impl
                if (streamStatus.flags & FrameFlags::ParityError)
                   request.setFrameFlags(FrameFlags::ParityError);
 
-               if (streamStatus.bytes == protocolStatus.maxFrameSize)
+               if (truncateError)
                   request.setFrameFlags(FrameFlags::Truncated);
 
                if (streamStatus.bytes == 1 && streamStatus.bits == 7)
@@ -449,6 +458,7 @@ struct NfcA::Impl
    inline bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
    {
       int pattern;
+      bool frameEnd = false, truncateError = false;
 
       // decode TAG ASK response
       if (decoder->bitrate->rateType == r106k)
@@ -479,8 +489,14 @@ struct NfcA::Impl
             // decode remaining response
             while ((pattern = decodeListenFrameSymbolAsk(buffer)) > PatternType::NoPattern)
             {
+               if (pattern == PatternType::PatternF)
+                  frameEnd = true;
+
+               else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+                  truncateError = true;
+
                // detect end of response for ASK
-               if (pattern == PatternType::PatternF || streamStatus.bytes == protocolStatus.maxFrameSize)
+               if (frameEnd || truncateError)
                {
                   // a valid response must contains at least 4 bits of data
                   if (streamStatus.bytes > 0 || streamStatus.bits == 4)
@@ -502,7 +518,7 @@ struct NfcA::Impl
                      if (streamStatus.flags & ParityError)
                         response.setFrameFlags(FrameFlags::ParityError);
 
-                     if (streamStatus.bytes == protocolStatus.maxFrameSize)
+                     if (truncateError)
                         response.setFrameFlags(FrameFlags::Truncated);
 
                      if (streamStatus.bytes == 1 && streamStatus.bits == 4)
@@ -586,8 +602,14 @@ struct NfcA::Impl
          {
             while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > PatternType::NoPattern)
             {
-               // detect end of response for BPSK
                if (pattern == PatternType::PatternO)
+                  frameEnd = true;
+
+               else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+                  truncateError = true;
+
+               // detect end of response for BPSK
+               if (frameEnd || truncateError)
                {
                   if (streamStatus.bits == 9)
                   {
@@ -616,7 +638,7 @@ struct NfcA::Impl
                      if (streamStatus.flags & ParityError)
                         response.setFrameFlags(FrameFlags::ParityError);
 
-                     if (streamStatus.bytes == protocolStatus.maxFrameSize)
+                     if (truncateError)
                         response.setFrameFlags(FrameFlags::Truncated);
 
                      // add bytes to frame and flip to prepare read
@@ -643,18 +665,14 @@ struct NfcA::Impl
 
                // decode next data bit
                if (streamStatus.bits < 8)
-               {
                   streamStatus.data |= (symbolStatus.value << streamStatus.bits);
-               }
 
                   // decode parity bit
                else if (streamStatus.bits < 9)
-               {
                   streamStatus.parity = symbolStatus.value;
-               }
 
                   // store full byte in stream buffer and check parity
-               else if (streamStatus.bytes < protocolStatus.maxFrameSize)
+               else
                {
                   // store byte in stream buffer
                   streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
@@ -667,16 +685,6 @@ struct NfcA::Impl
 
                   // reset bit counter
                   streamStatus.bits = 0;
-               }
-
-                  // too many bytes in frame, abort decoder
-               else
-               {
-                  // reset modulation status
-                  resetModulation();
-
-                  // no valid frame found
-                  return false;
                }
 
                streamStatus.bits++;
@@ -701,8 +709,8 @@ struct NfcA::Impl
       while (decoder->nextSample(buffer))
       {
          // compute pointers
-         modulation->signalIndex = (decoder->bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay2Index = (decoder->bitrate->offsetDelay2Index + decoder->signalClock);
+         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
 
          // get signal samples
          float currentData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
@@ -713,9 +721,9 @@ struct NfcA::Impl
          modulation->filterIntegrate -= delayedData; // remove delayed value
 
          // correlation pointers
-         modulation->filterPoint1 = (modulation->signalIndex % decoder->bitrate->period1SymbolSamples);
-         modulation->filterPoint2 = (modulation->signalIndex + decoder->bitrate->period2SymbolSamples) % decoder->bitrate->period1SymbolSamples;
-         modulation->filterPoint3 = (modulation->signalIndex + decoder->bitrate->period1SymbolSamples - 1) % decoder->bitrate->period1SymbolSamples;
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // store integrated signal in correlation buffer
          modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
@@ -723,7 +731,7 @@ struct NfcA::Impl
          // compute correlation factors
          modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
          modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
-         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(decoder->bitrate->period2SymbolSamples);
+         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
@@ -733,18 +741,18 @@ struct NfcA::Impl
          decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
 #endif
          // compute symbol average
-         modulation->symbolAverage = modulation->symbolAverage * decoder->bitrate->symbolAverageW0 + currentData * decoder->bitrate->symbolAverageW1;
+         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
 
          // set next search sync window from previous state
          if (!modulation->searchStartTime)
          {
             // estimated symbol start and end
             modulation->symbolStartTime = modulation->symbolEndTime;
-            modulation->symbolEndTime = modulation->symbolStartTime + decoder->bitrate->period1SymbolSamples;
+            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
 
             // timing search window
-            modulation->searchStartTime = modulation->symbolEndTime - decoder->bitrate->period8SymbolSamples;
-            modulation->searchEndTime = modulation->symbolEndTime + decoder->bitrate->period8SymbolSamples;
+            modulation->searchStartTime = modulation->symbolEndTime - bitrate->period8SymbolSamples;
+            modulation->searchEndTime = modulation->symbolEndTime + bitrate->period8SymbolSamples;
 
             // reset symbol parameters
             modulation->symbolCorr0 = 0;
@@ -773,12 +781,12 @@ struct NfcA::Impl
             if (modulation->correlationPeek < modulation->searchThreshold)
             {
                // estimate symbol end from start (peak detection not valid due lack of modulation)
-               modulation->symbolEndTime = modulation->symbolStartTime + decoder->bitrate->period1SymbolSamples;
+               modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
 
                // setup symbol info
                symbolStatus.value = 1;
-               symbolStatus.start = modulation->symbolStartTime - decoder->bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - decoder->bitrate->symbolDelayDetect;
+               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
                symbolStatus.length = symbolStatus.end - symbolStatus.start;
                symbolStatus.pattern = PatternType::PatternY;
 
@@ -790,8 +798,8 @@ struct NfcA::Impl
             {
                // setup symbol info
                symbolStatus.value = 0;
-               symbolStatus.start = modulation->symbolStartTime - decoder->bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - decoder->bitrate->symbolDelayDetect;
+               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
                symbolStatus.length = symbolStatus.end - symbolStatus.start;
                symbolStatus.pattern = PatternType::PatternZ;
 
@@ -800,8 +808,8 @@ struct NfcA::Impl
 
             // detect Pattern-X, setup symbol info
             symbolStatus.value = 1;
-            symbolStatus.start = modulation->symbolStartTime - decoder->bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - decoder->bitrate->symbolDelayDetect;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
             symbolStatus.pattern = PatternType::PatternX;
 
