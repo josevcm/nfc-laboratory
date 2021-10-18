@@ -641,44 +641,44 @@ struct NfcB::Impl
             modulation->symbolSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
          }
 
-         // get signal value at symbol synchronization point and finish
-         if (decoder->signalClock == modulation->symbolSyncTime)
-         {
+         // wait until sync time is reached
+         if (decoder->signalClock != modulation->symbolSyncTime)
+            continue;
+
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
-            // modulated signal, symbol L -> 0 value
-            if (deepValue > minimumModulationThreshold)
-            {
-               // setup symbol info
-               symbolStatus.value = 0;
-               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
-               symbolStatus.pattern = PatternType::PatternL;
-            }
-
-               // non modulated signal, symbol H -> 1 value
-            else
-            {
-               // setup symbol info
-               symbolStatus.value = 1;
-               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
-               symbolStatus.pattern = PatternType::PatternH;
-            }
-
-            // next edge re-synchronization window
-            modulation->searchStartTime = modulation->symbolEndTime - bitrate->period4SymbolSamples;
-            modulation->searchEndTime = modulation->symbolEndTime + bitrate->period4SymbolSamples;
-
-            // reset status for next symbol
-            modulation->symbolSyncTime = 0;
-            modulation->detectorPeek = 0;
-
-            break;
+         // modulated signal, symbol L -> 0 value
+         if (deepValue > minimumModulationThreshold)
+         {
+            // setup symbol info
+            symbolStatus.value = 0;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+            symbolStatus.pattern = PatternType::PatternL;
          }
+
+            // non modulated signal, symbol H -> 1 value
+         else
+         {
+            // setup symbol info
+            symbolStatus.value = 1;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+            symbolStatus.pattern = PatternType::PatternH;
+         }
+
+         // next edge re-synchronization window
+         modulation->searchStartTime = modulation->symbolEndTime - bitrate->period4SymbolSamples;
+         modulation->searchEndTime = modulation->symbolEndTime + bitrate->period4SymbolSamples;
+
+         // reset status for next symbol
+         modulation->symbolSyncTime = 0;
+         modulation->detectorPeek = 0;
+
+         break;
       }
 
       return symbolStatus.pattern;
@@ -747,41 +747,31 @@ struct NfcB::Impl
                if (decoder->signalClock != modulation->searchEndTime)
                   break;
 
-               if (modulation->searchPeakTime)
+               // must start with 10etu un-modulated pulse
+               if (modulation->searchPulseWidth >= bitrate->period1SymbolSamples * 10)
                {
-                  // must start with 10etu un-modulated pulse
-                  if (modulation->searchPulseWidth >= bitrate->period1SymbolSamples * 10)
-                  {
 #ifdef DEBUG_BPSK_SYNC_CHANNEL
-                     decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
+                  decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
 #endif
-                     // if edge found, set SOF symbol start
-                     modulation->symbolStartTime = modulation->searchPeakTime;
+                  // if edge found, set SOF symbol start
+                  modulation->symbolStartTime = modulation->searchPeakTime;
 
-                     // and trigger next stage
-                     modulation->searchStage = SOF_IDLE;
-                     modulation->searchStartTime = modulation->searchPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                     modulation->searchEndTime = modulation->searchPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                     modulation->searchPeakTime = 0;
-                  }
-                  else
-                  {
-                     // if no valid edge is found, we restart SOF search
-                     modulation->searchStage = SOF_BEGIN;
-                     modulation->searchStartTime = 0;
-                     modulation->searchEndTime = 0;
-                     modulation->searchPeakTime = 0;
-                     modulation->searchPulseWidth = 0;
-                     modulation->symbolStartTime = 0;
-                     modulation->symbolEndTime = 0;
-                  }
+                  // and trigger next stage
+                  modulation->searchStage = SOF_IDLE;
+                  modulation->searchStartTime = modulation->searchPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->searchEndTime = modulation->searchPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->searchPeakTime = 0;
                }
                else
                {
-                  // if no edge is found, finish...
+                  // if no valid edge is found, we restart SOF search
+                  modulation->searchStage = SOF_BEGIN;
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
-                  pattern = PatternType::NoPattern;
+                  modulation->searchPeakTime = 0;
+                  modulation->searchPulseWidth = 0;
+                  modulation->symbolStartTime = 0;
+                  modulation->symbolEndTime = 0;
                }
 
                break;
@@ -802,18 +792,8 @@ struct NfcB::Impl
                   if (decoder->signalClock != modulation->searchEndTime)
                      break;
 
-#ifdef DEBUG_BPSK_SYNC_CHANNEL
-                  decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
-#endif
-                  if (modulation->searchPeakTime)
-                  {
-                     // if edge found, synchronize symbol and check for end of SOF
-                     modulation->searchStage = SOF_END;
-                     modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                     modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                     modulation->searchPeakTime = 0;
-                  }
-                  else
+                  // if no edge found, restart search
+                  if (!modulation->searchPeakTime)
                   {
                      // if no edge is found, we restart SOF search
                      modulation->searchStage = SOF_BEGIN;
@@ -823,7 +803,17 @@ struct NfcB::Impl
                      modulation->searchPulseWidth = 0;
                      modulation->symbolStartTime = 0;
                      modulation->symbolEndTime = 0;
+                     break;
                   }
+
+#ifdef DEBUG_BPSK_SYNC_CHANNEL
+                  decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
+#endif
+                  // if edge found, synchronize symbol and check for end of SOF
+                  modulation->searchStage = SOF_END;
+                  modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->searchPeakTime = 0;
                }
 
                break;
@@ -844,6 +834,7 @@ struct NfcB::Impl
                   if (decoder->signalClock != modulation->searchEndTime)
                      break;
 
+                  // if no edge found, restart search
                   if (!modulation->searchPeakTime)
                   {
                      // if no edge is found, we restart SOF search
@@ -854,7 +845,6 @@ struct NfcB::Impl
                      modulation->searchPulseWidth = 0;
                      modulation->symbolStartTime = 0;
                      modulation->symbolEndTime = 0;
-
                      break;
                   }
 
@@ -952,38 +942,38 @@ struct NfcB::Impl
             modulation->symbolSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
          }
 
-            // search symbol timings
-         else if (decoder->signalClock == modulation->symbolSyncTime)
-         {
+         // wait until sync time is reached
+         if (decoder->signalClock != modulation->symbolSyncTime)
+            continue;
+
 #ifdef DEBUG_BPSK_SYNC_CHANNEL
-            decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.5);
+         decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.5);
 #endif
-            modulation->symbolPhase = modulation->phaseIntegrate;
+         modulation->symbolPhase = modulation->phaseIntegrate;
 
-            // setup symbol info
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+         // setup symbol info
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-            // no symbol change, keep previous symbol pattern
-            if (modulation->phaseIntegrate > modulation->phaseThreshold)
-            {
-               pattern = symbolStatus.pattern;
-               break;
-            }
-
-            // symbol change, invert pattern and value
-            if (modulation->phaseIntegrate < -modulation->phaseThreshold)
-            {
-               symbolStatus.value = !symbolStatus.value;
-               pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
-               break;
-            }
-
-            // no modulation detected, generate End Of Frame symbol
-            pattern = PatternType::PatternO;
+         // no symbol change, keep previous symbol pattern
+         if (modulation->phaseIntegrate > modulation->phaseThreshold)
+         {
+            pattern = symbolStatus.pattern;
             break;
          }
+
+         // symbol change, invert pattern and value
+         if (modulation->phaseIntegrate < -modulation->phaseThreshold)
+         {
+            symbolStatus.value = !symbolStatus.value;
+            pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
+            break;
+         }
+
+         // no modulation detected, generate End Of Frame symbol
+         pattern = PatternType::PatternO;
+         break;
       }
 
       // reset search status

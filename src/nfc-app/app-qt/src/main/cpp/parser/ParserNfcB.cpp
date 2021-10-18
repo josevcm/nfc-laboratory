@@ -26,21 +26,6 @@
 
 #include <parser/ParserNfcB.h>
 
-// FSDI to FSD conversion (frame size)
-constexpr static const int NFCB_FDS[] = {16, 24, 32, 40, 48, 64, 96, 128, 256, 512, 1024, 2048, 4096, 0, 0, 0};
-
-// Frame waiting time (FWT = (256 x 16 / fc) * 2 ^ FWI)
-constexpr static const float NFCB_FWT[] = {0.000302065, 0.00060413, 0.00120826, 0.002416519, 0.004833038, 0.009666077, 0.019332153, 0.038664307, 0.077328614, 0.154657227, 0.309314454, 0.618628909, 1.237257817, 2.474515634, 4.949031268, 9.898062537};
-
-// Number of Slots
-constexpr static const float NFCB_SLOTS[] = {1, 2, 4, 8, 16, 0, 0, 0};
-
-// TR0min
-constexpr static const float NFCB_TR0_MIN[] = {0, 48 / NFC_FS, 16 / NFC_FS, 0};
-
-// TR1min
-constexpr static const float NFCB_TR1_MIN[] = {0, 64 / NFC_FS, 16 / NFC_FS, 0};
-
 void ParserNfcB::reset()
 {
    ParserNfcIsoDep::reset();
@@ -148,7 +133,7 @@ ProtocolFrame *ParserNfcB::parseRequestREQB(const nfc::NfcFrame &frame)
       else
          paramf->appendChild(buildFieldInfo("[....0...] REQB command"));
 
-      paramf->appendChild(buildFieldInfo(QString("[.....%1] number of slots: %2").arg(nslot, 3, 2, QChar('0')).arg(NFCB_SLOTS[nslot])));
+      paramf->appendChild(buildFieldInfo(QString("[.....%1] number of slots: %2").arg(nslot, 3, 2, QChar('0')).arg(NFCB_SLOT_TABLE[nslot])));
    }
 
    root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
@@ -167,8 +152,8 @@ ProtocolFrame *ParserNfcB::parseResponseREQB(const nfc::NfcFrame &frame)
    int fwi = (frame[11] >> 4) & 0x0f;
    int adc = (frame[11] >> 2) & 0x03;
    int fo = frame[11] & 0x3;
-   int fds = NFCB_FDS[fdsi];
-   float fwt = NFCB_FWT[fwi] * 1000;
+   int fds = NFC_FDS_TABLE[fdsi];
+   float fwt = NFC_FWT_TABLE[fwi] / NFC_FC;
 
    int flags = frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
 
@@ -225,7 +210,7 @@ ProtocolFrame *ParserNfcB::parseResponseREQB(const nfc::NfcFrame &frame)
       // other parameters
       if (ProtocolFrame *otherf = inff->appendChild(buildFieldInfo("OTHER", QString("%1 [%2]").arg(frame[11], 2, 16, QChar('0')).arg(frame[11], 8, 2, QChar('0')))))
       {
-         otherf->appendChild(buildFieldInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(fwt, 0, 'f', 2)));
+         otherf->appendChild(buildFieldInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(1E3 * fwt, 0, 'f', 2)));
 
          if (adc == 0)
             otherf->appendChild(buildFieldInfo("[....00..] application is proprietary"));
@@ -271,12 +256,12 @@ ProtocolFrame *ParserNfcB::parseRequestATTRIB(const nfc::NfcFrame &frame)
       int tr1min = (param1 >> 4) & 0x3;
 
       if (tr0min)
-         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, %2 us").arg(tr0min, 2, 2, QChar('0')).arg(NFCB_TR0_MIN[tr0min] * 1E6, 0, 'f', 2)));
+         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, %2 us").arg(tr0min, 2, 2, QChar('0')).arg(1E3 * NFCB_TR0_MIN_TABLE[tr0min] / NFC_FC, 0, 'f', 2)));
       else
          param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, DEFAULT").arg(tr0min, 2, 2, QChar('0'))));
 
       if (tr1min)
-         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(NFCB_TR1_MIN[tr1min] * 1E6, 0, 'f', 2)));
+         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(1E3 * NFCB_TR1_MIN_TABLE[tr1min] / NFC_FC, 0, 'f', 2)));
       else
          param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, DEFAULT").arg(tr1min, 2, 2, QChar('0'))));
 
@@ -294,7 +279,7 @@ ProtocolFrame *ParserNfcB::parseRequestATTRIB(const nfc::NfcFrame &frame)
    if (ProtocolFrame *param2f = root->appendChild(buildFieldInfo("PARAM2", QString("%1 [%2]").arg(param2, 2, 16, QChar('0')).arg(param2, 8, 2, QChar('0')))))
    {
       int fdsi = param2 & 0x0f;
-      int fds = NFCB_FDS[fdsi];
+      int fds = NFC_FDS_TABLE[fdsi] / NFC_FC;
 
       if ((param2 & 0xC0) == 0x00)
          param2f->appendChild(buildFieldInfo("[00......] selected 106 kbps PICC to PCD rate"));

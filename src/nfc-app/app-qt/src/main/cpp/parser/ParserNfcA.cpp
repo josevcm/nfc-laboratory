@@ -78,7 +78,7 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
          lastCommand = frame[0];
       }
 
-      // Mifare AUTH, two pass
+         // Mifare AUTH, two pass
       else if (frameChain == 0x60 || frameChain == 0x61)
       {
          info = parseRequestAUTH(frame);
@@ -224,10 +224,10 @@ ProtocolFrame *ParserNfcA::parseRequestSELn(const nfc::NfcFrame &frame)
    if (nvb == 7)
    {
       if (frame[2] == 0x88) // cascade tag
-         {
+      {
          root->appendChild(buildFieldInfo("CT", toByteArray(frame, 2, 1)));
          root->appendChild(buildFieldInfo("UID", toByteArray(frame, 3, 3)));
-         }
+      }
       else
       {
          root->appendChild(buildFieldInfo("UID", toByteArray(frame, 2, 4)));
@@ -252,10 +252,10 @@ ProtocolFrame *ParserNfcA::parseResponseSELn(const nfc::NfcFrame &frame)
    if (frame.limit() == 5)
    {
       if (frame[0] == 0x88) // cascade tag
-         {
+      {
          root->appendChild(buildFieldInfo("CT", toByteArray(frame, 0, 1)));
          root->appendChild(buildFieldInfo("UID", toByteArray(frame, 1, 3)));
-         }
+      }
       else
       {
          root->appendChild(buildFieldInfo("UID", toByteArray(frame, 0, 4)));
@@ -393,11 +393,11 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
                   int fwi = (tb >> 4) & 0x0f;
                   int sfgi = (tb & 0x0f);
 
-                  float fwt = NFC_FWT_TABLE[fwi] * 1000;
-                  float sfgt = NFC_SFGT_TABLE[sfgi] * 1000;
+                  float fwt = NFC_FWT_TABLE[fwi] / NFC_FC;
+                  float sfgt = NFC_SFGT_TABLE[sfgi] / NFC_FC;
 
-                  tbf->appendChild(buildFieldInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(fwt, 0, 'f', 2)));
-                  tbf->appendChild(buildFieldInfo(QString("[....%1] start-up frame guard time SFGT = %2 ms").arg(sfgi, 4, 2, QChar('0')).arg(sfgt, 0, 'f', 2)));
+                  tbf->appendChild(buildFieldInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(1E3 * fwt, 0, 'f', 2)));
+                  tbf->appendChild(buildFieldInfo(QString("[....%1] start-up frame guard time SFGT = %2 ms").arg(sfgi, 4, 2, QChar('0')).arg(1E3 * sfgt, 0, 'f', 2)));
                }
             }
 
