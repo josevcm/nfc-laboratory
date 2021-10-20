@@ -97,6 +97,11 @@ bool NfcFrame::isNfcF() const
    return impl->techType == TechType::NfcF;
 }
 
+bool NfcFrame::isNfcV() const
+{
+   return impl->techType == TechType::NfcV;
+}
+
 bool NfcFrame::isNoCarrier() const
 {
    return impl->frameType == FrameType::NoCarrier;

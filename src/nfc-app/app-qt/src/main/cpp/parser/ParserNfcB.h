@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,58 +22,29 @@
 
 */
 
-#ifndef NFC_NFCDECODER_H
-#define NFC_NFCDECODER_H
+#ifndef NFC_LAB_PARSERNFCB_H
+#define NFC_LAB_PARSERNFCB_H
 
-#include <list>
+#include <parser/ParserNfc.h>
 
-#include <rt/FloatBuffer.h>
-
-#include <sdr/SignalBuffer.h>
-
-#include <nfc/NfcFrame.h>
-
-namespace nfc {
-
-class NfcDecoder
+struct ParserNfcB : ParserNfcIsoDep
 {
-      struct Impl;
+   void reset() override;
 
-   public:
+   ProtocolFrame *parse(const nfc::NfcFrame &frame) override;
 
-      NfcDecoder();
+   ProtocolFrame *parseRequestREQB(const nfc::NfcFrame &frame);
 
-      std::list<NfcFrame> nextFrames(sdr::SignalBuffer samples);
+   ProtocolFrame *parseResponseREQB(const nfc::NfcFrame &frame);
 
-      void setEnableNfcA(bool enabled);
+   ProtocolFrame *parseRequestATTRIB(const nfc::NfcFrame &frame);
 
-      void setEnableNfcB(bool enabled);
+   ProtocolFrame *parseResponseATTRIB(const nfc::NfcFrame &frame);
 
-      void setEnableNfcF(bool enabled);
+   ProtocolFrame *parseRequestHLTB(const nfc::NfcFrame &frame);
 
-      void setEnableNfcV(bool enabled);
-
-      void setSampleRate(long sampleRate);
-
-      void setPowerLevelThreshold(float value);
-
-      void setModulationThresholdNfcA(float min);
-
-      void setModulationThresholdNfcB(float min, float max);
-
-      void setModulationThresholdNfcF(float min, float max);
-
-      void setModulationThresholdNfcV(float min);
-
-      float powerLevelThreshold() const;
-
-      float signalStrength() const;
-
-   private:
-
-      std::shared_ptr<Impl> impl;
+   ProtocolFrame *parseResponseHLTB(const nfc::NfcFrame &frame);
 };
 
-}
 
-#endif //NFC_LAB_NFCDECODER_H
+#endif //NFC_LAB_PARSERNFCB_H

@@ -30,9 +30,9 @@
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_ASK_CORR_CHANNEL 1
-#define DEBUG_ASK_SYNC_CHANNEL 2
+#define DEBUG_ASK_SYNC_CHANNEL 1
 #define DEBUG_BPSK_PHASE_CHANNEL 1
-#define DEBUG_BPSK_SYNC_CHANNEL 2
+#define DEBUG_BPSK_SYNC_CHANNEL 1
 #endif
 
 namespace nfc {
@@ -102,6 +102,12 @@ struct NfcA::Impl
       log.info("\tpowerLevelThreshold  {}", {decoder->powerLevelThreshold});
       log.info("\tmodulationThreshold  {}", {minimumModulationThreshold});
 
+      // clear last detected frame end
+      lastFrameEnd = 0;
+
+      // clear chained flags
+      chainedFlags = 0;
+
       // clear detected symbol status
       symbolStatus = {0,};
 
@@ -110,12 +116,6 @@ struct NfcA::Impl
 
       // clear frame processing status
       frameStatus = {0,};
-
-      // clear last detected frame end
-      lastFrameEnd = 0;
-
-      // clear chained flags
-      chainedFlags = 0;
 
       // compute symbol parameters for 106Kbps, 212Kbps, 424Kbps and 848Kbps
       for (int rate = r106k; rate <= r424k; rate++)
@@ -134,16 +134,16 @@ struct NfcA::Impl
          bitrate->rateType = rate;
 
          // symbol timing parameters
-         bitrate->symbolsPerSecond = NFC_FC / (128 >> rate);
+         bitrate->symbolsPerSecond = int(std::round(NFC_FC / float(128 >> rate)));
 
          // number of samples per symbol
-         bitrate->period1SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
-         bitrate->period2SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (64 >> rate))); // half symbol samples
-         bitrate->period4SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (32 >> rate))); // quarter of symbol...
-         bitrate->period8SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
+         bitrate->period1SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
+         bitrate->period2SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (64 >> rate))); // half symbol samples
+         bitrate->period4SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (32 >> rate))); // quarter of symbol...
+         bitrate->period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
          // delay guard for each symbol rate
-         bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
+         bitrate->symbolDelayDetect = rate == r106k ? int(std::round(decoder->signalParams.sampleTimeUnit * 1024)) : bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples;
 
          // moving average offsets
          bitrate->offsetSignalIndex = BUFFER_SIZE - bitrate->symbolDelayDetect;
@@ -196,116 +196,115 @@ struct NfcA::Impl
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.powerAverage > decoder->powerLevelThreshold)
+      if (decoder->signalStatus.powerAverage < decoder->powerLevelThreshold)
+         return false;
+
+      // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
+      for (int rate = r106k; rate <= r424k; rate++)
       {
-         // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
-         for (int rate = r106k; rate <= r424k; rate++)
-         {
-            BitrateParams *bitrate = bitrateParams + rate;
-            ModulationStatus *modulation = modulationStatus + rate;
+         BitrateParams *bitrate = bitrateParams + rate;
+         ModulationStatus *modulation = modulationStatus + rate;
 
-            // compute signal pointers
-            modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-            modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+         // compute signal pointers
+         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
 
-            // get signal samples
-            float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-            float delay2Data = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
+         // get signal samples
+         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float delay2Data = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
 
-            // integrate signal data over 1/2 symbol
-            modulation->filterIntegrate += signalData; // add new value
-            modulation->filterIntegrate -= delay2Data; // remove delayed value
+         // integrate signal data over 1/2 symbol
+         modulation->filterIntegrate += signalData; // add new value
+         modulation->filterIntegrate -= delay2Data; // remove delayed value
 
-            // correlation points
-            modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-            modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-            modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+         // correlation points
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
-            // store integrated signal in correlation buffer
-            modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+         // store integrated signal in correlation buffer
+         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
 
-            // compute correlation factors
-            modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-            modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
-            modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
+         // compute correlation factors
+         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
 
-            // compute symbol average
-            modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
+         // compute symbol average
+         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
+
+         // signal modulation deep value
+         float deepValue = decoder->signalStatus.deepData[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-            decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
-#endif
-            // search for Pattern-Z in PCD to PICC request
-            if (modulation->correlatedSD > decoder->signalStatus.powerAverage * minimumModulationThreshold)
+
+         if (modulation->correlatedSD > decoder->signalStatus.powerAverage * minimumModulationThreshold)
+         {
+            if (modulation->searchDeepValue < deepValue)
+               modulation->searchDeepValue = deepValue;
+
+            // max correlation peak detector
+            if (modulation->correlatedSD > modulation->correlationPeek)
             {
-               // signal modulation deep value
-               float deepValue = decoder->signalStatus.deepData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-
-               if (modulation->searchDeepValue < deepValue)
-                  modulation->searchDeepValue = deepValue;
-
-               // max correlation peak detector
-               if (modulation->correlatedSD > modulation->correlationPeek)
-               {
-                  modulation->searchPulseWidth++;
-                  modulation->searchPeakTime = decoder->signalClock;
-                  modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-                  modulation->correlationPeek = modulation->correlatedSD;
-               }
-            }
-
-            // Check for SoF symbol
-            if (decoder->signalClock == modulation->searchEndTime)
-            {
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-               decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.750f);
-#endif
-               // check modulation deep and Pattern-Z, signaling Start Of Frame (PCD->PICC)
-               if (modulation->searchDeepValue > minimumModulationThreshold)
-               {
-                  // set lower threshold to detect valid response pattern
-                  modulation->searchThreshold = decoder->signalStatus.powerAverage * minimumModulationThreshold;
-
-                  // set pattern search window
-                  modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
-                  modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
-
-                  // setup frame info
-                  frameStatus.frameType = PollFrame;
-                  frameStatus.symbolRate = bitrate->symbolsPerSecond;
-                  frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                  frameStatus.frameEnd = 0;
-
-                  // setup symbol info
-                  symbolStatus.value = 0;
-                  symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                  symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-                  symbolStatus.length = symbolStatus.end - symbolStatus.start;
-                  symbolStatus.pattern = PatternType::PatternZ;
-
-                  // reset modulation to continue search
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->searchDeepValue = 0;
-                  modulation->correlationPeek = 0;
-
-                  // modulation detected
-                  decoder->bitrate = bitrate;
-                  decoder->modulation = modulation;
-
-                  return true;
-               }
-
-               // reset modulation to continue search
-               modulation->searchStartTime = 0;
-               modulation->searchEndTime = 0;
-               modulation->searchDeepValue = 0;
-               modulation->correlationPeek = 0;
+               modulation->searchPeakTime = decoder->signalClock;
+               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               modulation->correlationPeek = modulation->correlatedSD;
             }
          }
+
+         // wait until search finished
+         if (decoder->signalClock != modulation->searchEndTime)
+            continue;
+
+         // check minimum modulation deep
+         if (modulation->searchDeepValue < minimumModulationThreshold)
+         {
+            // reset modulation to continue search
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->searchDeepValue = 0;
+            modulation->correlationPeek = 0;
+
+            continue;
+         }
+
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.750f);
+#endif
+
+         // set lower threshold to detect valid response pattern
+         modulation->searchThreshold = decoder->signalStatus.powerAverage * minimumModulationThreshold;
+
+         // set pattern search window
+         modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
+         modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
+
+         // setup frame info
+         frameStatus.frameType = PollFrame;
+         frameStatus.symbolRate = bitrate->symbolsPerSecond;
+         frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         frameStatus.frameEnd = 0;
+
+         // setup symbol info
+         symbolStatus.value = 0;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.length = symbolStatus.end - symbolStatus.start;
+         symbolStatus.pattern = PatternType::PatternZ;
+
+         // reset modulation to continue search
+         modulation->searchStartTime = 0;
+         modulation->searchEndTime = 0;
+         modulation->searchDeepValue = 0;
+         modulation->correlationPeek = 0;
+
+         // modulation detected
+         decoder->bitrate = bitrate;
+         decoder->modulation = modulation;
+
+         return true;
       }
 
       return false;
@@ -333,14 +332,21 @@ struct NfcA::Impl
    inline bool decodePollFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
    {
       int pattern;
+      bool frameEnd = false, truncateError = false;
 
       // read NFC-A request request
       while ((pattern = decodePollFrameSymbolAsk(buffer)) > PatternType::NoPattern)
       {
          streamStatus.pattern = pattern;
 
+         if (streamStatus.pattern == PatternType::PatternY && (streamStatus.previous == PatternType::PatternY || streamStatus.previous == PatternType::PatternZ))
+            frameEnd = true;
+
+         else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+            truncateError = true;
+
          // detect end of request (Pattern-Y after Pattern-Z)
-         if ((streamStatus.pattern == PatternType::PatternY && (streamStatus.previous == PatternType::PatternY || streamStatus.previous == PatternType::PatternZ)) || streamStatus.bytes == protocolStatus.maxFrameSize)
+         if (frameEnd || truncateError)
          {
             // frames must contain at least one full byte or 7 bits for short frames
             if (streamStatus.bytes > 0 || streamStatus.bits == 7)
@@ -367,7 +373,7 @@ struct NfcA::Impl
                if (streamStatus.flags & FrameFlags::ParityError)
                   request.setFrameFlags(FrameFlags::ParityError);
 
-               if (streamStatus.bytes == protocolStatus.maxFrameSize)
+               if (truncateError)
                   request.setFrameFlags(FrameFlags::Truncated);
 
                if (streamStatus.bytes == 1 && streamStatus.bits == 7)
@@ -449,6 +455,7 @@ struct NfcA::Impl
    inline bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
    {
       int pattern;
+      bool frameEnd = false, truncateError = false;
 
       // decode TAG ASK response
       if (decoder->bitrate->rateType == r106k)
@@ -456,7 +463,7 @@ struct NfcA::Impl
          if (!frameStatus.frameStart)
          {
             // search Start Of Frame pattern
-            pattern = decodeListenFrameSymbolAsk(buffer);
+            pattern = decodeListenFrameStartAsk(buffer);
 
             // Pattern-D found, mark frame start time
             if (pattern == PatternType::PatternD)
@@ -479,8 +486,14 @@ struct NfcA::Impl
             // decode remaining response
             while ((pattern = decodeListenFrameSymbolAsk(buffer)) > PatternType::NoPattern)
             {
+               if (pattern == PatternType::PatternF)
+                  frameEnd = true;
+
+               else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+                  truncateError = true;
+
                // detect end of response for ASK
-               if (pattern == PatternType::PatternF || streamStatus.bytes == protocolStatus.maxFrameSize)
+               if (frameEnd || truncateError)
                {
                   // a valid response must contains at least 4 bits of data
                   if (streamStatus.bytes > 0 || streamStatus.bits == 4)
@@ -502,7 +515,7 @@ struct NfcA::Impl
                      if (streamStatus.flags & ParityError)
                         response.setFrameFlags(FrameFlags::ParityError);
 
-                     if (streamStatus.bytes == protocolStatus.maxFrameSize)
+                     if (truncateError)
                         response.setFrameFlags(FrameFlags::Truncated);
 
                      if (streamStatus.bytes == 1 && streamStatus.bits == 4)
@@ -563,7 +576,7 @@ struct NfcA::Impl
          if (!frameStatus.frameStart)
          {
             // detect first pattern
-            pattern = decodeListenFrameSymbolBpsk(buffer);
+            pattern = decodeListenFrameStartBpsk(buffer);
 
             // Pattern-M found, mark frame start time
             if (pattern == PatternType::PatternM)
@@ -586,8 +599,14 @@ struct NfcA::Impl
          {
             while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > PatternType::NoPattern)
             {
-               // detect end of response for BPSK
                if (pattern == PatternType::PatternO)
+                  frameEnd = true;
+
+               else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+                  truncateError = true;
+
+               // detect end of response for BPSK
+               if (frameEnd || truncateError)
                {
                   if (streamStatus.bits == 9)
                   {
@@ -616,7 +635,7 @@ struct NfcA::Impl
                      if (streamStatus.flags & ParityError)
                         response.setFrameFlags(FrameFlags::ParityError);
 
-                     if (streamStatus.bytes == protocolStatus.maxFrameSize)
+                     if (truncateError)
                         response.setFrameFlags(FrameFlags::Truncated);
 
                      // add bytes to frame and flip to prepare read
@@ -643,18 +662,14 @@ struct NfcA::Impl
 
                // decode next data bit
                if (streamStatus.bits < 8)
-               {
                   streamStatus.data |= (symbolStatus.value << streamStatus.bits);
-               }
 
                   // decode parity bit
                else if (streamStatus.bits < 9)
-               {
                   streamStatus.parity = symbolStatus.value;
-               }
 
                   // store full byte in stream buffer and check parity
-               else if (streamStatus.bytes < protocolStatus.maxFrameSize)
+               else
                {
                   // store byte in stream buffer
                   streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
@@ -667,16 +682,6 @@ struct NfcA::Impl
 
                   // reset bit counter
                   streamStatus.bits = 0;
-               }
-
-                  // too many bytes in frame, abort decoder
-               else
-               {
-                  // reset modulation status
-                  resetModulation();
-
-                  // no valid frame found
-                  return false;
                }
 
                streamStatus.bits++;
@@ -695,128 +700,259 @@ struct NfcA::Impl
    {
       symbolStatus.pattern = PatternType::Invalid;
 
+      BitrateParams *bitrate = decoder->bitrate;
+      ModulationStatus *modulation = decoder->modulation;
+
       while (decoder->nextSample(buffer))
       {
          // compute pointers
-         decoder->modulation->signalIndex = (decoder->bitrate->offsetSignalIndex + decoder->signalClock);
-         decoder->modulation->delay2Index = (decoder->bitrate->offsetDelay2Index + decoder->signalClock);
+         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
 
          // get signal samples
-         float currentData = decoder->signalStatus.signalData[decoder->modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float delayedData = decoder->signalStatus.signalData[decoder->modulation->delay2Index & (BUFFER_SIZE - 1)];
+         float currentData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float delayedData = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
 
          // integrate signal data over 1/2 symbol
-         decoder->modulation->filterIntegrate += currentData; // add new value
-         decoder->modulation->filterIntegrate -= delayedData; // remove delayed value
+         modulation->filterIntegrate += currentData; // add new value
+         modulation->filterIntegrate -= delayedData; // remove delayed value
 
          // correlation pointers
-         decoder->modulation->filterPoint1 = (decoder->modulation->signalIndex % decoder->bitrate->period1SymbolSamples);
-         decoder->modulation->filterPoint2 = (decoder->modulation->signalIndex + decoder->bitrate->period2SymbolSamples) % decoder->bitrate->period1SymbolSamples;
-         decoder->modulation->filterPoint3 = (decoder->modulation->signalIndex + decoder->bitrate->period1SymbolSamples - 1) % decoder->bitrate->period1SymbolSamples;
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // store integrated signal in correlation buffer
-         decoder->modulation->correlationData[decoder->modulation->filterPoint1] = decoder->modulation->filterIntegrate;
+         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factors
-         decoder->modulation->correlatedS0 = decoder->modulation->correlationData[decoder->modulation->filterPoint1] - decoder->modulation->correlationData[decoder->modulation->filterPoint2];
-         decoder->modulation->correlatedS1 = decoder->modulation->correlationData[decoder->modulation->filterPoint2] - decoder->modulation->correlationData[decoder->modulation->filterPoint3];
-         decoder->modulation->correlatedSD = std::fabs(decoder->modulation->correlatedS0 - decoder->modulation->correlatedS1) / float(decoder->bitrate->period2SymbolSamples);
+         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
+
+         // compute symbol average
+         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, decoder->modulation->correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
-
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
-#endif
-         // compute symbol average
-         decoder->modulation->symbolAverage = decoder->modulation->symbolAverage * decoder->bitrate->symbolAverageW0 + currentData * decoder->bitrate->symbolAverageW1;
 
          // set next search sync window from previous state
-         if (!decoder->modulation->searchStartTime)
+         if (!modulation->searchStartTime)
          {
             // estimated symbol start and end
-            decoder->modulation->symbolStartTime = decoder->modulation->symbolEndTime;
-            decoder->modulation->symbolEndTime = decoder->modulation->symbolStartTime + decoder->bitrate->period1SymbolSamples;
+            modulation->symbolStartTime = modulation->symbolEndTime;
+            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
+            modulation->symbolSyncTime = modulation->symbolEndTime;
 
             // timing search window
-            decoder->modulation->searchStartTime = decoder->modulation->symbolEndTime - decoder->bitrate->period8SymbolSamples;
-            decoder->modulation->searchEndTime = decoder->modulation->symbolEndTime + decoder->bitrate->period8SymbolSamples;
+            modulation->searchStartTime = modulation->symbolSyncTime - bitrate->period8SymbolSamples;
+            modulation->searchEndTime = modulation->symbolSyncTime + bitrate->period8SymbolSamples;
 
             // reset symbol parameters
-            decoder->modulation->symbolCorr0 = 0;
-            decoder->modulation->symbolCorr1 = 0;
+            modulation->symbolCorr0 = 0;
+            modulation->symbolCorr1 = 0;
          }
 
          // search max correlation peak
-         if (decoder->signalClock >= decoder->modulation->searchStartTime && decoder->signalClock <= decoder->modulation->searchEndTime)
+         if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
          {
-            if (decoder->modulation->correlatedSD > decoder->modulation->correlationPeek)
+            if (modulation->correlatedSD > modulation->correlationPeek)
             {
-               decoder->modulation->correlationPeek = decoder->modulation->correlatedSD;
-               decoder->modulation->symbolCorr0 = decoder->modulation->correlatedS0;
-               decoder->modulation->symbolCorr1 = decoder->modulation->correlatedS1;
-               decoder->modulation->symbolEndTime = decoder->signalClock;
+               modulation->correlationPeek = modulation->correlatedSD;
+               modulation->symbolCorr0 = modulation->correlatedS0;
+               modulation->symbolCorr1 = modulation->correlatedS1;
+               modulation->symbolEndTime = decoder->signalClock;
             }
          }
 
-         // capture next symbol
-         if (decoder->signalClock == decoder->modulation->searchEndTime)
-         {
 #ifdef DEBUG_ASK_SYNC_CHANNEL
+         if (decoder->signalClock == modulation->symbolSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
-            // detect Pattern-Y when no modulation occurs (below search detection threshold)
-            if (decoder->modulation->correlationPeek < decoder->modulation->searchThreshold)
-            {
-               // estimate symbol end from start (peak detection not valid due lack of modulation)
-               decoder->modulation->symbolEndTime = decoder->modulation->symbolStartTime + decoder->bitrate->period1SymbolSamples;
 
-               // setup symbol info
-               symbolStatus.value = 1;
-               symbolStatus.start = decoder->modulation->symbolStartTime - decoder->bitrate->symbolDelayDetect;
-               symbolStatus.end = decoder->modulation->symbolEndTime - decoder->bitrate->symbolDelayDetect;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
-               symbolStatus.pattern = PatternType::PatternY;
+         // capture next symbol
+         if (decoder->signalClock != modulation->searchEndTime)
+            continue;
 
-               break;
-            }
+         // detect Pattern-Y when no modulation occurs (below search detection threshold)
+         if (modulation->correlationPeek < modulation->searchThreshold)
+         {
+            // estimate symbol end from start (peak detection not valid due lack of modulation)
+            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
 
-            // detect Pattern-Z
-            if (decoder->modulation->symbolCorr0 > decoder->modulation->symbolCorr1)
-            {
-               // setup symbol info
-               symbolStatus.value = 0;
-               symbolStatus.start = decoder->modulation->symbolStartTime - decoder->bitrate->symbolDelayDetect;
-               symbolStatus.end = decoder->modulation->symbolEndTime - decoder->bitrate->symbolDelayDetect;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
-               symbolStatus.pattern = PatternType::PatternZ;
-
-               break;
-            }
-
-            // detect Pattern-X, setup symbol info
+            // setup symbol info
             symbolStatus.value = 1;
-            symbolStatus.start = decoder->modulation->symbolStartTime - decoder->bitrate->symbolDelayDetect;
-            symbolStatus.end = decoder->modulation->symbolEndTime - decoder->bitrate->symbolDelayDetect;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
-            symbolStatus.pattern = PatternType::PatternX;
+            symbolStatus.pattern = PatternType::PatternY;
 
             break;
          }
+
+         // detect Pattern-Z
+         if (modulation->symbolCorr0 > modulation->symbolCorr1)
+         {
+            // setup symbol info
+            symbolStatus.value = 0;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+            symbolStatus.pattern = PatternType::PatternZ;
+
+            break;
+         }
+
+         // detect Pattern-X, setup symbol info
+         symbolStatus.value = 1;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.length = symbolStatus.end - symbolStatus.start;
+         symbolStatus.pattern = PatternType::PatternX;
+
+         break;
       }
 
       // reset search status if symbol has detected
       if (symbolStatus.pattern != PatternType::Invalid)
       {
-         decoder->modulation->searchStartTime = 0;
-         decoder->modulation->searchEndTime = 0;
-         decoder->modulation->searchPulseWidth = 0;
-         decoder->modulation->correlationPeek = 0;
-         decoder->modulation->correlatedSD = 0;
+         modulation->searchStartTime = 0;
+         modulation->searchEndTime = 0;
+         modulation->searchPulseWidth = 0;
+         modulation->correlationPeek = 0;
+         modulation->correlatedSD = 0;
       }
 
       return symbolStatus.pattern;
+   }
+
+   /*
+    * Decode SOF for ASK modulated listen frame
+    */
+   inline int decodeListenFrameStartAsk(sdr::SignalBuffer &buffer)
+   {
+      int pattern = PatternType::Invalid;
+
+      BitrateParams *bitrate = decoder->bitrate;
+      ModulationStatus *modulation = decoder->modulation;
+
+      while (decoder->nextSample(buffer))
+      {
+         // compute pointers
+         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+
+         // get signal samples
+         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+
+         // compute symbol average (signal offset)
+         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
+
+         // remove DC offset from signal value
+         signalData -= modulation->symbolAverage;
+
+         // store signal square in filter buffer
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
+
+         // start correlation after frameGuardTime
+         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
+         {
+            // compute correlation points
+            modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
+            modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+            modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+
+            // integrate symbol (moving average)
+            modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+            modulation->filterIntegrate -= modulation->integrationData[modulation->delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
+
+            // store integrated signal in correlation buffer
+            modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+
+            // compute correlation results for each symbol and distance
+            modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
+            modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+            modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
+         }
+
+#ifdef DEBUG_ASK_CORR_CHANNEL
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
+#endif
+
+         // check if frame waiting time is exceeded
+         if (decoder->signalClock > frameStatus.waitingEnd)
+         {
+            pattern = PatternType::NoPattern;
+            break;
+         }
+
+         // wait until frame guard time is reached
+         if (decoder->signalClock < frameStatus.guardEnd)
+            continue;
+
+         // capture signal variance as lower level threshold
+         if (decoder->signalClock == frameStatus.guardEnd)
+            modulation->searchThreshold = decoder->signalStatus.signalVariance;
+
+         // detect maximum correlation peak
+         if (modulation->correlatedSD > modulation->searchThreshold)
+         {
+            // max correlation peak detector
+            if (modulation->correlatedSD > modulation->correlationPeek)
+            {
+               modulation->searchPulseWidth++;
+               modulation->searchPeakTime = decoder->signalClock;
+               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               modulation->correlationPeek = modulation->correlatedSD;
+            }
+         }
+
+         // wait until search finished
+         if (decoder->signalClock != modulation->searchEndTime)
+            continue;
+
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
+#endif
+         if (modulation->searchPulseWidth > bitrate->period8SymbolSamples)
+         {
+            // set pattern search window
+            modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
+            modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
+
+            // setup symbol info
+            symbolStatus.value = 1;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+
+            pattern = PatternType::PatternD;
+
+            break;
+         }
+
+         // if no valid modulation is found, we restart SOF search
+         modulation->searchStartTime = 0;
+         modulation->searchEndTime = 0;
+         modulation->correlationPeek = 0;
+         modulation->searchPulseWidth = 0;
+         modulation->correlatedSD = 0;
+      }
+
+      // reset search status
+      if (pattern != PatternType::Invalid)
+      {
+         symbolStatus.pattern = pattern;
+
+         modulation->searchStartTime = 0;
+         modulation->searchEndTime = 0;
+         modulation->correlationPeek = 0;
+         modulation->searchPulseWidth = 0;
+         modulation->correlatedSD = 0;
+      }
+
+      return pattern;
    }
 
    /*
@@ -833,7 +969,7 @@ struct NfcA::Impl
       {
          // compute pointers
          modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
 
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
@@ -841,161 +977,93 @@ struct NfcA::Impl
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
-         // signal value
+         // remove DC offset from signal value
          signalData -= modulation->symbolAverage;
 
          // store signal square in filter buffer
          modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
-         // start correlation after frameGuardTime
-         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
-         {
-            // compute correlation points
-            modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-            modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-            modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+         // compute correlation points
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
-            // integrate symbol (moving average)
-            modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-            modulation->filterIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         // integrate symbol (moving average)
+         modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->filterIntegrate -= modulation->integrationData[modulation->delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
-            // store integrated signal in correlation buffer
-            modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+         // store integrated signal in correlation buffer
+         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
 
-            // compute correlation results for each symbol and distance
-            modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-            modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
-            modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
-         }
+         // compute correlation results for each symbol and distance
+         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
-#endif
-         // search for Start Of Frame pattern (SoF)
-         if (!modulation->symbolEndTime)
+         // set next search window from previous symbol
+         if (!modulation->searchStartTime)
          {
-            if (decoder->signalClock > frameStatus.guardEnd)
+            // estimated symbol start and end
+            modulation->symbolStartTime = modulation->symbolEndTime;
+            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
+            modulation->symbolSyncTime = modulation->symbolEndTime;
+
+            // timing search window
+            modulation->searchStartTime = modulation->symbolSyncTime - bitrate->period8SymbolSamples;
+            modulation->searchEndTime = modulation->symbolSyncTime + bitrate->period8SymbolSamples;
+
+            // reset symbol parameters
+            modulation->symbolCorr0 = 0;
+            modulation->symbolCorr1 = 0;
+         }
+
+         // search symbol timings
+         if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
+         {
+            if (modulation->correlatedSD > modulation->correlationPeek)
             {
-               if (modulation->correlatedSD > modulation->searchThreshold)
-               {
-                  // max correlation peak detector
-                  if (modulation->correlatedSD > modulation->correlationPeek)
-                  {
-                     modulation->searchPulseWidth++;
-                     modulation->searchPeakTime = decoder->signalClock;
-                     modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-                     modulation->correlationPeek = decoder->modulation->correlatedSD;
-                  }
-               }
-
-               // Check for SoF symbol
-               if (decoder->signalClock == modulation->searchEndTime)
-               {
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-                  decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
-#endif
-                  if (modulation->searchPulseWidth > bitrate->period8SymbolSamples)
-                  {
-                     // set pattern search window
-                     modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
-                     modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
-
-                     // setup symbol info
-                     symbolStatus.value = 1;
-                     symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                     symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-                     symbolStatus.length = symbolStatus.end - symbolStatus.start;
-
-                     pattern = PatternType::PatternD;
-                     break;
-                  }
-
-                  // if no valid modulation is found, we restart SOF search
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->correlationPeek = 0;
-                  modulation->searchPulseWidth = 0;
-                  modulation->correlatedSD = 0;
-               }
-            }
-
-            // capture signal variance as lower level threshold
-            else if (decoder->signalClock == frameStatus.guardEnd)
-               modulation->searchThreshold = decoder->signalStatus.signalVariance;
-
-            // frame waiting time exceeded
-            if (decoder->signalClock >= frameStatus.waitingEnd)
-            {
-               pattern = PatternType::NoPattern;
-               break;
+               modulation->correlationPeek = modulation->correlatedSD;
+               modulation->symbolCorr0 = modulation->correlatedS0;
+               modulation->symbolCorr1 = modulation->correlatedS1;
+               modulation->symbolEndTime = decoder->signalClock;
             }
          }
 
-            // search Response Bit Stream
-         else
-         {
-            // set next search sync window from previous
-            if (!modulation->searchStartTime)
-            {
-               // estimated symbol start and end
-               modulation->symbolStartTime = modulation->symbolEndTime;
-               modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
-
-               // timing search window
-               modulation->searchStartTime = modulation->symbolEndTime - bitrate->period8SymbolSamples;
-               modulation->searchEndTime = modulation->symbolEndTime + bitrate->period8SymbolSamples;
-
-               // reset symbol parameters
-               modulation->symbolCorr0 = 0;
-               modulation->symbolCorr1 = 0;
-            }
-
-            // search symbol timings
-            if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
-            {
-               if (modulation->correlatedSD > modulation->correlationPeek)
-               {
-                  modulation->correlationPeek = modulation->correlatedSD;
-                  modulation->symbolCorr0 = modulation->correlatedS0;
-                  modulation->symbolCorr1 = modulation->correlatedS1;
-                  modulation->symbolEndTime = decoder->signalClock;
-               }
-            }
-
-            // capture next symbol
-            if (decoder->signalClock == modulation->searchEndTime)
-            {
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-               decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+         if (decoder->signalClock == modulation->symbolSyncTime)
+            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
-               if (modulation->correlationPeek > modulation->searchThreshold)
-               {
-                  // setup symbol info
-                  symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                  symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-                  symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-                  if (modulation->symbolCorr0 > modulation->symbolCorr1)
-                  {
-                     symbolStatus.value = 0;
-                     pattern = PatternType::PatternE;
-                     break;
-                  }
+         // wait until search is finished
+         if (decoder->signalClock != modulation->searchEndTime)
+            continue;
 
-                  symbolStatus.value = 1;
-                  pattern = PatternType::PatternD;
-                  break;
-               }
+         if (modulation->correlationPeek > modulation->searchThreshold)
+         {
+            // setup symbol info
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+            symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-               // no modulation (End Of Frame) EoF
-               pattern = PatternType::PatternF;
+            if (modulation->symbolCorr0 > modulation->symbolCorr1)
+            {
+               symbolStatus.value = 0;
+               pattern = PatternType::PatternE;
                break;
             }
+
+            symbolStatus.value = 1;
+            pattern = PatternType::PatternD;
+            break;
          }
+
+         // no modulation (End Of Frame) EoF
+         pattern = PatternType::PatternF;
+         break;
       }
 
       // reset search status
@@ -1005,6 +1073,100 @@ struct NfcA::Impl
 
          modulation->searchStartTime = 0;
          modulation->searchEndTime = 0;
+         modulation->correlationPeek = 0;
+         modulation->searchPulseWidth = 0;
+         modulation->correlatedSD = 0;
+      }
+
+      return pattern;
+   }
+
+   /*
+    * Decode SOF for BPSK modulated listen frame
+    */
+   inline int decodeListenFrameStartBpsk(sdr::SignalBuffer &buffer)
+   {
+      int pattern = PatternType::Invalid;
+
+      BitrateParams *bitrate = decoder->bitrate;
+      ModulationStatus *modulation = decoder->modulation;
+
+      while (decoder->nextSample(buffer))
+      {
+         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
+         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+
+         // get signal samples
+         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
+
+         // compute symbol average
+         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
+
+         // multiply 1 symbol delayed signal with incoming signal
+         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage);
+
+         // store signal phase in filter buffer
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
+
+         // integrate response from PICC after guard time (TR0)
+         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
+         {
+            modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+            modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         }
+
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+#endif
+
+         // detect first zero-cross
+         if (modulation->phaseIntegrate > 0.00025f)
+         {
+            modulation->searchPeakTime = decoder->signalClock;
+            modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
+         }
+
+         // frame waiting time exceeded without detect modulation
+         if (decoder->signalClock >= frameStatus.waitingEnd)
+         {
+            pattern = PatternType::NoPattern;
+            break;
+         }
+
+         if (decoder->signalClock != modulation->searchEndTime)
+            continue;
+
+#ifdef DEBUG_BPSK_SYNC_CHANNEL
+         decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
+#endif
+         // set symbol window
+         modulation->symbolSyncTime = 0;
+         modulation->symbolStartTime = modulation->searchPeakTime;
+         modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
+         modulation->symbolPhase = modulation->phaseIntegrate;
+         modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
+
+         // set symbol info
+         symbolStatus.value = 0;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.length = symbolStatus.end - symbolStatus.start;
+
+         pattern = PatternType::PatternM;
+
+         break;
+      }
+
+      // reset search status
+      if (pattern != PatternType::Invalid)
+      {
+         symbolStatus.pattern = pattern;
+
+         modulation->searchStartTime = 0;
+         modulation->searchEndTime = 0;
+         modulation->symbolSyncTime = 0;
          modulation->correlationPeek = 0;
          modulation->searchPulseWidth = 0;
          modulation->correlatedSD = 0;
@@ -1042,112 +1204,66 @@ struct NfcA::Impl
          // store signal phase in filter buffer
          modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
 
-         // integrate response from PICC after guard time (TR0)
-         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
-         {
-            modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-            modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
-         }
+         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
 #endif
 
-         // search for Start Of Frame pattern (SoF)
-         if (!modulation->symbolEndTime)
+         // edge detector for re-synchronization
+         if ((modulation->phaseIntegrate > 0 && modulation->symbolPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0))
          {
-            // detect first zero-cross
-            if (modulation->phaseIntegrate > 0.00025f)
-            {
-               modulation->searchPeakTime = decoder->signalClock;
-               modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
-            }
-
-               // frame waiting time exceeded without detect modulation
-            else if (decoder->signalClock == frameStatus.waitingEnd)
-            {
-               pattern = PatternType::NoPattern;
-               break;
-            }
-
-            if (decoder->signalClock == modulation->searchEndTime)
-            {
-#ifdef DEBUG_BPSK_SYNC_CHANNEL
-               decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
-#endif
-               // set symbol window
-               modulation->symbolSyncTime = 0;
-               modulation->symbolStartTime = modulation->searchPeakTime;
-               modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
-               modulation->symbolPhase = modulation->phaseIntegrate;
-               modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
-
-               // set symbol info
-               symbolStatus.value = 0;
-               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
-
-               pattern = PatternType::PatternM;
-               break;
-            }
+            modulation->searchPeakTime = decoder->signalClock;
+            modulation->symbolStartTime = decoder->signalClock;
+            modulation->symbolEndTime = decoder->signalClock + bitrate->period1SymbolSamples;
+            modulation->symbolSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
+            modulation->symbolPhase = modulation->phaseIntegrate;
          }
 
-            // search Response Bit Stream
-         else
+         // set next search sync window from previous
+         if (!modulation->symbolSyncTime)
          {
-            // edge detector for re-synchronization
-            if ((modulation->phaseIntegrate > 0 && modulation->symbolPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0))
-            {
-               modulation->searchPeakTime = decoder->signalClock;
-               modulation->symbolStartTime = decoder->signalClock;
-               modulation->symbolEndTime = decoder->signalClock + bitrate->period1SymbolSamples;
-               modulation->symbolSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
-               modulation->symbolPhase = modulation->phaseIntegrate;
-            }
-
-            // set next search sync window from previous
-            if (!modulation->symbolSyncTime)
-            {
-               // estimated symbol start and end
-               modulation->symbolStartTime = modulation->symbolEndTime;
-               modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
-               modulation->symbolSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
-            }
-
-               // search symbol timings
-            else if (decoder->signalClock == modulation->symbolSyncTime)
-            {
-#ifdef DEBUG_BPSK_SYNC_CHANNEL
-               decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.50f);
-#endif
-               modulation->symbolPhase = modulation->phaseIntegrate;
-
-               // setup symbol info
-               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
-
-               // no symbol change, keep previous symbol pattern
-               if (modulation->phaseIntegrate > modulation->phaseThreshold)
-               {
-                  pattern = symbolStatus.pattern;
-                  break;
-               }
-
-               // symbol change, invert pattern and value
-               if (modulation->phaseIntegrate < -modulation->phaseThreshold)
-               {
-                  symbolStatus.value = !symbolStatus.value;
-                  pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
-                  break;
-               }
-
-               // no modulation detected, generate End Of Frame symbol
-               pattern = PatternType::PatternO;
-               break;
-            }
+            // estimated symbol start and end
+            modulation->symbolStartTime = modulation->symbolEndTime;
+            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
+            modulation->symbolSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
          }
+
+         // wait until search finished
+         if (decoder->signalClock != modulation->symbolSyncTime)
+            continue;
+
+#ifdef DEBUG_BPSK_SYNC_CHANNEL
+         decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.50f);
+#endif
+
+         modulation->symbolPhase = modulation->phaseIntegrate;
+
+         // setup symbol info
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.length = symbolStatus.end - symbolStatus.start;
+
+         // no symbol change, keep previous symbol pattern
+         if (modulation->phaseIntegrate > modulation->phaseThreshold)
+         {
+            pattern = symbolStatus.pattern;
+            break;
+         }
+
+         // symbol change, invert pattern and value
+         if (modulation->phaseIntegrate < -modulation->phaseThreshold)
+         {
+            symbolStatus.value = !symbolStatus.value;
+            pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
+            break;
+         }
+
+         // no modulation detected, generate End Of Frame symbol
+         pattern = PatternType::PatternO;
+
+         break;
       }
 
       // reset search status
@@ -1228,8 +1344,10 @@ struct NfcA::Impl
       if (frame.isPollFrame())
       {
          // initialize frame parameters to default protocol parameters
-         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+         frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
+         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+         frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
       }
 
       do

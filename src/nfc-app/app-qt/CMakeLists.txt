@@ -26,6 +26,11 @@ add_executable(nfc-lab WIN32
         src/main/cpp/events/SystemShutdownEvent.cpp
         src/main/cpp/model/StreamModel.cpp
         src/main/cpp/model/ParserModel.cpp
+        src/main/cpp/parser/ParserNfc.cpp
+        src/main/cpp/parser/ParserNfcA.cpp
+        src/main/cpp/parser/ParserNfcB.cpp
+        src/main/cpp/parser/ParserNfcF.cpp
+        src/main/cpp/parser/ParserNfcV.cpp
         src/main/cpp/protocol/ProtocolFrame.cpp
         src/main/cpp/protocol/ProtocolParser.cpp
         src/main/cpp/support/QCustomPlot.cpp

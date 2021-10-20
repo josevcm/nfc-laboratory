@@ -141,6 +141,8 @@ struct Executor::Impl
       // terminate running tasks
       while (auto task = runningTasks.get())
       {
+         log.debug("send terminate request for task {}", {task.value()->name()});
+
          task.value()->terminate();
       }
 
@@ -154,6 +156,8 @@ struct Executor::Impl
       {
          if (thread.joinable())
          {
+            log.debug("joint on thread {}", {thread.get_id()});
+
             thread.join();
          }
       }
