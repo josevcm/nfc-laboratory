@@ -11,7 +11,7 @@ reader.
 I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation
 accessible through Google, I will describe as simply as possible the method that i have used to implement this software.
 
-Currently, detection and decoding for NFC-A and NFC-B modulation has been implemented.
+Currently, detection and decoding for NFC-A, NFC-B and NFC-V modulation has been implemented.
 
 ## Signal processing
 
