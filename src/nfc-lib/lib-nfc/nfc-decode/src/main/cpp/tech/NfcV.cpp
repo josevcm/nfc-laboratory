@@ -795,7 +795,7 @@ struct NfcV::Impl
             }
                // capture signal variance as lower level threshold
             else if (decoder->signalClock == frameStatus.guardEnd)
-               modulation->searchThreshold = decoder->signalStatus.signalVariance * bitrate->period1SymbolSamples;
+               modulation->searchThreshold = decoder->signalStatus.signalVariance * 2;
 
             // wait until search finished
             if (decoder->signalClock != modulation->searchEndTime)

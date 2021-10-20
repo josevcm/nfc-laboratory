@@ -61,6 +61,9 @@ static QMap<int, QString> NfcBCmd = {
       {0x50, "HLTB"}
 };
 
+static QMap<int, QString> NfcVCmd = {
+};
+
 struct StreamModel::Impl
 {
    // fonts
@@ -143,37 +146,60 @@ struct StreamModel::Impl
    {
       if (frame->isPollFrame())
       {
-         int command = (*frame)[0];
-
          // raw protocol commands
          if (!frame->isEncrypted())
          {
             if (frame->isNfcA())
             {
+               int command = (*frame)[0];
+
                if (NfcACmd.contains(command))
                   return NfcACmd[command];
 
                // Protocol Parameter Selection
                if ((command & 0xF0) == 0xD0)
                   return "PPS";
+
+               // ISO-DEP protocol I-Block
+               if ((command & 0xE2) == 0x02)
+                  return "I-Block";
+
+               // ISO-DEP protocol R-Block
+               if ((command & 0xE6) == 0xA2)
+                  return "R-Block";
+
+               // ISO-DEP protocol S-Block
+               if ((command & 0xC7) == 0xC2)
+                  return "S-Block";
             }
             else if (frame->isNfcB())
             {
+               int command = (*frame)[0];
+
                if (NfcBCmd.contains(command))
                   return NfcBCmd[command];
+
+               // ISO-DEP protocol I-Block
+               if ((command & 0xE2) == 0x02)
+                  return "I-Block";
+
+               // ISO-DEP protocol R-Block
+               if ((command & 0xE6) == 0xA2)
+                  return "R-Block";
+
+               // ISO-DEP protocol S-Block
+               if ((command & 0xC7) == 0xC2)
+                  return "S-Block";
             }
+            else if (frame->isNfcV())
+            {
+               int command = (*frame)[1];
 
-            // ISO-DEP protocol I-Block
-            if ((command & 0xE2) == 0x02)
-               return "I-Block";
+               if (NfcVCmd.contains(command))
+                  return NfcVCmd[command];
 
-            // ISO-DEP protocol R-Block
-            if ((command & 0xE6) == 0xA2)
-               return "R-Block";
-
-            // ISO-DEP protocol S-Block
-            if ((command & 0xC7) == 0xC2)
-               return "S-Block";
+               return QString("CMD %1").arg(command, 2, 16, QChar('0'));
+            }
          }
       }
 
