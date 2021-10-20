@@ -25,9 +25,9 @@
 #include <tech/NfcB.h>
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_ASK_EDGE_CHANNEL 1
+#define DEBUG_ASK_EDGE_CHANNEL 2
 #define DEBUG_ASK_SYNC_CHANNEL 2
-#define DEBUG_BPSK_PHASE_CHANNEL 1
+#define DEBUG_BPSK_PHASE_CHANNEL 2
 #define DEBUG_BPSK_SYNC_CHANNEL 2
 #endif
 
@@ -133,13 +133,13 @@ struct NfcB::Impl
          bitrate->rateType = rate;
 
          // symbol timing parameters
-         bitrate->symbolsPerSecond = NFC_FC / (128 >> rate);
+         bitrate->symbolsPerSecond = int(std::round(NFC_FC / (128 >> rate)));
 
          // number of samples per symbol
-         bitrate->period1SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
-         bitrate->period2SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (64 >> rate))); // half symbol samples
-         bitrate->period4SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (32 >> rate))); // quarter of symbol...
-         bitrate->period8SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
+         bitrate->period1SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
+         bitrate->period2SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (64 >> rate))); // half symbol samples
+         bitrate->period4SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (32 >> rate))); // quarter of symbol...
+         bitrate->period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
          // delay guard for each symbol rate
          bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
@@ -198,7 +198,6 @@ struct NfcB::Impl
       if (decoder->signalStatus.powerAverage < decoder->powerLevelThreshold)
          return false;
 
-
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
       for (int rate = r106k; rate <= r424k; rate++)
       {
@@ -215,7 +214,7 @@ struct NfcB::Impl
          float deepValue = decoder->signalStatus.deepData[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_EDGE_CHANNEL
-         decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL + rate, edgeValue * 10);
+         decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL, edgeValue * 10);
 #endif
          // reset modulation if exceed limits
          if (deepValue > maximumModulationThreshold)
@@ -617,9 +616,6 @@ struct NfcB::Impl
          decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL, edgeValue * 10);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
-#endif
          // edge re-synchronization window
          if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock < modulation->searchEndTime)
          {

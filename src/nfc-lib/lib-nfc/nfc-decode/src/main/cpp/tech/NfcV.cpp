@@ -25,8 +25,8 @@
 #include <tech/NfcV.h>
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_ASK_CORR_CHANNEL 1
-#define DEBUG_ASK_SYNC_CHANNEL 2
+#define DEBUG_ASK_CORR_CHANNEL 3
+#define DEBUG_ASK_SYNC_CHANNEL 3
 #endif
 
 #define SOF_BEGIN 0
@@ -120,14 +120,14 @@ struct NfcV::Impl
       bitrateParams.techType = TechType::NfcV;
 
       // NFC-V has constant symbol rate
-      bitrateParams.symbolsPerSecond = NFC_FC / 256;
+      bitrateParams.symbolsPerSecond = int(std::round(NFC_FC / 256));
 
       // number of samples per symbol
-      bitrateParams.period0SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * 512)); // double full symbol samples
-      bitrateParams.period1SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * 256)); // full symbol samples
-      bitrateParams.period2SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * 128)); // half symbol samples
-      bitrateParams.period4SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * 64)); // quarter of symbol...
-      bitrateParams.period8SymbolSamples = int(round(decoder->signalParams.sampleTimeUnit * 32)); // and so on...
+      bitrateParams.period0SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * 512)); // double full symbol samples
+      bitrateParams.period1SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * 256)); // full symbol samples
+      bitrateParams.period2SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * 128)); // half symbol samples
+      bitrateParams.period4SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * 64)); // quarter of symbol...
+      bitrateParams.period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * 32)); // and so on...
 
       // moving average offsets
       bitrateParams.offsetSignalIndex = BUFFER_SIZE;
@@ -233,9 +233,7 @@ struct NfcV::Impl
 #ifdef DEBUG_ASK_CORR_CHANNEL
       decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-      decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
-#endif
+
       // search for first falling edge
       switch (modulation->searchStage)
       {
@@ -280,94 +278,95 @@ struct NfcV::Impl
 
          case SOF_MODE:
 
-            // detect SOF modulation pulse code 1 / 4 or 1 / 256
-            if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
+            // wait for search window
+            if (decoder->signalClock < modulation->searchStartTime || decoder->signalClock > modulation->searchEndTime)
+               break;
+
+            // max correlation peak detector
+            if (modulation->correlatedS0 > decoder->signalStatus.powerAverage * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
             {
-               // max correlation peak detector
-               if (modulation->correlatedS0 > decoder->signalStatus.powerAverage * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
-               {
-                  modulation->searchPeakTime = decoder->signalClock;
-                  modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
-                  modulation->correlationPeek = modulation->correlatedS0;
-               }
+               modulation->searchPeakTime = decoder->signalClock;
+               modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
+               modulation->correlationPeek = modulation->correlatedS0;
+            }
 
-               // wait until search finished
-               if (decoder->signalClock != modulation->searchEndTime)
-                  break;
+            // wait until search finished
+            if (decoder->signalClock != modulation->searchEndTime)
+               break;
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-               decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
-#endif
-               // if no pulse detected reset modulation search
-               if (!modulation->searchPeakTime)
-               {
-                  // if no edge found, restart search
-                  modulation->searchStage = SOF_BEGIN;
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->searchPeakTime = 0;
-                  modulation->correlationPeek = 0;
-                  modulation->symbolStartTime = 0;
-                  modulation->symbolEndTime = 0;
-
-                  break;
-               }
-
-               // reset modulation for next search
+            // if no pulse detected reset modulation search
+            if (!modulation->searchPeakTime)
+            {
+               // if no edge found, restart search
                modulation->searchStage = SOF_BEGIN;
                modulation->searchStartTime = 0;
                modulation->searchEndTime = 0;
+               modulation->searchPeakTime = 0;
                modulation->correlationPeek = 0;
-
-               // set lower threshold to detect valid response pattern
-               modulation->searchThreshold = decoder->signalStatus.powerAverage * minimumModulationThreshold;
-
-               // check for 1 of 4 code
-               if (modulation->searchPeakTime > (modulation->symbolStartTime + 3 * bitrate->period1SymbolSamples - bitrate->period8SymbolSamples) &&
-                   modulation->searchPeakTime < (modulation->symbolStartTime + 3 * bitrate->period1SymbolSamples + bitrate->period8SymbolSamples))
-               {
-                  // set SOF symbol parameters
-                  modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
-
-                  // setup frame info
-                  frameStatus.frameType = PollFrame;
-                  frameStatus.symbolRate = bitrate->symbolsPerSecond;
-                  frameStatus.frameStart = modulation->symbolStartTime;
-                  frameStatus.frameEnd = 0;
-
-                  // modulation detected
-                  decoder->pulse = pulseParams + 0;
-                  decoder->bitrate = bitrate;
-                  decoder->modulation = modulation;
-
-                  return true;
-               }
-
-               // check for 1 of 256 code
-               if (modulation->searchPeakTime > (modulation->symbolStartTime + 4 * bitrate->period1SymbolSamples - bitrate->period8SymbolSamples) &&
-                   modulation->searchPeakTime < (modulation->symbolStartTime + 4 * bitrate->period1SymbolSamples + bitrate->period8SymbolSamples))
-               {
-                  // set SOF symbol parameters
-                  modulation->symbolEndTime = modulation->searchPeakTime;
-
-                  // setup frame info
-                  frameStatus.frameType = PollFrame;
-                  frameStatus.symbolRate = bitrate->symbolsPerSecond;
-                  frameStatus.frameStart = modulation->symbolStartTime;
-                  frameStatus.frameEnd = 0;
-
-                  // modulation detected
-                  decoder->pulse = pulseParams + 1;
-                  decoder->bitrate = bitrate;
-                  decoder->modulation = modulation;
-
-                  return true;
-               }
-
-               // invalid code detected, reset symbol status
                modulation->symbolStartTime = 0;
                modulation->symbolEndTime = 0;
+
+               break;
             }
+
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
+#endif
+
+            // reset modulation for next search
+            modulation->searchStage = SOF_BEGIN;
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->correlationPeek = 0;
+
+            // set lower threshold to detect valid response pattern
+            modulation->searchThreshold = decoder->signalStatus.powerAverage * minimumModulationThreshold;
+
+            // check for 1 of 4 code
+            if (modulation->searchPeakTime > (modulation->symbolStartTime + 3 * bitrate->period1SymbolSamples - bitrate->period8SymbolSamples) &&
+                modulation->searchPeakTime < (modulation->symbolStartTime + 3 * bitrate->period1SymbolSamples + bitrate->period8SymbolSamples))
+            {
+               // set SOF symbol parameters
+               modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
+
+               // setup frame info
+               frameStatus.frameType = PollFrame;
+               frameStatus.symbolRate = bitrate->symbolsPerSecond;
+               frameStatus.frameStart = modulation->symbolStartTime;
+               frameStatus.frameEnd = 0;
+
+               // modulation detected
+               decoder->pulse = pulseParams + 0;
+               decoder->bitrate = bitrate;
+               decoder->modulation = modulation;
+
+               return true;
+            }
+
+            // check for 1 of 256 code
+            if (modulation->searchPeakTime > (modulation->symbolStartTime + 4 * bitrate->period1SymbolSamples - bitrate->period8SymbolSamples) &&
+                modulation->searchPeakTime < (modulation->symbolStartTime + 4 * bitrate->period1SymbolSamples + bitrate->period8SymbolSamples))
+            {
+               // set SOF symbol parameters
+               modulation->symbolEndTime = modulation->searchPeakTime;
+
+               // setup frame info
+               frameStatus.frameType = PollFrame;
+               frameStatus.symbolRate = bitrate->symbolsPerSecond;
+               frameStatus.frameStart = modulation->symbolStartTime;
+               frameStatus.frameEnd = 0;
+
+               // modulation detected
+               decoder->pulse = pulseParams + 1;
+               decoder->bitrate = bitrate;
+               decoder->modulation = modulation;
+
+               return true;
+            }
+
+            // invalid code detected, reset symbol status
+            modulation->symbolStartTime = 0;
+            modulation->symbolEndTime = 0;
 
             break;
       }
@@ -438,10 +437,7 @@ struct NfcV::Impl
                // clear modulation status for next frame search
                decoder->modulation->symbolStartTime = 0;
                decoder->modulation->symbolEndTime = 0;
-//               decoder->modulation->symbolSyncTime = 0;
                decoder->modulation->filterIntegrate = 0;
-//               decoder->modulation->detectIntegrate = 0;
-//               decoder->modulation->phaseIntegrate = 0;
                decoder->modulation->searchStartTime = 0;
                decoder->modulation->searchEndTime = 0;
 
@@ -629,15 +625,13 @@ struct NfcV::Impl
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
-#endif
          // set next search sync window from previous state
          if (!modulation->searchStartTime)
          {
             // estimated symbol start and end
             modulation->symbolStartTime = modulation->symbolEndTime;
             modulation->symbolEndTime = modulation->symbolStartTime + pulse->length;
+            modulation->symbolSyncTime = modulation->symbolStartTime;
 
             // timing search window
             modulation->searchStartTime = modulation->symbolStartTime;
@@ -645,7 +639,7 @@ struct NfcV::Impl
          }
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-         if (decoder->signalClock == modulation->searchStartTime)
+         if (decoder->signalClock == modulation->symbolSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
 
@@ -780,9 +774,6 @@ struct NfcV::Impl
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, modulation->filterIntegrate);
-#endif
          // search first SOF subcarrier modulation
          if (!modulation->symbolStartTime)
          {
@@ -930,19 +921,13 @@ struct NfcV::Impl
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.0f);
-#endif
-
          // set next search sync window from previous state
          if (!modulation->searchStartTime)
          {
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
-#endif
             // estimated symbol start and end
             modulation->symbolStartTime = modulation->symbolEndTime;
             modulation->symbolEndTime = modulation->symbolStartTime + decoder->bitrate->period0SymbolSamples;
+            modulation->symbolSyncTime = modulation->symbolStartTime;
 
             // timing search window
             modulation->searchStartTime = modulation->symbolEndTime - decoder->bitrate->period4SymbolSamples;
@@ -952,6 +937,11 @@ struct NfcV::Impl
             modulation->symbolCorr0 = 0;
             modulation->symbolCorr1 = 0;
          }
+
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+         if (decoder->signalClock == modulation->symbolSyncTime)
+            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+#endif
 
          // wait until search window start
          if (decoder->signalClock < modulation->searchStartTime)
