@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.17)
 
 project(nfc-lab)
 
-set(CMAKE_C_FLAGS_DEBUG "-g -march=native -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
-set(CMAKE_CXX_FLAGS_DEBUG "-g -march=native -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
+set(CMAKE_C_FLAGS_DEBUG "-g -msse -msse3 -mno-avx -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG "-g -msse -msse3 -mno-avx -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
 
-set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -march=native -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -march=native -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -msse -msse3 -mno-avx -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -msse -msse3 -mno-avx -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
 
 set(USB_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/dll/usb-1.0.20/include)
 set(GLEW_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/dll/glew-2.1.0/include)

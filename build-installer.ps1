@@ -24,4 +24,4 @@ Copy-Item -Force cmake-build-release/src/nfc-app/app-qt/nfc-lab.exe $BuildPath/p
 windeployqt.exe --release --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $BuildPath/packages/nfc-lab/data/nfc-lab.exe
 
 # Create QT installer
-binarycreator.exe -c $BuildPath/config/config.xml -p $BuildPath/packages $BuildPath/nfc-lab-2.1.0-x86_64.exe
+binarycreator.exe -c $BuildPath/config/config.xml -p $BuildPath/packages $BuildPath/nfc-lab-2.4.0-x86_64.exe
