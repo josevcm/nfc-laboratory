@@ -816,48 +816,48 @@ struct NfcV::Impl
          else
          {
             // search second SOF subcarrier modulation
-            if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
-            {
-               // max correlation peak detector
-               if (modulation->correlatedS0 < modulation->correlationPeek)
-               {
-                  modulation->searchPeakTime = decoder->signalClock;
-                  modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
-                  modulation->correlationPeek = modulation->correlatedS0;
-               }
+            if (decoder->signalClock < modulation->searchStartTime)
+               continue;
 
-               // wait until search finished
-               if (decoder->signalClock != modulation->searchEndTime)
-                  continue;
+            // max correlation peak detector
+            if (modulation->correlatedS0 < -modulation->searchThreshold && modulation->correlatedS0 < modulation->correlationPeek)
+            {
+               modulation->searchPeakTime = decoder->signalClock;
+               modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
+               modulation->correlationPeek = modulation->correlatedS0;
+            }
+
+            // wait until search finished
+            if (decoder->signalClock != modulation->searchEndTime)
+               continue;
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-               decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
+            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
 #endif
-               if (!modulation->searchPeakTime)
-               {
-                  // if no edge is found, we restart SOF search
-                  modulation->searchPeakTime = 0;
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->symbolStartTime = 0;
-                  modulation->symbolEndTime = 0;
+            if (!modulation->searchPeakTime)
+            {
+               // if no edge is found, we restart SOF search
+               modulation->searchPeakTime = 0;
+               modulation->searchStartTime = 0;
+               modulation->searchEndTime = 0;
+               modulation->symbolStartTime = 0;
+               modulation->symbolEndTime = 0;
 
-                  continue;
-               }
-
-               // if found, set SOF symbol end
-               modulation->symbolEndTime = modulation->searchPeakTime;
-
-               // set reference symbol info
-               symbolStatus.value = 0;
-               symbolStatus.start = modulation->symbolStartTime;
-               symbolStatus.end = modulation->symbolEndTime;
-               symbolStatus.length = symbolStatus.end - symbolStatus.start;
-
-               pattern = PatternType::PatternS;
-
-               break;
+               continue;
             }
+
+            // if found, set SOF symbol end
+            modulation->symbolEndTime = modulation->searchPeakTime;
+
+            // set reference symbol info
+            symbolStatus.value = 0;
+            symbolStatus.start = modulation->symbolStartTime;
+            symbolStatus.end = modulation->symbolEndTime;
+            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+
+            pattern = PatternType::PatternS;
+
+            break;
          }
       }
 
