@@ -116,8 +116,11 @@ NfcF::~NfcF()
 
 void NfcF::setModulationThreshold(float min, float max)
 {
-   self->minimumModulationThreshold = min;
-   self->maximumModulationThreshold = max;
+   if (!std::isnan(min))
+      self->minimumModulationThreshold = min;
+
+   if (!std::isnan(max))
+      self->maximumModulationThreshold = max;
 }
 
 void NfcF::configure(long sampleRate)

@@ -126,9 +126,9 @@ void NfcDecoder::setPowerLevelThreshold(float value)
    impl->decoder.powerLevelThreshold = value;
 }
 
-void NfcDecoder::setModulationThresholdNfcA(float min)
+void NfcDecoder::setModulationThresholdNfcA(float min, float max)
 {
-   impl->nfca.setModulationThreshold(min);
+   impl->nfca.setModulationThreshold(min, max);
 }
 
 void NfcDecoder::setModulationThresholdNfcB(float min, float max)
@@ -141,9 +141,9 @@ void NfcDecoder::setModulationThresholdNfcF(float min, float max)
    impl->nfcf.setModulationThreshold(min, max);
 }
 
-void NfcDecoder::setModulationThresholdNfcV(float min)
+void NfcDecoder::setModulationThresholdNfcV(float min, float max)
 {
-   impl->nfcv.setModulationThreshold(min);
+   impl->nfcv.setModulationThreshold(min, max);
 }
 
 float NfcDecoder::powerLevelThreshold() const

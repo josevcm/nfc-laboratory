@@ -150,11 +150,90 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
          log.info("change decoder config: {}", {config.dump()});
 
+         // global power level threshold
          if (config.contains("powerLevelThreshold"))
             decoder->setPowerLevelThreshold(config["powerLevelThreshold"]);
 
-         if (config.contains("modulationThreshold"))
-            decoder->setModulationThresholdNfcA(config["modulationThreshold"]);
+         // NFC-A parameters
+         if (config.contains("nfca"))
+         {
+            auto nfca = config["nfca"];
+
+            float min = NAN;
+            float max = NAN;
+
+            if (nfca.contains("enabled"))
+               decoder->setEnableNfcA(nfca["enabled"]);
+
+            if (nfca.contains("minimumModulationThreshold"))
+               min = nfca["minimumModulationThreshold"];
+
+            if (nfca.contains("maximumModulationThreshold"))
+               max = nfca["maximumModulationThreshold"];
+
+            decoder->setModulationThresholdNfcA(min, max);
+         }
+
+         // NFC-B parameters
+         if (config.contains("nfcb"))
+         {
+            auto nfcb = config["nfcb"];
+
+            float min = NAN;
+            float max = NAN;
+
+            if (nfcb.contains("enabled"))
+               decoder->setEnableNfcB(nfcb["enabled"]);
+
+            if (nfcb.contains("minimumModulationThreshold"))
+               min = nfcb["minimumModulationThreshold"];
+
+            if (nfcb.contains("maximumModulationThreshold"))
+               max = nfcb["maximumModulationThreshold"];
+
+            decoder->setModulationThresholdNfcB(min, max);
+         }
+
+         // NFC-F parameters
+         if (config.contains("nfcf"))
+         {
+            auto nfcf = config["nfcb"];
+
+            float min = NAN;
+            float max = NAN;
+
+            if (nfcf.contains("enabled"))
+               decoder->setEnableNfcF(nfcf["enabled"]);
+
+            if (nfcf.contains("minimumModulationThreshold"))
+               min = nfcf["minimumModulationThreshold"];
+
+            if (nfcf.contains("maximumModulationThreshold"))
+               max = nfcf["maximumModulationThreshold"];
+
+            decoder->setModulationThresholdNfcV(min, max);
+         }
+
+         // NFC-V parameters
+         if (config.contains("nfcv"))
+         {
+            auto nfcv = config["nfcb"];
+
+            float min = NAN;
+            float max = NAN;
+
+            if (nfcv.contains("enabled"))
+               decoder->setEnableNfcV(nfcv["enabled"]);
+
+            if (nfcv.contains("minimunModulationThreshold"))
+               min = nfcv["minimunModulationThreshold"];
+
+            if (nfcv.contains("maximunModulationThreshold"))
+               max = nfcv["maximunModulationThreshold"];
+
+            decoder->setModulationThresholdNfcV(min, max);
+         }
+
 
          command.resolve();
       }

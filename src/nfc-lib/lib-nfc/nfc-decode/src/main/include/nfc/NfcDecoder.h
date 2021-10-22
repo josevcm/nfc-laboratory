@@ -57,13 +57,13 @@ class NfcDecoder
 
       void setPowerLevelThreshold(float value);
 
-      void setModulationThresholdNfcA(float min);
+      void setModulationThresholdNfcA(float min, float max);
 
       void setModulationThresholdNfcB(float min, float max);
 
       void setModulationThresholdNfcF(float min, float max);
 
-      void setModulationThresholdNfcV(float min);
+      void setModulationThresholdNfcV(float min, float max);
 
       float powerLevelThreshold() const;
 

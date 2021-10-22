@@ -1140,9 +1140,10 @@ NfcV::~NfcV()
    delete self;
 }
 
-void NfcV::setModulationThreshold(float min)
+void NfcV::setModulationThreshold(float min, float max)
 {
-   self->minimumModulationThreshold = min;
+   if (!std::isnan(min))
+      self->minimumModulationThreshold = min;
 }
 
 void NfcV::configure(long sampleRate)

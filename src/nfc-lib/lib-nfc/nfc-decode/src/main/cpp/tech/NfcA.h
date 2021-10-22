@@ -65,7 +65,7 @@ struct NfcA
 
    ~NfcA();
 
-   void setModulationThreshold(float min);
+   void setModulationThreshold(float min, float max);
 
    void configure(long sampleRate);
 

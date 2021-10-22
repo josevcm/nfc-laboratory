@@ -1870,9 +1870,10 @@ NfcA::~NfcA()
    delete self;
 }
 
-void NfcA::setModulationThreshold(float min)
+void NfcA::setModulationThreshold(float min, float max)
 {
-   self->minimumModulationThreshold = min;
+   if (!std::isnan(min))
+      self->minimumModulationThreshold = min;
 }
 
 /*

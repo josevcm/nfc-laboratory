@@ -1247,8 +1247,11 @@ NfcB::~NfcB()
 
 void NfcB::setModulationThreshold(float min, float max)
 {
-   self->minimumModulationThreshold = min;
-   self->maximumModulationThreshold = max;
+   if (!std::isnan(min))
+      self->minimumModulationThreshold = min;
+
+   if (!std::isnan(max))
+      self->maximumModulationThreshold = max;
 }
 
 void NfcB::configure(long sampleRate)
