@@ -184,6 +184,39 @@ struct QtWindow::Impl
 
    void systemStartup(SystemStartupEvent *event)
    {
+      // configure decoder parameters on startup
+      DecoderControlEvent *decoderControlEvent = new DecoderControlEvent(DecoderControlEvent::DecoderConfig);
+
+      for (QString &group: settings.childGroups())
+      {
+         if (group.startsWith("decoder"))
+         {
+            settings.beginGroup(group);
+
+            int sep = group.indexOf(".");
+
+            for (QString &key: settings.childKeys())
+            {
+               if (sep > 0)
+               {
+                  QString nfc = group.mid(sep + 1);
+
+                  if (key.toLower().contains("enabled"))
+                     decoderControlEvent->setBoolean(nfc + "/" + key, settings.value(key).toBool());
+                  else
+                     decoderControlEvent->setFloat(nfc + "/" + key, settings.value(key).toFloat());
+               }
+               else
+               {
+                  decoderControlEvent->setFloat(key, settings.value(key).toFloat());
+               }
+            }
+
+            settings.endGroup();
+         }
+      }
+
+      QtApplication::post(decoderControlEvent);
    }
 
    void systemShutdown(SystemShutdownEvent *event)
@@ -326,7 +359,7 @@ struct QtWindow::Impl
          ui->gainMode->blockSignals(true);
          ui->gainMode->clear();
 
-         for (auto const &mode : receiverGainModes.keys())
+         for (auto const &mode: receiverGainModes.keys())
             ui->gainMode->addItem(receiverGainModes[mode], mode);
 
          ui->gainMode->setCurrentIndex(ui->gainMode->findData(receiverGainMode));
@@ -616,7 +649,7 @@ struct QtWindow::Impl
 
          QModelIndex previous;
 
-         for (const auto &current : indexList)
+         for (const auto &current: indexList)
          {
             if (!previous.isValid() || current.row() != previous.row())
             {

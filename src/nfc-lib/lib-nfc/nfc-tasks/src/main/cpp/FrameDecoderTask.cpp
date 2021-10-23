@@ -197,7 +197,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
          // NFC-F parameters
          if (config.contains("nfcf"))
          {
-            auto nfcf = config["nfcb"];
+            auto nfcf = config["nfcf"];
 
             float min = NAN;
             float max = NAN;
@@ -211,13 +211,13 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             if (nfcf.contains("maximumModulationThreshold"))
                max = nfcf["maximumModulationThreshold"];
 
-            decoder->setModulationThresholdNfcV(min, max);
+            decoder->setModulationThresholdNfcF(min, max);
          }
 
          // NFC-V parameters
          if (config.contains("nfcv"))
          {
-            auto nfcv = config["nfcb"];
+            auto nfcv = config["nfcv"];
 
             float min = NAN;
             float max = NAN;
@@ -225,15 +225,14 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             if (nfcv.contains("enabled"))
                decoder->setEnableNfcV(nfcv["enabled"]);
 
-            if (nfcv.contains("minimunModulationThreshold"))
-               min = nfcv["minimunModulationThreshold"];
+            if (nfcv.contains("minimumModulationThreshold"))
+               min = nfcv["minimumModulationThreshold"];
 
-            if (nfcv.contains("maximunModulationThreshold"))
-               max = nfcv["maximunModulationThreshold"];
+            if (nfcv.contains("maximumModulationThreshold"))
+               max = nfcv["maximumModulationThreshold"];
 
             decoder->setModulationThresholdNfcV(min, max);
          }
-
 
          command.resolve();
       }
