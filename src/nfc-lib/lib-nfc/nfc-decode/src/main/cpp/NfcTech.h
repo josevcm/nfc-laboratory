@@ -221,6 +221,9 @@ struct SignalStatus
    // signal data buffer
    float signalData[BUFFER_SIZE];
 
+   // signal variance buffer
+   float signalVarz[BUFFER_SIZE];
+
    // edge detector buffer
    float edgeData[BUFFER_SIZE];
 
@@ -440,6 +443,9 @@ struct DecoderStatus
 
       // store next signal value in sample buffer
       signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
+
+      // store next signal value in sample buffer
+      signalStatus.signalVarz[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalVariance;
 
       // store next edge value in sample buffer
       signalStatus.edgeData[signalClock & (BUFFER_SIZE - 1)] = std::fabs(signalStatus.signalFilter0 - signalStatus.signalFilter1);

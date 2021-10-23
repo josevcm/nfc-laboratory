@@ -210,12 +210,12 @@ struct NfcV::Impl
       modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
 
       // get signal samples
-      float currentData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-      float delayedData = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
+      float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+      float delay2Data = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
 
       // integrate signal data over 1/2 symbol
-      modulation->filterIntegrate += currentData; // add new value
-      modulation->filterIntegrate -= delayedData; // remove delayed value
+      modulation->filterIntegrate += signalData; // add new value
+      modulation->filterIntegrate -= delay2Data; // remove delayed value
 
       // correlation points
       modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
@@ -228,7 +228,7 @@ struct NfcV::Impl
       modulation->correlatedS0 = (modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint1]) / float(bitrate->period2SymbolSamples);
 
       // compute symbol average
-      modulation->symbolAverage = (modulation->symbolAverage * bitrate->symbolAverageW0) + (currentData * bitrate->symbolAverageW1);
+      modulation->symbolAverage = (modulation->symbolAverage * bitrate->symbolAverageW0) + (signalData * bitrate->symbolAverageW1);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
       decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
@@ -252,7 +252,7 @@ struct NfcV::Impl
                break;
 
             // before search, signal must not be modulated (in high state)
-            if (currentData < decoder->signalStatus.powerAverage * minimumModulationThreshold)
+            if (signalData < decoder->signalStatus.powerAverage * minimumModulationThreshold)
             {
                modulation->searchPeakTime = 0;
                modulation->searchEndTime = 0;
@@ -331,7 +331,7 @@ struct NfcV::Impl
 
                // setup frame info
                frameStatus.frameType = PollFrame;
-               frameStatus.symbolRate = bitrate->symbolsPerSecond;
+               frameStatus.symbolRate = bitrate->symbolsPerSecond / 2;
                frameStatus.frameStart = modulation->symbolStartTime;
                frameStatus.frameEnd = 0;
 
@@ -352,7 +352,7 @@ struct NfcV::Impl
 
                // setup frame info
                frameStatus.frameType = PollFrame;
-               frameStatus.symbolRate = bitrate->symbolsPerSecond;
+               frameStatus.symbolRate = bitrate->symbolsPerSecond / 32;
                frameStatus.frameStart = modulation->symbolStartTime;
                frameStatus.frameEnd = 0;
 
@@ -422,7 +422,7 @@ struct NfcV::Impl
 
                NfcFrame response = NfcFrame(TechType::NfcV, FrameType::PollFrame);
 
-               response.setFrameRate(decoder->bitrate->symbolsPerSecond);
+               response.setFrameRate(frameStatus.symbolRate);
                response.setSampleStart(frameStatus.frameStart);
                response.setSampleEnd(frameStatus.frameEnd);
                response.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
@@ -538,7 +538,7 @@ struct NfcV::Impl
                   // build response frame
                   NfcFrame response = NfcFrame(TechType::NfcV, FrameType::ListenFrame);
 
-                  response.setFrameRate(decoder->bitrate->symbolsPerSecond);
+                  response.setFrameRate(frameStatus.symbolRate);
                   response.setSampleStart(frameStatus.frameStart);
                   response.setSampleEnd(frameStatus.frameEnd);
                   response.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
@@ -742,6 +742,7 @@ struct NfcV::Impl
 
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalVarz = decoder->signalStatus.signalVarz[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -776,7 +777,7 @@ struct NfcV::Impl
 
          // start correlation after frameGuardTime
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = decoder->signalStatus.signalVariance * 2;
+            modulation->searchThreshold = signalVarz * 2;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);

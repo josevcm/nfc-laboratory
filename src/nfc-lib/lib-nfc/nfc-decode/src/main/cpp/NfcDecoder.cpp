@@ -45,7 +45,7 @@ struct NfcDecoder::Impl
 
    static constexpr int ENABLED_NFCA = 1 << 0;
    static constexpr int ENABLED_NFCB = 1 << 1;
-   static constexpr int ENABLED_NFCF = 0 << 2;
+   static constexpr int ENABLED_NFCF = 1 << 2;
    static constexpr int ENABLED_NFCV = 1 << 3;
 
    // all tech enabled by default
