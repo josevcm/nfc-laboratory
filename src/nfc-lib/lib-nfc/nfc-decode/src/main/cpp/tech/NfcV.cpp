@@ -753,27 +753,34 @@ struct NfcV::Impl
          modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
          // start correlation after frameGuardTime
-         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period0SymbolSamples))
-         {
-            // compute correlation points
-            modulation->filterPoint1 = (modulation->signalIndex % bitrate->period0SymbolSamples);
-            modulation->filterPoint2 = (modulation->signalIndex + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
+         if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period0SymbolSamples))
+            continue;
 
-            // integrate symbol (moving average)
-            modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-            modulation->filterIntegrate -= modulation->integrationData[modulation->delay1Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         // compute correlation points
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period0SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
 
-            // store integrated signal in correlation buffer
-            modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+         // integrate symbol (moving average)
+         modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->filterIntegrate -= modulation->integrationData[modulation->delay1Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
-            // compute correlation results for each symbol and distance
-            modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint1];
-         }
+         // store integrated signal in correlation buffer
+         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+
+         // compute correlation results for each symbol and distance
+         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint1];
+
+         // start correlation after frameGuardTime
+         if (decoder->signalClock < frameStatus.guardEnd)
+            continue;
+
+         // start correlation after frameGuardTime
+         if (decoder->signalClock == frameStatus.guardEnd)
+            modulation->searchThreshold = decoder->signalStatus.signalVariance * 2;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
-
          // search first SOF subcarrier modulation
          if (!modulation->symbolStartTime)
          {
@@ -784,18 +791,12 @@ struct NfcV::Impl
                break;
             }
 
-            if (decoder->signalClock > frameStatus.guardEnd)
+            if (modulation->correlatedS0 < -modulation->searchThreshold && modulation->correlatedS0 < modulation->correlationPeek)
             {
-               if (modulation->correlatedS0 < -modulation->searchThreshold && modulation->correlatedS0 < modulation->correlationPeek)
-               {
-                  modulation->searchPeakTime = decoder->signalClock;
-                  modulation->searchEndTime = decoder->signalClock + bitrate->period1SymbolSamples;
-                  modulation->correlationPeek = modulation->correlatedS0;
-               }
+               modulation->searchPeakTime = decoder->signalClock;
+               modulation->searchEndTime = decoder->signalClock + bitrate->period1SymbolSamples;
+               modulation->correlationPeek = modulation->correlatedS0;
             }
-               // capture signal variance as lower level threshold
-            else if (decoder->signalClock == frameStatus.guardEnd)
-               modulation->searchThreshold = decoder->signalStatus.signalVariance * 2;
 
             // wait until search finished
             if (decoder->signalClock != modulation->searchEndTime)
@@ -920,7 +921,6 @@ struct NfcV::Impl
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
-
          // set next search sync window from previous state
          if (!modulation->searchStartTime)
          {
@@ -942,7 +942,6 @@ struct NfcV::Impl
          if (decoder->signalClock == modulation->symbolSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
-
          // wait until search window start
          if (decoder->signalClock < modulation->searchStartTime)
             continue;

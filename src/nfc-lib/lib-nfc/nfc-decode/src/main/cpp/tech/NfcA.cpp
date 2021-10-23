@@ -855,37 +855,29 @@ struct NfcA::Impl
          // store signal square in filter buffer
          modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
-         // start correlation after frameGuardTime
-         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
-         {
-            // compute correlation points
-            modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-            modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-            modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
-
-            // integrate symbol (moving average)
-            modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-            modulation->filterIntegrate -= modulation->integrationData[modulation->delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
-
-            // store integrated signal in correlation buffer
-            modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
-
-            // compute correlation results for each symbol and distance
-            modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-            modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
-            modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
-         }
-
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, decoder->signalStatus.signalVariance);
 #endif
+         // wait until frame guard time is reached
+         if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
+            continue;
 
-         // check if frame waiting time is exceeded
-         if (decoder->signalClock > frameStatus.waitingEnd)
-         {
-            pattern = PatternType::NoPattern;
-            break;
-         }
+         // compute correlation points
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+
+         // integrate symbol (moving average)
+         modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->filterIntegrate -= modulation->integrationData[modulation->delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
+
+         // store integrated signal in correlation buffer
+         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+
+         // compute correlation results for each symbol and distance
+         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
 
          // wait until frame guard time is reached
          if (decoder->signalClock < frameStatus.guardEnd)
@@ -895,9 +887,22 @@ struct NfcA::Impl
          if (decoder->signalClock == frameStatus.guardEnd)
             modulation->searchThreshold = decoder->signalStatus.signalVariance;
 
+         if (decoder->signalClock > frameStatus.waitingEnd)
+         {
+            pattern = PatternType::NoPattern;
+            break;
+         }
+
+#ifdef DEBUG_ASK_CORR_CHANNEL
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->searchThreshold);
+#endif
+
          // detect maximum correlation peak
          if (modulation->correlatedSD > modulation->searchThreshold)
          {
+#ifdef DEBUG_ASK_CORR_CHANNEL
+            decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+#endif
             // max correlation peak detector
             if (modulation->correlatedSD > modulation->correlationPeek)
             {
@@ -1104,26 +1109,41 @@ struct NfcA::Impl
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
-         // multiply 1 symbol delayed signal with incoming signal
-         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage);
+         // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependend...)
+         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage) * 10;
 
          // store signal phase in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
-
-         // integrate response from PICC after guard time (TR0)
-         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
-         {
-            modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-            modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
-         }
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, decoder->signalStatus.signalVariance);
 #endif
 
+         // integrate response from PICC after guard time (TR0)
+         if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
+            continue;
+
+         // compute phase correlate integration
+         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+
+         // integrate response from PICC after guard time (TR0)
+         if (decoder->signalClock < frameStatus.guardEnd)
+            continue;
+
+         // fix signal threshold using variance
+         if (decoder->signalClock == frameStatus.guardEnd)
+            modulation->searchThreshold = decoder->signalStatus.signalVariance;
+
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->searchThreshold);
+#endif
          // detect first zero-cross
-         if (modulation->phaseIntegrate > 0.00025f)
+         if (modulation->phaseIntegrate > modulation->searchThreshold)
          {
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+            decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+#endif
             modulation->searchPeakTime = decoder->signalClock;
             modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
          }

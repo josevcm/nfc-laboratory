@@ -704,29 +704,47 @@ struct NfcB::Impl
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
          // multiply 1 symbol delayed signal with incoming signal
-         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage);
-
-         // store signal phase in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
-
-         // integrate response from PICC after guard time (TR0)
-         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
-         {
-            modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-            modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
-         }
+         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage) * 10;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL - 1, phase);
 #endif
+         // store signal phase in filter buffer
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase;
+
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, decoder->signalStatus.signalVariance);
+#endif
+         // integrate response from PICC after guard time (TR0)
+         if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
+            continue;
+
+         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+
+         // wait until frame guard time is reached
+         if (decoder->signalClock < frameStatus.guardEnd)
+            continue;
+
+            // capture signal variance as lower level threshold
+         if (decoder->signalClock == frameStatus.guardEnd)
+            modulation->searchThreshold = decoder->signalStatus.signalVariance;
+
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->searchThreshold);
+#endif
+
          // search for Start Of Frame pattern (SoF)
          switch (modulation->searchStage)
          {
             case SOF_BEGIN:
 
                // detect first zero-cross
-               if (modulation->phaseIntegrate > 0.001f)
+               if (modulation->phaseIntegrate > modulation->searchThreshold)
                {
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+                  decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+#endif
                   modulation->searchPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
                   modulation->searchPulseWidth++;
@@ -774,94 +792,100 @@ struct NfcB::Impl
 
             case SOF_IDLE:
 
-               // rising edge must be between 10 and 11 etus
-               if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+               decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+#endif
+               // wait until search start
+               if (decoder->signalClock < modulation->searchStartTime)
+                  break;
+
+               // detect second zero-cross
+               if (modulation->phaseIntegrate > 0.001f)
                {
-                  // detect second zero-cross
-                  if (modulation->phaseIntegrate > 0.001f)
-                  {
-                     modulation->searchPeakTime = decoder->signalClock;
-                     modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
-                  }
+                  modulation->searchPeakTime = decoder->signalClock;
+                  modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
+               }
 
-                  // wait until search finished
-                  if (decoder->signalClock != modulation->searchEndTime)
-                     break;
+               // wait until search finished
+               if (decoder->signalClock != modulation->searchEndTime)
+                  break;
 
-                  // if no edge found, restart search
-                  if (!modulation->searchPeakTime)
-                  {
-                     // if no edge is found, we restart SOF search
-                     modulation->searchStage = SOF_BEGIN;
-                     modulation->searchStartTime = 0;
-                     modulation->searchEndTime = 0;
-                     modulation->searchPeakTime = 0;
-                     modulation->searchPulseWidth = 0;
-                     modulation->symbolStartTime = 0;
-                     modulation->symbolEndTime = 0;
-                     break;
-                  }
+               // if no edge found, restart search
+               if (!modulation->searchPeakTime)
+               {
+                  // if no edge is found, we restart SOF search
+                  modulation->searchStage = SOF_BEGIN;
+                  modulation->searchStartTime = 0;
+                  modulation->searchEndTime = 0;
+                  modulation->searchPeakTime = 0;
+                  modulation->searchPulseWidth = 0;
+                  modulation->symbolStartTime = 0;
+                  modulation->symbolEndTime = 0;
+                  break;
+               }
 
 #ifdef DEBUG_BPSK_SYNC_CHANNEL
-                  decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
+               decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
 #endif
-                  // if edge found, synchronize symbol and check for end of SOF
-                  modulation->searchStage = SOF_END;
-                  modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                  modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                  modulation->searchPeakTime = 0;
-               }
+               // if edge found, synchronize symbol and check for end of SOF
+               modulation->searchStage = SOF_END;
+               modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+               modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+               modulation->searchPeakTime = 0;
 
                break;
 
             case SOF_END:
 
-               // falling edge must be between 2 and 3 etus
-               if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
+#ifdef DEBUG_BPSK_PHASE_CHANNEL
+               decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+#endif
+               // wait until search start
+               if (decoder->signalClock < modulation->searchStartTime)
+                  break;
+
+               // detect start bit zero-cross
+               if (modulation->phaseIntegrate > 0.001f)
                {
-                  // detect start bit zero-cross
-                  if (modulation->phaseIntegrate > 0.001f)
-                  {
-                     modulation->searchPeakTime = decoder->signalClock;
-                     modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-                  }
+                  modulation->searchPeakTime = decoder->signalClock;
+                  modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               }
 
-                  // wait until search finished
-                  if (decoder->signalClock != modulation->searchEndTime)
-                     break;
+               // wait until search finished
+               if (decoder->signalClock != modulation->searchEndTime)
+                  break;
 
-                  // if no edge found, restart search
-                  if (!modulation->searchPeakTime)
-                  {
-                     // if no edge is found, we restart SOF search
-                     modulation->searchStage = SOF_BEGIN;
-                     modulation->searchStartTime = 0;
-                     modulation->searchEndTime = 0;
-                     modulation->searchPeakTime = 0;
-                     modulation->searchPulseWidth = 0;
-                     modulation->symbolStartTime = 0;
-                     modulation->symbolEndTime = 0;
-                     break;
-                  }
-
-                  // if found, set SOF symbol end and reference phase
-                  modulation->symbolEndTime = modulation->searchPeakTime;
-                  modulation->symbolPhase = modulation->phaseIntegrate;
-                  modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
-
-                  // reset modulation to continue search
+               // if no modulation found, restart search
+               if (!modulation->searchPeakTime)
+               {
+                  // if no edge is found, we restart SOF search
                   modulation->searchStage = SOF_BEGIN;
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
-
-                  // set reference symbol info
-                  symbolStatus.value = 1;
-                  symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-                  symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-                  symbolStatus.length = symbolStatus.end - symbolStatus.start;
-
-                  pattern = PatternType::PatternS;
+                  modulation->searchPeakTime = 0;
+                  modulation->searchPulseWidth = 0;
+                  modulation->symbolStartTime = 0;
+                  modulation->symbolEndTime = 0;
+                  break;
                }
+
+               // if found, set SOF symbol end and reference phase
+               modulation->symbolEndTime = modulation->searchPeakTime;
+               modulation->symbolPhase = modulation->phaseIntegrate;
+               modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
+
+               // reset modulation to continue search
+               modulation->searchStage = SOF_BEGIN;
+               modulation->searchStartTime = 0;
+               modulation->searchEndTime = 0;
+
+               // set reference symbol info
+               symbolStatus.value = 1;
+               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+               symbolStatus.length = symbolStatus.end - symbolStatus.start;
+
+               pattern = PatternType::PatternS;
          }
 
          if (pattern != PatternType::Invalid)
@@ -905,17 +929,13 @@ struct NfcB::Impl
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
          // multiply 1 symbol delayed signal with incoming signal
-         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage);
+         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage) * 10;
 
          // store signal phase in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase;
 
-         // integrate response from PICC after guard time (TR0)
-         if (decoder->signalClock > (frameStatus.guardEnd - bitrate->period1SymbolSamples))
-         {
-            modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-            modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
-         }
+         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
