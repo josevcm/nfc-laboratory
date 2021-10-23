@@ -72,6 +72,18 @@ bool Engine::begin()
    if ((result = glewInit()) != GLEW_OK)
       impl->log.error("GLEW initializacion error: {}", {(char *) glewGetErrorString(result)});
 
+   if (glewGetExtension((const char *) "GL_ARB_fragment_shader") != GL_TRUE)
+      impl->log.warn("GL_ARB_fragment_shader extension is not available!\n");
+
+   if (glewGetExtension((const char *) "GL_ARB_vertex_shader") != GL_TRUE)
+      impl->log.warn("GL_ARB_vertex_shader extension is not available!\n");
+
+   if (glewGetExtension((const char *) "GL_ARB_geometry_shader4") != GL_TRUE)
+      impl->log.warn("GL_ARB_geometry_shader4 extension is not available!\n");
+
+   if (glewGetExtension((const char *) "GL_ARB_shader_objects") != GL_TRUE)
+      impl->log.warn("GL_ARB_shader_objects extension is not available!\n");
+
    return result == GLEW_OK;
 }
 
