@@ -196,7 +196,7 @@ struct NfcA::Impl
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.powerAverage < decoder->powerLevelThreshold)
+      if (decoder->signalStatus.signalPower < decoder->powerLevelThreshold)
          return false;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
@@ -234,13 +234,13 @@ struct NfcA::Impl
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
          // signal modulation deep value
-         float deepValue = decoder->signalStatus.deepData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float deepValue = decoder->signalStatus.signalDeep[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
 
-         if (modulation->correlatedSD > decoder->signalStatus.powerAverage * minimumModulationThreshold)
+         if (modulation->correlatedSD > decoder->signalStatus.signalPower * minimumModulationThreshold)
          {
             if (modulation->searchDeepValue < deepValue)
                modulation->searchDeepValue = deepValue;
@@ -275,7 +275,7 @@ struct NfcA::Impl
 #endif
 
          // set lower threshold to detect valid response pattern
-         modulation->searchThreshold = decoder->signalStatus.powerAverage * minimumModulationThreshold;
+         modulation->searchThreshold = decoder->signalStatus.signalPower * minimumModulationThreshold;
 
          // set pattern search window
          modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
@@ -845,7 +845,7 @@ struct NfcA::Impl
 
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float signalVarz = decoder->signalStatus.signalVarz[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float averageDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -857,7 +857,7 @@ struct NfcA::Impl
          modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, signalVarz);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, averageDev);
 #endif
          // wait until frame guard time is reached
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
@@ -886,7 +886,7 @@ struct NfcA::Impl
 
          // capture signal variance as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = signalVarz;
+            modulation->searchThreshold = averageDev;
 
          if (decoder->signalClock > frameStatus.waitingEnd)
          {
@@ -1106,7 +1106,7 @@ struct NfcA::Impl
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
          float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
-         float signalVarz = decoder->signalStatus.signalVarz[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float averageDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -1118,7 +1118,7 @@ struct NfcA::Impl
          modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, signalVarz);
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, averageDev);
 #endif
 
          // integrate response from PICC after guard time (TR0)
@@ -1135,7 +1135,7 @@ struct NfcA::Impl
 
          // fix signal threshold using variance
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = signalVarz;
+            modulation->searchThreshold = averageDev;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->searchThreshold);

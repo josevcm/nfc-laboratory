@@ -153,7 +153,7 @@ float NfcDecoder::powerLevelThreshold() const
 
 float NfcDecoder::signalStrength() const
 {
-   return impl->decoder.signalStatus.powerAverage;
+   return impl->decoder.signalStatus.signalPower;
 }
 
 NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder), nfcf(&decoder), nfcv(&decoder)
@@ -184,16 +184,16 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.sampleTimeUnit = double(decoder.sampleRate) / double(NFC_FC);
 
       // initialize exponential average factors for power value
-      decoder.signalParams.powerAverageW0 = float(1 - 1E3 / decoder.sampleRate);
-      decoder.signalParams.powerAverageW1 = float(1 - decoder.signalParams.powerAverageW0);
+      decoder.signalParams.signalPowerW0 = float(1 - 1E3 / decoder.sampleRate);
+      decoder.signalParams.signalPowerW1 = float(1 - decoder.signalParams.signalPowerW0);
 
       // initialize exponential average factors for signal average
       decoder.signalParams.signalAverageW0 = float(1 - 1E5 / decoder.sampleRate);
       decoder.signalParams.signalAverageW1 = float(1 - decoder.signalParams.signalAverageW0);
 
       // initialize exponential average factors for signal variance
-      decoder.signalParams.signalVarianceW0 = float(1 - 1E5 / decoder.sampleRate);
-      decoder.signalParams.signalVarianceW1 = float(1 - decoder.signalParams.signalVarianceW0);
+      decoder.signalParams.signalStdevW0 = float(1 - 1E5 / decoder.sampleRate);
+      decoder.signalParams.signalStdevW1 = float(1 - decoder.signalParams.signalStdevW0);
 
       // initialize exponential average factors for edge detector
       decoder.signalParams.signalFilterW0 = float(1 - 4E6 / decoder.sampleRate);
@@ -354,10 +354,10 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
    /*
     * carrier presence detector
     */
-   float edge = std::fabs(decoder.signalStatus.signalAverage - decoder.signalStatus.powerAverage);
+   float edge = std::fabs(decoder.signalStatus.signalAverage - decoder.signalStatus.signalPower);
 
    // positive edge
-   if (decoder.signalStatus.signalAverage > edge && decoder.signalStatus.powerAverage > decoder.powerLevelThreshold)
+   if (decoder.signalStatus.signalAverage > edge && decoder.signalStatus.signalPower > decoder.powerLevelThreshold)
    {
       if (!decoder.signalStatus.carrierOn)
       {
@@ -381,7 +381,7 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
    }
 
       // negative edge
-   else if (decoder.signalStatus.signalAverage < edge || decoder.signalStatus.powerAverage < decoder.powerLevelThreshold)
+   else if (decoder.signalStatus.signalAverage < edge || decoder.signalStatus.signalPower < decoder.powerLevelThreshold)
    {
       if (!decoder.signalStatus.carrierOff)
       {

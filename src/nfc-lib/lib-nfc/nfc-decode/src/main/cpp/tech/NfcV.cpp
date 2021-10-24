@@ -199,7 +199,7 @@ struct NfcV::Impl
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.powerAverage < decoder->powerLevelThreshold)
+      if (decoder->signalStatus.signalPower < decoder->powerLevelThreshold)
          return false;
 
       BitrateParams *bitrate = &bitrateParams;
@@ -240,7 +240,7 @@ struct NfcV::Impl
          case SOF_BEGIN:
 
             // max correlation peak detector
-            if (modulation->correlatedS0 > decoder->signalStatus.powerAverage * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
+            if (modulation->correlatedS0 > decoder->signalStatus.signalPower * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
@@ -252,7 +252,7 @@ struct NfcV::Impl
                break;
 
             // before search, signal must not be modulated (in high state)
-            if (signalData < decoder->signalStatus.powerAverage * minimumModulationThreshold)
+            if (signalData < decoder->signalStatus.signalPower * minimumModulationThreshold)
             {
                modulation->searchPeakTime = 0;
                modulation->searchEndTime = 0;
@@ -283,7 +283,7 @@ struct NfcV::Impl
                break;
 
             // max correlation peak detector
-            if (modulation->correlatedS0 > decoder->signalStatus.powerAverage * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
+            if (modulation->correlatedS0 > decoder->signalStatus.signalPower * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
@@ -320,7 +320,7 @@ struct NfcV::Impl
             modulation->correlationPeek = 0;
 
             // set lower threshold to detect valid response pattern
-            modulation->searchThreshold = decoder->signalStatus.powerAverage * minimumModulationThreshold;
+            modulation->searchThreshold = decoder->signalStatus.signalPower * minimumModulationThreshold;
 
             // check for 1 of 4 code
             if (modulation->searchPeakTime > (modulation->symbolStartTime + 3 * bitrate->period1SymbolSamples - bitrate->period8SymbolSamples) &&
@@ -647,7 +647,7 @@ struct NfcV::Impl
          if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
          {
             // max correlation peak detector
-            if (modulation->correlatedS0 > decoder->signalStatus.powerAverage * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
+            if (modulation->correlatedS0 > decoder->signalStatus.signalPower * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
@@ -742,7 +742,7 @@ struct NfcV::Impl
 
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float signalVarz = decoder->signalStatus.signalVarz[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalVarz = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
