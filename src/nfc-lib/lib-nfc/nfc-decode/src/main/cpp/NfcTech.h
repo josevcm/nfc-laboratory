@@ -35,13 +35,10 @@
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
-#define DEBUG_SIGNAL_CHANNEL 0
-//#define DEBUG_POWER_CHANNEL 0
-//#define DEBUG_AVERAGE_CHANNEL 1
-//#define DEBUG_VARIANCE_CHANNEL 2
-//#define DEBUG_SLOW_AVERAGE_CHANNEL 1
-//#define DEBUG_FAST_AVERAGE_CHANNEL 2
-#define DEBUG_EDGE_CHANNEL 3
+#define DEBUG_SIGNAL_VALUE_CHANNEL 0
+#define DEBUG_SIGNAL_AVERG_CHANNEL 2
+//#define DEBUG_SIGNAL_STDEV_CHANNEL 2
+#define DEBUG_SIGNAL_EDGE_CHANNEL 3
 #endif
 
 namespace nfc {
@@ -90,7 +87,7 @@ struct SignalDebug
          buffer.put(values, recorder->channelCount());
 
          // clear sample buffer
-         for (auto &f : values)
+         for (auto &f: values)
          {
             f = 0;
          }
@@ -135,22 +132,18 @@ struct PulseSlot
 struct SignalParams
 {
    // factors for exponential signal power
-   float signalPowerW0;
-   float signalPowerW1;
-
-   // factors for exponential signal average
-   float signalAverageW0;
-   float signalAverageW1;
+   float signalAvergW0;
+   float signalAvergW1;
 
    // factors for exponential signal variance
-   float signalStdevW0;
-   float signalStdevW1;
+   float signalStDevW0;
+   float signalStDevW1;
 
    // factors for exponential edge detector
-   float signalFilterW0;
-   float signalFilterW1;
-   float signalFilterW2;
-   float signalFilterW3;
+   float signalEdge0W0;
+   float signalEdge0W1;
+   float signalEdge1W0;
+   float signalEdge1W1;
 
    // default decoder parameters
    double sampleTimeUnit;
@@ -206,13 +199,12 @@ struct SignalStatus
 
    // signal parameters
    float signalValue; // instantaneous signal value
-   float signalPower;  // very slow exponential average
-   float signalAverage; // slow exponential average
-   float signalStdev; // slow exponential average for st deviation
+   float signalAverg;  // signal exponential average
+   float signalStDev; // signal exponential st deviation
 
    // exponential average for edge detector
-   float signalFilter0;
-   float signalFilter1;
+   float signalEdge0;
+   float signalEdge1;
 
    // signal data buffer
    float signalData[BUFFER_SIZE];
@@ -281,10 +273,6 @@ struct ModulationStatus
 
    // edge detector values
    float detectorPeek;
-
-   // exponential averages
-   float slowAverage;
-   float fastAverage;
 
    // data buffers
    float integrationData[BUFFER_SIZE];
@@ -424,62 +412,48 @@ struct DecoderStatus
       // update signal clock
       signalClock++;
 
-      // compute power average (exponential)
-      signalStatus.signalPower = signalStatus.signalPower * signalParams.signalPowerW0 + signalStatus.signalValue * signalParams.signalPowerW1;
+      // compute signal average
+      signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
 
-      // compute signal average (exponential)
-      signalStatus.signalAverage = signalStatus.signalAverage * signalParams.signalAverageW0 + signalStatus.signalValue * signalParams.signalAverageW1;
+      // fast average edge detector
+      signalStatus.signalEdge0 = signalStatus.signalEdge0 * signalParams.signalEdge0W0 + signalStatus.signalValue * signalParams.signalEdge0W1;
 
-      // compute signal st deviation (exponential)
-      signalStatus.signalStdev = signalStatus.signalStdev * signalParams.signalStdevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverage) * signalParams.signalStdevW1;
+      // slow average edge detector
+      signalStatus.signalEdge1 = signalStatus.signalEdge1 * signalParams.signalEdge1W0 + signalStatus.signalValue * signalParams.signalEdge1W1;
 
-      // compute signal edge detector
-      signalStatus.signalFilter0 = signalStatus.signalFilter0 * signalParams.signalFilterW0 + signalStatus.signalValue * signalParams.signalFilterW1;
-      signalStatus.signalFilter1 = signalStatus.signalFilter1 * signalParams.signalFilterW2 + signalStatus.signalValue * signalParams.signalFilterW3;
+      // compute signal st deviation
+      signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
 
       // store next signal value in sample buffer
       signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
 
       // store next signal value in sample buffer
-      signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalStdev;
+      signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalStDev;
 
       // store next edge value in sample buffer
-      signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = std::fabs(signalStatus.signalFilter0 - signalStatus.signalFilter1);
+      signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalEdge0 - signalStatus.signalEdge1;
 
       // store next edge value in sample buffer
-      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalPower - signalStatus.signalValue) / signalStatus.signalPower;
+      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - signalStatus.signalValue) / signalStatus.signalAverg;
 
 #ifdef DEBUG_SIGNAL
       debug->block(signalClock);
 #endif
 
-#ifdef DEBUG_POWER_CHANNEL
-      debug->set(DEBUG_POWER_CHANNEL, signalStatus.signalPower);
+#ifdef DEBUG_SIGNAL_VALUE_CHANNEL
+      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalStatus.signalValue);
 #endif
 
-#ifdef DEBUG_SIGNAL_CHANNEL
-      debug->set(DEBUG_SIGNAL_CHANNEL, signalStatus.signalValue);
+#ifdef DEBUG_SIGNAL_AVERG_CHANNEL
+      debug->set(DEBUG_SIGNAL_AVERG_CHANNEL, signalStatus.signalAverg);
 #endif
 
-#ifdef DEBUG_AVERAGE_CHANNEL
-      debug->set(DEBUG_AVERAGE_CHANNEL, signalStatus.signalAverage);
+#ifdef DEBUG_SIGNAL_STDEV_CHANNEL
+      debug->set(DEBUG_SIGNAL_STDEV_CHANNEL, signalStatus.signalStDev);
 #endif
 
-#ifdef DEBUG_VARIANCE_CHANNEL
-      debug->set(DEBUG_VARIANCE_CHANNEL, signalStatus.signalStdev);
-#endif
-
-#ifdef DEBUG_SLOW_AVERAGE_CHANNEL
-      debug->set(DEBUG_SLOW_AVERAGE_CHANNEL, signalStatus.slowAverage);
-#endif
-
-#ifdef DEBUG_FAST_AVERAGE_CHANNEL
-      debug->set(DEBUG_FAST_AVERAGE_CHANNEL, signalStatus.fastAverage);
-#endif
-
-#ifdef DEBUG_EDGE_CHANNEL
-      debug->set(DEBUG_EDGE_CHANNEL, std::fabs(signalStatus.signalFilter0 - signalStatus.signalFilter1));
-      debug->set(DEBUG_EDGE_CHANNEL - 1, std::fabs(signalStatus.signalAverage - signalStatus.signalPower));
+#ifdef DEBUG_SIGNAL_EDGE_CHANNEL
+      debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, signalStatus.signalEdge0 - signalStatus.signalEdge1);
 #endif
 
       return true;

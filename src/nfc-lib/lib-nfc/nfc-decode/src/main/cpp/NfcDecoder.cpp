@@ -22,15 +22,10 @@
 
 */
 
-#include <cmath>
-#include <functional>
-
 #include <rt/Logger.h>
 
 #include <nfc/Nfc.h>
 #include <nfc/NfcDecoder.h>
-
-#include <NfcTech.h>
 
 #include <tech/NfcA.h>
 #include <tech/NfcB.h>
@@ -153,7 +148,7 @@ float NfcDecoder::powerLevelThreshold() const
 
 float NfcDecoder::signalStrength() const
 {
-   return impl->decoder.signalStatus.signalPower;
+   return impl->decoder.signalStatus.signalAverg;
 }
 
 NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder), nfcf(&decoder), nfcv(&decoder)
@@ -184,22 +179,20 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.sampleTimeUnit = double(decoder.sampleRate) / double(NFC_FC);
 
       // initialize exponential average factors for power value
-      decoder.signalParams.signalPowerW0 = float(1 - 1E3 / decoder.sampleRate);
-      decoder.signalParams.signalPowerW1 = float(1 - decoder.signalParams.signalPowerW0);
-
-      // initialize exponential average factors for signal average
-      decoder.signalParams.signalAverageW0 = float(1 - 1E5 / decoder.sampleRate);
-      decoder.signalParams.signalAverageW1 = float(1 - decoder.signalParams.signalAverageW0);
+      decoder.signalParams.signalAvergW0 = float(1 - 5E3 / decoder.sampleRate);
+      decoder.signalParams.signalAvergW1 = float(1 - decoder.signalParams.signalAvergW0);
 
       // initialize exponential average factors for signal variance
-      decoder.signalParams.signalStdevW0 = float(1 - 1E5 / decoder.sampleRate);
-      decoder.signalParams.signalStdevW1 = float(1 - decoder.signalParams.signalStdevW0);
+      decoder.signalParams.signalStDevW0 = float(1 - 1E5 / decoder.sampleRate);
+      decoder.signalParams.signalStDevW1 = float(1 - decoder.signalParams.signalStDevW0);
 
-      // initialize exponential average factors for edge detector
-      decoder.signalParams.signalFilterW0 = float(1 - 4E6 / decoder.sampleRate);
-      decoder.signalParams.signalFilterW1 = float(1 - decoder.signalParams.signalFilterW0);
-      decoder.signalParams.signalFilterW2 = float(1 - 3E6 / decoder.sampleRate);
-      decoder.signalParams.signalFilterW3 = float(1 - decoder.signalParams.signalFilterW2);
+      // initialize exponential slow average factors for edge detector
+      decoder.signalParams.signalEdge0W0 = float(1 - 4E6 / decoder.sampleRate);
+      decoder.signalParams.signalEdge0W1 = float(1 - decoder.signalParams.signalEdge0W0);
+
+      // initialize exponential fast average factors for edge detector
+      decoder.signalParams.signalEdge1W0 = float(1 - 3E6 / decoder.sampleRate);
+      decoder.signalParams.signalEdge1W1 = float(1 - decoder.signalParams.signalEdge1W0);
 
       // configure NFC-A decoder
       if (enabledTech & ENABLED_NFCA)
@@ -354,10 +347,9 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
    /*
     * carrier presence detector
     */
-   float edge = std::fabs(decoder.signalStatus.signalAverage - decoder.signalStatus.signalPower);
 
-   // positive edge
-   if (decoder.signalStatus.signalAverage > edge && decoder.signalStatus.signalPower > decoder.powerLevelThreshold)
+   // carrier present if signal average is over power Level Threshold
+   if (decoder.signalStatus.signalAverg > decoder.powerLevelThreshold)
    {
       if (!decoder.signalStatus.carrierOn)
       {
@@ -380,8 +372,8 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
       }
    }
 
-      // negative edge
-   else if (decoder.signalStatus.signalAverage < edge || decoder.signalStatus.signalPower < decoder.powerLevelThreshold)
+      // carrier not present if signal average is below power Level Threshold
+   else if (decoder.signalStatus.signalAverg < decoder.powerLevelThreshold)
    {
       if (!decoder.signalStatus.carrierOff)
       {
@@ -404,5 +396,60 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
       }
    }
 }
+
+//void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
+//{
+//   /*
+//    * carrier presence detector
+//    */
+//
+//   // carrier present if signal average is over power Level Threshold
+//   if (decoder.signalStatus.signalAverage > decoder.powerLevelThreshold)
+//   {
+//      if (!decoder.signalStatus.carrierOn)
+//      {
+//         decoder.signalStatus.carrierOn = decoder.signalClock;
+//
+//         if (decoder.signalStatus.carrierOff)
+//         {
+//            NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
+//
+//            silence.setFramePhase(FramePhase::CarrierFrame);
+//            silence.setSampleStart(decoder.signalStatus.carrierOff);
+//            silence.setSampleEnd(decoder.signalStatus.carrierOn);
+//            silence.setTimeStart(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+//            silence.setTimeEnd(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+//
+//            frames.push_back(silence);
+//         }
+//
+//         decoder.signalStatus.carrierOff = 0;
+//      }
+//   }
+//
+//      // carrier not present if signal average is below power Level Threshold
+//   else if (decoder.signalStatus.signalAverage < decoder.powerLevelThreshold)
+//   {
+//      if (!decoder.signalStatus.carrierOff)
+//      {
+//         decoder.signalStatus.carrierOff = decoder.signalClock;
+//
+//         if (decoder.signalStatus.carrierOn)
+//         {
+//            NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
+//
+//            carrier.setFramePhase(FramePhase::CarrierFrame);
+//            carrier.setSampleStart(decoder.signalStatus.carrierOn);
+//            carrier.setSampleEnd(decoder.signalStatus.carrierOff);
+//            carrier.setTimeStart(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+//            carrier.setTimeEnd(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+//
+//            frames.push_back(carrier);
+//         }
+//
+//         decoder.signalStatus.carrierOn = 0;
+//      }
+//   }
+//}
 
 }
