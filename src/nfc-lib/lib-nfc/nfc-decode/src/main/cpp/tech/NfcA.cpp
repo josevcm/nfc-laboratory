@@ -196,7 +196,7 @@ struct NfcA::Impl
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.signalPower < decoder->powerLevelThreshold)
+      if (decoder->signalStatus.signalAverg < decoder->powerLevelThreshold)
          return false;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
@@ -240,7 +240,7 @@ struct NfcA::Impl
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
 
-         if (modulation->correlatedSD > decoder->signalStatus.signalPower * minimumModulationThreshold)
+         if (modulation->correlatedSD > decoder->signalStatus.signalAverg * minimumModulationThreshold)
          {
             if (modulation->searchDeepValue < deepValue)
                modulation->searchDeepValue = deepValue;
@@ -275,7 +275,7 @@ struct NfcA::Impl
 #endif
 
          // set lower threshold to detect valid response pattern
-         modulation->searchThreshold = decoder->signalStatus.signalPower * minimumModulationThreshold;
+         modulation->searchThreshold = decoder->signalStatus.signalAverg * minimumModulationThreshold;
 
          // set pattern search window
          modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;

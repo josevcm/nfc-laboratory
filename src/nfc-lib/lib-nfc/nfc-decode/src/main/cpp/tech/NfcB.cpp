@@ -195,7 +195,7 @@ struct NfcB::Impl
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.signalPower < decoder->powerLevelThreshold)
+      if (decoder->signalStatus.signalAverg < decoder->powerLevelThreshold)
          return false;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
@@ -233,7 +233,7 @@ struct NfcB::Impl
             case SOF_BEGIN:
 
                // detect edge at maximum peak
-               if (modulation->detectorPeek < edgeValue && edgeValue > 0.001 && deepValue > minimumModulationThreshold)
+               if (edgeValue < -0.001 && modulation->detectorPeek > edgeValue && deepValue > minimumModulationThreshold)
                {
                   modulation->detectorPeek = edgeValue;
                   modulation->searchPeakTime = decoder->signalClock;
@@ -317,7 +317,7 @@ struct NfcB::Impl
                   break;
 
                // detect edge at maximum peak
-               if (edgeValue > 0.001 && modulation->detectorPeek < edgeValue && deepValue > minimumModulationThreshold)
+               if (edgeValue < -0.001 && modulation->detectorPeek > edgeValue && deepValue > minimumModulationThreshold)
                {
                   modulation->detectorPeek = edgeValue;
                   modulation->searchPeakTime = decoder->signalClock;
@@ -619,6 +619,9 @@ struct NfcB::Impl
          // edge re-synchronization window
          if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock < modulation->searchEndTime)
          {
+            // ignore edge type
+            edgeValue = std::abs(edgeValue);
+
             // detect edge at maximum peak
             if (edgeValue > 0.001 && modulation->detectorPeek < edgeValue && deepValue > minimumModulationThreshold)
             {
