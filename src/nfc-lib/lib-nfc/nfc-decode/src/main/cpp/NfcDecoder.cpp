@@ -182,7 +182,7 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.silenceThreshold = decoder.signalParams.sampleTimeUnit * 2048;
 
       // initialize exponential average factors for power value
-      decoder.signalParams.signalAvergW0 = float(1 - 1E4 / decoder.sampleRate);
+      decoder.signalParams.signalAvergW0 = float(1 - 1E5 / decoder.sampleRate);
       decoder.signalParams.signalAvergW1 = float(1 - decoder.signalParams.signalAvergW0);
 
       // initialize exponential average factors for signal variance

@@ -163,10 +163,10 @@ struct NfcB::Impl
          log.info("\tperiod8SymbolSamples {} ({} us)", {bitrate->period8SymbolSamples, 1E6 * bitrate->period8SymbolSamples / decoder->sampleRate});
          log.info("\tsymbolDelayDetect    {} ({} us)", {bitrate->symbolDelayDetect, 1E6 * bitrate->symbolDelayDetect / decoder->sampleRate});
          log.info("\toffsetSignalIndex    {}", {bitrate->offsetSignalIndex});
-         log.info("\toffsetDelay1Index    {}", {bitrate->offsetDelay1Index});
-         log.info("\toffsetDelay2Index    {}", {bitrate->offsetDelay2Index});
-         log.info("\toffsetDelay4Index    {}", {bitrate->offsetDelay4Index});
          log.info("\toffsetDelay8Index    {}", {bitrate->offsetDelay8Index});
+         log.info("\toffsetDelay4Index    {}", {bitrate->offsetDelay4Index});
+         log.info("\toffsetDelay2Index    {}", {bitrate->offsetDelay2Index});
+         log.info("\toffsetDelay1Index    {}", {bitrate->offsetDelay1Index});
       }
 
       // initialize default protocol parameters for start decoding
@@ -702,7 +702,7 @@ struct NfcB::Impl
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
          float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
-         float averageDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalMDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -717,7 +717,7 @@ struct NfcB::Impl
          modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, averageDev);
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, signalMDev);
 #endif
          // integrate response from PICC after guard time (TR0)
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
@@ -730,9 +730,9 @@ struct NfcB::Impl
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-            // capture signal variance as lower level threshold
+         // capture signal variance as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = averageDev;
+            modulation->searchThreshold = signalMDev;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->searchThreshold);

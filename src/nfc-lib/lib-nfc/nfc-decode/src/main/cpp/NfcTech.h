@@ -31,7 +31,7 @@
 
 #include <nfc/Nfc.h>
 
-//#define DEBUG_SIGNAL
+#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
@@ -262,6 +262,7 @@ struct ModulationStatus
 
    // integration indexes
    unsigned int signalIndex;
+   unsigned int delay0Index;
    unsigned int delay1Index;
    unsigned int delay2Index;
    unsigned int delay4Index;
