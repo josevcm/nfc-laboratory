@@ -31,13 +31,13 @@
 
 #include <nfc/Nfc.h>
 
-//#define DEBUG_SIGNAL
+#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-#define DEBUG_SIGNAL_AVERG_CHANNEL 2
-//#define DEBUG_SIGNAL_STDEV_CHANNEL 2
+#define DEBUG_SIGNAL_AVERG_CHANNEL 1
+#define DEBUG_SIGNAL_STDEV_CHANNEL 2
 #define DEBUG_SIGNAL_EDGE_CHANNEL 3
 #endif
 
@@ -145,8 +145,11 @@ struct SignalParams
    float signalEdge1W0;
    float signalEdge1W1;
 
-   // default decoder parameters
+   // 1/FC
    double sampleTimeUnit;
+
+   // maximum silence
+   int silenceThreshold;
 };
 
 /*
@@ -223,6 +226,9 @@ struct SignalStatus
 
    // silence end (modulation detected)
    unsigned int carrierOn;
+
+   //
+   unsigned int signalPulse;
 };
 
 /*
@@ -256,6 +262,7 @@ struct ModulationStatus
 
    // integration indexes
    unsigned int signalIndex;
+   unsigned int delay0Index;
    unsigned int delay1Index;
    unsigned int delay2Index;
    unsigned int delay4Index;
@@ -412,17 +419,31 @@ struct DecoderStatus
       // update signal clock
       signalClock++;
 
-      // compute signal average
-      signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
+      if (signalStatus.signalValue > signalStatus.signalAverg * 0.95)
+      {
+         // reset silence counter
+         signalStatus.signalPulse = 0;
+
+         // compute signal average
+         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
+
+         // compute signal st deviation
+         signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
+      }
+      else if (signalStatus.signalPulse++ > signalParams.silenceThreshold)
+      {
+         // compute signal average
+         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
+
+         // compute signal st deviation
+         signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
+      }
 
       // fast average edge detector
       signalStatus.signalEdge0 = signalStatus.signalEdge0 * signalParams.signalEdge0W0 + signalStatus.signalValue * signalParams.signalEdge0W1;
 
       // slow average edge detector
       signalStatus.signalEdge1 = signalStatus.signalEdge1 * signalParams.signalEdge1W0 + signalStatus.signalValue * signalParams.signalEdge1W1;
-
-      // compute signal st deviation
-      signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
 
       // store next signal value in sample buffer
       signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
