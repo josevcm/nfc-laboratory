@@ -129,13 +129,17 @@ struct NfcV::Impl
       bitrateParams.period4SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * 64)); // quarter of symbol...
       bitrateParams.period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * 32)); // and so on...
 
+      // delay guard for each symbol rate
+      bitrateParams.symbolDelayDetect = bitrateParams.period0SymbolSamples;
+
       // moving average offsets
-      bitrateParams.offsetSignalIndex = BUFFER_SIZE;
-      bitrateParams.offsetDelay0Index = BUFFER_SIZE - bitrateParams.period0SymbolSamples;
-      bitrateParams.offsetDelay1Index = BUFFER_SIZE - bitrateParams.period1SymbolSamples;
-      bitrateParams.offsetDelay2Index = BUFFER_SIZE - bitrateParams.period2SymbolSamples;
-      bitrateParams.offsetDelay4Index = BUFFER_SIZE - bitrateParams.period4SymbolSamples;
-      bitrateParams.offsetDelay8Index = BUFFER_SIZE - bitrateParams.period8SymbolSamples;
+      bitrateParams.offsetInsertIndex = BUFFER_SIZE;
+      bitrateParams.offsetSignalIndex = BUFFER_SIZE - bitrateParams.symbolDelayDetect;
+      bitrateParams.offsetDelay0Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period0SymbolSamples;
+      bitrateParams.offsetDelay1Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period1SymbolSamples;
+      bitrateParams.offsetDelay2Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period2SymbolSamples;
+      bitrateParams.offsetDelay4Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period4SymbolSamples;
+      bitrateParams.offsetDelay8Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period8SymbolSamples;
 
       // exponential symbol average
       bitrateParams.symbolAverageW0 = float(1 - 5.0 / bitrateParams.period1SymbolSamples);
@@ -672,8 +676,8 @@ struct NfcV::Impl
 
             // setup symbol info
             symbolStatus.value = 0;
-            symbolStatus.start = modulation->symbolStartTime;
-            symbolStatus.end = modulation->symbolEndTime;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
             symbolStatus.pattern = PatternType::PatternS;
 
@@ -682,8 +686,8 @@ struct NfcV::Impl
 
          // by default assume pulse error
          symbolStatus.value = 0;
-         symbolStatus.start = modulation->symbolStartTime;
-         symbolStatus.end = modulation->symbolEndTime;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
          symbolStatus.pattern = PatternType::PatternE;
 
@@ -702,8 +706,8 @@ struct NfcV::Impl
 
                // setup symbol info
                symbolStatus.value = slot->value;
-               symbolStatus.start = modulation->symbolStartTime;
-               symbolStatus.end = modulation->symbolEndTime;
+               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
                symbolStatus.length = symbolStatus.end - symbolStatus.start;
                symbolStatus.pattern = pulse->bits == 2 ? PatternType::Pattern2 : PatternType::Pattern8;
 
@@ -739,14 +743,14 @@ struct NfcV::Impl
       while (decoder->nextSample(buffer))
       {
          // compute pointers
+         modulation->insertIndex = (bitrate->offsetInsertIndex + decoder->signalClock);
          modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
-         modulation->delay0Index = (bitrate->offsetDelay0Index + decoder->signalClock);
+         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock); // index for signal correlation
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
-         float signalMDev = decoder->signalStatus.signalMdev[modulation->delay1Index & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalData[modulation->insertIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalMDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -755,19 +759,19 @@ struct NfcV::Impl
          signalData -= modulation->symbolAverage;
 
          // store signal square in filter buffer
-         modulation->integrationData[modulation->delay1Index & (BUFFER_SIZE - 1)] = signalData * signalData;
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
          // start correlation after frameGuardTime
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period0SymbolSamples))
             continue;
 
          // compute correlation points
-         modulation->filterPoint1 = (modulation->delay1Index % bitrate->period0SymbolSamples);
-         modulation->filterPoint2 = (modulation->delay1Index + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period0SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
 
          // integrate symbol (moving average)
-         modulation->filterIntegrate += modulation->integrationData[modulation->delay1Index & (BUFFER_SIZE - 1)]; // add new value
-         modulation->filterIntegrate -= modulation->integrationData[modulation->delay0Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->filterIntegrate -= modulation->integrationData[modulation->delay1Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
          // store integrated signal in correlation buffer
          modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
@@ -788,11 +792,11 @@ struct NfcV::Impl
 #endif
 
          // poll frame modulation detected while waiting for response
-         if (signalDeep > 0.75)
-         {
-            pattern = PatternType::NoPattern;
-            break;
-         }
+//         if (signalDeep > 0.75)
+//         {
+//            pattern = PatternType::NoPattern;
+//            break;
+//         }
 
          // search first SOF subcarrier modulation
          if (!modulation->symbolStartTime)
@@ -880,8 +884,8 @@ struct NfcV::Impl
 
             // set reference symbol info
             symbolStatus.value = 0;
-            symbolStatus.start = modulation->symbolStartTime;
-            symbolStatus.end = modulation->symbolEndTime;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
             pattern = PatternType::PatternS;
@@ -916,13 +920,11 @@ struct NfcV::Impl
       while (decoder->nextSample(buffer))
       {
          // compute pointers
-//         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
-         modulation->delay0Index = (bitrate->offsetDelay0Index + decoder->signalClock);
+         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock); // index for signal correlation
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
-//         float signalDeep = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -931,15 +933,15 @@ struct NfcV::Impl
          signalData -= modulation->symbolAverage;
 
          // store signal square in filter buffer
-         modulation->integrationData[modulation->delay1Index & (BUFFER_SIZE - 1)] = signalData * signalData;
+         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
          // compute correlation points
-         modulation->filterPoint1 = (modulation->delay1Index % bitrate->period0SymbolSamples);
-         modulation->filterPoint2 = (modulation->delay1Index + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
+         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period0SymbolSamples);
+         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
 
          // integrate symbol (moving average)
-         modulation->filterIntegrate += modulation->integrationData[modulation->delay1Index & (BUFFER_SIZE - 1)]; // add new value
-         modulation->filterIntegrate -= modulation->integrationData[modulation->delay0Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->filterIntegrate -= modulation->integrationData[modulation->delay1Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
          // store integrated signal in correlation buffer
          modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
@@ -1000,11 +1002,11 @@ struct NfcV::Impl
          }
 
          // setup symbol info
-         symbolStatus.start = modulation->symbolStartTime;
-         symbolStatus.end = modulation->symbolEndTime;
+         symbolStatus.value = modulation->symbolCorr0 > modulation->symbolCorr1 ? 0 : 1;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-         symbolStatus.value = modulation->symbolCorr0 > modulation->symbolCorr1 ? 0 : 1;
          pattern = symbolStatus.value ? PatternType::Pattern1 : PatternType::Pattern0;
          break;
       }
@@ -1091,10 +1093,10 @@ struct NfcV::Impl
          if (decoder->bitrate)
          {
             // response guard time TR0min (PICC must not modulate reponse within this period)
-            frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime;
+            frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime - decoder->bitrate->symbolDelayDetect;
 
             // response delay time WFT (PICC must reply to command before this period)
-            frameStatus.waitingEnd = frameStatus.frameEnd + frameStatus.frameWaitingTime;
+            frameStatus.waitingEnd = frameStatus.frameEnd + frameStatus.frameWaitingTime - decoder->bitrate->symbolDelayDetect;
 
             // next frame must be ListenFrame
             frameStatus.frameType = ListenFrame;
