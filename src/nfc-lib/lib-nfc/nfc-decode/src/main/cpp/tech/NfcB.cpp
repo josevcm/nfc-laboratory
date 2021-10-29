@@ -136,16 +136,19 @@ struct NfcB::Impl
          bitrate->symbolsPerSecond = int(std::round(NFC_FC / (128 >> rate)));
 
          // number of samples per symbol
+         bitrate->period0SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (256 >> rate))); // double symbol samples
          bitrate->period1SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (128 >> rate))); // full symbol samples
          bitrate->period2SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (64 >> rate))); // half symbol samples
          bitrate->period4SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (32 >> rate))); // quarter of symbol...
          bitrate->period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
          // delay guard for each symbol rate
-         bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
+         bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : bitrate->period0SymbolSamples;
 
          // moving average offsets
+         bitrate->offsetInsertIndex = BUFFER_SIZE;
          bitrate->offsetSignalIndex = BUFFER_SIZE - bitrate->symbolDelayDetect;
+         bitrate->offsetDelay0Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period0SymbolSamples;
          bitrate->offsetDelay1Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period1SymbolSamples;
          bitrate->offsetDelay2Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period2SymbolSamples;
          bitrate->offsetDelay4Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
@@ -167,6 +170,7 @@ struct NfcB::Impl
          log.info("\toffsetDelay4Index    {}", {bitrate->offsetDelay4Index});
          log.info("\toffsetDelay2Index    {}", {bitrate->offsetDelay2Index});
          log.info("\toffsetDelay1Index    {}", {bitrate->offsetDelay1Index});
+         log.info("\toffsetDelay0Index    {}", {bitrate->offsetDelay0Index});
       }
 
       // initialize default protocol parameters for start decoding

@@ -173,6 +173,7 @@ struct BitrateParams
 
    // modulation parameters
    unsigned int symbolDelayDetect;
+   unsigned int offsetInsertIndex;
    unsigned int offsetSignalIndex;
    unsigned int offsetDelay0Index;
    unsigned int offsetDelay1Index;
@@ -261,6 +262,7 @@ struct ModulationStatus
    float phaseThreshold;
 
    // integration indexes
+   unsigned int insertIndex;
    unsigned int signalIndex;
    unsigned int delay0Index;
    unsigned int delay1Index;
