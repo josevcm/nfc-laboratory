@@ -133,7 +133,7 @@ struct NfcV::Impl
       bitrateParams.symbolDelayDetect = bitrateParams.period0SymbolSamples;
 
       // moving average offsets
-      bitrateParams.offsetInsertIndex = BUFFER_SIZE;
+      bitrateParams.offsetFutureIndex = BUFFER_SIZE;
       bitrateParams.offsetSignalIndex = BUFFER_SIZE - bitrateParams.symbolDelayDetect;
       bitrateParams.offsetDelay0Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period0SymbolSamples;
       bitrateParams.offsetDelay1Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period1SymbolSamples;
@@ -152,6 +152,7 @@ struct NfcV::Impl
       log.info("\tperiod2SymbolSamples {} ({} us)", {bitrateParams.period2SymbolSamples, 1E6 * bitrateParams.period2SymbolSamples / decoder->sampleRate});
       log.info("\tperiod4SymbolSamples {} ({} us)", {bitrateParams.period4SymbolSamples, 1E6 * bitrateParams.period4SymbolSamples / decoder->sampleRate});
       log.info("\tperiod8SymbolSamples {} ({} us)", {bitrateParams.period8SymbolSamples, 1E6 * bitrateParams.period8SymbolSamples / decoder->sampleRate});
+      log.info("\toffsetInsertIndex    {}", {bitrateParams.offsetFutureIndex});
       log.info("\toffsetSignalIndex    {}", {bitrateParams.offsetSignalIndex});
       log.info("\toffsetDelay8Index    {}", {bitrateParams.offsetDelay8Index});
       log.info("\toffsetDelay4Index    {}", {bitrateParams.offsetDelay4Index});
@@ -743,14 +744,14 @@ struct NfcV::Impl
       while (decoder->nextSample(buffer))
       {
          // compute pointers
-         modulation->insertIndex = (bitrate->offsetInsertIndex + decoder->signalClock);
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock); // index for signal correlation
+         modulation->futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock); // index for future signal samples (1 period advance)
+         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock); // index for current signal sample
+         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock); // index for delayed signal (1 period delay)
 
          // get signal samples
-         float signalDeep = decoder->signalStatus.signalData[modulation->insertIndex & (BUFFER_SIZE - 1)];
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
          float signalMDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalDeep[modulation->futureIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -783,20 +784,19 @@ struct NfcV::Impl
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // fix signal threshold after frameGuardTime
+         // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
             modulation->searchThreshold = signalMDev;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
 #endif
-
          // poll frame modulation detected while waiting for response
-//         if (signalDeep > 0.75)
-//         {
-//            pattern = PatternType::NoPattern;
-//            break;
-//         }
+         if (signalDeep > 0.95)
+         {
+            pattern = PatternType::NoPattern;
+            break;
+         }
 
          // search first SOF subcarrier modulation
          if (!modulation->symbolStartTime)
