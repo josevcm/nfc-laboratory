@@ -173,7 +173,7 @@ struct BitrateParams
 
    // modulation parameters
    unsigned int symbolDelayDetect;
-   unsigned int offsetInsertIndex;
+   unsigned int offsetFutureIndex;
    unsigned int offsetSignalIndex;
    unsigned int offsetDelay0Index;
    unsigned int offsetDelay1Index;
@@ -262,7 +262,7 @@ struct ModulationStatus
    float phaseThreshold;
 
    // integration indexes
-   unsigned int insertIndex;
+   unsigned int futureIndex;
    unsigned int signalIndex;
    unsigned int delay0Index;
    unsigned int delay1Index;
@@ -419,8 +419,9 @@ struct DecoderStatus
       }
 
       // update signal clock
-      signalClock++;
+      ++signalClock;
 
+      // update signal envelope if value increase
       if (signalStatus.signalValue > signalStatus.signalAverg * 0.95)
       {
          // reset silence counter
@@ -432,7 +433,8 @@ struct DecoderStatus
          // compute signal st deviation
          signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
       }
-      else if (signalStatus.signalPulse++ > signalParams.silenceThreshold)
+         // only decrease envelope if for long fall periods
+      else if (++signalStatus.signalPulse > signalParams.silenceThreshold)
       {
          // compute signal average
          signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
@@ -454,7 +456,7 @@ struct DecoderStatus
       signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalStDev;
 
       // store next edge value in sample buffer
-      signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalEdge0 - signalStatus.signalEdge1;
+      signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalEdge0 - signalStatus.signalEdge1);
 
       // store next edge value in sample buffer
       signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - signalStatus.signalValue) / signalStatus.signalAverg;

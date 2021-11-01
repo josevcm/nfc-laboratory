@@ -146,7 +146,7 @@ struct NfcB::Impl
          bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : bitrate->period0SymbolSamples;
 
          // moving average offsets
-         bitrate->offsetInsertIndex = BUFFER_SIZE;
+         bitrate->offsetFutureIndex = BUFFER_SIZE;
          bitrate->offsetSignalIndex = BUFFER_SIZE - bitrate->symbolDelayDetect;
          bitrate->offsetDelay0Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period0SymbolSamples;
          bitrate->offsetDelay1Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period1SymbolSamples;
@@ -165,6 +165,7 @@ struct NfcB::Impl
          log.info("\tperiod4SymbolSamples {} ({} us)", {bitrate->period4SymbolSamples, 1E6 * bitrate->period4SymbolSamples / decoder->sampleRate});
          log.info("\tperiod8SymbolSamples {} ({} us)", {bitrate->period8SymbolSamples, 1E6 * bitrate->period8SymbolSamples / decoder->sampleRate});
          log.info("\tsymbolDelayDetect    {} ({} us)", {bitrate->symbolDelayDetect, 1E6 * bitrate->symbolDelayDetect / decoder->sampleRate});
+         log.info("\toffsetInsertIndex    {}", {bitrate->offsetFutureIndex});
          log.info("\toffsetSignalIndex    {}", {bitrate->offsetSignalIndex});
          log.info("\toffsetDelay8Index    {}", {bitrate->offsetDelay8Index});
          log.info("\toffsetDelay4Index    {}", {bitrate->offsetDelay4Index});
@@ -734,7 +735,7 @@ struct NfcB::Impl
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // capture signal variance as lower level threshold
+         // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
             modulation->searchThreshold = signalMDev;
 

@@ -147,7 +147,7 @@ struct NfcA::Impl
          bitrate->symbolDelayDetect = rate == r106k ? int(std::round(decoder->signalParams.sampleTimeUnit * 2048)) : bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples;
 
          // moving average offsets
-         bitrate->offsetInsertIndex = BUFFER_SIZE;
+         bitrate->offsetFutureIndex = BUFFER_SIZE;
          bitrate->offsetSignalIndex = BUFFER_SIZE - bitrate->symbolDelayDetect;
          bitrate->offsetDelay0Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period0SymbolSamples;
          bitrate->offsetDelay1Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period1SymbolSamples;
@@ -166,6 +166,7 @@ struct NfcA::Impl
          log.info("\tperiod4SymbolSamples {} ({} us)", {bitrate->period4SymbolSamples, 1E6 * bitrate->period4SymbolSamples / decoder->sampleRate});
          log.info("\tperiod8SymbolSamples {} ({} us)", {bitrate->period8SymbolSamples, 1E6 * bitrate->period8SymbolSamples / decoder->sampleRate});
          log.info("\tsymbolDelayDetect    {} ({} us)", {bitrate->symbolDelayDetect, 1E6 * bitrate->symbolDelayDetect / decoder->sampleRate});
+         log.info("\toffsetInsertIndex    {}", {bitrate->offsetFutureIndex});
          log.info("\toffsetSignalIndex    {}", {bitrate->offsetSignalIndex});
          log.info("\toffsetDelay8Index    {}", {bitrate->offsetDelay8Index});
          log.info("\toffsetDelay4Index    {}", {bitrate->offsetDelay4Index});
@@ -216,6 +217,7 @@ struct NfcA::Impl
          // get signal samples
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
          float delay2Data = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalDeep[modulation->signalIndex & (BUFFER_SIZE - 1)];
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += signalData; // add new value
@@ -237,17 +239,14 @@ struct NfcA::Impl
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
-         // signal modulation deep value
-         float deepValue = decoder->signalStatus.signalDeep[modulation->signalIndex & (BUFFER_SIZE - 1)];
-
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
 
          if (modulation->correlatedSD > decoder->signalStatus.signalAverg * minimumModulationThreshold)
          {
-            if (modulation->searchDeepValue < deepValue)
-               modulation->searchDeepValue = deepValue;
+            if (modulation->searchDeepValue < signalDeep)
+               modulation->searchDeepValue = signalDeep;
 
             // max correlation peak detector
             if (modulation->correlatedSD > modulation->correlationPeek)
@@ -844,14 +843,14 @@ struct NfcA::Impl
       while (decoder->nextSample(buffer))
       {
          // compute pointers
-         modulation->insertIndex = (bitrate->offsetInsertIndex + decoder->signalClock);
+         modulation->futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock);
          modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
          modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
 
          // get signal samples
-         float signalDeep = decoder->signalStatus.signalDeep[modulation->insertIndex & (BUFFER_SIZE - 1)];
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
          float signalMDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalDeep[modulation->futureIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -890,10 +889,18 @@ struct NfcA::Impl
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // capture signal variance as lower level threshold
+         // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
             modulation->searchThreshold = signalMDev;
 
+         // poll frame modulation detected while waiting for response
+         if (signalDeep > 0.95)
+         {
+            pattern = PatternType::NoPattern;
+            break;
+         }
+
+         // response frame timeout
          if (decoder->signalClock > frameStatus.waitingEnd)
          {
             pattern = PatternType::NoPattern;
@@ -1013,9 +1020,8 @@ struct NfcA::Impl
          modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
-
          // set next search window from previous symbol
          if (!modulation->searchStartTime)
          {
@@ -1105,6 +1111,7 @@ struct NfcA::Impl
 
       while (decoder->nextSample(buffer))
       {
+         modulation->futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock);
          modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
          modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
          modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
@@ -1113,11 +1120,12 @@ struct NfcA::Impl
          float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
          float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
          float signalMDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalDeep[modulation->futureIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
-         // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependend...)
+         // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent...)
          float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage) * 10;
 
          // store signal phase in filter buffer
@@ -1126,7 +1134,6 @@ struct NfcA::Impl
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, signalMDev);
 #endif
-
          // integrate response from PICC after guard time (TR0)
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
             continue;
@@ -1139,9 +1146,16 @@ struct NfcA::Impl
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // fix signal threshold using variance
+         // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
             modulation->searchThreshold = signalMDev;
+
+         // poll frame modulation detected while waiting for response
+         if (signalDeep > 0.95)
+         {
+            pattern = PatternType::NoPattern;
+            break;
+         }
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->searchThreshold);
@@ -1579,7 +1593,7 @@ struct NfcA::Impl
       {
          if (frame[0] == CommandType::NFCA_RATS)
          {
-            auto fsdi = (frame[1] >> 4) & 0x0F;
+            int fsdi = (frame[1] >> 4) & 0x0F;
 
             frameStatus.lastCommand = frame[0];
 
@@ -1604,12 +1618,12 @@ struct NfcA::Impl
       {
          if (frameStatus.lastCommand == CommandType::NFCA_RATS)
          {
-            auto offset = 0;
-            auto tl = frame[offset++];
+            int offset = 0;
+            int tl = frame[offset++];
 
             if (tl > 0)
             {
-               auto t0 = frame[offset++];
+               int t0 = frame[offset++];
 
                // if TA is transmitted, skip...
                if (t0 & 0x10)
@@ -1618,13 +1632,13 @@ struct NfcA::Impl
                // if TB is transmitted capture timing parameters
                if (t0 & 0x20)
                {
-                  auto tb = frame[offset++];
+                  int tb = frame[offset++];
 
                   // get Start-up Frame Guard time Integer
-                  auto sfgi = (tb & 0x0f);
+                  int sfgi = (tb & 0x0f);
 
                   // get Frame Waiting Time Integer
-                  auto fwi = (tb >> 4) & 0x0f;
+                  int fwi = (tb >> 4) & 0x0f;
 
                   // A received value of SFGI = 15 MUST be treated by the NFC Forum Device as SFGI = 0.
                   if (sfgi == 15)
