@@ -210,30 +210,29 @@ struct NfcA::Impl
          BitrateParams *bitrate = bitrateParams + rate;
          ModulationStatus *modulation = modulationStatus + rate;
 
-         // compute signal pointers
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+         //  signal pointers
+         unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         unsigned int delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+
+         // correlation pointers
+         unsigned int filterPoint1 = (signalIndex % bitrate->period1SymbolSamples);
+         unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float delay2Data = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += signalData; // add new value
          modulation->filterIntegrate -= delay2Data; // remove delayed value
 
-         // correlation points
-         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
-
          // store integrated signal in correlation buffer
-         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+         modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factors
-         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
 
          // compute symbol average
@@ -245,9 +244,6 @@ struct NfcA::Impl
 
          if (modulation->correlatedSD > decoder->signalStatus.signalAverg * minimumModulationThreshold)
          {
-            if (modulation->searchDeepValue < signalDeep)
-               modulation->searchDeepValue = signalDeep;
-
             // max correlation peak detector
             if (modulation->correlatedSD > modulation->correlationPeek)
             {
@@ -262,12 +258,11 @@ struct NfcA::Impl
             continue;
 
          // check minimum modulation deep
-         if (modulation->searchDeepValue < minimumModulationThreshold)
+         if (!modulation->searchPeakTime)
          {
             // reset modulation to continue search
             modulation->searchStartTime = 0;
             modulation->searchEndTime = 0;
-            modulation->searchDeepValue = 0;
             modulation->correlationPeek = 0;
 
             continue;
@@ -300,7 +295,6 @@ struct NfcA::Impl
          // reset modulation to continue search
          modulation->searchStartTime = 0;
          modulation->searchEndTime = 0;
-         modulation->searchDeepValue = 0;
          modulation->correlationPeek = 0;
 
          // modulation detected
@@ -706,31 +700,34 @@ struct NfcA::Impl
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
+      // compute signal pointers
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+      unsigned int delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+
       while (decoder->nextSample(buffer))
       {
-         // compute pointers
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+         ++signalIndex;
+         ++delay2Index;
+
+         // compute correlation pointers
+         unsigned int filterPoint1 = (signalIndex % bitrate->period1SymbolSamples);
+         unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float currentData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float delayedData = decoder->signalStatus.signalData[modulation->delay2Index & (BUFFER_SIZE - 1)];
+         float currentData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float delayedData = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += currentData; // add new value
          modulation->filterIntegrate -= delayedData; // remove delayed value
 
-         // correlation pointers
-         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
-
          // store integrated signal in correlation buffer
-         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+         modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factors
-         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
 
          // compute symbol average
@@ -840,17 +837,20 @@ struct NfcA::Impl
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
+      unsigned int futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock);
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+      unsigned int delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+
       while (decoder->nextSample(buffer))
       {
-         // compute pointers
-         modulation->futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock);
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+         ++signalIndex;
+         ++futureIndex;
+         ++delay2Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float signalMDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[modulation->futureIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float signalMDev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -859,7 +859,7 @@ struct NfcA::Impl
          signalData -= modulation->symbolAverage;
 
          // store signal square in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, signalMDev);
@@ -869,20 +869,20 @@ struct NfcA::Impl
             continue;
 
          // compute correlation points
-         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+         unsigned int filterPoint1 = (signalIndex % bitrate->period1SymbolSamples);
+         unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // integrate symbol (moving average)
-         modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-         modulation->filterIntegrate -= modulation->integrationData[modulation->delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         modulation->filterIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->filterIntegrate -= modulation->integrationData[delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
          // store integrated signal in correlation buffer
-         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+         modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation results for each symbol and distance
-         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
 
          // wait until frame guard time is reached
@@ -984,14 +984,22 @@ struct NfcA::Impl
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
+      // compute pointers
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+      unsigned int delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+
       while (decoder->nextSample(buffer))
       {
-         // compute pointers
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+         ++signalIndex;
+         ++delay2Index;
+
+         // compute correlation points
+         unsigned int filterPoint1 = (signalIndex % bitrate->period1SymbolSamples);
+         unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -1000,23 +1008,18 @@ struct NfcA::Impl
          signalData -= modulation->symbolAverage;
 
          // store signal square in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
-
-         // compute correlation points
-         modulation->filterPoint1 = (modulation->signalIndex % bitrate->period1SymbolSamples);
-         modulation->filterPoint2 = (modulation->signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
-         modulation->filterPoint3 = (modulation->signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
          // integrate symbol (moving average)
-         modulation->filterIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-         modulation->filterIntegrate -= modulation->integrationData[modulation->delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         modulation->filterIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->filterIntegrate -= modulation->integrationData[delay2Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
          // store integrated signal in correlation buffer
-         modulation->correlationData[modulation->filterPoint1] = modulation->filterIntegrate;
+         modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation results for each symbol and distance
-         modulation->correlatedS0 = modulation->correlationData[modulation->filterPoint1] - modulation->correlationData[modulation->filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[modulation->filterPoint2] - modulation->correlationData[modulation->filterPoint3];
+         modulation->correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         modulation->correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
@@ -1109,18 +1112,23 @@ struct NfcA::Impl
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
+      unsigned int futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock);
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+      unsigned int delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
+      unsigned int delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+
       while (decoder->nextSample(buffer))
       {
-         modulation->futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock);
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
-         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+         ++futureIndex;
+         ++signalIndex;
+         ++delay1Index;
+         ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
-         float signalMDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[modulation->futureIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)];
+         float signalMDev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -1129,7 +1137,7 @@ struct NfcA::Impl
          float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage) * 10;
 
          // store signal phase in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = phase;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, signalMDev);
@@ -1139,8 +1147,8 @@ struct NfcA::Impl
             continue;
 
          // compute phase correlate integration
-         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-         modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
          // integrate response from PICC after guard time (TR0)
          if (decoder->signalClock < frameStatus.guardEnd)
@@ -1227,15 +1235,19 @@ struct NfcA::Impl
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+      unsigned int delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
+      unsigned int delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+
       while (decoder->nextSample(buffer))
       {
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
-         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+         ++signalIndex;
+         ++delay1Index;
+         ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -1244,10 +1256,10 @@ struct NfcA::Impl
          float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage);
 
          // store signal phase in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
 
-         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-         modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
@@ -1354,7 +1366,6 @@ struct NfcA::Impl
          modulationStatus[rate].searchEndTime = 0;
          modulationStatus[rate].correlationPeek = 0;
          modulationStatus[rate].searchPulseWidth = 0;
-         modulationStatus[rate].searchDeepValue = 0;
          modulationStatus[rate].symbolAverage = 0;
          modulationStatus[rate].symbolPhase = NAN;
       }

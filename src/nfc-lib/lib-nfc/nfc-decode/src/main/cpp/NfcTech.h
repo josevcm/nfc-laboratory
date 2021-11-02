@@ -31,14 +31,15 @@
 
 #include <nfc/Nfc.h>
 
-#define DEBUG_SIGNAL
+//#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-#define DEBUG_SIGNAL_AVERG_CHANNEL 1
-#define DEBUG_SIGNAL_STDEV_CHANNEL 2
-#define DEBUG_SIGNAL_EDGE_CHANNEL 3
+#define DEBUG_SIGNAL_AVERG_CHANNEL 2
+//#define DEBUG_SIGNAL_STDEV_CHANNEL 2
+//#define DEBUG_SIGNAL_EDGE_CHANNEL 3
+#define DEBUG_SIGNAL_DEEP_CHANNEL 3
 #endif
 
 namespace nfc {
@@ -219,6 +220,9 @@ struct SignalStatus
    // signal modulation deep buffer
    float signalDeep[BUFFER_SIZE];
 
+   // signal average buffer
+   float signalAvrg[BUFFER_SIZE];
+
    // signal mean deviation buffer
    float signalMdev[BUFFER_SIZE];
 
@@ -243,7 +247,6 @@ struct ModulationStatus
    unsigned int searchEndTime;      // sample end of symbol search window
    unsigned int searchPeakTime;     // sample time for maximum correlation peak
    unsigned int searchPulseWidth;   // detected signal pulse width
-   float searchDeepValue;           // signal modulation deep during search
    float searchThreshold;           // signal threshold
 
    // symbol parameters
@@ -262,17 +265,17 @@ struct ModulationStatus
    float phaseThreshold;
 
    // integration indexes
-   unsigned int futureIndex;
-   unsigned int signalIndex;
-   unsigned int delay0Index;
-   unsigned int delay1Index;
-   unsigned int delay2Index;
-   unsigned int delay4Index;
+//   unsigned int futureIndex;
+//   unsigned int signalIndex;
+//   unsigned int delay0Index;
+//   unsigned int delay1Index;
+//   unsigned int delay2Index;
+//   unsigned int delay4Index;
 
    // correlation indexes
-   unsigned int filterPoint1;
-   unsigned int filterPoint2;
-   unsigned int filterPoint3;
+//   unsigned int filterPoint1;
+//   unsigned int filterPoint2;
+//   unsigned int filterPoint3;
 
    // correlation values
    float correlatedS0;
@@ -452,6 +455,9 @@ struct DecoderStatus
       // store next signal value in sample buffer
       signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
 
+      // store next signal average in sample buffer
+      signalStatus.signalAvrg[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalAverg;
+
       // store next signal value in sample buffer
       signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalStDev;
 
@@ -478,7 +484,11 @@ struct DecoderStatus
 #endif
 
 #ifdef DEBUG_SIGNAL_EDGE_CHANNEL
-      debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, signalStatus.signalEdge0 - signalStatus.signalEdge1);
+      debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)]);
+#endif
+
+#ifdef DEBUG_SIGNAL_DEEP_CHANNEL
+      debug->set(DEBUG_SIGNAL_DEEP_CHANNEL, signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] / 10.0);
 #endif
 
       return true;
