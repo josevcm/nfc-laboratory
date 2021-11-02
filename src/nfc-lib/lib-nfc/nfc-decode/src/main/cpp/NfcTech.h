@@ -199,12 +199,9 @@ struct PulseParams
  */
 struct SignalStatus
 {
-   // raw IQ sample data
-   float sampleData[2];
-
    // signal parameters
    float signalValue; // instantaneous signal value
-   float signalAverg;  // signal exponential average
+   float signalAverg; // signal exponential average
    float signalStDev; // signal exponential st deviation
 
    // exponential average for edge detector
@@ -232,8 +229,8 @@ struct SignalStatus
    // silence end (modulation detected)
    unsigned int carrierOn;
 
-   //
-   unsigned int signalPulse;
+   // pulse width for envelope detector
+   unsigned int pulseFilter;
 };
 
 /*
@@ -264,23 +261,7 @@ struct ModulationStatus
    float phaseIntegrate;
    float phaseThreshold;
 
-   // integration indexes
-//   unsigned int futureIndex;
-//   unsigned int signalIndex;
-//   unsigned int delay0Index;
-//   unsigned int delay1Index;
-//   unsigned int delay2Index;
-//   unsigned int delay4Index;
-
-   // correlation indexes
-//   unsigned int filterPoint1;
-//   unsigned int filterPoint2;
-//   unsigned int filterPoint3;
-
    // correlation values
-   float correlatedS0;
-   float correlatedS1;
-   float correlatedSD;
    float correlationPeek;
 
    // edge detector values
@@ -411,12 +392,14 @@ struct DecoderStatus
          // IQ channel signal
       else
       {
+         float sampleData[2];
+
          // read next sample data
-         buffer.get(signalStatus.sampleData, 2);
+         buffer.get(sampleData, 2);
 
          // compute magnitude from IQ channels
-         auto i = double(signalStatus.sampleData[0]);
-         auto q = double(signalStatus.sampleData[1]);
+         auto i = double(sampleData[0]);
+         auto q = double(sampleData[1]);
 
          signalStatus.signalValue = sqrtf(i * i + q * q);
       }
@@ -428,7 +411,7 @@ struct DecoderStatus
       if (signalStatus.signalValue > signalStatus.signalAverg * 0.95)
       {
          // reset silence counter
-         signalStatus.signalPulse = 0;
+         signalStatus.pulseFilter = 0;
 
          // compute signal average
          signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
@@ -437,7 +420,7 @@ struct DecoderStatus
          signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
       }
          // only decrease envelope if for long fall periods
-      else if (++signalStatus.signalPulse > signalParams.silenceThreshold)
+      else if (++signalStatus.pulseFilter > signalParams.silenceThreshold)
       {
          // compute signal average
          signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;

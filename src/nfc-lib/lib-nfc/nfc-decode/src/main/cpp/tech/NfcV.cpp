@@ -222,6 +222,9 @@ struct NfcV::Impl
       float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
       float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
 
+      // compute symbol average
+      modulation->symbolAverage = (modulation->symbolAverage * bitrate->symbolAverageW0) + (signalData * bitrate->symbolAverageW1);
+
       // integrate signal data over 1/2 symbol
       modulation->filterIntegrate += signalData; // add new value
       modulation->filterIntegrate -= delay2Data; // remove delayed value
@@ -230,10 +233,7 @@ struct NfcV::Impl
       modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
       // compute correlation factor
-      modulation->correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / float(bitrate->period2SymbolSamples);
-
-      // compute symbol average
-      modulation->symbolAverage = (modulation->symbolAverage * bitrate->symbolAverageW0) + (signalData * bitrate->symbolAverageW1);
+      float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
       decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
@@ -245,11 +245,11 @@ struct NfcV::Impl
          case SOF_BEGIN:
 
             // max correlation peak detector
-            if (modulation->correlatedS0 > decoder->signalStatus.signalAverg * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
+            if (correlatedS0 > decoder->signalStatus.signalAverg * minimumModulationThreshold && correlatedS0 > modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
-               modulation->correlationPeek = modulation->correlatedS0;
+               modulation->correlationPeek = correlatedS0;
             }
 
             // wait until search finished
@@ -288,11 +288,11 @@ struct NfcV::Impl
                break;
 
             // max correlation peak detector
-            if (modulation->correlatedS0 > decoder->signalStatus.signalAverg * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
+            if (correlatedS0 > decoder->signalStatus.signalAverg * minimumModulationThreshold && correlatedS0 > modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
-               modulation->correlationPeek = modulation->correlatedS0;
+               modulation->correlationPeek = correlatedS0;
             }
 
             // wait until search finished
@@ -628,7 +628,7 @@ struct NfcV::Impl
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factor
-         modulation->correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / float(bitrate->period2SymbolSamples);
+         float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
@@ -656,11 +656,11 @@ struct NfcV::Impl
          if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
          {
             // max correlation peak detector
-            if (modulation->correlatedS0 > decoder->signalStatus.signalAverg * minimumModulationThreshold && modulation->correlatedS0 > modulation->correlationPeek)
+            if (correlatedS0 > decoder->signalStatus.signalAverg * minimumModulationThreshold && correlatedS0 > modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-               modulation->correlationPeek = modulation->correlatedS0;
+               modulation->correlationPeek = correlatedS0;
             }
          }
 
@@ -785,7 +785,7 @@ struct NfcV::Impl
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation results for each symbol and distance
-         modulation->correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1];
+         float correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1];
 
          // start correlation after frameGuardTime
          if (decoder->signalClock < frameStatus.guardEnd)
@@ -815,15 +815,15 @@ struct NfcV::Impl
                break;
             }
 
-            if (modulation->correlatedS0 < -modulation->searchThreshold)
+            if (correlatedS0 < -modulation->searchThreshold)
             {
                modulation->searchPulseWidth++;
 
-               if (modulation->correlatedS0 < modulation->correlationPeek)
+               if (correlatedS0 < modulation->correlationPeek)
                {
                   modulation->searchPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period1SymbolSamples;
-                  modulation->correlationPeek = modulation->correlatedS0;
+                  modulation->correlationPeek = correlatedS0;
                }
             }
 
@@ -861,11 +861,11 @@ struct NfcV::Impl
                continue;
 
             // max correlation peak detector
-            if (modulation->correlatedS0 < -modulation->searchThreshold && modulation->correlatedS0 < modulation->correlationPeek)
+            if (correlatedS0 < -modulation->searchThreshold && correlatedS0 < modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
-               modulation->correlationPeek = modulation->correlatedS0;
+               modulation->correlationPeek = correlatedS0;
             }
 
             // wait until search finished
@@ -957,8 +957,8 @@ struct NfcV::Impl
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation results for each symbol and distance
-         modulation->correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1];
-         modulation->correlatedSD = std::fabs(modulation->correlatedS0);
+         float correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1];
+         float correlatedSD = std::fabs(correlatedS0);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
@@ -989,11 +989,11 @@ struct NfcV::Impl
             continue;
 
          // detect max correlation peak
-         if (modulation->correlatedSD > modulation->searchThreshold && modulation->correlatedSD > modulation->correlationPeek)
+         if (correlatedSD > modulation->searchThreshold && correlatedSD > modulation->correlationPeek)
          {
-            modulation->correlationPeek = modulation->correlatedSD;
-            modulation->symbolCorr0 = modulation->correlatedS0;
-            modulation->symbolCorr1 = -modulation->correlatedS0;
+            modulation->correlationPeek = correlatedSD;
+            modulation->symbolCorr0 = correlatedS0;
+            modulation->symbolCorr1 = -correlatedS0;
             modulation->symbolEndTime = decoder->signalClock;
          }
 
