@@ -210,19 +210,17 @@ struct NfcB::Impl
          ModulationStatus *modulation = modulationStatus + rate;
 
          // compute signal pointer
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
 
-         // signal edge detector value
-         float edgeValue = decoder->signalStatus.signalEdge[modulation->signalIndex & (BUFFER_SIZE - 1)];
-
-         // signal modulation deep value
-         float deepValue = decoder->signalStatus.signalDeep[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         // get signal samples
+         float signalEdge = decoder->signalStatus.signalEdge[signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_EDGE_CHANNEL
-         decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL, edgeValue * 10);
+         decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL, signalEdge * 10);
 #endif
          // reset modulation if exceed limits
-         if (deepValue > maximumModulationThreshold)
+         if (signalDeep > maximumModulationThreshold)
          {
             modulation->searchStage = SOF_BEGIN;
             modulation->searchStartTime = 0;
@@ -238,9 +236,9 @@ struct NfcB::Impl
             case SOF_BEGIN:
 
                // detect edge at maximum peak
-               if (edgeValue < -0.001 && modulation->detectorPeek > edgeValue && deepValue > minimumModulationThreshold)
+               if (signalEdge < -0.001 && modulation->detectorPeek > signalEdge && signalDeep > minimumModulationThreshold)
                {
-                  modulation->detectorPeek = edgeValue;
+                  modulation->detectorPeek = signalEdge;
                   modulation->searchPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
                }
@@ -267,9 +265,9 @@ struct NfcB::Impl
                if (decoder->signalClock > modulation->searchStartTime)
                {
                   // detect edge at maximum peak
-                  if (edgeValue > 0.001 && modulation->detectorPeek < edgeValue)
+                  if (signalEdge > 0.001 && modulation->detectorPeek < signalEdge)
                   {
-                     modulation->detectorPeek = edgeValue;
+                     modulation->detectorPeek = signalEdge;
                      modulation->searchPeakTime = decoder->signalClock;
                      modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
                   }
@@ -301,7 +299,7 @@ struct NfcB::Impl
                   modulation->detectorPeek = 0;
                }
 
-               else if (edgeValue > 0.001)
+               else if (signalEdge > 0.001)
                {
                   // during SOF there must not be modulation changes
                   modulation->searchStage = SOF_BEGIN;
@@ -322,9 +320,9 @@ struct NfcB::Impl
                   break;
 
                // detect edge at maximum peak
-               if (edgeValue < -0.001 && modulation->detectorPeek > edgeValue && deepValue > minimumModulationThreshold)
+               if (signalEdge < -0.001 && modulation->detectorPeek > signalEdge && signalDeep > minimumModulationThreshold)
                {
-                  modulation->detectorPeek = edgeValue;
+                  modulation->detectorPeek = signalEdge;
                   modulation->searchPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period8SymbolSamples;
                }
@@ -355,7 +353,6 @@ struct NfcB::Impl
                modulation->searchStage = SOF_BEGIN;
                modulation->searchStartTime = 0;
                modulation->searchEndTime = 0;
-               modulation->searchDeepValue = 0;
                modulation->detectorPeek = 0;
 
                // setup frame info
@@ -606,31 +603,31 @@ struct NfcB::Impl
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
+      // compute signal pointer
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+
       while (decoder->nextSample(buffer))
       {
-         // compute signal pointer
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         ++signalIndex;
 
-         // signal edge detector value
-         float edgeValue = decoder->signalStatus.signalEdge[modulation->signalIndex & (BUFFER_SIZE - 1)];
-
-         // signal modulation deep value
-         float deepValue = decoder->signalStatus.signalDeep[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         // get signal samples
+         float signalEdge = decoder->signalStatus.signalEdge[signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_EDGE_CHANNEL
-         decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL, edgeValue * 10);
+         decoder->debug->set(DEBUG_ASK_EDGE_CHANNEL, signalEdge * 10);
 #endif
 
          // edge re-synchronization window
          if (decoder->signalClock > modulation->searchStartTime && decoder->signalClock < modulation->searchEndTime)
          {
             // ignore edge type
-            edgeValue = std::abs(edgeValue);
+            signalEdge = std::abs(signalEdge);
 
             // detect edge at maximum peak
-            if (edgeValue > 0.001 && modulation->detectorPeek < edgeValue && deepValue > minimumModulationThreshold)
+            if (signalEdge > 0.001 && modulation->detectorPeek < signalEdge && signalDeep > minimumModulationThreshold)
             {
-               modulation->detectorPeek = edgeValue;
+               modulation->detectorPeek = signalEdge;
                modulation->symbolEndTime = decoder->signalClock - bitrate->period8SymbolSamples;
                modulation->symbolSyncTime = 0;
             }
@@ -653,7 +650,7 @@ struct NfcB::Impl
          decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
          // modulated signal, symbol L -> 0 value
-         if (deepValue > minimumModulationThreshold)
+         if (signalDeep > minimumModulationThreshold)
          {
             // setup symbol info
             symbolStatus.value = 0;
@@ -698,16 +695,20 @@ struct NfcB::Impl
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+      unsigned int delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
+      unsigned int delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+
       while (decoder->nextSample(buffer))
       {
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
-         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+         ++signalIndex;
+         ++delay1Index;
+         ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
-         float signalMDev = decoder->signalStatus.signalMdev[modulation->signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)];
+         float signalMDev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -719,7 +720,7 @@ struct NfcB::Impl
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL - 1, phase);
 #endif
          // store signal phase in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = phase;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, signalMDev);
@@ -728,8 +729,8 @@ struct NfcB::Impl
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
             continue;
 
-         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-         modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
          // wait until frame guard time is reached
          if (decoder->signalClock < frameStatus.guardEnd)
@@ -924,15 +925,20 @@ struct NfcB::Impl
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+      unsigned int delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
+      unsigned int delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+
+
       while (decoder->nextSample(buffer))
       {
-         modulation->signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-         modulation->delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
-         modulation->delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+         ++signalIndex;
+         ++delay1Index;
+         ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[modulation->signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalData[modulation->delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -941,10 +947,10 @@ struct NfcB::Impl
          float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage) * 10;
 
          // store signal phase in filter buffer
-         modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)] = phase;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = phase;
 
-         modulation->phaseIntegrate += modulation->integrationData[modulation->signalIndex & (BUFFER_SIZE - 1)]; // add new value
-         modulation->phaseIntegrate -= modulation->integrationData[modulation->delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+         modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
@@ -1025,7 +1031,6 @@ struct NfcB::Impl
          modulationStatus[rate].searchStage = 0;
          modulationStatus[rate].searchStartTime = 0;
          modulationStatus[rate].searchEndTime = 0;
-         modulationStatus[rate].searchDeepValue = 0;
          modulationStatus[rate].symbolAverage = 0;
          modulationStatus[rate].symbolPhase = NAN;
          modulationStatus[rate].detectorPeek = 0;
