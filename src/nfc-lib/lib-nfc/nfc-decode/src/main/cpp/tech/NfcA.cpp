@@ -231,9 +231,9 @@ struct NfcA::Impl
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factors
-         modulation->correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
-         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
+         float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
+         float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -242,14 +242,14 @@ struct NfcA::Impl
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
 
-         if (modulation->correlatedSD > decoder->signalStatus.signalAverg * minimumModulationThreshold)
+         if (correlatedSD > decoder->signalStatus.signalAverg * minimumModulationThreshold)
          {
             // max correlation peak detector
-            if (modulation->correlatedSD > modulation->correlationPeek)
+            if (correlatedSD > modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-               modulation->correlationPeek = modulation->correlatedSD;
+               modulation->correlationPeek = correlatedSD;
             }
          }
 
@@ -726,9 +726,9 @@ struct NfcA::Impl
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factors
-         modulation->correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
-         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1) / float(bitrate->period2SymbolSamples);
+         float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
+         float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
@@ -757,11 +757,11 @@ struct NfcA::Impl
          // search max correlation peak
          if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
          {
-            if (modulation->correlatedSD > modulation->correlationPeek)
+            if (correlatedSD > modulation->correlationPeek)
             {
-               modulation->correlationPeek = modulation->correlatedSD;
-               modulation->symbolCorr0 = modulation->correlatedS0;
-               modulation->symbolCorr1 = modulation->correlatedS1;
+               modulation->correlationPeek = correlatedSD;
+               modulation->symbolCorr0 = correlatedS0;
+               modulation->symbolCorr1 = correlatedS1;
                modulation->symbolEndTime = decoder->signalClock;
             }
          }
@@ -821,7 +821,6 @@ struct NfcA::Impl
          modulation->searchEndTime = 0;
          modulation->searchPulseWidth = 0;
          modulation->correlationPeek = 0;
-         modulation->correlatedSD = 0;
       }
 
       return symbolStatus.pattern;
@@ -881,9 +880,9 @@ struct NfcA::Impl
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation results for each symbol and distance
-         modulation->correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
-         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
+         float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
+         float correlatedSD = std::fabs(correlatedS0 - correlatedS1);
 
          // wait until frame guard time is reached
          if (decoder->signalClock < frameStatus.guardEnd)
@@ -912,18 +911,18 @@ struct NfcA::Impl
 #endif
 
          // detect maximum correlation peak
-         if (modulation->correlatedSD > modulation->searchThreshold)
+         if (correlatedSD > modulation->searchThreshold)
          {
 #ifdef DEBUG_ASK_CORR_CHANNEL
             decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
             // max correlation peak detector
-            if (modulation->correlatedSD > modulation->correlationPeek)
+            if (correlatedSD > modulation->correlationPeek)
             {
                modulation->searchPulseWidth++;
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-               modulation->correlationPeek = modulation->correlatedSD;
+               modulation->correlationPeek = correlatedSD;
             }
          }
 
@@ -956,7 +955,6 @@ struct NfcA::Impl
          modulation->searchEndTime = 0;
          modulation->correlationPeek = 0;
          modulation->searchPulseWidth = 0;
-         modulation->correlatedSD = 0;
       }
 
       // reset search status
@@ -968,7 +966,6 @@ struct NfcA::Impl
          modulation->searchEndTime = 0;
          modulation->correlationPeek = 0;
          modulation->searchPulseWidth = 0;
-         modulation->correlatedSD = 0;
       }
 
       return pattern;
@@ -1018,9 +1015,9 @@ struct NfcA::Impl
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation results for each symbol and distance
-         modulation->correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
-         modulation->correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
-         modulation->correlatedSD = std::fabs(modulation->correlatedS0 - modulation->correlatedS1);
+         float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
+         float correlatedSD = std::fabs(correlatedS0 - correlatedS1);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
@@ -1045,11 +1042,11 @@ struct NfcA::Impl
          // search symbol timings
          if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
          {
-            if (modulation->correlatedSD > modulation->correlationPeek)
+            if (correlatedSD > modulation->correlationPeek)
             {
-               modulation->correlationPeek = modulation->correlatedSD;
-               modulation->symbolCorr0 = modulation->correlatedS0;
-               modulation->symbolCorr1 = modulation->correlatedS1;
+               modulation->correlationPeek = correlatedSD;
+               modulation->symbolCorr0 = correlatedS0;
+               modulation->symbolCorr1 = correlatedS1;
                modulation->symbolEndTime = decoder->signalClock;
             }
          }
@@ -1096,7 +1093,6 @@ struct NfcA::Impl
          modulation->searchEndTime = 0;
          modulation->correlationPeek = 0;
          modulation->searchPulseWidth = 0;
-         modulation->correlatedSD = 0;
       }
 
       return pattern;
@@ -1219,7 +1215,6 @@ struct NfcA::Impl
          modulation->symbolSyncTime = 0;
          modulation->correlationPeek = 0;
          modulation->searchPulseWidth = 0;
-         modulation->correlatedSD = 0;
       }
 
       return pattern;
@@ -1330,7 +1325,6 @@ struct NfcA::Impl
          modulation->symbolSyncTime = 0;
          modulation->correlationPeek = 0;
          modulation->searchPulseWidth = 0;
-         modulation->correlatedSD = 0;
       }
 
       return pattern;
