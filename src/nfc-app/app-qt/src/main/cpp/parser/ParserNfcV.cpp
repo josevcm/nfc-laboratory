@@ -39,10 +39,10 @@ ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
    {
       do
       {
-//         // Request Command
-//         if ((info = parseRequestREQB(frame)))
-//            break;
-//
+         // Inventory Command
+         if ((info = parseRequestInventory(frame)))
+            break;
+
 //         // Attrib request
 //         if ((info = parseRequestATTRIB(frame)))
 //            break;
@@ -56,16 +56,16 @@ ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
 
       } while (false);
 
-      lastCommand = frame[0];
+      lastCommand = frame[1];
    }
    else
    {
       do
       {
-//         // Request Command
-//         if ((info = parseResponseREQB(frame)))
-//            break;
-//
+         // Inventory response
+         if ((info = parseResponseInventory(frame)))
+            break;
+
 //         // Attrib request
 //         if ((info = parseResponseATTRIB(frame)))
 //            break;
@@ -83,15 +83,122 @@ ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
    return info;
 }
 
+ProtocolFrame *ParserNfcV::parseRequestInventory(const nfc::NfcFrame &frame)
+{
+   if (frame[1] != 0x01)
+      return nullptr;
+
+   int offset = 0;
+   int flags = frame[offset++];
+
+   ProtocolFrame *root = buildFrameInfo("Inventory", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::SenseFrame);
+
+   parseRequestFlags(root, frame);
+
+   // skip command code
+   offset++;
+
+   // AFI flag is set
+   if ((flags & 0x14) == 0x14)
+   {
+      int afi = frame[offset++];
+
+      if (ProtocolFrame *afif = root->appendChild(buildFieldInfo("AFI", QString("%1").arg(afi, 2, 16, QChar('0')))))
+      {
+         if (afi == 0x00)
+            afif->appendChild(buildFieldInfo("[00000000] All families and sub-families"));
+         else if ((afi & 0x0f) == 0x00)
+            afif->appendChild(buildFieldInfo(QString("[%10000] All sub-families of family %2").arg(afi >> 4, 4, 2, QChar('0')).arg(afi >> 4)));
+         else if ((afi & 0xf0) == 0x00)
+            afif->appendChild(buildFieldInfo(QString("[0000%1] Proprietary sub-family %2 only").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x10)
+            afif->appendChild(buildFieldInfo(QString("[0001%1] Transport sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x20)
+            afif->appendChild(buildFieldInfo(QString("[0010%1] Financial sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x30)
+            afif->appendChild(buildFieldInfo(QString("[0011%1] Identification sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x40)
+            afif->appendChild(buildFieldInfo(QString("[0100%1] Telecommunication sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x50)
+            afif->appendChild(buildFieldInfo(QString("[0101%1] Medical sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x60)
+            afif->appendChild(buildFieldInfo(QString("[0110%1] Multimedia sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x70)
+            afif->appendChild(buildFieldInfo(QString("[0111%1] Gaming sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x80)
+            afif->appendChild(buildFieldInfo(QString("[1000%1] Data Storage sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0x90)
+            afif->appendChild(buildFieldInfo(QString("[1001%1] Item management sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0xA0)
+            afif->appendChild(buildFieldInfo(QString("[1010%1] Express parcels sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0xB0)
+            afif->appendChild(buildFieldInfo(QString("[1011%1] Postal services sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else if ((afi & 0xf0) == 0xC0)
+            afif->appendChild(buildFieldInfo(QString("[1100%1] Airline bags sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         else
+            afif->appendChild(buildFieldInfo(QString("[%1] RFU %2").arg(afi, 8, 2, QChar('0')).arg(afi)));
+      }
+   }
+
+   int mlen = frame[offset++];
+
+   root->appendChild(buildFieldInfo("MLEN", QString("%1").arg(mlen, 2, 16, QChar('0'))));
+
+   if (mlen > 0)
+   {
+      root->appendChild(buildFieldInfo("MASK", toByteArray(frame, offset, (mlen >> 3) + (mlen & 0x7) ? 1 : 0)));
+   }
+
+   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+
+   return root;
+}
+
+ProtocolFrame *ParserNfcV::parseResponseInventory(const nfc::NfcFrame &frame)
+{
+   if (lastCommand != 0x01)
+      return nullptr;
+
+   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::SenseFrame);
+
+   parseResponseFlags(root, frame);
+
+   root->appendChild(buildFieldInfo("DSFID", QString("%1").arg(frame[1], 2, 16, QChar('0'))));
+   root->appendChild(buildFieldInfo("UID", toByteArray(frame, 2, 8)));
+   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+
+   return root;
+}
+
 ProtocolFrame *ParserNfcV::parseRequestGeneric(const nfc::NfcFrame &frame)
 {
-   int flags = 0;
-   int rqf = frame[0]; // request frame flags
    int cmd = frame[1]; // frame command
 
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
+   ProtocolFrame *root = buildFrameInfo(QString("CMD %1").arg(cmd, 2, 16, QChar('0')), frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
 
-   ProtocolFrame *root = buildFrameInfo(QString("CMD %1").arg(cmd, 2, 16, QChar('0')), frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
+   parseResponseFlags(root, frame);
+
+   root->appendChild(buildFieldInfo("CODE", QString("%1 [%2]").arg(cmd, 2, 16, QChar('0')).arg(cmd, 8, 2, QChar('0'))));
+
+   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+
+   return root;
+}
+
+ProtocolFrame *ParserNfcV::parseResponseGeneric(const nfc::NfcFrame &frame)
+{
+   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+
+   parseResponseFlags(root, frame);
+
+   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+
+   return root;
+}
+
+ProtocolFrame *ParserNfcV::parseRequestFlags(ProtocolFrame *root, const nfc::NfcFrame &frame)
+{
+   int rqf = frame[0]; // request frame flags
 
    if (ProtocolFrame *afrf = root->appendChild(buildFieldInfo("FLAGS", QString("%1").arg(rqf, 2, 16, QChar('0')))))
    {
@@ -142,14 +249,9 @@ ProtocolFrame *ParserNfcV::parseRequestGeneric(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseGeneric(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseFlags(ProtocolFrame *root, const nfc::NfcFrame &frame)
 {
-   int flags = 0;
    int rsf = frame[0]; // response frame flags
-
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
-
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
 
    if (ProtocolFrame *afrf = root->appendChild(buildFieldInfo("FLAGS", QString("%1").arg(rsf, 2, 16, QChar('0')))))
    {
