@@ -41,7 +41,7 @@ class ProtocolFrame : public QObject
       {
          SenseFrame = 1,
          SelectionFrame = 2,
-         InformationFrame = 3,
+         ApplicationFrame = 3,
          AuthFrame = 4
       };
 
