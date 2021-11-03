@@ -33,9 +33,17 @@ struct ParserNfcV : ParserNfc
 
    ProtocolFrame *parse(const nfc::NfcFrame &frame) override;
 
+   ProtocolFrame *parseRequestInventory(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseInventory(const nfc::NfcFrame &frame);
+
    ProtocolFrame *parseRequestGeneric(const nfc::NfcFrame &frame);
 
    ProtocolFrame *parseResponseGeneric(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestFlags(ProtocolFrame *root, const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseFlags(ProtocolFrame *root, const nfc::NfcFrame &frame);
 };
 
 
