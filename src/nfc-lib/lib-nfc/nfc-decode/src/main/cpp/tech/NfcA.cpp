@@ -242,15 +242,12 @@ struct NfcA::Impl
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
 #endif
 
-         if (correlatedSD > decoder->signalStatus.signalAverg * minimumModulationThreshold)
+         // detect maximum correlation peak
+         if (correlatedSD > decoder->signalStatus.signalAverg * minimumModulationThreshold && correlatedSD > modulation->correlationPeek)
          {
-            // max correlation peak detector
-            if (correlatedSD > modulation->correlationPeek)
-            {
-               modulation->searchPeakTime = decoder->signalClock;
-               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-               modulation->correlationPeek = correlatedSD;
-            }
+            modulation->searchPeakTime = decoder->signalClock;
+            modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+            modulation->correlationPeek = correlatedSD;
          }
 
          // wait until search finished
@@ -754,24 +751,25 @@ struct NfcA::Impl
             modulation->symbolCorr1 = 0;
          }
 
-         // search max correlation peak
-         if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
-         {
-            if (correlatedSD > modulation->correlationPeek)
-            {
-               modulation->correlationPeek = correlatedSD;
-               modulation->symbolCorr0 = correlatedS0;
-               modulation->symbolCorr1 = correlatedS1;
-               modulation->symbolEndTime = decoder->signalClock;
-            }
-         }
-
 #ifdef DEBUG_ASK_SYNC_CHANNEL
          if (decoder->signalClock == modulation->symbolSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
 
-         // capture next symbol
+         // wait until correlation search start
+         if (decoder->signalClock < modulation->searchStartTime)
+            continue;
+
+         // detect maximum symbol correlation
+         if (correlatedSD > modulation->correlationPeek)
+         {
+            modulation->correlationPeek = correlatedSD;
+            modulation->symbolCorr0 = correlatedS0;
+            modulation->symbolCorr1 = correlatedS1;
+            modulation->symbolEndTime = decoder->signalClock;
+         }
+
+         // wait until correlation search finish
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
@@ -787,7 +785,6 @@ struct NfcA::Impl
             symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
             symbolStatus.pattern = PatternType::PatternY;
-
             break;
          }
 
@@ -800,7 +797,6 @@ struct NfcA::Impl
             symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
             symbolStatus.pattern = PatternType::PatternZ;
-
             break;
          }
 
@@ -810,7 +806,6 @@ struct NfcA::Impl
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
          symbolStatus.pattern = PatternType::PatternX;
-
          break;
       }
 
@@ -892,15 +887,15 @@ struct NfcA::Impl
          if (decoder->signalClock == frameStatus.guardEnd)
             modulation->searchThreshold = signalMDev;
 
-         // poll frame modulation detected while waiting for response
-         if (signalDeep > 0.95)
+         // check for maximum response time
+         if (decoder->signalClock > frameStatus.waitingEnd)
          {
             pattern = PatternType::NoPattern;
             break;
          }
 
-         // response frame timeout
-         if (decoder->signalClock > frameStatus.waitingEnd)
+         // poll frame modulation detected while waiting for response
+         if (signalDeep > 0.95)
          {
             pattern = PatternType::NoPattern;
             break;
@@ -946,7 +941,6 @@ struct NfcA::Impl
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
             pattern = PatternType::PatternD;
-
             break;
          }
 
@@ -1039,24 +1033,25 @@ struct NfcA::Impl
             modulation->symbolCorr1 = 0;
          }
 
-         // search symbol timings
-         if (decoder->signalClock >= modulation->searchStartTime && decoder->signalClock <= modulation->searchEndTime)
-         {
-            if (correlatedSD > modulation->correlationPeek)
-            {
-               modulation->correlationPeek = correlatedSD;
-               modulation->symbolCorr0 = correlatedS0;
-               modulation->symbolCorr1 = correlatedS1;
-               modulation->symbolEndTime = decoder->signalClock;
-            }
-         }
-
 #ifdef DEBUG_ASK_SYNC_CHANNEL
          if (decoder->signalClock == modulation->symbolSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
 
-         // wait until search is finished
+         // wait until correlation search start
+         if (decoder->signalClock < modulation->searchStartTime)
+            continue;
+
+         // detect maximum symbol correlation
+         if (correlatedSD > modulation->correlationPeek)
+         {
+            modulation->correlationPeek = correlatedSD;
+            modulation->symbolCorr0 = correlatedS0;
+            modulation->symbolCorr1 = correlatedS1;
+            modulation->symbolEndTime = decoder->signalClock;
+         }
+
+         // wait until correlation search finish
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
@@ -1142,7 +1137,7 @@ struct NfcA::Impl
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
             continue;
 
-         // compute phase correlate integration
+         // compute phase integration
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
@@ -1154,7 +1149,14 @@ struct NfcA::Impl
          if (decoder->signalClock == frameStatus.guardEnd)
             modulation->searchThreshold = signalMDev;
 
-         // poll frame modulation detected while waiting for response
+         // check if frame waiting time exceeded without detect modulation
+         if (decoder->signalClock >= frameStatus.waitingEnd)
+         {
+            pattern = PatternType::NoPattern;
+            break;
+         }
+
+         // check if poll frame modulation is detected while waiting for response
          if (signalDeep > 0.95)
          {
             pattern = PatternType::NoPattern;
@@ -1174,13 +1176,7 @@ struct NfcA::Impl
             modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
          }
 
-         // frame waiting time exceeded without detect modulation
-         if (decoder->signalClock >= frameStatus.waitingEnd)
-         {
-            pattern = PatternType::NoPattern;
-            break;
-         }
-
+         // wait until correlation search finish
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
@@ -1201,7 +1197,6 @@ struct NfcA::Impl
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
          pattern = PatternType::PatternM;
-
          break;
       }
 
@@ -1259,7 +1254,6 @@ struct NfcA::Impl
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
 #endif
-
          // edge detector for re-synchronization
          if ((modulation->phaseIntegrate > 0 && modulation->symbolPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0))
          {
@@ -1279,7 +1273,7 @@ struct NfcA::Impl
             modulation->symbolSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
          }
 
-         // wait until search finished
+         // wait until search synchronization is reached
          if (decoder->signalClock != modulation->symbolSyncTime)
             continue;
 
@@ -1311,7 +1305,6 @@ struct NfcA::Impl
 
          // no modulation detected, generate End Of Frame symbol
          pattern = PatternType::PatternO;
-
          break;
       }
 
