@@ -153,7 +153,7 @@ struct QtWindow::Impl
       ui->streamView->setColumnWidth(StreamModel::Delta, 75);
       ui->streamView->setColumnWidth(StreamModel::Rate, 60);
       ui->streamView->setColumnWidth(StreamModel::Tech, 60);
-      ui->streamView->setColumnWidth(StreamModel::Cmd, 75);
+      ui->streamView->setColumnWidth(StreamModel::Cmd, 100);
       ui->streamView->setColumnWidth(StreamModel::Flags, 48);
       ui->streamView->setItemDelegate(new StreamStyle(ui->streamView));
 

@@ -37,13 +37,69 @@ struct ParserNfcV : ParserNfc
 
    ProtocolFrame *parseResponseInventory(const nfc::NfcFrame &frame);
 
+   ProtocolFrame *parseRequestStayQuiet(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseStayQuiet(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestReadSingle(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseReadSingle(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestWriteSingle(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseWriteSingle(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestLockBlock(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseLockBlock(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestReadMultiple(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseReadMultiple(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestWriteMultiple(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseWriteMultiple(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestSelect(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseSelect(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestResetReady(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseResetReady(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestWriteAFI(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseWriteAFI(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestLockAFI(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseLockAFI(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestWriteDSFID(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseWriteDSFID(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestLockDSFID(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseLockDSFID(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestSysInfo(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseSysInfo(const nfc::NfcFrame &frame);
+
    ProtocolFrame *parseRequestGeneric(const nfc::NfcFrame &frame);
 
    ProtocolFrame *parseResponseGeneric(const nfc::NfcFrame &frame);
 
-   ProtocolFrame *parseRequestFlags(ProtocolFrame *root, const nfc::NfcFrame &frame);
+   ProtocolFrame *buildRequestFlags(int flags);
 
-   ProtocolFrame *parseResponseFlags(ProtocolFrame *root, const nfc::NfcFrame &frame);
+   ProtocolFrame *buildResponseFlags(int flags);
+
+   ProtocolFrame *buildResponseError(int error);
+
+   ProtocolFrame *buildApplicationFamily(int afi);
 };
 
 

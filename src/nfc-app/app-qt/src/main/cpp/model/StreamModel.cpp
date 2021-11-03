@@ -62,6 +62,20 @@ static QMap<int, QString> NfcBCmd = {
 };
 
 static QMap<int, QString> NfcVCmd = {
+      {0x01, "Inventory"},
+      {0x02, "StayQuiet"},
+      {0x20, "ReadBlock"},
+      {0x21, "WriteBlock"},
+      {0x22, "LockBlock"},
+      {0x23, "ReadBlocks"},
+      {0x24, "WriteBlocks"},
+      {0x25, "Select"},
+      {0x26, "Reset"},
+      {0x27, "WriteAFI"},
+      {0x28, "LockAFI"},
+      {0x29, "WriteDSFID"},
+      {0x2a, "LockDSFID"},
+      {0x2b, "SysInfo"}
 };
 
 struct StreamModel::Impl

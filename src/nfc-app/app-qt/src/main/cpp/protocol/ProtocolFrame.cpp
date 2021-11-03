@@ -167,7 +167,7 @@ bool ProtocolFrame::isSelectionFrame() const
 
 bool ProtocolFrame::isInformationFrame() const
 {
-   return impl->type == Type::InformationFrame;
+   return impl->type == Type::ApplicationFrame;
 }
 
 bool ProtocolFrame::isAuthFrame() const
