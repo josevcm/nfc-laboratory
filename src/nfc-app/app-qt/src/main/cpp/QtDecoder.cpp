@@ -235,8 +235,11 @@ struct QtDecoder::Impl
 
       // start recorder and...
       taskRecorderWrite(name, [=] {
-         // enable receiver
-         taskReceiverStart();
+         // start decoder and...
+         taskDecoderStart([=] {
+            // enable receiver
+            taskReceiverStart();
+         });
       });
    }
 
@@ -283,10 +286,10 @@ struct QtDecoder::Impl
       if (event->contains("nfcf/enabled"))
          nfcf["enabled"] = event->getBoolean("nfcf/enabled");
 
-      if (event->contains("nfca/minimumModulationThreshold"))
+      if (event->contains("nfcf/minimumModulationThreshold"))
          nfcf["minimumModulationThreshold"] = event->getFloat("nfcf/minimumModulationThreshold");
 
-      if (event->contains("nfca/maximumModulationThreshold"))
+      if (event->contains("nfcf/maximumModulationThreshold"))
          nfcf["maximumModulationThreshold"] = event->getFloat("nfcf/maximumModulationThreshold");
 
       // NFC-V parameters
@@ -381,84 +384,84 @@ struct QtDecoder::Impl
    /*
     * Decoder Task control
     */
-   void taskDecoderStart(std::function<void()> complete = nullptr) const
+   void taskDecoderStart(std::function<void()> onComplete = nullptr) const
    {
-      decoderCommandSubject->next({nfc::FrameDecoderTask::Start, std::move(complete)});
+      decoderCommandSubject->next({nfc::FrameDecoderTask::Start, std::move(onComplete)});
    }
 
-   void taskDecoderStop(std::function<void()> complete = nullptr) const
+   void taskDecoderStop(std::function<void()> onComplete = nullptr) const
    {
-      decoderCommandSubject->next({nfc::FrameDecoderTask::Stop, std::move(complete)});
+      decoderCommandSubject->next({nfc::FrameDecoderTask::Stop, std::move(onComplete)});
    }
 
-   void taskDecoderConfig(const QJsonObject &data, std::function<void()> complete = nullptr) const
+   void taskDecoderConfig(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
       QJsonDocument doc(data);
 
-      decoderCommandSubject->next({nfc::FrameDecoderTask::Configure, std::move(complete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      decoderCommandSubject->next({nfc::FrameDecoderTask::Configure, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
     * Receiver Task control
     */
-   void taskReceiverStart(std::function<void()> complete = nullptr) const
+   void taskReceiverStart(std::function<void()> onComplete = nullptr) const
    {
-      receiverCommandSubject->next({nfc::SignalReceiverTask::Start, std::move(complete)});
+      receiverCommandSubject->next({nfc::SignalReceiverTask::Start, std::move(onComplete)});
    }
 
-   void taskReceiverStop(std::function<void()> complete = nullptr) const
+   void taskReceiverStop(std::function<void()> onComplete = nullptr) const
    {
-      receiverCommandSubject->next({nfc::SignalReceiverTask::Stop, std::move(complete)});
+      receiverCommandSubject->next({nfc::SignalReceiverTask::Stop, std::move(onComplete)});
    }
 
-   void taskReceiverQuery(std::function<void()> complete = nullptr) const
+   void taskReceiverQuery(std::function<void()> onComplete = nullptr) const
    {
-      receiverCommandSubject->next({nfc::SignalReceiverTask::Query, std::move(complete)});
+      receiverCommandSubject->next({nfc::SignalReceiverTask::Query, std::move(onComplete)});
    }
 
-   void taskReceiverConfig(const QJsonObject &data, std::function<void()> complete = nullptr) const
+   void taskReceiverConfig(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
       QJsonDocument doc(data);
 
-      receiverCommandSubject->next({nfc::SignalReceiverTask::Configure, std::move(complete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      receiverCommandSubject->next({nfc::SignalReceiverTask::Configure, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
     * Recorder Task control
     */
-   void taskRecorderRead(const QString &name, std::function<void()> complete = nullptr) const
+   void taskRecorderRead(const QString &name, std::function<void()> onComplete = nullptr) const
    {
-      recorderCommandSubject->next({nfc::SignalRecorderTask::Read, std::move(complete), nullptr, {{"file", name.toStdString()}}});
+      recorderCommandSubject->next({nfc::SignalRecorderTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
-   void taskRecorderWrite(const QString &name, std::function<void()> complete = nullptr) const
+   void taskRecorderWrite(const QString &name, std::function<void()> onComplete = nullptr) const
    {
-      recorderCommandSubject->next({nfc::SignalRecorderTask::Write, std::move(complete), nullptr, {{"file", name.toStdString()}}});
+      recorderCommandSubject->next({nfc::SignalRecorderTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
-   void taskRecorderStop(std::function<void()> complete = nullptr) const
+   void taskRecorderStop(std::function<void()> onComplete = nullptr) const
    {
-      recorderCommandSubject->next({nfc::SignalRecorderTask::Stop, std::move(complete)});
+      recorderCommandSubject->next({nfc::SignalRecorderTask::Stop, std::move(onComplete)});
    }
 
    /*
     * Storage Task control
     */
-   void taskStorageRead(const QString &name, std::function<void()> complete = nullptr) const
+   void taskStorageRead(const QString &name, std::function<void()> onComplete = nullptr) const
    {
       // read frame data from file
-      storageCommandSubject->next({nfc::FrameStorageTask::Read, std::move(complete), nullptr, {{"file", name.toStdString()}}});
+      storageCommandSubject->next({nfc::FrameStorageTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
-   void taskStorageWrite(const QString &name, std::function<void()> complete = nullptr) const
+   void taskStorageWrite(const QString &name, std::function<void()> onComplete = nullptr) const
    {
       // write frame data to file
-      storageCommandSubject->next({nfc::FrameStorageTask::Write, std::move(complete), nullptr, {{"file", name.toStdString()}}});
+      storageCommandSubject->next({nfc::FrameStorageTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
-   void taskStorageClear(std::function<void()> complete = nullptr) const
+   void taskStorageClear(std::function<void()> onComplete = nullptr) const
    {
-      storageCommandSubject->next({nfc::FrameStorageTask::Clear, std::move(complete)});
+      storageCommandSubject->next({nfc::FrameStorageTask::Clear, std::move(onComplete)});
    }
 };
 
