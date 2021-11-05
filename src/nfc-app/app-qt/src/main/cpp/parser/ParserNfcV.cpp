@@ -95,6 +95,10 @@ ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
          if ((info = parseRequestSysInfo(frame)))
             break;
 
+         // Get multiple block security status
+         if ((info = parseRequestGetSecurity(frame)))
+            break;
+
          // generic NFC-V request frame...
          info = parseRequestGeneric(frame);
 
@@ -156,6 +160,10 @@ ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
 
          // System Information
          if ((info = parseResponseSysInfo(frame)))
+            break;
+
+         // Get multiple block security status
+         if ((info = parseResponseGetSecurity(frame)))
             break;
 
          // generic NFC-V response frame...
@@ -784,7 +792,6 @@ ProtocolFrame *ParserNfcV::parseRequestSysInfo(const nfc::NfcFrame &frame)
    root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
 
    return root;
-
 }
 
 ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
@@ -842,11 +849,11 @@ ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
       {
          ProtocolFrame *amem = root->appendChild(buildFieldInfo("MEMORY", toByteArray(frame, offset, 2)));
 
-         int size = frame[offset++] & 0x1f;
          int count = frame[offset++];
+         int size = frame[offset++] & 0x1f;
 
-         amem->appendChild(buildFieldInfo(QString("[...%1] Block size %2 bytes").arg(size, 5, 2, QChar('0')).arg(size)));
          amem->appendChild(buildFieldInfo(QString("[%1] Number of blocks %2").arg(count, 8, 2, QChar('0')).arg(count)));
+         amem->appendChild(buildFieldInfo(QString("[...%1] Block size %2 bytes").arg(size, 5, 2, QChar('0')).arg(size)));
       }
 
       // IC reference field is not present
@@ -861,7 +868,52 @@ ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
    root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
 
    return root;
+}
 
+/*
+ * Get multiple block security status
+ * Command code = 0x2C
+ * When receiving the Get multiple block security status command, the VICC shall send back the block security status.
+ */
+ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const nfc::NfcFrame &frame)
+{
+   if (frame[1] != 0x2C)
+      return nullptr;
+
+   ProtocolFrame *root = buildFrameInfo("GetSecurity", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+
+   int offset = 2;
+
+   root->appendChild(buildRequestFlags(frame[0]));
+
+   // if UID flag is set parse address
+   if ((frame[0] & 0x24) == 0x20)
+   {
+      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      offset += 8;
+   }
+
+   root->appendChild(buildFieldInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildFieldInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+
+   return root;
+}
+
+ProtocolFrame *ParserNfcV::parseResponseGetSecurity(const nfc::NfcFrame &frame)
+{
+   if (lastCommand != 0x2C)
+      return nullptr;
+
+   int flags = frame[0];
+
+   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+
+   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildFieldInfo("DATA", toByteArray(frame, 1, frame.limit() - 3)));
+   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+
+   return root;
 }
 
 ProtocolFrame *ParserNfcV::parseRequestGeneric(const nfc::NfcFrame &frame)
