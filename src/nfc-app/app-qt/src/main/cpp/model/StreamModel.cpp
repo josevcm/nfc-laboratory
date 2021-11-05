@@ -75,7 +75,8 @@ static QMap<int, QString> NfcVCmd = {
       {0x28, "LockAFI"},
       {0x29, "WriteDSFID"},
       {0x2a, "LockDSFID"},
-      {0x2b, "SysInfo"}
+      {0x2b, "SysInfo"},
+      {0x2c, "GetSecurity"}
 };
 
 struct StreamModel::Impl

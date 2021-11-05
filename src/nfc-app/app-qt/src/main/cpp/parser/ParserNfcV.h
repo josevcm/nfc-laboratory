@@ -89,6 +89,10 @@ struct ParserNfcV : ParserNfc
 
    ProtocolFrame *parseResponseSysInfo(const nfc::NfcFrame &frame);
 
+   ProtocolFrame *parseRequestGetSecurity(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseGetSecurity(const nfc::NfcFrame &frame);
+
    ProtocolFrame *parseRequestGeneric(const nfc::NfcFrame &frame);
 
    ProtocolFrame *parseResponseGeneric(const nfc::NfcFrame &frame);
