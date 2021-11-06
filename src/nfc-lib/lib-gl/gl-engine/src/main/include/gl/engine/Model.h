@@ -35,7 +35,7 @@
 namespace gl {
 
 class Viewer;
-class Ligthing;
+class Lighting;
 class Transform;
 
 class Model : public Drawable

@@ -47,9 +47,9 @@ struct GeometryShader::Impl
    int vertexTexelId = -1;
 
    int objectColorId = -1;
-   int ambientLigthColorId = -1;
-   int diffuseLigthColorId = -1;
-   int diffuseLigthVectorId = -1;
+   int ambientLightColorId = -1;
+   int diffuseLightColorId = -1;
+   int diffuseLightVectorId = -1;
 
    explicit Impl(const Assets *assets) : assets(assets)
    {
@@ -101,9 +101,9 @@ bool GeometryShader::load(const std::string &name)
       self->vertexTexelId = attribLocation("aVertexTexel");
 
       // setup light uniform locations
-      self->ambientLigthColorId = uniformLocation("uAmbientLigthColor");
-      self->diffuseLigthColorId = uniformLocation("uDiffuseLigthColor");
-      self->diffuseLigthVectorId = uniformLocation("uDiffuseLigthVector");
+      self->ambientLightColorId = uniformLocation("uAmbientLightColor");
+      self->diffuseLightColorId = uniformLocation("uDiffuseLightColor");
+      self->diffuseLightVectorId = uniformLocation("uDiffuseLightVector");
 
       // setup object color uniform location
       self->objectColorId = uniformLocation("uObjectColor");
@@ -135,26 +135,26 @@ void GeometryShader::endProgram() const
    AbstractShader::endProgram();
 }
 
-void GeometryShader::setLightingModel(const Ligthing &ligthing) const
+void GeometryShader::setLightingModel(const Lighting &lighting) const
 {
-   setAmbientLigthColor(ligthing.ambientLigth.color);
-   setDiffuseLigthColor(ligthing.diffuseLigth.color);
-   setDiffuseLigthVector(ligthing.diffuseLigth.vector);
+   setAmbientLightColor(lighting.ambientLight.color);
+   setDiffuseLightColor(lighting.diffuseLight.color);
+   setDiffuseLightVector(lighting.diffuseLight.vector);
 }
 
-void GeometryShader::setAmbientLigthColor(const Color &color) const
+void GeometryShader::setAmbientLightColor(const Color &color) const
 {
-   setUniformFloat(self->ambientLigthColorId, {color.r, color.g, color.b});
+   setUniformFloat(self->ambientLightColorId, {color.r, color.g, color.b});
 }
 
-void GeometryShader::setDiffuseLigthColor(const Color &color) const
+void GeometryShader::setDiffuseLightColor(const Color &color) const
 {
-   setUniformFloat(self->diffuseLigthColorId, {color.r, color.g, color.b});
+   setUniformFloat(self->diffuseLightColorId, {color.r, color.g, color.b});
 }
 
-void GeometryShader::setDiffuseLigthVector(const Point &vector) const
+void GeometryShader::setDiffuseLightVector(const Point &vector) const
 {
-   setUniformFloat(self->diffuseLigthVectorId, {vector.x, vector.y, vector.z});
+   setUniformFloat(self->diffuseLightVectorId, {vector.x, vector.y, vector.z});
 }
 
 void GeometryShader::setObjectColor(const Color &color) const

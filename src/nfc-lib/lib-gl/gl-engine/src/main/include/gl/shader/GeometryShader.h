@@ -33,7 +33,7 @@ class Assets;
 class Buffer;
 class Point;
 class Color;
-class Ligthing;
+class Lighting;
 class Geometry;
 
 class GeometryShader : public AbstractShader
@@ -52,15 +52,15 @@ class GeometryShader : public AbstractShader
 
       void endProgram() const override;
 
-      void setLightingModel(const Ligthing &ligthing) const;
+      void setLightingModel(const Lighting &lighting) const;
 
       void setObjectColor(const Color &color) const;
 
-      void setAmbientLigthColor(const Color &color) const;
+      void setAmbientLightColor(const Color &color) const;
 
-      void setDiffuseLigthColor(const Color &color) const;
+      void setDiffuseLightColor(const Color &color) const;
 
-      void setDiffuseLigthVector(const Point &vector) const;
+      void setDiffuseLightVector(const Point &vector) const;
 
       void setVertexColors(const Buffer &buffer, int components = 4, int offset = 0, int stride = 0) const;
 
