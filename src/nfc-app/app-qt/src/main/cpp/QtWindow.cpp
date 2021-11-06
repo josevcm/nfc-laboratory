@@ -133,7 +133,7 @@ struct QtWindow::Impl
 
       // subscribe to signal events
       signalRealSubscription = signalRealStream->subscribe([=](const sdr::SignalBuffer &buffer) {
-//         ui->signalView->refresh(buffer);
+         ui->signalView->refresh(buffer);
       });
 
       // subscribe to signal events
@@ -184,6 +184,11 @@ struct QtWindow::Impl
 
       // connect selection signal from timing graph
       QObject::connect(ui->timingView, &TimingWidget::selectionChanged, [=](double from, double to) {
+         timingSelectionChanged(from, to);
+      });
+
+      // connect selection signal from timing graph
+      QObject::connect(ui->signalView, &SignalWidget::selectionChanged, [=](double from, double to) {
          timingSelectionChanged(from, to);
       });
 
@@ -623,6 +628,7 @@ struct QtWindow::Impl
    void clearGraph()
    {
       ui->timingView->clear();
+      ui->signalView->clear();
    }
 
    void refreshView()
@@ -746,6 +752,11 @@ struct QtWindow::Impl
          ui->timingView->blockSignals(true);
          ui->timingView->select(startTime, endTime);
          ui->timingView->blockSignals(false);
+
+         // select frames un timing view
+         ui->signalView->blockSignals(true);
+         ui->signalView->select(startTime, endTime);
+         ui->signalView->blockSignals(false);
       }
    }
 

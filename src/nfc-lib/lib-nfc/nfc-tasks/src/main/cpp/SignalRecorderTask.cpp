@@ -63,10 +63,10 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
       signalRealStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
 
       // subscribe to signal events
-      signalIQSubscription = signalIQStream->subscribe([this](const sdr::SignalBuffer &buffer) {
-         if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
-            signalQueue.add(buffer);
-      });
+//      signalIQSubscription = signalIQStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+//         if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
+//            signalQueue.add(buffer);
+//      });
 
       // subscribe to signal events
       signalRealSubscription = signalRealStream->subscribe([this](const sdr::SignalBuffer &buffer) {
@@ -286,10 +286,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
          {
             if (!buffer->isEmpty())
             {
-               if (buffer->type() == sdr::SignalType::REAL_VALUE)
-               {
-                  device->write(*buffer);
-               }
+               device->write(buffer.value());
             }
          }
       }

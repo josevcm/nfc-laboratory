@@ -56,6 +56,10 @@ class SignalWidget : public QWidget
       void enterEvent(QEvent *event) override;
       void leaveEvent(QEvent *event) override;
 
+   public:
+
+      Q_SIGNAL void selectionChanged(double from, double to);
+
    private:
 
       QSharedPointer<Impl> impl;

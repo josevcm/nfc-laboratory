@@ -133,15 +133,42 @@ struct SignalWidget::Impl
       }
 
       // update view range
-      plot->xAxis->setRange(lowerSignalRange, upperSignalRange);
+//      plot->xAxis->setRange(lowerSignalRange, upperSignalRange);
    }
 
    void select(double from, double to)
    {
+      for (int i = 0; i < plot->graphCount(); i++)
+      {
+         QCPDataSelection selection;
+
+         QCPGraph *graph = plot->graph(i);
+
+         int begin = graph->findBegin(from, false);
+         int end = graph->findEnd(to, false);
+
+         selection.addDataRange(QCPDataRange(begin, end));
+
+         graph->setSelection(selection);
+      }
+
+      selectionChanged();
    }
 
    void clear()
    {
+      lowerSignalRange = INFINITY;
+      upperSignalRange = 0;
+
+      plot->xAxis->setRange(0, 1);
+
+      for (int i = 0; i < plot->graphCount(); i++)
+      {
+         plot->graph(i)->data()->clear();
+         plot->graph(i)->setSelection(QCPDataSelection());
+      }
+
+      plot->replot();
    }
 
    void mouseEnter() const
@@ -162,10 +189,17 @@ struct SignalWidget::Impl
 
    void selectionChanged() const
    {
+      // trigger selection changed signal
+//      widget->selectionChanged(startTime, endTime);
    }
 
    void rangeChanged(const QCPRange &newRange) const
    {
+      if (newRange.lower != INFINITY && lowerSignalRange != INFINITY && newRange.lower < lowerSignalRange)
+         plot->xAxis->setRangeLower(lowerSignalRange);
+
+      if (newRange.upper != INFINITY && upperSignalRange != INFINITY && newRange.upper > upperSignalRange)
+         plot->xAxis->setRangeUpper(upperSignalRange);
    }
 
    void setCenterFreq(long value)
