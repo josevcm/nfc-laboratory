@@ -106,18 +106,18 @@ struct Vertex
    Normal normal;
 } __attribute__((packed));
 
-struct Ligth
+struct Light
 {
    Point point;
    Point vector;
    Color color;
 } __attribute__((packed));
 
-struct Ligthing
+struct Lighting
 {
-   Ligth ambientLigth;
-   Ligth diffuseLigth;
-   Ligth specularLigth;
+   Light ambientLight;
+   Light diffuseLight;
+   Light specularLight;
 } __attribute__((packed));
 
 struct Geometry

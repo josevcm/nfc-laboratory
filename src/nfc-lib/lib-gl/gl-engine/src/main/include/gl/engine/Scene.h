@@ -33,7 +33,7 @@ class Scene : public Object
 {
    public:
 
-      Ligthing ligthing;
+      Lighting lighting;
 };
 
 }
