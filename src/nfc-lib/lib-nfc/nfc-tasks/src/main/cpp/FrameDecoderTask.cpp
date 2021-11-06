@@ -38,13 +38,13 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    int status;
 
    // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *signalSubject = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalRealStream = nullptr;
 
    // frame stream subject
-   rt::Subject<nfc::NfcFrame> *frameSubject = nullptr;
+   rt::Subject<nfc::NfcFrame> *frameDecoderStream = nullptr;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalRealSubscription;
 
    // signal stream queue buffer
    rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
@@ -58,13 +58,13 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    Impl() : AbstractTask("FrameDecoderTask", "decoder"), status(FrameDecoderTask::Halt), decoder(new nfc::NfcDecoder())
    {
       // access to signal subject stream
-      signalSubject = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalRealStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
 
       // create frame stream subject
-      frameSubject = rt::Subject<nfc::NfcFrame>::name("decoder.frame");
+      frameDecoderStream = rt::Subject<nfc::NfcFrame>::name("decoder.frame");
 
       // subscribe to signal events
-      signalSubscription = signalSubject->subscribe([this](const sdr::SignalBuffer &buffer) {
+      signalRealSubscription = signalRealStream->subscribe([this](const sdr::SignalBuffer &buffer) {
          if (status == FrameDecoderTask::Listen)
             signalQueue.add(buffer);
       });
@@ -248,7 +248,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       {
          for (const auto &frame : decoder->nextFrames(buffer.value()))
          {
-            frameSubject->next(frame);
+            frameDecoderStream->next(frame);
          }
 
          if (!buffer->isValid())

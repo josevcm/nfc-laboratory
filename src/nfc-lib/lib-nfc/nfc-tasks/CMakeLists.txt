@@ -9,7 +9,6 @@ add_library(nfc-tasks STATIC
         src/main/cpp/FrameStorageTask.cpp
         src/main/cpp/SignalReceiverTask.cpp
         src/main/cpp/SignalRecorderTask.cpp
-        src/main/cpp/CarrierDetectorTask.cpp
         )
 
 target_include_directories(nfc-tasks PUBLIC ${PUBLIC_INCLUDE_DIR})

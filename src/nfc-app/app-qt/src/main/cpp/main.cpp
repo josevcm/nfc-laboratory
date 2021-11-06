@@ -27,6 +27,7 @@
 #include <rt/Subject.h>
 #include <rt/Event.h>
 
+#include <sdr/SignalType.h>
 #include <sdr/RecordDevice.h>
 
 #include <nfc/SignalReceiverTask.h>
@@ -86,13 +87,13 @@ int startTest(int argc, char *argv[])
    {
       while (!source.isEof())
       {
-         sdr::SignalBuffer samples(65536 * source.channelCount(), source.channelCount(), source.sampleRate());
+         sdr::SignalBuffer samples(65536 * source.channelCount(), source.channelCount(), source.sampleRate(), 0, 0, sdr::SignalType::REAL_VALUE);
 
          if (source.read(samples) > 0)
          {
             std::list<nfc::NfcFrame> frames = decoder.nextFrames(samples);
 
-            for (const nfc::NfcFrame &frame : frames)
+            for (const nfc::NfcFrame &frame: frames)
             {
                if (frame.isPollFrame())
                {

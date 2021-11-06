@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,40 +22,18 @@
 
 */
 
-#ifndef SDR_SIGNALBUFFER_H
-#define SDR_SIGNALBUFFER_H
-
-#include <rt/Buffer.h>
+#ifndef SDR_SIGNALTYPE_H
+#define SDR_SIGNALTYPE_H
 
 namespace sdr {
 
-class SignalBuffer : public rt::Buffer<float>
+enum SignalType
 {
-      struct Impl;
-
-   public:
-
-      SignalBuffer();
-
-      SignalBuffer(unsigned int length, unsigned int stride, unsigned int samplerate, unsigned int offset, unsigned int decimation, int type, void *context = nullptr);
-
-      SignalBuffer(float *data, unsigned int length, unsigned int stride, unsigned int samplerate, unsigned int offset, unsigned int decimation, int type, void *context = nullptr);
-
-      SignalBuffer(const SignalBuffer &other);
-
-      SignalBuffer &operator=(const SignalBuffer &other);
-
-      unsigned int offset() const;
-
-      unsigned int decimation() const;
-
-      unsigned int sampleRate() const;
-
-   private:
-
-      std::shared_ptr<Impl> impl;
+   REAL_VALUE = 1,
+   COMPLEX_IQ = 2,
+   COMPLEX_FREQ = 3
 };
 
 }
 
-#endif //NFC_LAB_SIGNALBUFFER_H
+#endif

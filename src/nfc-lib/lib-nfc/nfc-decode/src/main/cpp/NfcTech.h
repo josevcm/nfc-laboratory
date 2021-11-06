@@ -27,6 +27,7 @@
 
 #include <cmath>
 
+#include <sdr/SignalType.h>
 #include <sdr/RecordDevice.h>
 
 #include <nfc/Nfc.h>
@@ -36,10 +37,10 @@
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-#define DEBUG_SIGNAL_AVERG_CHANNEL 2
+//#define DEBUG_SIGNAL_AVERG_CHANNEL 2
 //#define DEBUG_SIGNAL_STDEV_CHANNEL 2
 //#define DEBUG_SIGNAL_EDGE_CHANNEL 3
-#define DEBUG_SIGNAL_DEEP_CHANNEL 3
+//#define DEBUG_SIGNAL_DEEP_CHANNEL 3
 #endif
 
 namespace nfc {
@@ -107,7 +108,7 @@ struct SignalDebug
 
    inline void begin(int sampleCount)
    {
-      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate());
+      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate(), 0, 0, sdr::SignalType::REAL_VALUE);
    }
 
    inline void write()
@@ -379,30 +380,11 @@ struct DecoderStatus
    // process next sample from signal buffer
    inline bool nextSample(sdr::SignalBuffer &buffer)
    {
-      if (buffer.available() == 0)
+      if (buffer.available() == 0 || buffer.type() != sdr::SignalType::REAL_VALUE)
          return false;
 
-      // real-value signal
-      if (buffer.stride() == 1)
-      {
-         // read next sample data
-         buffer.get(signalStatus.signalValue);
-      }
-
-         // IQ channel signal
-      else
-      {
-         float sampleData[2];
-
-         // read next sample data
-         buffer.get(sampleData, 2);
-
-         // compute magnitude from IQ channels
-         auto i = double(sampleData[0]);
-         auto q = double(sampleData[1]);
-
-         signalStatus.signalValue = sqrtf(i * i + q * q);
-      }
+      // read next sample data
+      buffer.get(signalStatus.signalValue);
 
       // update signal clock
       ++signalClock;

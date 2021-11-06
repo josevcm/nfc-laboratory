@@ -239,7 +239,7 @@ struct NfcA::Impl
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
 
          // detect maximum correlation peak
@@ -731,7 +731,7 @@ struct NfcA::Impl
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
 
          // set next search sync window from previous state
@@ -909,7 +909,7 @@ struct NfcA::Impl
          if (correlatedSD > modulation->searchThreshold)
          {
 #ifdef DEBUG_ASK_CORR_CHANNEL
-            decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+            decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
             // max correlation peak detector
             if (correlatedSD > modulation->correlationPeek)
@@ -1014,7 +1014,7 @@ struct NfcA::Impl
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
          // set next search window from previous symbol
          if (!modulation->searchStartTime)

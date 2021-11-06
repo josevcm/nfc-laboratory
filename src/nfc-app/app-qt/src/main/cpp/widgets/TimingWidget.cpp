@@ -225,15 +225,15 @@ struct TimingWidget::Impl
       // enable opengl
 //      plot->setOpenGl(true);
 
-      // disable aliasing to increase performance
-      plot->setNoAntialiasingOnDrag(true);
-
       // data label for Y-axis
       QSharedPointer <QCPAxisTickerText> textTicker(new QCPAxisTickerText);
 
       textTicker->addTick(1, "RF");
       textTicker->addTick(2, "SEL");
       textTicker->addTick(3, "APP");
+
+      // disable aliasing to increase performance
+      plot->setNoAntialiasingOnDrag(true);
 
       // configure plot
       plot->setBackground(Qt::NoBrush);

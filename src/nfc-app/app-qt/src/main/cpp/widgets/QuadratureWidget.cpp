@@ -45,6 +45,7 @@ struct QuadratureWidget::Impl : public gl::Engine
    // application resources
    QtResources *resources = nullptr;
 
+   // signal quadrature view
    nfc::QuadratureView *quadratureView = nullptr;
 
    // frame clock
