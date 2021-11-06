@@ -307,24 +307,39 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
    {
       if (auto entry = signalQueue.get(50))
       {
-         sdr::SignalBuffer &buffer = entry.value();
-         sdr::SignalBuffer result(buffer.elements(), 1, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::REAL_VALUE);
+//         switch (buffer->type())
+//         {
+//            case sdr::SignalType::COMPLEX_IQ:
+//               signalIQStream->next(buffer.value());
+//               break;
+//
+//            case sdr::SignalType::REAL_VALUE:
+//               signalRealStream->next(buffer.value());
+//               break;
+//         }
 
-         float *src = buffer.data();
-         float *dst = result.pull(buffer.elements());
+         sdr::SignalBuffer buffer = entry.value();
 
-         for (int i = 0, n = 0; i < buffer.elements(); i++, n += 2)
+         if (buffer.type() == sdr::SignalType::COMPLEX_IQ)
          {
-            dst[i] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
+            sdr::SignalBuffer result(buffer.elements(), 1, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::REAL_VALUE);
+
+            float *src = buffer.data();
+            float *dst = result.pull(buffer.elements());
+
+            for (int i = 0, n = 0; i < buffer.elements(); i++, n += 2)
+            {
+               dst[i] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
+            }
+
+            result.flip();
+
+            // send IQ value buffer
+            signalIQStream->next(buffer);
+
+            // send Real value buffer
+            signalRealStream->next(result);
          }
-
-         result.flip();
-
-         // send IQ value buffer
-         signalIQStream->next(buffer);
-
-         // send Real value buffer
-         signalRealStream->next(result);
       }
    }
 };

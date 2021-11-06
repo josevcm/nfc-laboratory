@@ -158,7 +158,7 @@ struct AirspyDevice::Impl
          if ((deviceError = airspy_board_partid_serialno_read(handle, &devicePart)) != AIRSPY_SUCCESS)
             log.warn("failed airspy_board_partid_serialno_read: [{}] {}", {deviceError, airspy_error_name((enum airspy_error) deviceError)});
 
-         // set sample type yo AIRSPY_SAMPLE_FLOAT32_IQ
+         // set sample type
          if ((deviceError = airspy_set_sample_type(handle, deviceSample)) != AIRSPY_SUCCESS)
             log.warn("failed airspy_set_sample_type: [{}] {}", {deviceError, airspy_error_name((enum airspy_error) deviceError)});
 
@@ -676,8 +676,18 @@ int process_transfer(airspy_transfer *transfer)
    // check device validity
    if (auto *device = static_cast<AirspyDevice::Impl *>(transfer->ctx))
    {
-      // generate sample block buffer
-      SignalBuffer buffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::COMPLEX_IQ);
+      SignalBuffer buffer;
+
+      switch (transfer->sample_type)
+      {
+         case AIRSPY_SAMPLE_FLOAT32_REAL:
+            buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count, 1, device->sampleRate, device->samplesReceived, 0, SignalType::REAL_VALUE);
+            break;
+
+         case AIRSPY_SAMPLE_FLOAT32_IQ:
+            buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::COMPLEX_IQ);
+            break;
+      }
 
       // update counters
       device->samplesReceived += transfer->sample_count;
