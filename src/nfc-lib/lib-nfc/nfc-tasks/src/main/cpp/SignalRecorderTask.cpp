@@ -24,6 +24,7 @@
 
 #include <rt/Logger.h>
 
+#include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 #include <sdr/RecordDevice.h>
 
@@ -39,10 +40,12 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
    int status;
 
    // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *signalStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalIQStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalRealStream = nullptr;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalIQSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalRealSubscription;
 
    // signal stream queue buffer
    rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
@@ -56,10 +59,17 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
    Impl() : AbstractTask("SignalRecorderTask", "recorder"), status(SignalRecorderTask::Idle)
    {
       // access to signal subject stream
-      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalIQStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalRealStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
 
       // subscribe to signal events
-      signalSubscription = signalStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+      signalIQSubscription = signalIQStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+         if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
+            signalQueue.add(buffer);
+      });
+
+      // subscribe to signal events
+      signalRealSubscription = signalRealStream->subscribe([this](const sdr::SignalBuffer &buffer) {
          if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
             signalQueue.add(buffer);
       });
@@ -236,11 +246,20 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
    {
       if (device && device->isOpen())
       {
-         sdr::SignalBuffer samples(65536 * device->channelCount(), device->channelCount(), device->sampleRate());
+         sdr::SignalBuffer samples(65536 * device->channelCount(), device->channelCount(), device->sampleRate(), device->sampleOffset(), 0, device->channelCount() == 2 ? sdr::SignalType::COMPLEX_IQ : sdr::SignalType::REAL_VALUE);
 
          if (device->read(samples) > 0)
          {
-            signalStream->next(samples);
+            switch (samples.type())
+            {
+               case sdr::SignalType::COMPLEX_IQ:
+                  signalIQStream->next(samples);
+                  break;
+
+               case sdr::SignalType::REAL_VALUE:
+                  signalRealStream->next(samples);
+                  break;
+            }
          }
 
          if (device->isEof())
@@ -248,7 +267,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
             log.info("streaming finished for file [{}]", {device->name()});
 
             // send null buffer for EOF
-            signalStream->next({});
+            signalRealStream->next({});
 
             // close file
             device.reset();
@@ -267,18 +286,10 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
          {
             if (!buffer->isEmpty())
             {
-//               device->write(buffer.value());
-
-               // convert I/Q samples to Real sample
-               sdr::SignalBuffer result(buffer->elements(), 1, buffer->sampleRate());
-
-               buffer->stream([&result](const float *value, int stride) {
-                  result.put(sqrtf(value[0] * value[0] + value[1] * value[1]));
-               });
-
-               result.flip();
-
-               device->write(result);
+               if (buffer->type() == sdr::SignalType::REAL_VALUE)
+               {
+                  device->write(*buffer);
+               }
             }
          }
       }

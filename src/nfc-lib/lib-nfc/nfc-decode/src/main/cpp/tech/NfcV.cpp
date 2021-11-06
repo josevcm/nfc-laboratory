@@ -236,7 +236,7 @@ struct NfcV::Impl
       float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-      decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
+      decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS0);
 #endif
 
       // search for first falling edge
@@ -631,7 +631,7 @@ struct NfcV::Impl
          float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS0);
 #endif
 
          // set next search sync window from previous state
@@ -796,7 +796,7 @@ struct NfcV::Impl
             modulation->searchThreshold = signalMDev;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedS0);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS0);
 #endif
          // poll frame modulation detected while waiting for response
          if (signalDeep > 0.95)
@@ -961,7 +961,7 @@ struct NfcV::Impl
          float correlatedSD = std::fabs(correlatedS0);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
          // set next search sync window from previous state
          if (!modulation->searchStartTime)

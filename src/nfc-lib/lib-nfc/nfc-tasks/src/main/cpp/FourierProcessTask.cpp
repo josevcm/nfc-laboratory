@@ -31,6 +31,9 @@
 #include <nfc/NfcDecoder.h>
 #include <nfc/FourierProcessTask.h>
 
+#include <sdr/SignalType.h>
+#include <sdr/SignalBuffer.h>
+
 #include "AbstractTask.h"
 
 namespace nfc {
@@ -54,13 +57,13 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
    mufft_plan_1d *fftPlan = nullptr;
 
    // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *signalStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalIQStream = nullptr;
 
    // signal buffer frame stream subject
    rt::Subject<sdr::SignalBuffer> *frequencyStream = nullptr;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalIQSubscription;
 
    // last status sent
    std::chrono::time_point<std::chrono::steady_clock> lastStatus;
@@ -80,13 +83,13 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       fftPlan = mufft_create_plan_1d_c2c(length, MUFFT_FORWARD, MUFFT_FLAG_CPU_NO_AVX);
 
       // access to signal subject stream
-      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalIQStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
 
       // access to signal subject stream
       frequencyStream = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
 
       // subscribe to signal events
-      signalSubscription = signalStream->subscribe([=](const sdr::SignalBuffer &buffer) {
+      signalIQSubscription = signalIQStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          if (signalMutex.try_lock())
          {
             signalBuffer = buffer;
@@ -139,12 +142,12 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       std::lock_guard<std::mutex> lock(signalMutex);
 
       // IQ complex signal to real FFT transform
-      if (signalBuffer.isValid() && signalBuffer.stride() == 2)
+      if (signalBuffer.isValid() && signalBuffer.type() == sdr::SignalType::COMPLEX_IQ)
       {
          float *data = signalBuffer.data();
 
          // apply signal windowing and decimation
-         #pragma GCC ivdep
+#pragma GCC ivdep
          for (int i = 0, w = 0; w < length; i += 2, w++)
          {
             fftIn[i + 0] = data[decimation * i + 0] * fftWin[w];
@@ -155,14 +158,14 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          mufft_execute_plan_1d(fftPlan, fftOut, fftIn);
 
          // apply FFT complex to real
-         #pragma GCC ivdep
+#pragma GCC ivdep
          for (int i = 0, w = 0; w < length; i += 2, w++)
          {
             fftMag[w] = std::sqrt(fftOut[i] * fftOut[i] + fftOut[i + 1] * fftOut[i + 1]);
          }
 
          // create output buffer
-         sdr::SignalBuffer result(length, 1, signalBuffer.sampleRate(), decimation, 1);
+         sdr::SignalBuffer result(length, 1, signalBuffer.sampleRate(), 0, decimation, sdr::SignalType::COMPLEX_FREQ);
 
          // add data width negative / positive frequency shift
          result.put(fftMag + (length >> 1), (length >> 1)).put(fftMag, (length >> 1)).flip();

@@ -26,6 +26,7 @@
 #include <rt/Format.h>
 #include <rt/BlockingQueue.h>
 
+#include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 #include <sdr/AirspyDevice.h>
 
@@ -40,16 +41,22 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
    // radio device
    std::shared_ptr<sdr::RadioDevice> receiver;
 
-   // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *signalStream = nullptr;
+   // signal stream subject for IQ data
+   rt::Subject<sdr::SignalBuffer> *signalIQStream = nullptr;
+
+   // signal stream subject for real data
+   rt::Subject<sdr::SignalBuffer> *signalRealStream = nullptr;
+
+   // signal stream queue buffer
+   rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
 
    // last detection attempt
    std::chrono::time_point<std::chrono::steady_clock> lastSearch;
 
    Impl() : AbstractTask("SignalReceiverTask", "receiver")
    {
-      // access to signal subject stream
-      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalIQStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalRealStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
    }
 
    void start() override
@@ -101,7 +108,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          refresh();
       }
 
-      wait(50);
+      processQueue();
 
       return true;
    }
@@ -113,7 +120,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       if (!receiver)
       {
          // open first available receiver
-         for (const auto &name : sdr::AirspyDevice::listDevices())
+         for (const auto &name: sdr::AirspyDevice::listDevices())
          {
             // create device instance
             receiver.reset(new sdr::AirspyDevice(name));
@@ -146,7 +153,10 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          log.warn("device {} disconnected", {receiver->name()});
 
          // send null buffer for EOF
-         signalStream->next({});
+         signalIQStream->next({});
+
+         // send null buffer for EOF
+         signalRealStream->next({});
 
          // close device
          receiver.reset();
@@ -165,7 +175,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       {
          log.info("start streaming for device {}", {receiver->name()});
 
-         receiver->start([this](sdr::SignalBuffer &buffer) { signalStream->next(buffer); });
+         receiver->start([this](sdr::SignalBuffer &buffer) { signalQueue.add(buffer); });
 
          command.resolve();
 
@@ -260,7 +270,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          // send capabilities on data attach
          if (event == SignalReceiverTask::Attach)
          {
-            for (const auto &entry : receiver->supportedGainModes())
+            for (const auto &entry: receiver->supportedGainModes())
             {
                data["gainModes"].push_back({
                                                  {"value", entry.first},
@@ -268,7 +278,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                                            });
             }
 
-            for (const auto &entry : receiver->supportedGainValues())
+            for (const auto &entry: receiver->supportedGainValues())
             {
                data["gainValues"].push_back({
                                                   {"value", entry.first},
@@ -276,7 +286,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                                             });
             }
 
-            for (const auto &entry : receiver->supportedSampleRates())
+            for (const auto &entry: receiver->supportedSampleRates())
             {
                data["sampleRates"].push_back({
                                                    {"value", entry.first},
@@ -291,6 +301,31 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       }
 
       updateStatus(event, data);
+   }
+
+   void processQueue()
+   {
+      if (auto entry = signalQueue.get(50))
+      {
+         sdr::SignalBuffer &buffer = entry.value();
+         sdr::SignalBuffer result(buffer.elements(), 1, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::REAL_VALUE);
+
+         float *src = buffer.data();
+         float *dst = result.pull(buffer.elements());
+
+         for (int i = 0, n = 0; i < buffer.elements(); i++, n += 2)
+         {
+            dst[i] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
+         }
+
+         result.flip();
+
+         // send IQ value buffer
+         signalIQStream->next(buffer);
+
+         // send Real value buffer
+         signalRealStream->next(result);
+      }
    }
 };
 

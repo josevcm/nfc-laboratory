@@ -24,12 +24,12 @@
 
 #include <queue>
 #include <mutex>
-#include <utility>
 
 #include <airspy.h>
 
 #include <rt/Logger.h>
 
+#include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 #include <sdr/AirspyDevice.h>
 
@@ -677,7 +677,7 @@ int process_transfer(airspy_transfer *transfer)
    if (auto *device = static_cast<AirspyDevice::Impl *>(transfer->ctx))
    {
       // generate sample block buffer
-      SignalBuffer buffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, 0, 0);
+      SignalBuffer buffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::COMPLEX_IQ);
 
       // update counters
       device->samplesReceived += transfer->sample_count;

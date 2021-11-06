@@ -22,40 +22,45 @@
 
 */
 
-#ifndef NFC_CARRIERDETECTORTASK_H
-#define NFC_CARRIERDETECTORTASK_H
+#ifndef NFC_LAB_SIGNALWIDGET_H
+#define NFC_LAB_SIGNALWIDGET_H
 
-#include <rt/Worker.h>
+#include <QWidget>
 
-namespace nfc {
+namespace sdr {
+class SignalBuffer;
+}
 
-class CarrierDetectorTask: public rt::Worker
+class SignalWidget : public QWidget
 {
-   public:
-
-      enum Command
-      {
-         Start,
-         Stop
-      };
-
-      enum Status
-      {
-         Idle,
-         Detection
-      };
-
-   private:
+   Q_OBJECT
 
       struct Impl;
 
-      CarrierDetectorTask();
-
    public:
 
-      static rt::Worker *construct();
+      explicit SignalWidget(QWidget *parent = nullptr);
+
+      void setCenterFreq(long value);
+
+      void setSampleRate(long value);
+
+      void refresh(const sdr::SignalBuffer &buffer);
+
+      void select(double from, double to);
+
+      void clear();
+
+   protected:
+
+      void enterEvent(QEvent *event) override;
+      void leaveEvent(QEvent *event) override;
+
+   private:
+
+      QSharedPointer<Impl> impl;
+
 };
 
-}
 
-#endif //NFC_LAB_CARRIERDETECTORTASK_H
+#endif //NFC_LAB_SIGNALWIDGET_H

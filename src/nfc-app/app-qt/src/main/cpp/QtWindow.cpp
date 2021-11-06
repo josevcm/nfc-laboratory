@@ -97,33 +97,47 @@ struct QtWindow::Impl
    // Clipboard data
    QString clipboard;
 
-   // raw signal data subject
-   rt::Subject<sdr::SignalBuffer> *signalSubject = nullptr;
+   // IQ signal data subject
+   rt::Subject<sdr::SignalBuffer> *signalIQStream = nullptr;
+
+   // Real signal data subject
+   rt::Subject<sdr::SignalBuffer> *signalRealStream = nullptr;
 
    // fft signal data subject
-   rt::Subject<sdr::SignalBuffer> *frequencySubject = nullptr;
+   rt::Subject<sdr::SignalBuffer> *frequencyStream = nullptr;
 
-   // raw signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
+   // IQ signal stream subscription
+   rt::Subject<sdr::SignalBuffer>::Subscription signalIQSubscription;
+
+   // Real signal stream subscription
+   rt::Subject<sdr::SignalBuffer>::Subscription signalRealSubscription;
 
    // fft signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription frequencySubscription;
 
    explicit Impl(QSettings &settings) : settings(settings), ui(new Ui_MainView()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
    {
-      // access to raw signal subject stream
-      signalSubject = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      // IQ signal subject stream
+      signalIQStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
 
-      // access to fft signal subject stream
-      frequencySubject = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
+      // real signal subject stream
+      signalRealStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+
+      // fft signal subject stream
+      frequencyStream = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
 
       // subscribe to signal events
-      signalSubscription = signalSubject->subscribe([=](const sdr::SignalBuffer &buffer) {
+      signalIQSubscription = signalIQStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          ui->quadratureView->refresh(buffer);
       });
 
       // subscribe to signal events
-      frequencySubscription = frequencySubject->subscribe([=](const sdr::SignalBuffer &buffer) {
+      signalRealSubscription = signalRealStream->subscribe([=](const sdr::SignalBuffer &buffer) {
+//         ui->signalView->refresh(buffer);
+      });
+
+      // subscribe to signal events
+      frequencySubscription = frequencyStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          ui->frequencyView->refresh(buffer);
       });
    }

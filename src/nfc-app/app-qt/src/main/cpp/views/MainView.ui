@@ -329,7 +329,7 @@
         </font>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>3</number>
        </property>
        <widget class="QTreeView" name="parserView">
         <property name="font">
@@ -365,9 +365,14 @@
          <string>Timing</string>
         </attribute>
        </widget>
-       <widget class="QWidget" name="signalView">
+       <widget class="SignalWidget" name="signalView">
         <attribute name="title">
          <string>Signal</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="qualityView">
+        <attribute name="title">
+         <string>Quality</string>
         </attribute>
         <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
@@ -742,19 +747,24 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QuadratureWidget</class>
-   <extends>QWidget</extends>
-   <header>widgets/QuadratureWidget.h</header>
-  </customwidget>
-  <customwidget>
    <class>FrequencyWidget</class>
    <extends>QWidget</extends>
    <header>widgets/FrequencyWidget.h</header>
   </customwidget>
   <customwidget>
+   <class>QuadratureWidget</class>
+   <extends>QWidget</extends>
+   <header>widgets/QuadratureWidget.h</header>
+  </customwidget>
+  <customwidget>
    <class>TimingWidget</class>
    <extends>QWidget</extends>
    <header>widgets/TimingWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SignalWidget</class>
+   <extends>QWidget</extends>
+   <header>widgets/SignalWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources>

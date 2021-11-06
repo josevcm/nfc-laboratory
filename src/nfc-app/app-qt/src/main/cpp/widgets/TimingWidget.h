@@ -34,9 +34,9 @@ class NfcFrame;
 
 class TimingWidget : public QWidget
 {
-      struct Impl;
-
    Q_OBJECT
+
+      struct Impl;
 
    public:
 

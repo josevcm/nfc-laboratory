@@ -30,21 +30,22 @@ struct SignalBuffer::Impl
 {
    long samplerate;
    long decimation;
+   long offset;
 
-   explicit Impl(long samplerate, long decimation) : samplerate(samplerate), decimation(decimation)
+   explicit Impl(long samplerate, long decimation, long offset) : samplerate(samplerate), decimation(decimation), offset(offset)
    {
    }
 };
 
-SignalBuffer::SignalBuffer() : impl(std::make_shared<Impl>(0, 0))
+SignalBuffer::SignalBuffer() : impl(std::make_shared<Impl>(0, 0, 0))
 {
 }
 
-SignalBuffer::SignalBuffer(unsigned int length, unsigned int stride, unsigned int samplerate, unsigned int decimation, int type, void *context) : Buffer<float>(length, type, stride, context), impl(std::make_shared<Impl>(samplerate, decimation))
+SignalBuffer::SignalBuffer(unsigned int length, unsigned int stride, unsigned int samplerate, unsigned int offset, unsigned int decimation, int type, void *context) : Buffer<float>(length, type, stride, context), impl(std::make_shared<Impl>(samplerate, decimation, offset))
 {
 }
 
-SignalBuffer::SignalBuffer(float *data, unsigned int length, unsigned int stride, unsigned int samplerate, unsigned int decimation, int type, void *context) : Buffer<float>(data, length, type, stride, context), impl(std::make_shared<Impl>(samplerate, decimation))
+SignalBuffer::SignalBuffer(float *data, unsigned int length, unsigned int stride, unsigned int samplerate, unsigned int offset, unsigned int decimation, int type, void *context) : Buffer<float>(data, length, type, stride, context), impl(std::make_shared<Impl>(samplerate, decimation, offset))
 {
 }
 
@@ -62,6 +63,11 @@ SignalBuffer &SignalBuffer::operator=(const SignalBuffer &other)
    impl = other.impl;
 
    return *this;
+}
+
+unsigned int SignalBuffer::offset() const
+{
+   return impl->offset;
 }
 
 unsigned int SignalBuffer::decimation() const

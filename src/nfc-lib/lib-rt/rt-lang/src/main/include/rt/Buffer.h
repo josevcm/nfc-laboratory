@@ -210,7 +210,7 @@ class Buffer
          return alloc ? alloc->data : nullptr;
       }
 
-      inline T *pull(int size)
+      inline T *pull(unsigned int size)
       {
          if (alloc && state.position + size <= state.capacity)
          {

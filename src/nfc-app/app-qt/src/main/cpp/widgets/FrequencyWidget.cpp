@@ -97,8 +97,6 @@ struct FrequencyWidget::Impl : public gl::Engine
       gl::Engine::resize(width, height);
 
       frequencyView->resize(width, height);
-
-      qDebug() << width << "x" << height;
    }
 
    void paint()
@@ -132,7 +130,6 @@ struct FrequencyWidget::Impl : public gl::Engine
 FrequencyWidget::FrequencyWidget(QWidget *parent) : QOpenGLWidget(parent), impl(new Impl())
 {
 }
-
 
 void FrequencyWidget::setCenterFreq(long value)
 {

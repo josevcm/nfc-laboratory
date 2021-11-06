@@ -28,6 +28,10 @@
 #include <QOpenGLWidget>
 #include <QOpenGLExtraFunctions>
 
+namespace sdr {
+class SignalBuffer;
+}
+
 class QuadratureWidget : public QOpenGLWidget, public QOpenGLExtraFunctions
 {
       Q_OBJECT
@@ -59,4 +63,4 @@ class QuadratureWidget : public QOpenGLWidget, public QOpenGLExtraFunctions
       Impl *impl;
 };
 
-#endif //NFC_LAB_QUALITYWIDGET_H
+#endif //APP_QUADRATUREWIDGET_H

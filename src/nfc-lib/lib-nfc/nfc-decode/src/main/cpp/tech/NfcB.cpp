@@ -345,6 +345,10 @@ struct NfcB::Impl
                   break;
                }
 
+#ifdef DEBUG_ASK_SYNC_CHANNEL
+               decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
+#endif
+
                // set SOF symbol parameters
                modulation->symbolEndTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
                modulation->symbolSyncTime = 0;

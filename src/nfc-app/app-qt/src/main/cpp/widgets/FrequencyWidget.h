@@ -28,7 +28,9 @@
 #include <QOpenGLWidget>
 #include <QOpenGLExtraFunctions>
 
-#include <sdr/SignalBuffer.h>
+namespace sdr {
+class SignalBuffer;
+}
 
 class FrequencyWidget : public QOpenGLWidget, public QOpenGLExtraFunctions
 {
