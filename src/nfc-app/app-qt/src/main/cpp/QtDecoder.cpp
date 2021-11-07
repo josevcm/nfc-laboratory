@@ -32,6 +32,8 @@
 #include <rt/Event.h>
 #include <rt/Subject.h>
 
+#include <sdr/SignalBuffer.h>
+
 #include <nfc/NfcFrame.h>
 
 #include <nfc/FrameDecoderTask.h>
@@ -45,6 +47,7 @@
 #include <events/SystemShutdownEvent.h>
 #include <events/ReceiverStatusEvent.h>
 #include <events/StorageStatusEvent.h>
+#include <events/SignalBufferEvent.h>
 
 #include "QtApplication.h"
 #include "QtDecoder.h"
@@ -73,6 +76,9 @@ struct QtDecoder::Impl
    rt::Subject<nfc::NfcFrame> *decoderFrameSubject = nullptr;
    rt::Subject<nfc::NfcFrame> *storageFrameSubject = nullptr;
 
+   // signal data subjects
+   rt::Subject<sdr::SignalBuffer> *signalBufferSubject = nullptr;
+
    // subscriptions
    rt::Subject<rt::Event>::Subscription decoderStatusSubscription;
    rt::Subject<rt::Event>::Subscription recorderStatusSubscription;
@@ -82,6 +88,9 @@ struct QtDecoder::Impl
    // frame stream subscription
    rt::Subject<nfc::NfcFrame>::Subscription decoderFrameSubscription;
    rt::Subject<nfc::NfcFrame>::Subscription storageFrameSubscription;
+
+   // signal stream subscription
+   rt::Subject<sdr::SignalBuffer>::Subscription signalBufferSubscription;
 
    explicit Impl(QSettings &settings) : settings(settings)
    {
@@ -100,6 +109,9 @@ struct QtDecoder::Impl
       // create frame subject
       decoderFrameSubject = rt::Subject<nfc::NfcFrame>::name("decoder.frame");
       storageFrameSubject = rt::Subject<nfc::NfcFrame>::name("storage.frame");
+
+      // create signal subject
+      signalBufferSubject = rt::Subject<sdr::SignalBuffer>::name("signal.real");
    }
 
    void systemStartup(SystemStartupEvent *event)
@@ -127,6 +139,10 @@ struct QtDecoder::Impl
 
       storageFrameSubscription = storageFrameSubject->subscribe([this](const nfc::NfcFrame &frame) {
          frameEvent(frame);
+      });
+
+      signalBufferSubscription = signalBufferSubject->subscribe([this](const sdr::SignalBuffer &buffer) {
+         bufferEvent(buffer);
       });
 
       taskReceiverQuery();
@@ -214,7 +230,12 @@ struct QtDecoder::Impl
 
    void frameEvent(const nfc::NfcFrame &frame)
    {
-      QtApplication::post(new StreamFrameEvent(frame));
+      QtApplication::post(new StreamFrameEvent(frame), Qt::HighEventPriority);
+   }
+
+   void bufferEvent(const sdr::SignalBuffer &buffer)
+   {
+      QtApplication::post(new SignalBufferEvent(buffer), Qt::LowEventPriority);
    }
 
    void doReceiverDecode(DecoderControlEvent *event) const

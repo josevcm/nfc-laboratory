@@ -22,35 +22,35 @@
 
 */
 
-#ifndef APP_QTAPPLICATION_H
-#define APP_QTAPPLICATION_H
+#ifndef NFC_LAB_CURSORMARKER_H
+#define NFC_LAB_CURSORMARKER_H
 
-#include <QSettings>
-#include <QApplication>
-#include <QMainWindow>
-#include <QSharedPointer>
+#include <QString>
 
-class QtApplication : public QApplication
+#include <support/QCustomPlot.h>
+
+class CursorMarker
 {
-      struct Impl;
-
    public:
 
-      QtApplication(int argc, char **argv);
+      explicit CursorMarker(QCPAxis *axis);
 
-      static void post(QEvent *event, int priority = Qt::NormalEventPriority);
+      ~CursorMarker();
 
-   protected:
+      void setup();
 
-      void startup();
+      void show();
 
-      void shutdown();
+      void hide();
 
-      void customEvent(QEvent *event) override;
+      void update(double from, const QString &text);
 
    private:
 
-      QSharedPointer<Impl> impl;
+      QCPAxis *axis;
+      QCPItemTracer *tracer = nullptr;
+      QCPItemText *label = nullptr;
 };
 
-#endif //NFC_LAB_QTAPPLICATION_H
+
+#endif //NFC_LAB_CURSORMARKER_H

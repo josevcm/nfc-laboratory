@@ -108,7 +108,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          refresh();
       }
 
-      processQueue();
+      processQueue(50);
 
       return true;
    }
@@ -175,7 +175,9 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       {
          log.info("start streaming for device {}", {receiver->name()});
 
-         receiver->start([this](sdr::SignalBuffer &buffer) { signalQueue.add(buffer); });
+         receiver->start([this](sdr::SignalBuffer &buffer) {
+            signalQueue.add(buffer);
+         });
 
          command.resolve();
 
@@ -303,43 +305,29 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       updateStatus(event, data);
    }
 
-   void processQueue()
+   void processQueue(int timeout)
    {
-      if (auto entry = signalQueue.get(50))
+      if (auto entry = signalQueue.get(timeout))
       {
-//         switch (buffer->type())
-//         {
-//            case sdr::SignalType::COMPLEX_IQ:
-//               signalIQStream->next(buffer.value());
-//               break;
-//
-//            case sdr::SignalType::REAL_VALUE:
-//               signalRealStream->next(buffer.value());
-//               break;
-//         }
-
          sdr::SignalBuffer buffer = entry.value();
+         sdr::SignalBuffer result(buffer.elements(), 1, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::REAL_VALUE);
 
-         if (buffer.type() == sdr::SignalType::COMPLEX_IQ)
+         float *src = buffer.data();
+         float *dst = result.pull(buffer.elements());
+
+#pragma GCC ivdep
+         for (int i = 0, n = 0; i < buffer.elements(); i++, n += 2)
          {
-            sdr::SignalBuffer result(buffer.elements(), 1, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::REAL_VALUE);
-
-            float *src = buffer.data();
-            float *dst = result.pull(buffer.elements());
-
-            for (int i = 0, n = 0; i < buffer.elements(); i++, n += 2)
-            {
-               dst[i] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
-            }
-
-            result.flip();
-
-            // send IQ value buffer
-            signalIQStream->next(buffer);
-
-            // send Real value buffer
-            signalRealStream->next(result);
+            dst[i] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
          }
+
+         result.flip();
+
+         // send IQ value buffer
+         signalIQStream->next(buffer);
+
+         // send Real value buffer
+         signalRealStream->next(result);
       }
    }
 };

@@ -22,35 +22,36 @@
 
 */
 
-#ifndef APP_QTAPPLICATION_H
-#define APP_QTAPPLICATION_H
+#ifndef NFC_LAB_RANGEMARKER_H
+#define NFC_LAB_RANGEMARKER_H
 
-#include <QSettings>
-#include <QApplication>
-#include <QMainWindow>
-#include <QSharedPointer>
+#include <QString>
 
-class QtApplication : public QApplication
+#include <support/QCustomPlot.h>
+
+class RangeMarker
 {
-      struct Impl;
-
    public:
 
-      QtApplication(int argc, char **argv);
+      explicit RangeMarker(QCPAxis *axis);
 
-      static void post(QEvent *event, int priority = Qt::NormalEventPriority);
+      ~RangeMarker();
 
-   protected:
+      void setup();
 
-      void startup();
+      void show(double from, double to, const QString &text);
 
-      void shutdown();
-
-      void customEvent(QEvent *event) override;
+      void hide();
 
    private:
 
-      QSharedPointer<Impl> impl;
+      QCPAxis *axis;
+      QCPItemTracer *tracer = nullptr;
+      QCPItemTracer *start = nullptr;
+      QCPItemTracer *end = nullptr;
+      QCPItemText *label = nullptr;
+      QCPItemLine *arrow = nullptr;
 };
 
-#endif //NFC_LAB_QTAPPLICATION_H
+
+#endif //NFC_LAB_RANGEMARKER_H

@@ -53,17 +53,17 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
    float *fftMag = nullptr;
    float *fftWin = nullptr;
 
-   // FFT plan
-   mufft_plan_1d *fftPlan = nullptr;
+   // complex to complex FFT plan
+   mufft_plan_1d *fftC2C = nullptr;
 
    // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *signalIQStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalStream = nullptr;
 
    // signal buffer frame stream subject
    rt::Subject<sdr::SignalBuffer> *frequencyStream = nullptr;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalIQSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
 
    // last status sent
    std::chrono::time_point<std::chrono::steady_clock> lastStatus;
@@ -76,20 +76,23 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
    explicit Impl(int length = 1024) : AbstractTask("FourierProcessTask", "fourier"), status(FourierProcessTask::Idle), length(length)
    {
+      // create fft buffers
       fftIn = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
       fftOut = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
       fftMag = static_cast<float *>(mufft_alloc(length * sizeof(float)));
       fftWin = static_cast<float *>(mufft_alloc(length * sizeof(float)));
-      fftPlan = mufft_create_plan_1d_c2c(length, MUFFT_FORWARD, MUFFT_FLAG_CPU_NO_AVX);
+
+      // create FFT plans
+      fftC2C = mufft_create_plan_1d_c2c(length, MUFFT_FORWARD, MUFFT_FLAG_CPU_NO_AVX);
 
       // access to signal subject stream
-      signalIQStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
 
       // access to signal subject stream
       frequencyStream = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
 
       // subscribe to signal events
-      signalIQSubscription = signalIQStream->subscribe([=](const sdr::SignalBuffer &buffer) {
+      signalSubscription = signalStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          if (signalMutex.try_lock())
          {
             signalBuffer = buffer;
@@ -104,7 +107,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       mufft_free(fftOut);
       mufft_free(fftMag);
       mufft_free(fftWin);
-      mufft_free_plan_1d(fftPlan);
+      mufft_free_plan_1d(fftC2C);
    }
 
    void start() override
@@ -155,7 +158,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          }
 
          // execute FFT
-         mufft_execute_plan_1d(fftPlan, fftOut, fftIn);
+         mufft_execute_plan_1d(fftC2C, fftOut, fftIn);
 
          // apply FFT complex to real
 #pragma GCC ivdep

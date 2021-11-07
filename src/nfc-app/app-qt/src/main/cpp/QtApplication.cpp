@@ -130,9 +130,9 @@ void QtApplication::shutdown()
    impl->shutdown();
 }
 
-void QtApplication::post(QEvent *event)
+void QtApplication::post(QEvent *event, int priority)
 {
-   QApplication::postEvent(QApplication::instance(), event);
+   QApplication::postEvent(QApplication::instance(), event, priority);
 }
 
 void QtApplication::customEvent(QEvent *event)

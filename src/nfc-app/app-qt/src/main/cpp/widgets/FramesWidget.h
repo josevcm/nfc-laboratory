@@ -22,35 +22,47 @@
 
 */
 
-#ifndef APP_QTAPPLICATION_H
-#define APP_QTAPPLICATION_H
+#ifndef NFC_LAB_FRAMESWIDGET_H
+#define NFC_LAB_FRAMESWIDGET_H
 
-#include <QSettings>
-#include <QApplication>
-#include <QMainWindow>
+#include <QWidget>
 #include <QSharedPointer>
 
-class QtApplication : public QApplication
+namespace nfc {
+class NfcFrame;
+}
+
+class FramesWidget : public QWidget
 {
+   Q_OBJECT
+
       struct Impl;
 
    public:
 
-      QtApplication(int argc, char **argv);
+      explicit FramesWidget(QWidget *parent = nullptr);
 
-      static void post(QEvent *event, int priority = Qt::NormalEventPriority);
+      void append(const nfc::NfcFrame &frame);
+
+      void select(double from, double to);
+
+      void clear();
+
+      void refresh();
 
    protected:
 
-      void startup();
+      void enterEvent(QEvent *event) override;
+      void leaveEvent(QEvent *event) override;
 
-      void shutdown();
+   public:
 
-      void customEvent(QEvent *event) override;
+      Q_SIGNAL void selectionChanged(double from, double to);
 
    private:
 
       QSharedPointer<Impl> impl;
 };
 
-#endif //NFC_LAB_QTAPPLICATION_H
+
+#endif //NFC_LAB_FRAMESWIDGET_H

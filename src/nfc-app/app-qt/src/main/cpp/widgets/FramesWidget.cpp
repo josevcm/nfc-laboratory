@@ -31,176 +31,28 @@
 
 #include <support/QCustomPlot.h>
 
-#include "TimingWidget.h"
+#include <graph/RangeMarker.h>
+#include <graph/CursorMarker.h>
 
-struct RangeMarker
+#include "FramesWidget.h"
+
+
+struct FramesWidget::Impl
 {
-   QCPAxis *axis;
-   QCPItemTracer *tracer = nullptr;
-   QCPItemTracer *start = nullptr;
-   QCPItemTracer *end = nullptr;
-   QCPItemText *label = nullptr;
-   QCPItemLine *arrow = nullptr;
-
-   explicit RangeMarker(QCPAxis *axis) : axis(axis)
-   {
-      setup();
-   }
-
-   ~RangeMarker()
-   {
-      delete label;
-      delete arrow;
-      delete end;
-      delete tracer;
-      delete start;
-   }
-
-   void setup()
-   {
-      tracer = new QCPItemTracer(axis->parentPlot());
-      tracer->setVisible(false);
-      tracer->position->setTypeX(QCPItemPosition::ptPlotCoords);
-      tracer->position->setTypeY(QCPItemPosition::ptAxisRectRatio);
-      tracer->position->setAxisRect(axis->axisRect());
-      tracer->position->setAxes(axis, nullptr);
-      tracer->position->setCoords(0, 1);
-
-      start = new QCPItemTracer(axis->parentPlot());
-      start->setVisible(false);
-      start->setPen(QPen(Qt::white));
-      start->position->setTypeX(QCPItemPosition::ptPlotCoords);
-      start->position->setTypeY(QCPItemPosition::ptAxisRectRatio);
-      start->position->setAxisRect(axis->axisRect());
-      start->position->setAxes(axis, nullptr);
-      start->position->setCoords(0, 1);
-
-      end = new QCPItemTracer(axis->parentPlot());
-      end->setVisible(false);
-      end->setPen(QPen(Qt::white));
-      end->position->setTypeX(QCPItemPosition::ptPlotCoords);
-      end->position->setTypeY(QCPItemPosition::ptAxisRectRatio);
-      end->position->setAxisRect(axis->axisRect());
-      end->position->setAxes(axis, nullptr);
-      end->position->setCoords(0, 1);
-
-      arrow = new QCPItemLine(axis->parentPlot());
-      arrow->setPen(QPen(Qt::gray));
-      arrow->setLayer("overlay");
-      arrow->setClipToAxisRect(false);
-      arrow->setHead(QCPLineEnding::esSpikeArrow);
-      arrow->setTail(QCPLineEnding::esSpikeArrow);
-      arrow->start->setParentAnchor(start->position);
-      arrow->end->setParentAnchor(end->position);
-
-      label = new QCPItemText(axis->parentPlot());
-      label->setPen(QPen(Qt::gray));
-      label->setBrush(QBrush(Qt::white));
-      label->setLayer("overlay");
-      label->setVisible(false);
-      label->setClipToAxisRect(false);
-      label->setPadding(QMargins(5, 0, 4, 2));
-      label->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-      label->position->setParentAnchor(tracer->position);
-   }
-
-   void show(double from, double to, const QString &text)
-   {
-      label->setText(text);
-      tracer->position->setCoords((from + to) / 2, 0);
-      start->position->setCoords(from, 0);
-      end->position->setCoords(to, 0);
-
-      label->setVisible(true);
-      arrow->setVisible(true);
-      start->setVisible(true);
-      end->setVisible(true);
-   }
-
-   void hide()
-   {
-      label->setVisible(false);
-      arrow->setVisible(false);
-      start->setVisible(false);
-      end->setVisible(false);
-   }
-};
-
-struct CursorMarker
-{
-   QCPAxis *axis;
-   QCPItemTracer *tracer = nullptr;
-   QCPItemText *label = nullptr;
-
-   explicit CursorMarker(QCPAxis *axis) : axis(axis)
-   {
-      setup();
-   }
-
-   ~CursorMarker()
-   {
-      delete label;
-      delete tracer;
-   }
-
-   void setup()
-   {
-      tracer = new QCPItemTracer(axis->parentPlot());
-      tracer->setVisible(false);
-      tracer->position->setTypeX(QCPItemPosition::ptPlotCoords);
-      tracer->position->setTypeY(QCPItemPosition::ptAxisRectRatio);
-      tracer->position->setAxisRect(axis->axisRect());
-      tracer->position->setAxes(axis, nullptr);
-      tracer->position->setCoords(0, 0);
-
-      label = new QCPItemText(axis->parentPlot());
-      label->setPen(QPen(Qt::darkGray));
-      label->setBrush(QBrush(Qt::white));
-      label->setLayer("overlay");
-      label->setVisible(false);
-      label->setClipToAxisRect(false);
-      label->setPadding(QMargins(2, 1, 4, 3));
-      label->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-      label->position->setParentAnchor(tracer->position);
-   }
-
-   void show()
-   {
-      label->setVisible(true);
-   }
-
-   void hide()
-   {
-      label->setVisible(false);
-   }
-
-   void update(double from, const QString &text)
-   {
-      label->setText(text);
-      tracer->position->setCoords(from, 1);
-   }
-};
-
-struct TimingWidget::Impl
-{
-   TimingWidget *widget = nullptr;
+   FramesWidget *widget = nullptr;
 
    QCustomPlot *plot = nullptr;
 
-   RangeMarker *range = nullptr;
-   CursorMarker *cursor = nullptr;
+   QSharedPointer<RangeMarker> marker;
+   QSharedPointer<CursorMarker> cursor;
 
-   double lowerSignalRange = INFINITY;
-   double upperSignalRange = 0;
+   double lowerSignalRange = +INT32_MAX;
+   double upperSignalRange = -INT32_MAX;
 
-   explicit Impl(TimingWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
+   explicit Impl(FramesWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
    {
-   }
-
-   ~Impl()
-   {
-      delete range;
-      delete cursor;
+      setup();
+      clear();
    }
 
    void setup()
@@ -226,7 +78,7 @@ struct TimingWidget::Impl
 //      plot->setOpenGl(true);
 
       // data label for Y-axis
-      QSharedPointer <QCPAxisTickerText> textTicker(new QCPAxisTickerText);
+      QSharedPointer<QCPAxisTickerText> textTicker(new QCPAxisTickerText);
 
       textTicker->addTick(1, "RF");
       textTicker->addTick(2, "SEL");
@@ -236,6 +88,7 @@ struct TimingWidget::Impl
       plot->setNoAntialiasingOnDrag(true);
 
       // configure plot
+      plot->setMouseTracking(true);
       plot->setBackground(Qt::NoBrush);
       plot->setInteraction(QCP::iRangeDrag, true); // enable graph drag
       plot->setInteraction(QCP::iRangeZoom, true); // enable graph zoom
@@ -247,20 +100,18 @@ struct TimingWidget::Impl
       // setup time axis
       plot->xAxis->setBasePen(QPen(Qt::white));
       plot->xAxis->setTickPen(QPen(Qt::white));
+      plot->xAxis->setTickLabelColor(Qt::white);
       plot->xAxis->setSubTickPen(QPen(Qt::white));
       plot->xAxis->setSubTicks(true);
-      plot->xAxis->setTickLabelColor(Qt::white);
       plot->xAxis->setRange(0, 1);
 
       // setup Y axis
       plot->yAxis->setBasePen(QPen(Qt::white));
       plot->yAxis->setTickPen(QPen(Qt::white));
-      plot->yAxis->setSubTickPen(QPen(Qt::white));
       plot->yAxis->setTickLabelColor(Qt::white);
+      plot->yAxis->setSubTickPen(QPen(Qt::white));
       plot->yAxis->setTicker(textTicker);
       plot->yAxis->setRange(0, 4);
-
-      plot->setMouseTracking(true);
 
       // create channels
       for (int i = 0; i < 3; i++)
@@ -282,10 +133,10 @@ struct TimingWidget::Impl
       }
 
       // create range marker
-      range = new RangeMarker(plot->graph(0)->keyAxis());
+      marker.reset(new RangeMarker(plot->graph(0)->keyAxis()));
 
       // create cursor marker
-      cursor = new CursorMarker(plot->graph(0)->keyAxis());
+      cursor.reset(new CursorMarker(plot->graph(0)->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -307,7 +158,9 @@ struct TimingWidget::Impl
          selectionChanged();
       });
 
-      //      QObject::connect(ui->timingPlot->xAxis, qOverload<const QCPRange &>(&QCPAxis::rangeChanged), mainWindow, &QtWindow::plotRangeChanged);
+      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
+         rangeChanged(newRange);
+      });
    }
 
    void append(const nfc::NfcFrame &frame)
@@ -387,8 +240,8 @@ struct TimingWidget::Impl
 
    void clear()
    {
-      lowerSignalRange = INFINITY;
-      upperSignalRange = 0;
+      lowerSignalRange = +INT32_MAX;
+      upperSignalRange = -INT32_MAX;
 
       plot->xAxis->setRange(0, 1);
 
@@ -398,7 +251,8 @@ struct TimingWidget::Impl
          plot->graph(i)->setSelection(QCPDataSelection());
       }
 
-      range->hide();
+      cursor->hide();
+      marker->hide();
 
       plot->replot();
    }
@@ -423,9 +277,7 @@ struct TimingWidget::Impl
    void mouseMove(QMouseEvent *event) const
    {
       double time = plot->xAxis->pixelToCoord(event->pos().x());
-
       cursor->update(time, QString("%1 s").arg(time, 10, 'f', 6));
-
       plot->replot();
    }
 
@@ -445,7 +297,7 @@ struct TimingWidget::Impl
 
    void selectionChanged() const
    {
-      QList < QCPGraph * > selectedGraphs = plot->selectedGraphs();
+      QList<QCPGraph *> selectedGraphs = plot->selectedGraphs();
 
       double startTime = 0;
       double endTime = 0;
@@ -496,19 +348,18 @@ struct TimingWidget::Impl
                text = QString("%1 s").arg(elapsed, 7, 'f', 5);
 
             // show timing marker
-            range->show(startTime, endTime, text);
+            marker->show(startTime, endTime, text);
          }
          else
          {
             startTime = 0;
             endTime = 0;
-
-            range->hide();
+            marker->hide();
          }
       }
       else
       {
-         range->hide();
+         marker->hide();
       }
 
       // refresh graph
@@ -520,49 +371,44 @@ struct TimingWidget::Impl
 
    void rangeChanged(const QCPRange &newRange) const
    {
-      if (newRange.lower != INFINITY && lowerSignalRange != INFINITY && newRange.lower < lowerSignalRange)
-         plot->xAxis->setRangeLower(lowerSignalRange);
+      if (newRange.lower < lowerSignalRange || newRange.lower > upperSignalRange)
+         plot->xAxis->setRangeLower(lowerSignalRange < +INT32_MAX ? lowerSignalRange : 0);
 
-      if (newRange.upper != INFINITY && upperSignalRange != INFINITY && newRange.upper > upperSignalRange)
-         plot->xAxis->setRangeUpper(upperSignalRange);
+      if (newRange.upper > upperSignalRange || newRange.upper < lowerSignalRange)
+         plot->xAxis->setRangeUpper(upperSignalRange > -INT32_MAX ? upperSignalRange : 1);
    }
 };
 
-TimingWidget::TimingWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))
+FramesWidget::FramesWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))
 {
-   // setup plot
-   impl->setup();
-
-   // initialize
-   impl->clear();
 }
 
-void TimingWidget::append(const nfc::NfcFrame &frame)
+void FramesWidget::append(const nfc::NfcFrame &frame)
 {
    impl->append(frame);
 }
 
-void TimingWidget::select(double from, double to)
+void FramesWidget::select(double from, double to)
 {
    impl->select(from, to);
 }
 
-void TimingWidget::clear()
+void FramesWidget::clear()
 {
    impl->clear();
 }
 
-void TimingWidget::refresh()
+void FramesWidget::refresh()
 {
    impl->refresh();
 }
 
-void TimingWidget::enterEvent(QEvent *event)
+void FramesWidget::enterEvent(QEvent *event)
 {
    impl->mouseEnter();
 }
 
-void TimingWidget::leaveEvent(QEvent *event)
+void FramesWidget::leaveEvent(QEvent *event)
 {
    impl->mouseLeave();
 }

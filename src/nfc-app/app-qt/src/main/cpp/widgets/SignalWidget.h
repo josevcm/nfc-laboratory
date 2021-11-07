@@ -45,7 +45,7 @@ class SignalWidget : public QWidget
 
       void setSampleRate(long value);
 
-      void refresh(const sdr::SignalBuffer &buffer);
+      void append(const sdr::SignalBuffer &buffer);
 
       void select(double from, double to);
 

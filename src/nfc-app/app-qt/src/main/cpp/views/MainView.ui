@@ -360,9 +360,9 @@
          <string>Protocol</string>
         </attribute>
        </widget>
-       <widget class="TimingWidget" name="timingView">
+       <widget class="FramesWidget" name="framesView">
         <attribute name="title">
-         <string>Timing</string>
+         <string>Frames</string>
         </attribute>
        </widget>
        <widget class="SignalWidget" name="signalView">
@@ -757,9 +757,9 @@
    <header>widgets/QuadratureWidget.h</header>
   </customwidget>
   <customwidget>
-   <class>TimingWidget</class>
+   <class>FramesWidget</class>
    <extends>QWidget</extends>
-   <header>widgets/TimingWidget.h</header>
+   <header>widgets/FramesWidget.h</header>
   </customwidget>
   <customwidget>
    <class>SignalWidget</class>
