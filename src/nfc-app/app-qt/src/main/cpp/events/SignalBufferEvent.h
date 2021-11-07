@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,47 +22,28 @@
 
 */
 
-#ifndef NFC_LAB_TIMINGWIDGET_H
-#define NFC_LAB_TIMINGWIDGET_H
+#ifndef APP_SIGNALBUFFEREVENT_H
+#define APP_SIGNALBUFFEREVENT_H
 
-#include <QWidget>
-#include <QSharedPointer>
+#include <QEvent>
 
-namespace nfc {
-class NfcFrame;
-}
+#include <sdr/SignalBuffer.h>
 
-class TimingWidget : public QWidget
+class SignalBufferEvent: public QEvent
 {
-   Q_OBJECT
-
-      struct Impl;
-
    public:
 
-      explicit TimingWidget(QWidget *parent = nullptr);
-
-      void append(const nfc::NfcFrame &frame);
-
-      void select(double from, double to);
-
-      void clear();
-
-      void refresh();
-
-   protected:
-
-      void enterEvent(QEvent *event) override;
-      void leaveEvent(QEvent *event) override;
-
-   public:
-
-      Q_SIGNAL void selectionChanged(double from, double to);
+      static int Type;
 
    private:
 
-      QSharedPointer<Impl> impl;
+      sdr::SignalBuffer mBuffer;
+
+   public:
+
+      explicit SignalBufferEvent(const sdr::SignalBuffer &buffer);
+
+      const sdr::SignalBuffer &buffer() const;
 };
 
-
-#endif //NFC_LAB_TIMINGWIDGET_H
+#endif /* APP_SIGNALBUFFEREVENT_H */

@@ -29,6 +29,9 @@
 
 #include <sdr/SignalBuffer.h>
 
+#include <graph/RangeMarker.h>
+#include <graph/CursorMarker.h>
+
 #include "SignalWidget.h"
 
 struct SignalWidget::Impl
@@ -37,59 +40,77 @@ struct SignalWidget::Impl
 
    QCustomPlot *plot = nullptr;
 
-   double lowerSignalRange = INFINITY;
-   double upperSignalRange = 0;
+   QSharedPointer<RangeMarker> marker;
+   QSharedPointer<CursorMarker> cursor;
+   QSharedPointer<QCPGraphDataContainer> data;
+
+   float lowerSignalRange = INT32_MAX;
+   float upperSignalRange = -INT32_MAX;
+
+   float lowerSignalScale = INT32_MAX;
+   float upperSignalScale = -INT32_MAX;
+
+   float maximumRangeSpan = 5;
 
    explicit Impl(SignalWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
    {
+      setup();
+      clear();
    }
 
    void setup()
    {
-      QPen selectPen(QColor(0, 128, 255, 255));
-      QPen signalPen(QColor(0, 200, 128, 255));
+      QPen signalPen(QColor(100, 255, 140, 255));
+      QPen selectPen(QColor(0, 200, 255, 255));
 
-      // data label for Y-axis
-      QSharedPointer<QCPAxisTickerText> textTicker(new QCPAxisTickerText);
-
-      textTicker->addTick(0.5, "");
+      // create data container
+      data.reset(new QCPGraphDataContainer());
 
       // disable aliasing to increase performance
       plot->setNoAntialiasingOnDrag(true);
 
       // configure plot
+      plot->setMouseTracking(true);
       plot->setBackground(Qt::NoBrush);
       plot->setInteraction(QCP::iRangeDrag, true); // enable graph drag
       plot->setInteraction(QCP::iRangeZoom, true); // enable graph zoom
       plot->setInteraction(QCP::iSelectPlottables, true); // enable graph selection
       plot->setInteraction(QCP::iMultiSelect, true); // enable graph multiple selection
-      plot->axisRect()->setRangeDrag(Qt::Horizontal); // only drag horizontal axis
+
+      plot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical); // drag horizontal and vertical axes
       plot->axisRect()->setRangeZoom(Qt::Horizontal); // only zoom horizontal axis
+      plot->axisRect()->setRangeZoomFactor(0.65, 0.75);
 
       // setup time axis
-      plot->xAxis->setBasePen(QPen(Qt::white));
+      plot->xAxis->setBasePen(QPen(Qt::darkGray));
       plot->xAxis->setTickPen(QPen(Qt::white));
-      plot->xAxis->setSubTickPen(QPen(Qt::white));
-      plot->xAxis->setSubTicks(true);
       plot->xAxis->setTickLabelColor(Qt::white);
+      plot->xAxis->setSubTickPen(QPen(Qt::darkGray));
+      plot->xAxis->setSubTicks(true);
       plot->xAxis->setRange(0, 1);
 
       // setup Y axis
-      plot->yAxis->setBasePen(QPen(Qt::white));
+      plot->yAxis->setBasePen(QPen(Qt::darkGray));
       plot->yAxis->setTickPen(QPen(Qt::white));
-      plot->yAxis->setSubTickPen(QPen(Qt::white));
-      plot->xAxis->setSubTicks(true);
       plot->yAxis->setTickLabelColor(Qt::white);
-//      plot->yAxis->setTicker(textTicker);
+      plot->yAxis->setSubTickPen(QPen(Qt::darkGray));
+      plot->xAxis->setSubTicks(true);
       plot->yAxis->setRange(0, 1);
-
-      plot->setMouseTracking(true);
 
       QCPGraph *graph = plot->addGraph();
 
       graph->setPen(signalPen);
       graph->setSelectable(QCP::stDataRange);
       graph->selectionDecorator()->setPen(selectPen);
+
+      // get storage backend
+      data = graph->data();
+
+      // create range marker
+      marker.reset(new RangeMarker(graph->keyAxis()));
+
+      // create cursor marker
+      cursor.reset(new CursorMarker(graph->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -107,33 +128,67 @@ struct SignalWidget::Impl
          mousePress(event);
       });
 
+      QObject::connect(plot, &QCustomPlot::mouseWheel, [=](QWheelEvent *event) {
+         mouseWheel(event);
+      });
+
       QObject::connect(plot, &QCustomPlot::selectionChangedByUser, [=]() {
          selectionChanged();
       });
+
+      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
+         rangeChanged(newRange);
+      });
+
+      QObject::connect(plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
+         scaleChanged(newRange);
+      });
    }
 
-   void refresh(const sdr::SignalBuffer &buffer)
+   void append(const sdr::SignalBuffer &buffer)
    {
       float sampleRate = buffer.sampleRate();
       float startTime = buffer.offset() / sampleRate;
       float endTime = startTime + buffer.elements() / sampleRate;
 
-      // update signal ranges
+      // update signal range
       if (lowerSignalRange > startTime)
          lowerSignalRange = startTime;
 
       if (upperSignalRange < endTime)
          upperSignalRange = endTime;
 
-      QCPGraph *graph = plot->graph(0);
+      // remove old data
+      if ((upperSignalRange - lowerSignalRange) > maximumRangeSpan)
+      {
+         lowerSignalRange = upperSignalRange - maximumRangeSpan;
+         data->removeBefore(lowerSignalRange);
+      }
+
+      bool scaleChanged = false;
 
       for (int i = 0; i < buffer.elements(); i++)
       {
-         graph->addData(startTime + (i / sampleRate), buffer[i]);
+         float value = buffer[i];
+
+         if (lowerSignalScale > value * 0.75)
+         {
+            scaleChanged = true;
+            lowerSignalScale = value * 0.75;
+         }
+
+         if (upperSignalScale < value * 1.25)
+         {
+            scaleChanged = true;
+            upperSignalScale = value * 1.25;
+         }
+
+         data->add({startTime + (i / sampleRate), value});
       }
 
-      // update view range
-//      plot->xAxis->setRange(lowerSignalRange, upperSignalRange);
+      // update view scale
+      if (scaleChanged)
+         plot->yAxis->setRange(lowerSignalScale, upperSignalScale);
    }
 
    void select(double from, double to)
@@ -157,49 +212,157 @@ struct SignalWidget::Impl
 
    void clear()
    {
-      lowerSignalRange = INFINITY;
-      upperSignalRange = 0;
+      lowerSignalRange = +INT32_MAX;
+      upperSignalRange = -INT32_MAX;
+
+      lowerSignalScale = +INT32_MAX;
+      upperSignalScale = -INT32_MAX;
 
       plot->xAxis->setRange(0, 1);
+      plot->yAxis->setRange(0, 1);
+
+      data->clear();
 
       for (int i = 0; i < plot->graphCount(); i++)
       {
-         plot->graph(i)->data()->clear();
          plot->graph(i)->setSelection(QCPDataSelection());
       }
+
+      cursor->hide();
+      marker->hide();
 
       plot->replot();
    }
 
    void mouseEnter() const
    {
+      cursor->show();
+      plot->replot();
    }
 
    void mouseLeave() const
    {
+      cursor->hide();
+      plot->replot();
    }
 
    void mouseMove(QMouseEvent *event) const
    {
+      double time = plot->xAxis->pixelToCoord(event->pos().x());
+      cursor->update(time, QString("%1 s").arg(time, 10, 'f', 6));
+      plot->replot();
    }
 
    void mousePress(QMouseEvent *event) const
    {
+      Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
+
+      if (keyModifiers & Qt::ControlModifier)
+         plot->setSelectionRectMode(QCP::srmSelect);
+      else
+         plot->setSelectionRectMode(QCP::srmNone);
+   }
+
+   void mouseWheel(QWheelEvent *event) const
+   {
+      Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
+
+      if (keyModifiers & Qt::ControlModifier)
+         plot->axisRect()->setRangeZoom(Qt::Vertical);
+      else
+         plot->axisRect()->setRangeZoom(Qt::Horizontal);
    }
 
    void selectionChanged() const
    {
+      QList<QCPGraph *> selectedGraphs = plot->selectedGraphs();
+
+      double startTime = 0;
+      double endTime = 0;
+
+      if (!selectedGraphs.empty())
+      {
+         QList<QCPGraph *>::Iterator itGraph = selectedGraphs.begin();
+
+         while (itGraph != selectedGraphs.end())
+         {
+            QCPGraph *graph = *itGraph++;
+
+            QCPDataSelection selection = graph->selection();
+
+            for (int i = 0; i < selection.dataRangeCount(); i++)
+            {
+               QCPDataRange range = selection.dataRange(i);
+
+               QCPGraphDataContainer::const_iterator data = graph->data()->at(range.begin());
+               QCPGraphDataContainer::const_iterator end = graph->data()->at(range.end());
+
+               while (data != end)
+               {
+                  double timestamp = data->key;
+
+                  if (startTime == 0 || timestamp < startTime)
+                     startTime = timestamp;
+
+                  if (endTime == 0 || timestamp > endTime)
+                     endTime = timestamp;
+
+                  data++;
+               }
+            }
+         }
+
+         if (startTime > 0 && startTime < endTime)
+         {
+            QString text;
+
+            double elapsed = endTime - startTime;
+
+            if (elapsed < 1E-3)
+               text = QString("%1 us").arg(elapsed * 1000000, 3, 'f', 0);
+            else if (elapsed < 1)
+               text = QString("%1 ms").arg(elapsed * 1000, 7, 'f', 3);
+            else
+               text = QString("%1 s").arg(elapsed, 7, 'f', 5);
+
+            // show timing marker
+            marker->show(startTime, endTime, text);
+         }
+         else
+         {
+            startTime = 0;
+            endTime = 0;
+            marker->hide();
+         }
+      }
+      else
+      {
+         marker->hide();
+      }
+
+      // refresh graph
+      plot->replot();
+
       // trigger selection changed signal
-//      widget->selectionChanged(startTime, endTime);
+      widget->selectionChanged(startTime, endTime);
    }
 
    void rangeChanged(const QCPRange &newRange) const
    {
-      if (newRange.lower != INFINITY && lowerSignalRange != INFINITY && newRange.lower < lowerSignalRange)
-         plot->xAxis->setRangeLower(lowerSignalRange);
+      if (newRange.lower < lowerSignalRange || newRange.lower > upperSignalRange)
+         plot->xAxis->setRangeLower(lowerSignalRange < +INT32_MAX ? lowerSignalRange : 0);
 
-      if (newRange.upper != INFINITY && upperSignalRange != INFINITY && newRange.upper > upperSignalRange)
-         plot->xAxis->setRangeUpper(upperSignalRange);
+      if (newRange.upper > upperSignalRange || newRange.upper < lowerSignalRange)
+         plot->xAxis->setRangeUpper(upperSignalRange > -INT32_MAX ? upperSignalRange : 1);
+   }
+
+   void scaleChanged(const QCPRange &newRange) const
+   {
+      if (newRange.lower < lowerSignalScale || newRange.lower > upperSignalScale)
+         plot->yAxis->setRangeLower(lowerSignalScale < +INT32_MAX ? lowerSignalScale : 0);
+
+      if (newRange.upper > upperSignalScale || newRange.upper < lowerSignalScale)
+         plot->yAxis->setRangeUpper(upperSignalScale > -INT32_MAX ? upperSignalScale : 1);
    }
 
    void setCenterFreq(long value)
@@ -213,11 +376,6 @@ struct SignalWidget::Impl
 
 SignalWidget::SignalWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))
 {
-   // setup plot
-   impl->setup();
-
-   // initialize
-   impl->clear();
 }
 
 void SignalWidget::setCenterFreq(long value)
@@ -230,9 +388,9 @@ void SignalWidget::setSampleRate(long value)
    impl->setSampleRate(value);
 }
 
-void SignalWidget::refresh(const sdr::SignalBuffer &buffer)
+void SignalWidget::append(const sdr::SignalBuffer &buffer)
 {
-   impl->refresh(buffer);
+   impl->append(buffer);
 }
 
 void SignalWidget::select(double from, double to)

@@ -782,7 +782,7 @@ struct NfcB::Impl
                   decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
 #endif
                   // if edge found, set SOF symbol start
-                  modulation->symbolStartTime = modulation->searchPeakTime;
+                  modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period1SymbolSamples * 11;
 
                   // and trigger next stage
                   modulation->searchStage = SOF_IDLE;

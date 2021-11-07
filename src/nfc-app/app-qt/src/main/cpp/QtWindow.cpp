@@ -45,6 +45,7 @@
 #include <events/SystemStartupEvent.h>
 #include <events/SystemShutdownEvent.h>
 #include <events/StorageStatusEvent.h>
+#include <events/SignalBufferEvent.h>
 
 #include <styles/StreamStyle.h>
 #include <styles/ParserStyle.h>
@@ -100,17 +101,11 @@ struct QtWindow::Impl
    // IQ signal data subject
    rt::Subject<sdr::SignalBuffer> *signalIQStream = nullptr;
 
-   // Real signal data subject
-   rt::Subject<sdr::SignalBuffer> *signalRealStream = nullptr;
-
    // fft signal data subject
    rt::Subject<sdr::SignalBuffer> *frequencyStream = nullptr;
 
    // IQ signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription signalIQSubscription;
-
-   // Real signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalRealSubscription;
 
    // fft signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription frequencySubscription;
@@ -120,20 +115,12 @@ struct QtWindow::Impl
       // IQ signal subject stream
       signalIQStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
 
-      // real signal subject stream
-      signalRealStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
-
       // fft signal subject stream
       frequencyStream = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
 
       // subscribe to signal events
       signalIQSubscription = signalIQStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          ui->quadratureView->refresh(buffer);
-      });
-
-      // subscribe to signal events
-      signalRealSubscription = signalRealStream->subscribe([=](const sdr::SignalBuffer &buffer) {
-         ui->signalView->refresh(buffer);
       });
 
       // subscribe to signal events
@@ -183,13 +170,13 @@ struct QtWindow::Impl
       });
 
       // connect selection signal from timing graph
-      QObject::connect(ui->timingView, &TimingWidget::selectionChanged, [=](double from, double to) {
+      QObject::connect(ui->framesView, &FramesWidget::selectionChanged, [=](double from, double to) {
          timingSelectionChanged(from, to);
       });
 
       // connect selection signal from timing graph
       QObject::connect(ui->signalView, &SignalWidget::selectionChanged, [=](double from, double to) {
-         timingSelectionChanged(from, to);
+         signalSelectionChanged(from, to);
       });
 
       // connect refresh timer signal
@@ -282,7 +269,12 @@ struct QtWindow::Impl
       }
 
       // add all frames to timing graph
-      ui->timingView->append(frame);
+      ui->framesView->append(frame);
+   }
+
+   void signalBufferEvent(SignalBufferEvent *event) const
+   {
+      ui->signalView->append(event->buffer());
    }
 
    void consoleLogEvent(ConsoleLogEvent *event)
@@ -627,7 +619,7 @@ struct QtWindow::Impl
 
    void clearGraph()
    {
-      ui->timingView->clear();
+      ui->framesView->clear();
       ui->signalView->clear();
    }
 
@@ -642,7 +634,7 @@ struct QtWindow::Impl
             ui->streamView->scrollToBottom();
          }
 
-         ui->timingView->refresh();
+         ui->framesView->refresh();
       }
    }
 
@@ -749,9 +741,9 @@ struct QtWindow::Impl
          ui->parserView->expandAll();
 
          // select frames un timing view
-         ui->timingView->blockSignals(true);
-         ui->timingView->select(startTime, endTime);
-         ui->timingView->blockSignals(false);
+         ui->framesView->blockSignals(true);
+         ui->framesView->select(startTime, endTime);
+         ui->framesView->blockSignals(false);
 
          // select frames un timing view
          ui->signalView->blockSignals(true);
@@ -772,6 +764,28 @@ struct QtWindow::Impl
          ui->streamView->selectionModel()->select(selection, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
          ui->streamView->selectionModel()->blockSignals(false);
       }
+
+      ui->signalView->blockSignals(true);
+      ui->signalView->select(from, to);
+      ui->signalView->blockSignals(false);
+   }
+
+   void signalSelectionChanged(double from, double to)
+   {
+      QModelIndexList selectionList = streamModel->modelRange(from, to);
+
+      if (!selectionList.isEmpty())
+      {
+         QItemSelection selection(selectionList.first(), selectionList.last());
+
+         ui->streamView->selectionModel()->blockSignals(true);
+         ui->streamView->selectionModel()->select(selection, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+         ui->streamView->selectionModel()->blockSignals(false);
+      }
+
+      ui->framesView->blockSignals(true);
+      ui->framesView->select(from, to);
+      ui->framesView->blockSignals(false);
    }
 
    void clipboardCopy() const
@@ -904,17 +918,19 @@ void QtWindow::keyPressEvent(QKeyEvent *event)
 
 void QtWindow::handleEvent(QEvent *event)
 {
-   if (event->type() == SystemStartupEvent::Type)
-      impl->systemStartup(dynamic_cast<SystemStartupEvent *>(event));
-   else if (event->type() == SystemShutdownEvent::Type)
-      impl->systemShutdown(dynamic_cast<SystemShutdownEvent *>(event));
+   if (event->type() == SignalBufferEvent::Type)
+      impl->signalBufferEvent(dynamic_cast<SignalBufferEvent *>(event));
+   else if (event->type() == StreamFrameEvent::Type)
+      impl->streamFrameEvent(dynamic_cast<StreamFrameEvent *>(event));
    else if (event->type() == ReceiverStatusEvent::Type)
       impl->receiverStatusEvent(dynamic_cast<ReceiverStatusEvent *>(event));
    else if (event->type() == StorageStatusEvent::Type)
       impl->storageStatusEvent(dynamic_cast<StorageStatusEvent *>(event));
-   else if (event->type() == StreamFrameEvent::Type)
-      impl->streamFrameEvent(dynamic_cast<StreamFrameEvent *>(event));
    else if (event->type() == ConsoleLogEvent::Type)
       impl->consoleLogEvent(dynamic_cast<ConsoleLogEvent *>(event));
+   else if (event->type() == SystemStartupEvent::Type)
+      impl->systemStartup(dynamic_cast<SystemStartupEvent *>(event));
+   else if (event->type() == SystemShutdownEvent::Type)
+      impl->systemShutdown(dynamic_cast<SystemShutdownEvent *>(event));
 }
 

@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,35 +22,17 @@
 
 */
 
-#ifndef APP_QTAPPLICATION_H
-#define APP_QTAPPLICATION_H
+#include "SignalBufferEvent.h"
 
-#include <QSettings>
-#include <QApplication>
-#include <QMainWindow>
-#include <QSharedPointer>
+int SignalBufferEvent::Type = QEvent::registerEventType();
 
-class QtApplication : public QApplication
+SignalBufferEvent::SignalBufferEvent(const sdr::SignalBuffer &buffer) :
+      QEvent(QEvent::Type(Type)), mBuffer(buffer)
 {
-      struct Impl;
+}
 
-   public:
+const sdr::SignalBuffer &SignalBufferEvent::buffer() const
+{
+   return mBuffer;
+}
 
-      QtApplication(int argc, char **argv);
-
-      static void post(QEvent *event, int priority = Qt::NormalEventPriority);
-
-   protected:
-
-      void startup();
-
-      void shutdown();
-
-      void customEvent(QEvent *event) override;
-
-   private:
-
-      QSharedPointer<Impl> impl;
-};
-
-#endif //NFC_LAB_QTAPPLICATION_H

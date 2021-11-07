@@ -8,8 +8,8 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 
 find_package(Qt5 COMPONENTS Core Widgets PrintSupport OpenGL REQUIRED)
 
-add_executable(nfc-lab WIN32
-#add_executable(nfc-lab
+#add_executable(nfc-lab WIN32
+add_executable(nfc-lab
         src/main/cpp/main.cpp
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
@@ -22,8 +22,11 @@ add_executable(nfc-lab WIN32
         src/main/cpp/events/StorageControlEvent.cpp
         src/main/cpp/events/StorageStatusEvent.cpp
         src/main/cpp/events/StreamFrameEvent.cpp
+        src/main/cpp/events/SignalBufferEvent.cpp
         src/main/cpp/events/SystemStartupEvent.cpp
         src/main/cpp/events/SystemShutdownEvent.cpp
+        src/main/cpp/graph/RangeMarker.cpp
+        src/main/cpp/graph/CursorMarker.cpp
         src/main/cpp/model/StreamModel.cpp
         src/main/cpp/model/ParserModel.cpp
         src/main/cpp/parser/ParserNfc.cpp
@@ -34,9 +37,10 @@ add_executable(nfc-lab WIN32
         src/main/cpp/protocol/ProtocolFrame.cpp
         src/main/cpp/protocol/ProtocolParser.cpp
         src/main/cpp/support/QCustomPlot.cpp
-        src/main/cpp/widgets/TimingWidget.cpp
+        src/main/cpp/widgets/FramesWidget.cpp
         src/main/cpp/widgets/QuadratureWidget.cpp
         src/main/cpp/widgets/FrequencyWidget.cpp
+        src/main/cpp/widgets/SignalWidget.cpp
         src/main/cpp/styles/StreamStyle.cpp
         src/main/cpp/styles/ParserStyle.cpp
         src/main/assets/icons/icons.qrc
