@@ -210,6 +210,12 @@ struct SignalWidget::Impl
       selectionChanged();
    }
 
+   void range(double lower, double upper)
+   {
+      plot->xAxis->setRange(lower, upper);
+      plot->replot();
+   }
+
    void clear()
    {
       lowerSignalRange = +INT32_MAX;
@@ -396,6 +402,11 @@ void SignalWidget::append(const sdr::SignalBuffer &buffer)
 void SignalWidget::select(double from, double to)
 {
    impl->select(from, to);
+}
+
+void SignalWidget::range(double lower, double upper)
+{
+   impl->range(lower, upper);
 }
 
 void SignalWidget::clear()
