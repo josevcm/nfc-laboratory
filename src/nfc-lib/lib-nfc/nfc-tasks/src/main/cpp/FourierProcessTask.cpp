@@ -57,13 +57,13 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
    mufft_plan_1d *fftC2C = nullptr;
 
    // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *signalStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalIqStream = nullptr;
 
    // signal buffer frame stream subject
    rt::Subject<sdr::SignalBuffer> *frequencyStream = nullptr;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalIqSubscription;
 
    // last status sent
    std::chrono::time_point<std::chrono::steady_clock> lastStatus;
@@ -86,13 +86,13 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       fftC2C = mufft_create_plan_1d_c2c(length, MUFFT_FORWARD, MUFFT_FLAG_CPU_NO_AVX);
 
       // access to signal subject stream
-      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
 
       // access to signal subject stream
       frequencyStream = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
 
       // subscribe to signal events
-      signalSubscription = signalStream->subscribe([=](const sdr::SignalBuffer &buffer) {
+      signalIqSubscription = signalIqStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          if (signalMutex.try_lock())
          {
             signalBuffer = buffer;

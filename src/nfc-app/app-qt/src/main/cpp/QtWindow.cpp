@@ -31,6 +31,7 @@
 #include <QPointer>
 #include <QTimer>
 #include <QDateTime>
+#include <QScrollBar>
 
 #include <rt/Subject.h>
 #include <sdr/SignalBuffer.h>
@@ -99,13 +100,13 @@ struct QtWindow::Impl
    QString clipboard;
 
    // IQ signal data subject
-   rt::Subject<sdr::SignalBuffer> *signalIQStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalIqStream = nullptr;
 
    // fft signal data subject
    rt::Subject<sdr::SignalBuffer> *frequencyStream = nullptr;
 
    // IQ signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalIQSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalIqSubscription;
 
    // fft signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription frequencySubscription;
@@ -113,13 +114,13 @@ struct QtWindow::Impl
    explicit Impl(QSettings &settings) : settings(settings), ui(new Ui_MainView()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
    {
       // IQ signal subject stream
-      signalIQStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
 
       // fft signal subject stream
       frequencyStream = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
 
       // subscribe to signal events
-      signalIQSubscription = signalIQStream->subscribe([=](const sdr::SignalBuffer &buffer) {
+      signalIqSubscription = signalIqStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          ui->quadratureView->refresh(buffer);
       });
 
@@ -163,6 +164,11 @@ struct QtWindow::Impl
       ui->parserView->setColumnWidth(ParserModel::Cmd, 120);
       ui->parserView->setColumnWidth(ParserModel::Flags, 32);
       ui->parserView->setItemDelegate(new ParserStyle(ui->parserView));
+
+      // connect selection signal from frame model
+      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
+         streamScrollChanged();
+      });
 
       // connect selection signal from frame model
       QObject::connect(ui->streamView->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &selected, const QItemSelection &deselected) {
@@ -648,6 +654,30 @@ struct QtWindow::Impl
       }
    }
 
+   void streamScrollChanged()
+   {
+      QModelIndex firstRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().topLeft());
+      QModelIndex lastRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().bottomLeft() - QPoint(0, 10));
+
+      if (firstRow.isValid() && lastRow.isValid())
+      {
+         qDebug() << "firstRow" << firstRow.row();
+         qDebug() << "lastRow" << lastRow.row();
+
+         nfc::NfcFrame *firstFrame = streamModel->frame(firstRow);
+         nfc::NfcFrame *lastFrame = streamModel->frame(lastRow);
+
+         if (firstFrame && lastFrame)
+         {
+            float startTime = firstFrame->timeStart();
+            float endTime = lastFrame->timeStart();
+
+            // select frames un timing view
+            ui->signalView->range(startTime, endTime);
+         }
+      }
+   }
+
    void streamSelectionChanged()
    {
       QModelIndexList indexList = ui->streamView->selectionModel()->selectedIndexes();
@@ -661,11 +691,11 @@ struct QtWindow::Impl
 
          QModelIndex previous;
 
-         for (const auto &current: indexList)
+         for (const QModelIndex &current: indexList)
          {
             if (!previous.isValid() || current.row() != previous.row())
             {
-               if (auto frame = streamModel->frame(current))
+               if (nfc::NfcFrame *frame = streamModel->frame(current))
                {
                   // prepara data for clipboard copy&paste
                   text.append(QString("%1;").arg(current.row()));

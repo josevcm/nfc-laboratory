@@ -40,10 +40,12 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
    int status;
 
    // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *signalStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalIqStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalRvStream = nullptr;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalIqSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalRvSubscription;
 
    // signal stream queue buffer
    rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
@@ -57,10 +59,16 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
    Impl() : AbstractTask("SignalRecorderTask", "recorder"), status(SignalRecorderTask::Idle)
    {
       // access to signal subject stream
-      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+      signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
 
       // subscribe to signal events
-      signalSubscription = signalStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+//      signalIqSubscription = signalIqStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+//         if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
+//            signalQueue.add(buffer);
+//      });
+
+      signalRvSubscription = signalRvStream->subscribe([this](const sdr::SignalBuffer &buffer) {
          if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
             signalQueue.add(buffer);
       });
@@ -151,7 +159,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
 
          if (device->open(sdr::SignalDevice::Read))
          {
-            if (device->channelCount() == 1)
+            if (device->channelCount() <= 2)
             {
                log.info("streaming started for file [{}]", {device->name()});
 
@@ -250,11 +258,43 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
    {
       if (device && device->isOpen())
       {
-         sdr::SignalBuffer samples(65536 * device->channelCount(), device->channelCount(), device->sampleRate(), device->sampleOffset(), 0, sdr::SignalType::REAL_VALUE);
+         int sampleRate = device->sampleRate();
+         int channelCount = device->channelCount();
+         int sampleOffset = device->sampleOffset();
 
-         if (device->read(samples) > 0)
+         switch (channelCount)
          {
-            signalStream->next(samples);
+            case 1:
+            {
+               sdr::SignalBuffer buffer(65536 * channelCount, 1, sampleRate, sampleOffset, 0, sdr::SignalType::REAL_VALUE);
+
+               if (device->read(buffer) > 0)
+               {
+                  signalRvStream->next(buffer);
+               }
+
+               break;
+            }
+            case 2:
+            {
+               sdr::SignalBuffer buffer(65536 * channelCount * 2, 2, sampleRate, sampleOffset, 0, sdr::SignalType::COMPLEX_IQ);
+
+               if (device->read(buffer) > 0)
+               {
+                  sdr::SignalBuffer result(65536 * channelCount, 1, sampleRate, sampleOffset >> 1, 0, sdr::SignalType::REAL_VALUE);
+
+                  buffer.stream([&result](const float *value, int stride) {
+                     result.put(sqrtf(value[0] * value[0] + value[1] * value[1]));
+                  });
+
+                  result.flip();
+
+                  signalIqStream->next(buffer);
+                  signalRvStream->next(result);
+               }
+
+               break;
+            }
          }
 
          if (device->isEof())
@@ -262,7 +302,8 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
             log.info("streaming finished for file [{}]", {device->name()});
 
             // send null buffer for EOF
-            signalStream->next({});
+            signalIqStream->next({});
+            signalRvStream->next({});
 
             // close file
             device.reset();

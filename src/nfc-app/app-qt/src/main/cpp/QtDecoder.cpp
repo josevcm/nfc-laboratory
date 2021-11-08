@@ -61,23 +61,23 @@ struct QtDecoder::Impl
    QString currentDevice;
 
    // status subjects
-   rt::Subject<rt::Event> *decoderStatusSubject = nullptr;
-   rt::Subject<rt::Event> *recorderStatusSubject = nullptr;
-   rt::Subject<rt::Event> *storageStatusSubject = nullptr;
-   rt::Subject<rt::Event> *receiverStatusSubject = nullptr;
+   rt::Subject<rt::Event> *decoderStatusStream = nullptr;
+   rt::Subject<rt::Event> *recorderStatusStream = nullptr;
+   rt::Subject<rt::Event> *storageStatusStream = nullptr;
+   rt::Subject<rt::Event> *receiverStatusStream = nullptr;
 
    // command subjects
-   rt::Subject<rt::Event> *decoderCommandSubject = nullptr;
-   rt::Subject<rt::Event> *recorderCommandSubject = nullptr;
-   rt::Subject<rt::Event> *storageCommandSubject = nullptr;
-   rt::Subject<rt::Event> *receiverCommandSubject = nullptr;
+   rt::Subject<rt::Event> *decoderCommandStream = nullptr;
+   rt::Subject<rt::Event> *recorderCommandStream = nullptr;
+   rt::Subject<rt::Event> *storageCommandStream = nullptr;
+   rt::Subject<rt::Event> *receiverCommandStream = nullptr;
 
    // frame data subjects
-   rt::Subject<nfc::NfcFrame> *decoderFrameSubject = nullptr;
-   rt::Subject<nfc::NfcFrame> *storageFrameSubject = nullptr;
+   rt::Subject<nfc::NfcFrame> *decoderFrameStream = nullptr;
+   rt::Subject<nfc::NfcFrame> *storageFrameStream = nullptr;
 
    // signal data subjects
-   rt::Subject<sdr::SignalBuffer> *signalBufferSubject = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalRvStream = nullptr;
 
    // subscriptions
    rt::Subject<rt::Event>::Subscription decoderStatusSubscription;
@@ -95,53 +95,53 @@ struct QtDecoder::Impl
    explicit Impl(QSettings &settings) : settings(settings)
    {
       // create status subjects
-      decoderStatusSubject = rt::Subject<rt::Event>::name("decoder.status");
-      recorderStatusSubject = rt::Subject<rt::Event>::name("recorder.status");
-      storageStatusSubject = rt::Subject<rt::Event>::name("storage.status");
-      receiverStatusSubject = rt::Subject<rt::Event>::name("receiver.status");
+      decoderStatusStream = rt::Subject<rt::Event>::name("decoder.status");
+      recorderStatusStream = rt::Subject<rt::Event>::name("recorder.status");
+      storageStatusStream = rt::Subject<rt::Event>::name("storage.status");
+      receiverStatusStream = rt::Subject<rt::Event>::name("receiver.status");
 
       // create decoder control subject
-      decoderCommandSubject = rt::Subject<rt::Event>::name("decoder.command");
-      recorderCommandSubject = rt::Subject<rt::Event>::name("recorder.command");
-      storageCommandSubject = rt::Subject<rt::Event>::name("storage.command");
-      receiverCommandSubject = rt::Subject<rt::Event>::name("receiver.command");
+      decoderCommandStream = rt::Subject<rt::Event>::name("decoder.command");
+      recorderCommandStream = rt::Subject<rt::Event>::name("recorder.command");
+      storageCommandStream = rt::Subject<rt::Event>::name("storage.command");
+      receiverCommandStream = rt::Subject<rt::Event>::name("receiver.command");
 
       // create frame subject
-      decoderFrameSubject = rt::Subject<nfc::NfcFrame>::name("decoder.frame");
-      storageFrameSubject = rt::Subject<nfc::NfcFrame>::name("storage.frame");
+      decoderFrameStream = rt::Subject<nfc::NfcFrame>::name("decoder.frame");
+      storageFrameStream = rt::Subject<nfc::NfcFrame>::name("storage.frame");
 
       // create signal subject
-      signalBufferSubject = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+      signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
    }
 
    void systemStartup(SystemStartupEvent *event)
    {
       // subscribe to status events
-      decoderStatusSubscription = decoderStatusSubject->subscribe([this](const rt::Event &params) {
+      decoderStatusSubscription = decoderStatusStream->subscribe([this](const rt::Event &params) {
          decoderStatusChange(params);
       });
 
-      recorderStatusSubscription = recorderStatusSubject->subscribe([this](const rt::Event &params) {
+      recorderStatusSubscription = recorderStatusStream->subscribe([this](const rt::Event &params) {
          recorderStatusChange(params);
       });
 
-      storageStatusSubscription = storageStatusSubject->subscribe([this](const rt::Event &params) {
+      storageStatusSubscription = storageStatusStream->subscribe([this](const rt::Event &params) {
          storageStatusChange(params);
       });
 
-      receiverStatusSubscription = receiverStatusSubject->subscribe([this](const rt::Event &params) {
+      receiverStatusSubscription = receiverStatusStream->subscribe([this](const rt::Event &params) {
          receiverStatusChange(params);
       });
 
-      decoderFrameSubscription = decoderFrameSubject->subscribe([this](const nfc::NfcFrame &frame) {
+      decoderFrameSubscription = decoderFrameStream->subscribe([this](const nfc::NfcFrame &frame) {
          frameEvent(frame);
       });
 
-      storageFrameSubscription = storageFrameSubject->subscribe([this](const nfc::NfcFrame &frame) {
+      storageFrameSubscription = storageFrameStream->subscribe([this](const nfc::NfcFrame &frame) {
          frameEvent(frame);
       });
 
-      signalBufferSubscription = signalBufferSubject->subscribe([this](const sdr::SignalBuffer &buffer) {
+      signalBufferSubscription = signalRvStream->subscribe([this](const sdr::SignalBuffer &buffer) {
          bufferEvent(buffer);
       });
 
@@ -407,19 +407,19 @@ struct QtDecoder::Impl
     */
    void taskDecoderStart(std::function<void()> onComplete = nullptr) const
    {
-      decoderCommandSubject->next({nfc::FrameDecoderTask::Start, std::move(onComplete)});
+      decoderCommandStream->next({nfc::FrameDecoderTask::Start, std::move(onComplete)});
    }
 
    void taskDecoderStop(std::function<void()> onComplete = nullptr) const
    {
-      decoderCommandSubject->next({nfc::FrameDecoderTask::Stop, std::move(onComplete)});
+      decoderCommandStream->next({nfc::FrameDecoderTask::Stop, std::move(onComplete)});
    }
 
    void taskDecoderConfig(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
       QJsonDocument doc(data);
 
-      decoderCommandSubject->next({nfc::FrameDecoderTask::Configure, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      decoderCommandStream->next({nfc::FrameDecoderTask::Configure, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -427,24 +427,24 @@ struct QtDecoder::Impl
     */
    void taskReceiverStart(std::function<void()> onComplete = nullptr) const
    {
-      receiverCommandSubject->next({nfc::SignalReceiverTask::Start, std::move(onComplete)});
+      receiverCommandStream->next({nfc::SignalReceiverTask::Start, std::move(onComplete)});
    }
 
    void taskReceiverStop(std::function<void()> onComplete = nullptr) const
    {
-      receiverCommandSubject->next({nfc::SignalReceiverTask::Stop, std::move(onComplete)});
+      receiverCommandStream->next({nfc::SignalReceiverTask::Stop, std::move(onComplete)});
    }
 
    void taskReceiverQuery(std::function<void()> onComplete = nullptr) const
    {
-      receiverCommandSubject->next({nfc::SignalReceiverTask::Query, std::move(onComplete)});
+      receiverCommandStream->next({nfc::SignalReceiverTask::Query, std::move(onComplete)});
    }
 
    void taskReceiverConfig(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
       QJsonDocument doc(data);
 
-      receiverCommandSubject->next({nfc::SignalReceiverTask::Configure, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      receiverCommandStream->next({nfc::SignalReceiverTask::Configure, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -452,17 +452,17 @@ struct QtDecoder::Impl
     */
    void taskRecorderRead(const QString &name, std::function<void()> onComplete = nullptr) const
    {
-      recorderCommandSubject->next({nfc::SignalRecorderTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
+      recorderCommandStream->next({nfc::SignalRecorderTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
    void taskRecorderWrite(const QString &name, std::function<void()> onComplete = nullptr) const
    {
-      recorderCommandSubject->next({nfc::SignalRecorderTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
+      recorderCommandStream->next({nfc::SignalRecorderTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
    void taskRecorderStop(std::function<void()> onComplete = nullptr) const
    {
-      recorderCommandSubject->next({nfc::SignalRecorderTask::Stop, std::move(onComplete)});
+      recorderCommandStream->next({nfc::SignalRecorderTask::Stop, std::move(onComplete)});
    }
 
    /*
@@ -471,18 +471,18 @@ struct QtDecoder::Impl
    void taskStorageRead(const QString &name, std::function<void()> onComplete = nullptr) const
    {
       // read frame data from file
-      storageCommandSubject->next({nfc::FrameStorageTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
+      storageCommandStream->next({nfc::FrameStorageTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
    void taskStorageWrite(const QString &name, std::function<void()> onComplete = nullptr) const
    {
       // write frame data to file
-      storageCommandSubject->next({nfc::FrameStorageTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
+      storageCommandStream->next({nfc::FrameStorageTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
    void taskStorageClear(std::function<void()> onComplete = nullptr) const
    {
-      storageCommandSubject->next({nfc::FrameStorageTask::Clear, std::move(onComplete)});
+      storageCommandStream->next({nfc::FrameStorageTask::Clear, std::move(onComplete)});
    }
 };
 

@@ -42,10 +42,10 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
    std::shared_ptr<sdr::RadioDevice> receiver;
 
    // signal stream subject for IQ data
-   rt::Subject<sdr::SignalBuffer> *signalIQStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalIqStream = nullptr;
 
    // signal stream subject for real data
-   rt::Subject<sdr::SignalBuffer> *signalRealStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalRvStream = nullptr;
 
    // signal stream queue buffer
    rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
@@ -55,8 +55,8 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
    Impl() : AbstractTask("SignalReceiverTask", "receiver")
    {
-      signalIQStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
-      signalRealStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+      signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
+      signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
    }
 
    void start() override
@@ -153,10 +153,10 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          log.warn("device {} disconnected", {receiver->name()});
 
          // send null buffer for EOF
-         signalIQStream->next({});
+         signalIqStream->next({});
 
          // send null buffer for EOF
-         signalRealStream->next({});
+         signalRvStream->next({});
 
          // close device
          receiver.reset();
@@ -324,10 +324,10 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          result.flip();
 
          // send IQ value buffer
-         signalIQStream->next(buffer);
+         signalIqStream->next(buffer);
 
          // send Real value buffer
-         signalRealStream->next(result);
+         signalRvStream->next(result);
       }
    }
 };

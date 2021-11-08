@@ -49,6 +49,8 @@ class SignalWidget : public QWidget
 
       void select(double from, double to);
 
+      void range(double lower, double upper);
+
       void clear();
 
    protected:
