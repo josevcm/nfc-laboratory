@@ -57,7 +57,7 @@ class FramesWidget : public QWidget
 
    public:
 
-      Q_SIGNAL void selectionChanged(double from, double to);
+      Q_SIGNAL void selectionChanged(float from, float to);
 
    private:
 

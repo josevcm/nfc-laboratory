@@ -183,18 +183,23 @@ struct QtWindow::Impl
       });
 
       // connect selection signal from timing graph
-      QObject::connect(ui->framesView, &FramesWidget::selectionChanged, [=](double from, double to) {
+      QObject::connect(ui->framesView, &FramesWidget::selectionChanged, [=](float from, float to) {
          timingSelectionChanged(from, to);
       });
 
       // connect selection signal from timing graph
-      QObject::connect(ui->signalView, &SignalWidget::selectionChanged, [=](double from, double to) {
+      QObject::connect(ui->signalView, &SignalWidget::selectionChanged, [=](float from, float to) {
          signalSelectionChanged(from, to);
       });
 
       // connect selection signal from frame model
       QObject::connect(ui->signalView, &SignalWidget::rangeChanged, [=](float from, float to) {
          signalRangeChanged(from, to);
+      });
+
+      // connect selection signal from frame model
+      QObject::connect(ui->signalScroll, &QScrollBar::valueChanged, [=](int value) {
+         signalScrollChanged(value);
       });
 
       // connect refresh timer signal
@@ -688,7 +693,7 @@ struct QtWindow::Impl
 
          if (firstFrame && lastFrame)
          {
-            ui->signalView->range(firstFrame->timeStart(), lastFrame->timeEnd());
+            ui->signalView->setRange(firstFrame->timeStart(), lastFrame->timeEnd());
          }
       }
    }
@@ -831,15 +836,27 @@ struct QtWindow::Impl
 
    void signalRangeChanged(float from, float to)
    {
-      float span = to - from;
-      float center = from + span / 2;
+      float range = to - from;
+      float length = ui->signalView->maximumRange() - ui->signalView->minimumRange();
+      float value = (from - ui->signalView->minimumRange()) / length;
+      float step = (range / length);
 
-      qDebug() << "signalRangeChanged(" << from << "," << to << ") span" << span << "center" << center;
-      qDebug() << "signalScroll->setValue(" << qRound(center * 1000) << ")";
-      qDebug() << "signalScroll->setPageStep(" << qRound(2 * span * 1000) << ")";
+      ui->signalScroll->blockSignals(true);
+      ui->signalScroll->setPageStep(qRound(step * 1000));
+      ui->signalScroll->setMaximum(1000 - ui->signalScroll->pageStep());
+      ui->signalScroll->setValue(qRound(value * 1000));
+      ui->signalScroll->blockSignals(false);
+   }
 
-      ui->signalScroll->setValue(qRound(center * 1000));
-      ui->signalScroll->setPageStep(qRound(2 * span * 1000));
+   void signalScrollChanged(int value)
+   {
+      float length = ui->signalView->maximumRange() - ui->signalView->minimumRange();
+      float from = ui->signalView->minimumRange() + length * (value / 1000.0f);
+      float to = from + length * (ui->signalScroll->pageStep() / 1000.0f);
+
+      ui->signalView->blockSignals(true);
+      ui->signalView->setRange(from, to);
+      ui->signalView->blockSignals(false);
    }
 
    void clipboardCopy() const
@@ -866,7 +883,6 @@ QtWindow::QtWindow(QSettings &settings, QtMemory *cache) : impl(new Impl(setting
    setAttribute(Qt::WA_DontCreateNativeAncestors, true);
    setAttribute(Qt::WA_NativeWindow, true);
    setAttribute(Qt::WA_NoSystemBackground, true);
-   setAttribute(Qt::WA_MSWindowsUseDirect3D, true);
    setAutoFillBackground(false);
 
    // and show!

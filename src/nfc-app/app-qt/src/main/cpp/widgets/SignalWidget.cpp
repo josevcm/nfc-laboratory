@@ -44,13 +44,13 @@ struct SignalWidget::Impl
    QSharedPointer<CursorMarker> cursor;
    QSharedPointer<QCPGraphDataContainer> data;
 
-   float lowerSignalRange = INT32_MAX;
-   float upperSignalRange = -INT32_MAX;
+   float minimumRange = INT32_MAX;
+   float maximumRange = -INT32_MAX;
 
-   float lowerSignalScale = INT32_MAX;
-   float upperSignalScale = -INT32_MAX;
+   float minimumScale = INT32_MAX;
+   float maximumScale = -INT32_MAX;
 
-   float maximumRangeSpan = 5;
+   float rangeWidth = 5;
 
    explicit Impl(SignalWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
    {
@@ -152,17 +152,17 @@ struct SignalWidget::Impl
       float endTime = startTime + buffer.elements() / sampleRate;
 
       // update signal range
-      if (lowerSignalRange > startTime)
-         lowerSignalRange = startTime;
+      if (minimumRange > startTime)
+         minimumRange = startTime;
 
-      if (upperSignalRange < endTime)
-         upperSignalRange = endTime;
+      if (maximumRange < endTime)
+         maximumRange = endTime;
 
       // remove old data
-      if ((upperSignalRange - lowerSignalRange) > maximumRangeSpan)
+      if ((maximumRange - minimumRange) > rangeWidth)
       {
-         lowerSignalRange = upperSignalRange - maximumRangeSpan;
-         data->removeBefore(lowerSignalRange);
+         minimumRange = maximumRange - rangeWidth;
+         data->removeBefore(minimumRange);
       }
 
       bool scaleChanged = false;
@@ -171,16 +171,16 @@ struct SignalWidget::Impl
       {
          float value = buffer[i];
 
-         if (lowerSignalScale > value * 0.75)
+         if (minimumScale > value * 0.75)
          {
             scaleChanged = true;
-            lowerSignalScale = value * 0.75;
+            minimumScale = value * 0.75;
          }
 
-         if (upperSignalScale < value * 1.25)
+         if (maximumScale < value * 1.25)
          {
             scaleChanged = true;
-            upperSignalScale = value * 1.25;
+            maximumScale = value * 1.25;
          }
 
          data->add({startTime + (i / sampleRate), value});
@@ -188,10 +188,10 @@ struct SignalWidget::Impl
 
       // update view scale
       if (scaleChanged)
-         plot->yAxis->setRange(lowerSignalScale, upperSignalScale);
+         plot->yAxis->setRange(minimumScale, maximumScale);
    }
 
-   void select(double from, double to)
+   void select(float from, float to)
    {
       for (int i = 0; i < plot->graphCount(); i++)
       {
@@ -207,32 +207,26 @@ struct SignalWidget::Impl
          graph->setSelection(selection);
       }
 
-      if (from > lowerSignalRange && to < upperSignalRange)
+      if (from > minimumRange && to < maximumRange)
       {
          QCPRange currentRange = plot->xAxis->range();
 
-         if (from > currentRange.upper || to < currentRange.lower)
-         {
-            plot->xAxis->setRange(from, from + currentRange.upper - currentRange.lower);
-         }
+         float center = float(from + to) / 2.0f;
+         float length = float(currentRange.upper - currentRange.lower);
+
+         plot->xAxis->setRange(center - length / 2, center + length / 2);
       }
 
       selectionChanged();
    }
 
-   void range(double lower, double upper)
-   {
-      plot->xAxis->setRange(lower, upper);
-      plot->replot();
-   }
-
    void clear()
    {
-      lowerSignalRange = +INT32_MAX;
-      upperSignalRange = -INT32_MAX;
+      minimumRange = +INT32_MAX;
+      maximumRange = -INT32_MAX;
 
-      lowerSignalScale = +INT32_MAX;
-      upperSignalScale = -INT32_MAX;
+      minimumScale = +INT32_MAX;
+      maximumScale = -INT32_MAX;
 
       data->clear();
 
@@ -380,22 +374,19 @@ struct SignalWidget::Impl
       QCPRange fixRange = newRange;
 
       // check lower range limits
-      if (newRange.lower < lowerSignalRange || newRange.lower > upperSignalRange)
-         fixRange.lower = lowerSignalRange < +INT32_MAX ? lowerSignalRange : 0;
+      if (newRange.lower < minimumRange || newRange.lower > maximumRange)
+         fixRange.lower = minimumRange < +INT32_MAX ? minimumRange : 0;
 
       // check upper range limits
-      if (newRange.upper > upperSignalRange || newRange.upper < lowerSignalRange)
-         fixRange.upper = upperSignalRange > -INT32_MAX ? upperSignalRange : 1;
+      if (newRange.upper > maximumRange || newRange.upper < minimumRange)
+         fixRange.upper = maximumRange > -INT32_MAX ? maximumRange : 1;
 
       // fix visible range
       if (fixRange != newRange)
          plot->xAxis->setRange(fixRange);
 
-      // get full range span
-      float rangeSpan = upperSignalRange - lowerSignalRange;
-
       // emit range signal
-      widget->rangeChanged((fixRange.lower - lowerSignalRange) / rangeSpan, (fixRange.upper - lowerSignalRange) / rangeSpan);
+      widget->rangeChanged(fixRange.lower, fixRange.upper);
    }
 
    void scaleChanged(const QCPRange &newScale) const
@@ -403,22 +394,19 @@ struct SignalWidget::Impl
       QCPRange fixScale = newScale;
 
       // check lower scale limits
-      if (newScale.lower < lowerSignalScale || newScale.lower > upperSignalScale)
-         fixScale.lower = lowerSignalScale < +INT32_MAX ? lowerSignalScale : 0;
+      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
+         fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
 
       // check lower scale limits
-      if (newScale.upper > upperSignalScale || newScale.upper < lowerSignalScale)
-         fixScale.upper = upperSignalScale > -INT32_MAX ? upperSignalScale : 1;
+      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
+         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
 
       // fix visible scale
       if (fixScale != newScale)
          plot->yAxis->setRange(fixScale);
 
-      // get full scale span
-      float scaleSpan = upperSignalScale - lowerSignalScale;
-
       // emit scale change signal
-      widget->scaleChanged((fixScale.lower - lowerSignalScale) / scaleSpan, (fixScale.upper - lowerSignalScale) / scaleSpan);
+      widget->scaleChanged(fixScale.lower, fixScale.upper);
    }
 
    void setCenterFreq(long value)
@@ -427,6 +415,17 @@ struct SignalWidget::Impl
 
    void setSampleRate(long value)
    {
+   }
+
+   void setRange(float lower, float upper)
+   {
+      plot->xAxis->setRange(lower, upper);
+      plot->replot();
+   }
+
+   void setCenter(float value)
+   {
+      qDebug() << "setCenter(" << value << ")";
    }
 };
 
@@ -444,19 +443,24 @@ void SignalWidget::setSampleRate(long value)
    impl->setSampleRate(value);
 }
 
+void SignalWidget::setRange(float lower, float upper)
+{
+   impl->setRange(lower, upper);
+}
+
+void SignalWidget::setCenter(float value)
+{
+   impl->setCenter(value);
+}
+
 void SignalWidget::append(const sdr::SignalBuffer &buffer)
 {
    impl->append(buffer);
 }
 
-void SignalWidget::select(double from, double to)
+void SignalWidget::select(float from, float to)
 {
    impl->select(from, to);
-}
-
-void SignalWidget::range(double lower, double upper)
-{
-   impl->range(lower, upper);
 }
 
 void SignalWidget::refresh()
@@ -469,6 +473,27 @@ void SignalWidget::clear()
    impl->clear();
 }
 
+float SignalWidget::minimumRange() const
+{
+   return impl->minimumRange;
+}
+
+float SignalWidget::maximumRange() const
+{
+   return impl->maximumRange;
+
+}
+
+float SignalWidget::minimumScale() const
+{
+   return impl->minimumScale;
+}
+
+float SignalWidget::maximumScale() const
+{
+   return impl->maximumScale;
+}
+
 void SignalWidget::enterEvent(QEvent *event)
 {
    impl->mouseEnter();
@@ -478,3 +503,4 @@ void SignalWidget::leaveEvent(QEvent *event)
 {
    impl->mouseLeave();
 }
+

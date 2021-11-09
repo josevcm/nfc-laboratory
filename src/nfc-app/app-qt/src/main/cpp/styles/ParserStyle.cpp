@@ -94,7 +94,7 @@ void ParserStyle::paint(QPainter *painter, const QStyleOptionViewItem &option, c
          }
          else
          {
-            painter->fillRect(option.rect, option.palette.background());
+            painter->fillRect(option.rect, option.palette.window());
          }
 
          switch (index.column())
