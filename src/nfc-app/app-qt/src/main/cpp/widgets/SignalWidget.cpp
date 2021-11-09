@@ -394,12 +394,16 @@ struct SignalWidget::Impl
       QCPRange fixScale = newScale;
 
       // check lower scale limits
-      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
-         fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
+//      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
+//         fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
 
       // check lower scale limits
-      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
-         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
+//      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
+//         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
+
+      // scale not allowed to change
+      fixScale.lower = minimumScale;
+      fixScale.upper = maximumScale;
 
       // fix visible scale
       if (fixScale != newScale)
