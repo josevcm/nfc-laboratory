@@ -96,7 +96,8 @@ struct FrequencyWidget::Impl : public gl::Engine
    {
       gl::Engine::resize(width, height);
 
-      frequencyView->resize(width, height);
+      if (frequencyView)
+         frequencyView->resize(width, height);
    }
 
    void paint()
@@ -111,19 +112,19 @@ struct FrequencyWidget::Impl : public gl::Engine
    void refresh(const sdr::SignalBuffer &buffer) const
    {
       if (frequencyView)
-      {
          frequencyView->refresh(buffer);
-      }
    }
 
    void setCenterFreq(long value)
    {
-      frequencyView->setCenterFreq(value);
+      if (frequencyView)
+         frequencyView->setCenterFreq(value);
    }
 
    void setSampleRate(long value)
    {
-      frequencyView->setSampleRate(value);
+      if (frequencyView)
+         frequencyView->setSampleRate(value);
    }
 };
 

@@ -14,9 +14,11 @@ add_executable(nfc-lab
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
         src/main/cpp/QtDecoder.cpp
+        src/main/cpp/QtMemory.cpp
         src/main/cpp/QtResources.cpp
         src/main/cpp/QtWindow.cpp
         src/main/cpp/events/DecoderControlEvent.cpp
+        src/main/cpp/events/DecoderStatusEvent.cpp
         src/main/cpp/events/ReceiverStatusEvent.cpp
         src/main/cpp/events/ConsoleLogEvent.cpp
         src/main/cpp/events/StorageControlEvent.cpp

@@ -33,13 +33,11 @@ const QString ReceiverStatusEvent::NoDevice = "absent";
 const QString ReceiverStatusEvent::Idle = "idle";
 const QString ReceiverStatusEvent::Streaming = "streaming";
 
-ReceiverStatusEvent::ReceiverStatusEvent() :
-      QEvent(QEvent::Type(Type))
+ReceiverStatusEvent::ReceiverStatusEvent() : QEvent(QEvent::Type(Type))
 {
 }
 
-ReceiverStatusEvent::ReceiverStatusEvent(int status) :
-      QEvent(QEvent::Type(Type))
+ReceiverStatusEvent::ReceiverStatusEvent(int status) : QEvent(QEvent::Type(Type))
 {
 }
 
@@ -178,7 +176,7 @@ QMap<int, QString> ReceiverStatusEvent::sampleRateList() const
 {
    QMap<int, QString> result;
 
-   for (auto entry : data["sampleRates"].toArray())
+   for (auto entry: data["sampleRates"].toArray())
    {
       auto item = entry.toObject();
 
@@ -197,7 +195,7 @@ QMap<int, QString> ReceiverStatusEvent::gainModeList() const
 {
    QMap<int, QString> result;
 
-   for (auto entry : data["gainModes"].toArray())
+   for (auto entry: data["gainModes"].toArray())
    {
       auto item = entry.toObject();
 
@@ -216,7 +214,7 @@ QMap<int, QString> ReceiverStatusEvent::gainValueList() const
 {
    QMap<int, QString> result;
 
-   for (auto entry : data["gainValues"].toArray())
+   for (auto entry: data["gainValues"].toArray())
    {
       auto item = entry.toObject();
 

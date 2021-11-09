@@ -29,8 +29,9 @@
 #include <QPointer>
 #include <QThreadPool>
 
-#include "QtWindow.h"
 #include "QtDecoder.h"
+#include "QtMemory.h"
+#include "QtWindow.h"
 
 #include "events/SystemStartupEvent.h"
 #include "events/SystemShutdownEvent.h"
@@ -44,18 +45,24 @@ struct QtApplication::Impl
    QSettings settings;
 
    // interface control
+   QPointer<QtMemory> memory;
+
+   // interface control
    QPointer<QtWindow> window;
 
-   // receiver control
-   QPointer<QtDecoder> control;
+   // decoder control
+   QPointer<QtDecoder> decoder;
 
    Impl() : settings("conf/nfc-lab.conf", QSettings::IniFormat)
    {
       // create user interface window
-      window = new QtWindow(settings);
+      memory = new QtMemory(settings);
+
+      // create user interface window
+      window = new QtWindow(settings, memory);
 
       // create decoder control interface
-      control = new QtDecoder(settings);
+      decoder = new QtDecoder(settings, memory);
    }
 
    void startup()
@@ -87,7 +94,7 @@ struct QtApplication::Impl
    void handleEvent(QEvent *event)
    {
       window->handleEvent(event);
-      control->handleEvent(event);
+      decoder->handleEvent(event);
    }
 };
 

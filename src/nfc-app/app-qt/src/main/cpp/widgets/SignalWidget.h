@@ -51,14 +51,21 @@ class SignalWidget : public QWidget
 
       void range(double lower, double upper);
 
+      void refresh();
+
       void clear();
 
    protected:
 
       void enterEvent(QEvent *event) override;
+
       void leaveEvent(QEvent *event) override;
 
    public:
+
+      Q_SIGNAL void rangeChanged(double from, double to);
+
+      Q_SIGNAL void scaleChanged(double from, double to);
 
       Q_SIGNAL void selectionChanged(double from, double to);
 

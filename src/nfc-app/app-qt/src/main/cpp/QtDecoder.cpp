@@ -42,6 +42,7 @@
 #include <nfc/SignalRecorderTask.h>
 
 #include <events/DecoderControlEvent.h>
+#include <events/DecoderStatusEvent.h>
 #include <events/StreamFrameEvent.h>
 #include <events/SystemStartupEvent.h>
 #include <events/SystemShutdownEvent.h>
@@ -50,12 +51,17 @@
 #include <events/SignalBufferEvent.h>
 
 #include "QtApplication.h"
+
+#include "QtMemory.h"
 #include "QtDecoder.h"
 
 struct QtDecoder::Impl
 {
    // configuration
    QSettings &settings;
+
+   // signal memory cache
+   QtMemory *cache;
 
    // current device name
    QString currentDevice;
@@ -77,7 +83,7 @@ struct QtDecoder::Impl
    rt::Subject<nfc::NfcFrame> *storageFrameStream = nullptr;
 
    // signal data subjects
-   rt::Subject<sdr::SignalBuffer> *signalRvStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalDataStream = nullptr;
 
    // subscriptions
    rt::Subject<rt::Event>::Subscription decoderStatusSubscription;
@@ -90,9 +96,9 @@ struct QtDecoder::Impl
    rt::Subject<nfc::NfcFrame>::Subscription storageFrameSubscription;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalBufferSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalDataSubscription;
 
-   explicit Impl(QSettings &settings) : settings(settings)
+   explicit Impl(QSettings &settings, QtMemory *cache) : settings(settings), cache(cache)
    {
       // create status subjects
       decoderStatusStream = rt::Subject<rt::Event>::name("decoder.status");
@@ -111,7 +117,7 @@ struct QtDecoder::Impl
       storageFrameStream = rt::Subject<nfc::NfcFrame>::name("storage.frame");
 
       // create signal subject
-      signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+      signalDataStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
    }
 
    void systemStartup(SystemStartupEvent *event)
@@ -141,7 +147,7 @@ struct QtDecoder::Impl
          frameEvent(frame);
       });
 
-      signalBufferSubscription = signalRvStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+      signalDataSubscription = signalDataStream->subscribe([this](const sdr::SignalBuffer &buffer) {
          bufferEvent(buffer);
       });
 
@@ -194,8 +200,14 @@ struct QtDecoder::Impl
       }
    }
 
-   void decoderStatusChange(const rt::Event &status)
+   void decoderStatusChange(const rt::Event &event)
    {
+      if (auto data = event.get<std::string>("data"))
+      {
+         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         QtApplication::post(DecoderStatusEvent::create(status));
+      }
    }
 
    void recorderStatusChange(const rt::Event &event)
@@ -235,11 +247,15 @@ struct QtDecoder::Impl
 
    void bufferEvent(const sdr::SignalBuffer &buffer)
    {
+//      cache->append(buffer);
       QtApplication::post(new SignalBufferEvent(buffer), Qt::LowEventPriority);
    }
 
    void doReceiverDecode(DecoderControlEvent *event) const
    {
+      // clear signal cache
+      cache->clear();
+
       // clear storage queue
       taskStorageClear();
 
@@ -253,6 +269,12 @@ struct QtDecoder::Impl
    void doReceiverRecord(DecoderControlEvent *event) const
    {
       QString name = QString("record-%1.wav").arg(QDateTime::currentDateTime().toString("yyyyMMddHHmmss"));
+
+      // clear signal cache
+      cache->clear();
+
+      // clear storage queue
+      taskStorageClear();
 
       // start recorder and...
       taskRecorderWrite(name, [=] {
@@ -486,7 +508,7 @@ struct QtDecoder::Impl
    }
 };
 
-QtDecoder::QtDecoder(QSettings &settings) : impl(new Impl(settings))
+QtDecoder::QtDecoder(QSettings &settings, QtMemory *cache) : impl(new Impl(settings, cache))
 {
 }
 

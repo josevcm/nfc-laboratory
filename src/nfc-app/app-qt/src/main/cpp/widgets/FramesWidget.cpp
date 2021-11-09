@@ -259,6 +259,10 @@ struct FramesWidget::Impl
 
    void refresh() const
    {
+      // fix range if current value is out
+      rangeChanged(plot->xAxis->range());
+
+      // refresh graph
       plot->replot();
    }
 
@@ -371,11 +375,16 @@ struct FramesWidget::Impl
 
    void rangeChanged(const QCPRange &newRange) const
    {
+      QCPRange fixRange = newRange;
+
       if (newRange.lower < lowerSignalRange || newRange.lower > upperSignalRange)
-         plot->xAxis->setRangeLower(lowerSignalRange < +INT32_MAX ? lowerSignalRange : 0);
+         fixRange.lower = lowerSignalRange < +INT32_MAX ? lowerSignalRange : 0;
 
       if (newRange.upper > upperSignalRange || newRange.upper < lowerSignalRange)
-         plot->xAxis->setRangeUpper(upperSignalRange > -INT32_MAX ? upperSignalRange : 1);
+         fixRange.upper = upperSignalRange > -INT32_MAX ? upperSignalRange : 1;
+
+      if (fixRange != newRange)
+         plot->xAxis->setRange(fixRange);
    }
 };
 

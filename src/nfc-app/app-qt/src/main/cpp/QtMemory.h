@@ -22,30 +22,41 @@
 
 */
 
-#ifndef APP_QTCONTROL_H
-#define APP_QTCONTROL_H
+#ifndef NFC_LAB_QTMEMORY_H
+#define NFC_LAB_QTMEMORY_H
 
 #include <QObject>
 #include <QSettings>
 #include <QSharedPointer>
 
-class QtMemory;
+namespace sdr {
+class SignalBuffer;
+}
 
-class QtDecoder : public QObject
+class QtMemory : public QObject
 {
-      Q_OBJECT
+   Q_OBJECT
 
       struct Impl;
 
    public:
 
-      explicit QtDecoder(QSettings &settings, QtMemory *cache);
+      explicit QtMemory(QSettings &settings);
 
-      void handleEvent(QEvent *event);
+      void append(const sdr::SignalBuffer &buffer);
+
+      void clear();
+
+      long length() const;
+
+      long samples() const;
+
+      long size() const;
 
    private:
 
       QSharedPointer<Impl> impl;
 };
 
-#endif //NFC_LAB_QTCONTROL_H
+
+#endif //NFC_LAB_QTMEMORY_H
