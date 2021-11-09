@@ -11,7 +11,7 @@ add_library(nfc-tasks STATIC
         src/main/cpp/SignalRecorderTask.cpp
         )
 
-target_compile_options(nfc-tasks PRIVATE "-fopt-info-vec-optimized")
+#target_compile_options(nfc-tasks PRIVATE "-fopt-info-vec-optimized")
 
 target_include_directories(nfc-tasks PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(nfc-tasks PRIVATE ${PRIVATE_SOURCE_DIR})

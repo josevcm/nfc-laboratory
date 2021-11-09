@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,30 +22,44 @@
 
 */
 
-#ifndef APP_QTCONTROL_H
-#define APP_QTCONTROL_H
+#ifndef NFC_LAB_DECODERSTATUSEVENT_H
+#define NFC_LAB_DECODERSTATUSEVENT_H
 
-#include <QObject>
-#include <QSettings>
-#include <QSharedPointer>
+#include <QEvent>
+#include <QMap>
+#include <QVector>
+#include <QStringList>
+#include <QJsonObject>
 
-class QtMemory;
-
-class QtDecoder : public QObject
+class DecoderStatusEvent : public QEvent
 {
-      Q_OBJECT
+   public:
 
-      struct Impl;
+      static const int Type;
+
+      static const QString Idle;
+      static const QString Decoding;
 
    public:
 
-      explicit QtDecoder(QSettings &settings, QtMemory *cache);
+      DecoderStatusEvent();
 
-      void handleEvent(QEvent *event);
+      explicit DecoderStatusEvent(int status);
+
+      explicit DecoderStatusEvent(QJsonObject data);
+
+      bool hasStatus() const;
+
+      QString status() const;
+
+      static DecoderStatusEvent *create();
+
+      static DecoderStatusEvent *create(const QJsonObject &data);
 
    private:
 
-      QSharedPointer<Impl> impl;
+      QJsonObject data;
 };
 
-#endif //NFC_LAB_QTCONTROL_H
+
+#endif //NFC_LAB_DECODERSTATUSEVENT_H

@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,30 +22,42 @@
 
 */
 
-#ifndef APP_QTCONTROL_H
-#define APP_QTCONTROL_H
+#include "DecoderStatusEvent.h"
 
-#include <QObject>
-#include <QSettings>
-#include <QSharedPointer>
+const int DecoderStatusEvent::Type = QEvent::registerEventType();
 
-class QtMemory;
+const QString DecoderStatusEvent::Idle = "idle";
+const QString DecoderStatusEvent::Decoding = "decoding";
 
-class QtDecoder : public QObject
+DecoderStatusEvent::DecoderStatusEvent() : QEvent(QEvent::Type(Type))
 {
-      Q_OBJECT
 
-      struct Impl;
+}
 
-   public:
+DecoderStatusEvent::DecoderStatusEvent(int status) : QEvent(QEvent::Type(Type))
+{
+}
 
-      explicit QtDecoder(QSettings &settings, QtMemory *cache);
+DecoderStatusEvent::DecoderStatusEvent(QJsonObject data) : QEvent(QEvent::Type(Type)), data(std::move(data))
+{
+}
 
-      void handleEvent(QEvent *event);
+bool DecoderStatusEvent::hasStatus() const
+{
+   return data.contains("status");
+}
 
-   private:
+QString DecoderStatusEvent::status() const
+{
+   return data["status"].toString();
+}
 
-      QSharedPointer<Impl> impl;
-};
+DecoderStatusEvent *DecoderStatusEvent::create()
+{
+   return new DecoderStatusEvent();
+}
 
-#endif //NFC_LAB_QTCONTROL_H
+DecoderStatusEvent *DecoderStatusEvent::create(const QJsonObject &data)
+{
+   return new DecoderStatusEvent(data);
+}

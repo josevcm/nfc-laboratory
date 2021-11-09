@@ -89,7 +89,8 @@ struct QuadratureWidget::Impl : public gl::Engine
    {
       gl::Engine::resize(width, height);
 
-      quadratureView->resize(width, height);
+      if (quadratureView)
+         quadratureView->resize(width, height);
    }
 
    void paint()
@@ -104,9 +105,7 @@ struct QuadratureWidget::Impl : public gl::Engine
    void refresh(const sdr::SignalBuffer &buffer) const
    {
       if (quadratureView)
-      {
          quadratureView->refresh(buffer);
-      }
    }
 };
 
@@ -133,18 +132,19 @@ void QuadratureWidget::initializeGL()
 
 void QuadratureWidget::setCenterFreq(long value)
 {
-
 }
 
 void QuadratureWidget::setSampleRate(long value)
 {
-
 }
 
 void QuadratureWidget::resizeGL(int w, int h)
 {
    // force event size to optimize 2D font draw
    impl->resize(w & -2, h & -2);
+
+   //
+
 }
 
 void QuadratureWidget::paintGL()

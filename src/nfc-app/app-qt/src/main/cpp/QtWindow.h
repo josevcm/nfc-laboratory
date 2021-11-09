@@ -29,18 +29,17 @@
 #include <QSettings>
 #include <QSharedPointer>
 
-class QItemSelection;
-class QCPRange;
+class QtMemory;
 
 class QtWindow : public QMainWindow
 {
-      struct Impl;
-
    Q_OBJECT
+
+      struct Impl;
 
    public:
 
-      explicit QtWindow(QSettings &settings);
+      explicit QtWindow(QSettings &settings, QtMemory *cache);
 
       void handleEvent(QEvent *event);
 

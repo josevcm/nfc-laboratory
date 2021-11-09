@@ -32,6 +32,7 @@
 #include <QTimer>
 #include <QDateTime>
 #include <QScrollBar>
+#include <QItemSelection>
 
 #include <rt/Subject.h>
 #include <sdr/SignalBuffer.h>
@@ -41,6 +42,7 @@
 
 #include <events/ConsoleLogEvent.h>
 #include <events/DecoderControlEvent.h>
+#include <events/DecoderStatusEvent.h>
 #include <events/ReceiverStatusEvent.h>
 #include <events/StreamFrameEvent.h>
 #include <events/SystemStartupEvent.h>
@@ -53,13 +55,18 @@
 
 #include <views/ui_MainView.h>
 
-#include "QtWindow.h"
 #include "QtApplication.h"
+
+#include "QtMemory.h"
+#include "QtWindow.h"
 
 struct QtWindow::Impl
 {
    // configuration
    QSettings &settings;
+
+   // signal memory cache
+   QtMemory *cache;
 
    // Toolbar status
    bool liveEnabled = false;
@@ -72,7 +79,7 @@ struct QtWindow::Impl
    QMap<int, QString> receiverGainModes;
    QMap<int, QString> receiverGainValues;
 
-   // current decice parameters
+   // current device parameters
    QString receiverName;
    QString receiverType;
    QString receiverStatus;
@@ -111,7 +118,7 @@ struct QtWindow::Impl
    // fft signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription frequencySubscription;
 
-   explicit Impl(QSettings &settings) : settings(settings), ui(new Ui_MainView()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
+   explicit Impl(QSettings &settings, QtMemory *cache) : settings(settings), cache(cache), ui(new Ui_MainView()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
    {
       // IQ signal subject stream
       signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
@@ -166,9 +173,9 @@ struct QtWindow::Impl
       ui->parserView->setItemDelegate(new ParserStyle(ui->parserView));
 
       // connect selection signal from frame model
-      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
-         streamScrollChanged();
-      });
+//      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
+//         streamScrollChanged();
+//      });
 
       // connect selection signal from frame model
       QObject::connect(ui->streamView->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &selected, const QItemSelection &deselected) {
@@ -183,6 +190,11 @@ struct QtWindow::Impl
       // connect selection signal from timing graph
       QObject::connect(ui->signalView, &SignalWidget::selectionChanged, [=](double from, double to) {
          signalSelectionChanged(from, to);
+      });
+
+      // connect selection signal from frame model
+      QObject::connect(ui->signalView, &SignalWidget::rangeChanged, [=](float from, float to) {
+         signalRangeChanged(from, to);
       });
 
       // connect refresh timer signal
@@ -233,6 +245,18 @@ struct QtWindow::Impl
 
    void systemShutdown(SystemShutdownEvent *event)
    {
+   }
+
+   void decoderStatusEvent(DecoderStatusEvent *event)
+   {
+      if (event->hasStatus())
+      {
+         if (event->status() == DecoderStatusEvent::Idle)
+         {
+            ui->framesView->refresh();
+            ui->signalView->refresh();
+         }
+      }
    }
 
    void receiverStatusEvent(ReceiverStatusEvent *event)
@@ -639,8 +663,6 @@ struct QtWindow::Impl
          {
             ui->streamView->scrollToBottom();
          }
-
-         ui->framesView->refresh();
       }
    }
 
@@ -661,19 +683,12 @@ struct QtWindow::Impl
 
       if (firstRow.isValid() && lastRow.isValid())
       {
-         qDebug() << "firstRow" << firstRow.row();
-         qDebug() << "lastRow" << lastRow.row();
-
          nfc::NfcFrame *firstFrame = streamModel->frame(firstRow);
          nfc::NfcFrame *lastFrame = streamModel->frame(lastRow);
 
          if (firstFrame && lastFrame)
          {
-            float startTime = firstFrame->timeStart();
-            float endTime = lastFrame->timeStart();
-
-            // select frames un timing view
-            ui->signalView->range(startTime, endTime);
+            ui->signalView->range(firstFrame->timeStart(), lastFrame->timeEnd());
          }
       }
    }
@@ -697,11 +712,7 @@ struct QtWindow::Impl
             {
                if (nfc::NfcFrame *frame = streamModel->frame(current))
                {
-                  // prepara data for clipboard copy&paste
                   text.append(QString("%1;").arg(current.row()));
-                  text.append(QString("%1;").arg(frame->timeStart()));
-                  text.append(QString("%1;").arg(frame->timeEnd()));
-                  text.append(QString("%1;").arg(frame->frameRate()));
 
                   for (int i = 0; i < frame->available(); i++)
                   {
@@ -710,7 +721,7 @@ struct QtWindow::Impl
 
                   text.append(QLatin1Char('\n'));
 
-                  // detect data start / end timming
+                  // detect data start / end timing
                   if (startTime < 0 || frame->timeStart() < startTime)
                      startTime = frame->timeStart();
 
@@ -818,13 +829,26 @@ struct QtWindow::Impl
       ui->framesView->blockSignals(false);
    }
 
+   void signalRangeChanged(float from, float to)
+   {
+      float span = to - from;
+      float center = from + span / 2;
+
+      qDebug() << "signalRangeChanged(" << from << "," << to << ") span" << span << "center" << center;
+      qDebug() << "signalScroll->setValue(" << qRound(center * 1000) << ")";
+      qDebug() << "signalScroll->setPageStep(" << qRound(2 * span * 1000) << ")";
+
+      ui->signalScroll->setValue(qRound(center * 1000));
+      ui->signalScroll->setPageStep(qRound(2 * span * 1000));
+   }
+
    void clipboardCopy() const
    {
       QApplication::clipboard()->setText(clipboard);
    }
 };
 
-QtWindow::QtWindow(QSettings &settings) : impl(new Impl(settings))
+QtWindow::QtWindow(QSettings &settings, QtMemory *cache) : impl(new Impl(settings, cache))
 {
    impl->setupUi(this);
 
@@ -952,6 +976,8 @@ void QtWindow::handleEvent(QEvent *event)
       impl->signalBufferEvent(dynamic_cast<SignalBufferEvent *>(event));
    else if (event->type() == StreamFrameEvent::Type)
       impl->streamFrameEvent(dynamic_cast<StreamFrameEvent *>(event));
+   else if (event->type() == DecoderStatusEvent::Type)
+      impl->decoderStatusEvent(dynamic_cast<DecoderStatusEvent *>(event));
    else if (event->type() == ReceiverStatusEvent::Type)
       impl->receiverStatusEvent(dynamic_cast<ReceiverStatusEvent *>(event));
    else if (event->type() == StorageStatusEvent::Type)

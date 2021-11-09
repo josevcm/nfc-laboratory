@@ -12,6 +12,8 @@ add_library(nfc-decode STATIC
         src/main/cpp/tech/NfcV.cpp
         )
 
+#target_compile_options(nfc-tasks PRIVATE "-fopt-info-vec-optimized")
+
 target_include_directories(nfc-decode PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(nfc-decode PRIVATE ${PRIVATE_SOURCE_DIR})
 

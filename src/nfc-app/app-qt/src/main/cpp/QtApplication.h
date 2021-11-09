@@ -32,6 +32,8 @@
 
 class QtApplication : public QApplication
 {
+   Q_OBJECT
+
       struct Impl;
 
    public:
