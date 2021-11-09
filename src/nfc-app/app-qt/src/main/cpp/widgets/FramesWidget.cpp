@@ -46,8 +46,8 @@ struct FramesWidget::Impl
    QSharedPointer<RangeMarker> marker;
    QSharedPointer<CursorMarker> cursor;
 
-   double lowerSignalRange = +INT32_MAX;
-   double upperSignalRange = -INT32_MAX;
+   double minimumRange = +INT32_MAX;
+   double maximumRange = -INT32_MAX;
 
    explicit Impl(FramesWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
    {
@@ -166,14 +166,14 @@ struct FramesWidget::Impl
    void append(const nfc::NfcFrame &frame)
    {
       // update signal ranges
-      if (lowerSignalRange > frame.timeStart())
-         lowerSignalRange = frame.timeStart();
+      if (minimumRange > frame.timeStart())
+         minimumRange = frame.timeStart();
 
-      if (upperSignalRange < frame.timeEnd())
-         upperSignalRange = frame.timeEnd();
+      if (maximumRange < frame.timeEnd())
+         maximumRange = frame.timeEnd();
 
       // update view range
-      plot->xAxis->setRange(lowerSignalRange, upperSignalRange);
+      plot->xAxis->setRange(minimumRange, maximumRange);
 
       int graphChannel;
       int graphValue;
@@ -240,8 +240,8 @@ struct FramesWidget::Impl
 
    void clear()
    {
-      lowerSignalRange = +INT32_MAX;
-      upperSignalRange = -INT32_MAX;
+      minimumRange = +INT32_MAX;
+      maximumRange = -INT32_MAX;
 
       plot->xAxis->setRange(0, 1);
 
@@ -377,11 +377,11 @@ struct FramesWidget::Impl
    {
       QCPRange fixRange = newRange;
 
-      if (newRange.lower < lowerSignalRange || newRange.lower > upperSignalRange)
-         fixRange.lower = lowerSignalRange < +INT32_MAX ? lowerSignalRange : 0;
+      if (newRange.lower < minimumRange || newRange.lower > maximumRange)
+         fixRange.lower = minimumRange < +INT32_MAX ? minimumRange : 0;
 
-      if (newRange.upper > upperSignalRange || newRange.upper < lowerSignalRange)
-         fixRange.upper = upperSignalRange > -INT32_MAX ? upperSignalRange : 1;
+      if (newRange.upper > maximumRange || newRange.upper < minimumRange)
+         fixRange.upper = maximumRange > -INT32_MAX ? maximumRange : 1;
 
       if (fixRange != newRange)
          plot->xAxis->setRange(fixRange);
