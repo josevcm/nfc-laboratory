@@ -402,8 +402,8 @@ struct SignalWidget::Impl
 //         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
 
       // scale not allowed to change
-      fixScale.lower = minimumScale;
-      fixScale.upper = maximumScale;
+      fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
+      fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
 
       // fix visible scale
       if (fixScale != newScale)
