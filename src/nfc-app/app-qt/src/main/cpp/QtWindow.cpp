@@ -173,9 +173,9 @@ struct QtWindow::Impl
       ui->parserView->setItemDelegate(new ParserStyle(ui->parserView));
 
       // connect selection signal from frame model
-//      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
-//         streamScrollChanged();
-//      });
+      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
+         streamScrollChanged();
+      });
 
       // connect selection signal from frame model
       QObject::connect(ui->streamView->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &selected, const QItemSelection &deselected) {
@@ -649,13 +649,20 @@ struct QtWindow::Impl
 
    void clearModel()
    {
+      streamModel->blockSignals(true);
       streamModel->resetModel();
+      streamModel->blockSignals(false);
    }
 
    void clearGraph()
    {
+      ui->framesView->blockSignals(true);
       ui->framesView->clear();
+      ui->framesView->blockSignals(false);
+
+      ui->signalView->blockSignals(true);
       ui->signalView->clear();
+      ui->signalView->blockSignals(false);
    }
 
    void refreshView()
