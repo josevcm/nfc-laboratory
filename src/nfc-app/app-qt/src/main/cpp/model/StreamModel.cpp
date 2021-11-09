@@ -321,7 +321,7 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
       }
    }
 
-   else if (role == Qt::TextColorRole)
+   else if (role == Qt::ForegroundRole)
    {
       if (index.column() == Columns::Data)
       {
