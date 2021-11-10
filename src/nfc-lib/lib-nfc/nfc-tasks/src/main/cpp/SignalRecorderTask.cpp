@@ -266,7 +266,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
          {
             case 1:
             {
-               sdr::SignalBuffer buffer(65536 * channelCount, 1, sampleRate, sampleOffset, 0, sdr::SignalType::REAL_VALUE);
+               sdr::SignalBuffer buffer(65536 * channelCount, 1, sampleRate, sampleOffset, 0, sdr::SignalType::SAMPLE_REAL);
 
                if (device->read(buffer) > 0)
                {
@@ -277,11 +277,11 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
             }
             case 2:
             {
-               sdr::SignalBuffer buffer(65536 * channelCount * 2, 2, sampleRate, sampleOffset, 0, sdr::SignalType::COMPLEX_IQ);
+               sdr::SignalBuffer buffer(65536 * channelCount * 2, 2, sampleRate, sampleOffset, 0, sdr::SignalType::SAMPLE_IQ);
 
                if (device->read(buffer) > 0)
                {
-                  sdr::SignalBuffer result(65536 * channelCount, 1, sampleRate, sampleOffset >> 1, 0, sdr::SignalType::REAL_VALUE);
+                  sdr::SignalBuffer result(65536 * channelCount, 1, sampleRate, sampleOffset >> 1, 0, sdr::SignalType::SAMPLE_REAL);
 
                   buffer.stream([&result](const float *value, int stride) {
                      result.put(sqrtf(value[0] * value[0] + value[1] * value[1]));

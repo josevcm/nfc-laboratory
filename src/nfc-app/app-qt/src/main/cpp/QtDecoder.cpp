@@ -117,7 +117,7 @@ struct QtDecoder::Impl
       storageFrameStream = rt::Subject<nfc::NfcFrame>::name("storage.frame");
 
       // create signal subject
-      signalDataStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+      signalDataStream = rt::Subject<sdr::SignalBuffer>::name("signal.adaptive");
    }
 
    void systemStartup(SystemStartupEvent *event)

@@ -34,11 +34,12 @@
 #include <sdr/RecordDevice.h>
 #include <sdr/AirspyDevice.h>
 
-#include <nfc/SignalReceiverTask.h>
-#include <nfc/SignalRecorderTask.h>
+#include <nfc/AdaptiveSamplingTask.h>
+#include <nfc/FourierProcessTask.h>
 #include <nfc/FrameDecoderTask.h>
 #include <nfc/FrameStorageTask.h>
-#include <nfc/FourierProcessTask.h>
+#include <nfc/SignalReceiverTask.h>
+#include <nfc/SignalRecorderTask.h>
 
 #include <nfc/NfcFrame.h>
 #include <nfc/NfcDecoder.h>
@@ -94,7 +95,7 @@ int startTest1(int argc, char *argv[])
    {
       while (!source.isEof())
       {
-         sdr::SignalBuffer samples(65536 * source.channelCount(), source.channelCount(), source.sampleRate(), 0, 0, sdr::SignalType::REAL_VALUE);
+         sdr::SignalBuffer samples(65536 * source.channelCount(), source.channelCount(), source.sampleRate(), 0, 0, sdr::SignalType::SAMPLE_REAL);
 
          if (source.read(samples) > 0)
          {
@@ -189,7 +190,7 @@ int startTest2(int argc, char *argv[])
 //
 //                     switch (buffer->type())
 //                     {
-//                        case sdr::SignalType::COMPLEX_IQ:
+//                        case sdr::SignalType::SAMPLE_IQ:
 //                        {
 //                           buffer->stream([&result](const float *value, int stride) {
 //                              result.put(value[0]).put(value[1]).put(sqrtf(value[0] * value[0] + value[1] * value[1]));
@@ -197,7 +198,7 @@ int startTest2(int argc, char *argv[])
 //                           break;
 //                        }
 //
-//                        case sdr::SignalType::REAL_VALUE:
+//                        case sdr::SignalType::SAMPLE_REAL:
 //                        {
 //                           buffer->stream([&result](const float *value, int stride) {
 //                              result.put(value[0]).put(0.0f).put(0.0f);
@@ -233,6 +234,12 @@ int startApp(int argc, char *argv[])
    // create executor service
    Executor executor(128, 10);
 
+   // startup signal resampling task
+   executor.submit(nfc::AdaptiveSamplingTask::construct());
+
+   // startup fourier transform task
+   executor.submit(nfc::FourierProcessTask::construct());
+
    // startup signal decoder task
    executor.submit(nfc::FrameDecoderTask::construct());
 
@@ -244,9 +251,6 @@ int startApp(int argc, char *argv[])
 
    // startup signal receiver task
    executor.submit(nfc::SignalReceiverTask::construct());
-
-   // startup fourier transform task
-   executor.submit(nfc::FourierProcessTask::construct());
 
    // set logging handler
    qInstallMessageHandler(messageOutput);

@@ -27,6 +27,7 @@
 
 #include <support/QCustomPlot.h>
 
+#include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 
 #include <graph/RangeMarker.h>
@@ -40,6 +41,8 @@ struct SignalWidget::Impl
 
    QCustomPlot *plot = nullptr;
 
+   QCPGraph *graph = nullptr;
+
    QSharedPointer<RangeMarker> marker;
    QSharedPointer<CursorMarker> cursor;
    QSharedPointer<QCPGraphDataContainer> data;
@@ -50,18 +53,21 @@ struct SignalWidget::Impl
    float minimumScale = INT32_MAX;
    float maximumScale = -INT32_MAX;
 
-   float rangeWidth = 5;
+   unsigned int maximumEntries;
+
+   QColor signalColor {100, 255, 140, 255};
+   QColor selectColor {0, 200, 255, 255};
 
    explicit Impl(SignalWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
    {
       setup();
+
       clear();
    }
 
    void setup()
    {
-      QPen signalPen(QColor(100, 255, 140, 255));
-      QPen selectPen(QColor(0, 200, 255, 255));
+      maximumEntries = (512 * 1024 * 1024) / sizeof(QCPGraphData);
 
       // create data container
       data.reset(new QCPGraphDataContainer());
@@ -97,11 +103,11 @@ struct SignalWidget::Impl
       plot->xAxis->setSubTicks(true);
       plot->yAxis->setRange(0, 1);
 
-      QCPGraph *graph = plot->addGraph();
+      graph = plot->addGraph();
 
-      graph->setPen(signalPen);
+      graph->setPen(QPen(signalColor));
       graph->setSelectable(QCP::stDataRange);
-      graph->selectionDecorator()->setPen(selectPen);
+      graph->selectionDecorator()->setPen(QPen(selectColor));
 
       // get storage backend
       data = graph->data();
@@ -147,48 +153,72 @@ struct SignalWidget::Impl
 
    void append(const sdr::SignalBuffer &buffer)
    {
-      float sampleRate = buffer.sampleRate();
-      float startTime = buffer.offset() / sampleRate;
-      float endTime = startTime + buffer.elements() / sampleRate;
-
-      // update signal range
-      if (minimumRange > startTime)
-         minimumRange = startTime;
-
-      if (maximumRange < endTime)
-         maximumRange = endTime;
-
-      // remove old data
-      if ((maximumRange - minimumRange) > rangeWidth)
+      switch (buffer.type())
       {
-         minimumRange = maximumRange - rangeWidth;
+         case sdr::SignalType::SAMPLE_REAL:
+         {
+            float sampleRate = buffer.sampleRate();
+            float startTime = buffer.offset() / sampleRate;
+            float endTime = startTime + buffer.elements() / sampleRate;
+
+            // update signal range
+            if (minimumRange > startTime)
+               minimumRange = startTime;
+
+            if (maximumRange < endTime)
+               maximumRange = endTime;
+
+            for (int i = 0; i < buffer.elements(); i++)
+            {
+               float value = buffer[i];
+
+               if (minimumScale > value * 0.75)
+                  minimumScale = value * 0.75;
+
+               if (maximumScale < value * 1.25)
+                  maximumScale = value * 1.25;
+
+               data->add({startTime + (i / sampleRate), value});
+            }
+
+            break;
+         }
+
+         case sdr::SignalType::ADAPTIVE_REAL:
+         {
+            for (int i = 0; i < buffer.limit(); i += 2)
+            {
+               float range = buffer[i + 0];
+               float value = buffer[i + 1];
+
+               // update signal range
+               if (minimumRange > range)
+                  minimumRange = range;
+
+               if (maximumRange < range)
+                  maximumRange = range;
+
+               // update signal scale
+               if (minimumScale > value * 0.75)
+                  minimumScale = value * 0.75;
+
+               if (maximumScale < value * 1.25)
+                  maximumScale = value * 1.25;
+
+               data->add({range, value});
+            }
+
+            break;
+         }
+      }
+
+      // remove old data when maximum memory threshold is reached
+      if (data->size() > maximumEntries)
+      {
+         minimumRange = data->at(data->size() - maximumEntries)->key;
          data->removeBefore(minimumRange);
+         qDebug() << "signalView trim to" << minimumRange;
       }
-
-      bool scaleChanged = false;
-
-      for (int i = 0; i < buffer.elements(); i++)
-      {
-         float value = buffer[i];
-
-         if (minimumScale > value * 0.75)
-         {
-            scaleChanged = true;
-            minimumScale = value * 0.75;
-         }
-
-         if (maximumScale < value * 1.25)
-         {
-            scaleChanged = true;
-            maximumScale = value * 1.25;
-         }
-
-         data->add({startTime + (i / sampleRate), value});
-      }
-
-      // update view scale
-      if (scaleChanged)
-         plot->yAxis->setRange(minimumScale, maximumScale);
    }
 
    void select(float from, float to)
@@ -251,6 +281,9 @@ struct SignalWidget::Impl
 
       // fix scale if current value is out
       scaleChanged(plot->yAxis->range());
+
+      // trace
+      qDebug() << "samples" << data->size() << ", %" << (data->size() / ((maximumRange - minimumRange) * 10E4));
 
       // refresh graph
       plot->replot();
@@ -385,6 +418,18 @@ struct SignalWidget::Impl
       if (fixRange != newRange)
          plot->xAxis->setRange(fixRange);
 
+      // update scatter style for high zoom values
+      if ((fixRange.upper - fixRange.lower) < 1E-4)
+      {
+         graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, signalColor, signalColor, 4));
+         graph->selectionDecorator()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, selectColor, selectColor, 4), QCPScatterStyle::spAll);
+      }
+      else if (!graph->scatterStyle().isNone())
+      {
+         graph->setScatterStyle(QCPScatterStyle::ssNone);
+         graph->selectionDecorator()->setScatterStyle(QCPScatterStyle::ssNone, QCPScatterStyle::spAll);
+      }
+
       // emit range signal
       widget->rangeChanged(fixRange.lower, fixRange.upper);
    }
@@ -431,6 +476,7 @@ struct SignalWidget::Impl
    {
       qDebug() << "setCenter(" << value << ")";
    }
+
 };
 
 SignalWidget::SignalWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))

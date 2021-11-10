@@ -310,7 +310,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       if (auto entry = signalQueue.get(timeout))
       {
          sdr::SignalBuffer buffer = entry.value();
-         sdr::SignalBuffer result(buffer.elements(), 1, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::REAL_VALUE);
+         sdr::SignalBuffer result(buffer.elements(), 1, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::SAMPLE_REAL);
 
          float *src = buffer.data();
          float *dst = result.pull(buffer.elements());

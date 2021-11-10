@@ -173,9 +173,9 @@ struct QtWindow::Impl
       ui->parserView->setItemDelegate(new ParserStyle(ui->parserView));
 
       // connect selection signal from frame model
-      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
-         streamScrollChanged();
-      });
+//      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
+//         streamScrollChanged();
+//      });
 
       // connect selection signal from frame model
       QObject::connect(ui->streamView->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &selected, const QItemSelection &deselected) {

@@ -108,7 +108,7 @@ struct SignalDebug
 
    inline void begin(int sampleCount)
    {
-      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate(), 0, 0, sdr::SignalType::REAL_VALUE);
+      buffer = sdr::SignalBuffer(sampleCount * recorder->channelCount(), recorder->channelCount(), recorder->sampleRate(), 0, 0, sdr::SignalType::SAMPLE_REAL);
    }
 
    inline void write()
@@ -380,7 +380,7 @@ struct DecoderStatus
    // process next sample from signal buffer
    inline bool nextSample(sdr::SignalBuffer &buffer)
    {
-      if (buffer.available() == 0 || buffer.type() != sdr::SignalType::REAL_VALUE)
+      if (buffer.available() == 0 || buffer.type() != sdr::SignalType::SAMPLE_REAL)
          return false;
 
       // read next sample data
