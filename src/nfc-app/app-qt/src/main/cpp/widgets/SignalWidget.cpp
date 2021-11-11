@@ -158,6 +158,7 @@ struct SignalWidget::Impl
          case sdr::SignalType::SAMPLE_REAL:
          {
             float sampleRate = buffer.sampleRate();
+            float sampleStep = 1 / sampleRate;
             float startTime = buffer.offset() / sampleRate;
             float endTime = startTime + buffer.elements() / sampleRate;
 
@@ -170,6 +171,7 @@ struct SignalWidget::Impl
 
             for (int i = 0; i < buffer.elements(); i++)
             {
+               float range = fmaf(sampleStep, i, startTime);
                float value = buffer[i];
 
                if (minimumScale > value * 0.75)
@@ -178,7 +180,7 @@ struct SignalWidget::Impl
                if (maximumScale < value * 1.25)
                   maximumScale = value * 1.25;
 
-               data->add({startTime + (i / sampleRate), value});
+               data->add({range, value});
             }
 
             break;
@@ -275,11 +277,11 @@ struct SignalWidget::Impl
 
    void refresh() const
    {
-      // fix range if current value is out
-      rangeChanged(plot->xAxis->range());
+      // refresh x range
+      plot->xAxis->setRange(minimumRange, maximumRange);
 
-      // fix scale if current value is out
-      scaleChanged(plot->yAxis->range());
+      // refresh y scale
+      plot->yAxis->setRange(minimumScale, maximumScale);
 
       // refresh graph
       plot->replot();
