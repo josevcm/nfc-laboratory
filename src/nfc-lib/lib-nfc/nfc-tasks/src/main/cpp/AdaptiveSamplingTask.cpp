@@ -34,6 +34,8 @@
 
 #include "AbstractTask.h"
 
+#define WINDOW 25
+
 namespace nfc {
 
 struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
@@ -52,9 +54,6 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
 
    // stream lock
    std::mutex signalMutex;
-
-   // last signal average
-   float signalAverage;
 
    explicit Impl() : AbstractTask("AdaptiveSamplingTask", "adaptive")
    {
@@ -105,30 +104,40 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
    {
       sdr::SignalBuffer resampled(buffer.elements() * 2, 2, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::ADAPTIVE_REAL);
 
+      float avrg = 0;
       float last = buffer[0];
       float step = 1.0f / float(buffer.sampleRate());
       float start = float(buffer.offset()) / float(buffer.sampleRate());
 
-      // initialize average on first buffer
-      if (buffer.offset() == 0)
-         signalAverage = buffer[0];
+      // initialize average
+      for (int i = 0; i < (WINDOW / 2); i++)
+         avrg += buffer[i];
 
-      // store first sample
+      // always store first sample
       resampled.put(start).put(buffer[0]);
 
       // index of previous inserted point and last control point
       int p = 0, c = 0;
 
       // adaptive resample
-      for (int i = 1; i < buffer.limit(); p = i, i++)
+      for (int i = 0, r = i - (WINDOW / 2) - 1, a = i + (WINDOW / 2); i < buffer.limit(); p = i, i++, a++, r++)
       {
          float value = buffer[i];
 
-         // update average
-         signalAverage = value * 0.01f + signalAverage * (1 - 0.01f);
+         // add new sample
+         if (a < buffer.limit())
+            avrg += buffer[a];
+
+         // remove old sample
+         if (r >= 0)
+            avrg -= buffer[r];
+
+//         resampled.put(start + step * i).put(avrg / float(WIN));
 
          // detect deviation from average
-         bool insert = abs(value - signalAverage) > 0.005;
+         float d = abs(value - (avrg / float(WINDOW)));
+
+         bool insert = d > 0.005;
 
          // filter values
          if (insert || (i - c) > 100)

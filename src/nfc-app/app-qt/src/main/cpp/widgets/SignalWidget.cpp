@@ -217,7 +217,6 @@ struct SignalWidget::Impl
       {
          minimumRange = data->at(data->size() - maximumEntries)->key;
          data->removeBefore(minimumRange);
-         qDebug() << "signalView trim to" << minimumRange;
       }
    }
 
@@ -282,11 +281,11 @@ struct SignalWidget::Impl
       // fix scale if current value is out
       scaleChanged(plot->yAxis->range());
 
-      // trace
-      qDebug() << "samples" << data->size() << ", %" << (data->size() / ((maximumRange - minimumRange) * 10E4));
-
       // refresh graph
       plot->replot();
+
+      // statistics
+      qDebug().noquote() << "total samples" << data->size() << "adaptive compression ratio" << QString("%1%").arg(float(data->size() / ((maximumRange - minimumRange) * 10E4)), 0, 'f', 2);
    }
 
    void mouseEnter() const
