@@ -145,7 +145,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       std::lock_guard<std::mutex> lock(signalMutex);
 
       // IQ complex signal to real FFT transform
-      if (signalBuffer.isValid() && signalBuffer.type() == sdr::SignalType::COMPLEX_IQ)
+      if (signalBuffer.isValid() && signalBuffer.type() == sdr::SignalType::SAMPLE_IQ)
       {
          float *data = signalBuffer.data();
 
@@ -168,7 +168,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          }
 
          // create output buffer
-         sdr::SignalBuffer result(length, 1, signalBuffer.sampleRate(), 0, decimation, sdr::SignalType::COMPLEX_FREQ);
+         sdr::SignalBuffer result(length, 1, signalBuffer.sampleRate(), 0, decimation, sdr::SignalType::FREQUENCY_BIN);
 
          // add data width negative / positive frequency shift
          result.put(fftMag + (length >> 1), (length >> 1)).put(fftMag, (length >> 1)).flip();

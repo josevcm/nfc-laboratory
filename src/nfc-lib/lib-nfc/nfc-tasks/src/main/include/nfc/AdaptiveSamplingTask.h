@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,20 +22,26 @@
 
 */
 
-#ifndef SDR_SIGNALTYPE_H
-#define SDR_SIGNALTYPE_H
+#ifndef NFC_LAB_ADAPTIVESAMPLINGTASK_H
+#define NFC_LAB_ADAPTIVESAMPLINGTASK_H
 
-namespace sdr {
+#include <rt/Worker.h>
 
-enum SignalType
+namespace nfc {
+
+class AdaptiveSamplingTask : public rt::Worker
 {
-   SAMPLE_REAL = 1, // 1 float component per sample (real value)
-   SAMPLE_IQ = 2, // 2 float components per sample (I / Q)
-   ADAPTIVE_REAL = 3, // 2 float components per sample (time / real value)
-   ADAPTIVE_IQ = 4, // 3 float components per sample (time / I / Q)
-   FREQUENCY_BIN = 10 // 2 float components per sample (magnitude / phase)
+   private:
+
+      struct Impl;
+
+      AdaptiveSamplingTask();
+
+   public:
+
+      static rt::Worker *construct();
 };
 
 }
 
-#endif
+#endif //NFC_LAB_ADAPTIVESAMPLINGTASK_H

@@ -681,11 +681,11 @@ int process_transfer(airspy_transfer *transfer)
       switch (transfer->sample_type)
       {
          case AIRSPY_SAMPLE_FLOAT32_REAL:
-            buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count, 1, device->sampleRate, device->samplesReceived, 0, SignalType::REAL_VALUE);
+            buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SAMPLE_REAL);
             break;
 
          case AIRSPY_SAMPLE_FLOAT32_IQ:
-            buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::COMPLEX_IQ);
+            buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::SAMPLE_IQ);
             break;
       }
 
