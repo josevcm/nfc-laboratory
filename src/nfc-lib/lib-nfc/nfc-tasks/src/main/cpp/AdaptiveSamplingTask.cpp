@@ -35,6 +35,7 @@
 #include "AbstractTask.h"
 
 #define WINDOW 25
+#define THRESHOLD 0.05
 
 namespace nfc {
 
@@ -108,6 +109,7 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
       float last = buffer[0];
       float step = 1.0f / float(buffer.sampleRate());
       float start = float(buffer.offset()) / float(buffer.sampleRate());
+      float filter = 0.005;
 
       // initialize average
       for (int i = 0; i < (WINDOW / 2); i++)
@@ -132,18 +134,14 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
          if (r >= 0)
             avrg -= buffer[r];
 
-//         resampled.put(start + step * i).put(avrg / float(WIN));
-
          // detect deviation from average
-         float d = abs(value - (avrg / float(WINDOW)));
-
-         bool insert = d > 0.005;
+         float stdev = abs(value - (avrg / float(WINDOW)));
 
          // filter values
-         if (insert || (i - c) > 100)
+         if (stdev > filter || (i - c) > 100)
          {
             // append control point only if deviation is over threshold
-            if (insert && c < p)
+            if (stdev > filter && c < p)
                resampled.put(start + step * p).put(last);
 
             // append new value
