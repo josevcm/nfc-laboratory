@@ -25,9 +25,9 @@
 #include "CursorMarker.h"
 
 CursorMarker::CursorMarker(QCPAxis *axis) : axis(axis)
-      {
-            setup();
-      }
+{
+   setup();
+}
 
 CursorMarker::~CursorMarker()
 {

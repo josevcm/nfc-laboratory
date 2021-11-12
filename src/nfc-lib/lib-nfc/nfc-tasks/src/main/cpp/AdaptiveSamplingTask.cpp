@@ -119,10 +119,10 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
       resampled.put(start).put(buffer[0]);
 
       // index of current point and last control point
-      int i = 0, c = 0;
+      int i = 0, c = 0, p = -1;
 
-      // adaptive resample
-      for (int r = i - (WINDOW / 2) - 1, a = i + (WINDOW / 2); i < buffer.limit(); i++, a++, r++)
+      // adaptive resample based on maximum average deviation
+      for (int r = i - (WINDOW / 2) - 1, a = i + (WINDOW / 2); i < buffer.limit(); i++, p++, a++, r++)
       {
          float value = buffer[i];
 
@@ -141,8 +141,8 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
          if (stdev > filter || (i - c) > 100)
          {
             // append control point
-            if (stdev > filter && c < (i - 1))
-               resampled.put(start + step * (i - 1)).put(last);
+            if (stdev > filter && c < p)
+               resampled.put(start + step * p).put(last);
 
             // append new value
             resampled.put(start + step * i).put(value);
@@ -156,8 +156,8 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
       }
 
       // store last sample
-      if (c < (i - 1))
-         resampled.put(start + step * (i - 1)).put(last);
+      if (c < p)
+         resampled.put(start + step * p).put(last);
 
       resampled.flip();
 
