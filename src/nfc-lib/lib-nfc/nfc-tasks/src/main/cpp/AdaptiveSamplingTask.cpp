@@ -34,8 +34,8 @@
 
 #include "AbstractTask.h"
 
-#define WINDOW 25
-#define THRESHOLD 0.05
+#define WINDOW 51
+#define THRESHOLD 0.005
 
 namespace nfc {
 
@@ -105,11 +105,11 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
    {
       sdr::SignalBuffer resampled(buffer.elements() * 2, 2, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::ADAPTIVE_REAL);
 
-      float avrg = 0;
-      float last = buffer[0];
-      float step = 1.0f / float(buffer.sampleRate());
-      float start = float(buffer.offset()) / float(buffer.sampleRate());
-      float filter = 0.005;
+      double avrg = 0;
+      double last = buffer[0];
+      double step = 1.0f / float(buffer.sampleRate());
+      double start = float(buffer.offset()) / float(buffer.sampleRate());
+      double filter = THRESHOLD;
 
       // initialize average
       for (int i = 0; i < (WINDOW / 2); i++)
@@ -118,11 +118,11 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
       // always store first sample
       resampled.put(start).put(buffer[0]);
 
-      // index of previous inserted point and last control point
-      int p = 0, c = 0;
+      // index of current point and last control point
+      int i = 0, c = 0;
 
       // adaptive resample
-      for (int i = 0, r = i - (WINDOW / 2) - 1, a = i + (WINDOW / 2); i < buffer.limit(); p = i, i++, a++, r++)
+      for (int r = i - (WINDOW / 2) - 1, a = i + (WINDOW / 2); i < buffer.limit(); i++, a++, r++)
       {
          float value = buffer[i];
 
@@ -140,9 +140,9 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
          // filter values
          if (stdev > filter || (i - c) > 100)
          {
-            // append control point only if deviation is over threshold
-            if (stdev > filter && c < p)
-               resampled.put(start + step * p).put(last);
+            // append control point
+            if (stdev > filter && c < (i - 1))
+               resampled.put(start + step * (i - 1)).put(last);
 
             // append new value
             resampled.put(start + step * i).put(value);
@@ -151,12 +151,13 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
             c = i;
          }
 
+         // store last value
          last = value;
       }
 
       // store last sample
-      if (c < p)
-         resampled.put(start + step * p).put(last);
+      if (c < (i - 1))
+         resampled.put(start + step * (i - 1)).put(last);
 
       resampled.flip();
 
