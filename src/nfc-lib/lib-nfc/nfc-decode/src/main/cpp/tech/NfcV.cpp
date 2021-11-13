@@ -337,7 +337,7 @@ struct NfcV::Impl
                // setup frame info
                frameStatus.frameType = PollFrame;
                frameStatus.symbolRate = bitrate->symbolsPerSecond / 2;
-               frameStatus.frameStart = modulation->symbolStartTime;
+               frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
                frameStatus.frameEnd = 0;
 
                // modulation detected
@@ -358,7 +358,7 @@ struct NfcV::Impl
                // setup frame info
                frameStatus.frameType = PollFrame;
                frameStatus.symbolRate = bitrate->symbolsPerSecond / 32;
-               frameStatus.frameStart = modulation->symbolStartTime;
+               frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
                frameStatus.frameEnd = 0;
 
                // modulation detected
