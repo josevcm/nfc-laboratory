@@ -33,11 +33,11 @@
 #include <graph/RangeMarker.h>
 #include <graph/CursorMarker.h>
 
-#include "SignalWidget.h"
+#include "FourierWidget.h"
 
-struct SignalWidget::Impl
+struct FourierWidget::Impl
 {
-   SignalWidget *widget = nullptr;
+   FourierWidget *widget = nullptr;
 
    QCustomPlot *plot = nullptr;
 
@@ -53,12 +53,16 @@ struct SignalWidget::Impl
    float minimumScale = INT32_MAX;
    float maximumScale = -INT32_MAX;
 
-   unsigned int maximumEntries;
+   float signalBuffer[65535] {0,};
 
    QColor signalColor {100, 255, 140, 255};
    QColor selectColor {0, 200, 255, 255};
 
-   explicit Impl(SignalWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
+   QPointer<QTimer> refreshTimer;
+
+   QSemaphore refreshReady;
+
+   explicit Impl(FourierWidget *parent) : widget(parent), plot(new QCustomPlot(parent)), refreshTimer(new QTimer())
    {
       setup();
 
@@ -67,8 +71,6 @@ struct SignalWidget::Impl
 
    void setup()
    {
-      maximumEntries = (512 * 1024 * 1024) / sizeof(QCPGraphData);
-
       // create data container
       data.reset(new QCPGraphDataContainer());
 
@@ -93,7 +95,7 @@ struct SignalWidget::Impl
       plot->xAxis->setTickLabelColor(Qt::white);
       plot->xAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->xAxis->setRange(0, 1);
+      plot->xAxis->setRange(-1, 1);
 
       // setup Y axis
       plot->yAxis->setBasePen(QPen(Qt::darkGray));
@@ -149,76 +151,70 @@ struct SignalWidget::Impl
       QObject::connect(plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
          scaleChanged(newRange);
       });
+
+      // connect refresh timer signal
+      QObject::connect(refreshTimer, &QTimer::timeout, [=]() {
+         refreshView();
+      });
+
+      // start timer
+      refreshTimer->start(25);
    }
 
-   void append(const sdr::SignalBuffer &buffer)
+   void update(const sdr::SignalBuffer &buffer)
    {
+      QVector<QCPGraphData> bins;
+
       switch (buffer.type())
       {
-         case sdr::SignalType::SAMPLE_REAL:
+         case sdr::SignalType::FREQUENCY_BIN:
          {
-            float sampleRate = buffer.sampleRate();
-            float sampleStep = 1 / sampleRate;
-            float startTime = buffer.offset() / sampleRate;
-            float endTime = startTime + buffer.elements() / sampleRate;
+            float startFreq = -1;
+            float endFreq = +1;
+            float binStep = (endFreq - startFreq) / buffer.limit();
+            float binLength = buffer.limit();
+            float temp[buffer.limit()];
 
             // update signal range
-            if (minimumRange > startTime)
-               minimumRange = startTime;
+            if (minimumRange > startFreq)
+               minimumRange = startFreq;
 
-            if (maximumRange < endTime)
-               maximumRange = endTime;
+            if (maximumRange < endFreq)
+               maximumRange = endFreq;
 
+#pragma GCC ivdep
             for (int i = 0; i < buffer.elements(); i++)
             {
-               float range = fmaf(sampleStep, i, startTime);
-               float value = buffer[i];
-
-               if (minimumScale > value * 0.75)
-                  minimumScale = value * 0.75;
-
-               if (maximumScale < value * 1.25)
-                  maximumScale = value * 1.25;
-
-               data->add({range, value});
+               temp[i] = 2.0 * 10 * log10f(buffer[i] / float(binLength));
             }
 
-            break;
-         }
-
-         case sdr::SignalType::ADAPTIVE_REAL:
-         {
-            for (int i = 0; i < buffer.limit(); i += 2)
+            for (int i = 2; i < buffer.elements() - 2; i++)
             {
-               float range = buffer[i + 0];
-               float value = buffer[i + 1];
+               float range = fmaf(binStep, i, startFreq);
+               float value = (temp[i - 2] + temp[i - 1] + temp[i] + temp[i + 1] + temp[i + 2]) / 5.0f;
 
-               // update signal range
-               if (minimumRange > range)
-                  minimumRange = range;
+               if (signalBuffer[i] < value)
+                  signalBuffer[i] = signalBuffer[i] * (1.0 - 0.50) + value * 0.50;
+               else if (signalBuffer[i] > value)
+                  signalBuffer[i] = signalBuffer[i] * (1.0 - 0.30) + value * 0.30;
 
-               if (maximumRange < range)
-                  maximumRange = range;
+               value = signalBuffer[i];
 
-               // update signal scale
-               if (minimumScale > value * 0.75)
-                  minimumScale = value * 0.75;
+               if (minimumScale > value)
+                  minimumScale = value;
 
-               if (maximumScale < value * 1.25)
-                  maximumScale = value * 1.25;
+               if (maximumScale < value)
+                  maximumScale = value;
 
-               data->add({range, value});
+               bins.append({range, value});
             }
+
+            data->set(bins, true);
+
+            refreshReady.release();
 
             break;
          }
-      }
-
-      // remove old data when maximum memory threshold is reached
-      if (data->size() > maximumEntries)
-      {
-         minimumRange = data->at(data->size() - maximumEntries)->key;
-         data->removeBefore(minimumRange);
       }
    }
 
@@ -261,7 +257,7 @@ struct SignalWidget::Impl
 
       data->clear();
 
-      plot->xAxis->setRange(0, 1);
+      plot->xAxis->setRange(-1, 1);
       plot->yAxis->setRange(0, 1);
 
       for (int i = 0; i < plot->graphCount(); i++)
@@ -285,9 +281,6 @@ struct SignalWidget::Impl
 
       // refresh graph
       plot->replot();
-
-      // statistics
-      qDebug().noquote() << "total samples" << data->size() << "adaptive compression ratio" << QString("%1%").arg(float(data->size() / ((maximumRange - minimumRange) * 10E4)), 0, 'f', 2);
    }
 
    void mouseEnter() const
@@ -409,7 +402,7 @@ struct SignalWidget::Impl
 
       // check lower range limits
       if (newRange.lower < minimumRange || newRange.lower > maximumRange)
-         fixRange.lower = minimumRange < +INT32_MAX ? minimumRange : 0;
+         fixRange.lower = minimumRange < +INT32_MAX ? minimumRange : -1;
 
       // check upper range limits
       if (newRange.upper > maximumRange || newRange.upper < minimumRange)
@@ -440,16 +433,16 @@ struct SignalWidget::Impl
       QCPRange fixScale = newScale;
 
       // check lower scale limits
-//      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
-//         fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
+      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
+         fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : -1;
 
       // check lower scale limits
-//      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
-//         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
+      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
+         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 0;
 
-      // scale not allowed to change
-      fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
-      fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
+//      // scale not allowed to change
+//      fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
+//      fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
 
       // fix visible scale
       if (fixScale != newScale)
@@ -457,6 +450,16 @@ struct SignalWidget::Impl
 
       // emit scale change signal
       widget->scaleChanged(fixScale.lower, fixScale.upper);
+   }
+
+   void refreshView()
+   {
+      if (refreshReady.tryAcquire())
+      {
+         plot->replot();
+
+//         qDebug() << plot->replotTime(true);
+      }
    }
 
    void setCenterFreq(long value)
@@ -480,76 +483,56 @@ struct SignalWidget::Impl
 
 };
 
-SignalWidget::SignalWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))
+FourierWidget::FourierWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))
 {
 }
 
-void SignalWidget::setCenterFreq(long value)
+void FourierWidget::setCenterFreq(long value)
 {
    impl->setCenterFreq(value);
 }
 
-void SignalWidget::setSampleRate(long value)
+void FourierWidget::setSampleRate(long value)
 {
    impl->setSampleRate(value);
 }
 
-void SignalWidget::setRange(float lower, float upper)
+void FourierWidget::setRange(float lower, float upper)
 {
    impl->setRange(lower, upper);
 }
 
-void SignalWidget::setCenter(float value)
+void FourierWidget::setCenter(float value)
 {
    impl->setCenter(value);
 }
 
-void SignalWidget::append(const sdr::SignalBuffer &buffer)
+void FourierWidget::refresh(const sdr::SignalBuffer &buffer)
 {
-   impl->append(buffer);
+   impl->update(buffer);
 }
 
-void SignalWidget::select(float from, float to)
+void FourierWidget::select(float from, float to)
 {
    impl->select(from, to);
 }
 
-void SignalWidget::refresh()
+void FourierWidget::refresh()
 {
    impl->refresh();
 }
 
-void SignalWidget::clear()
+void FourierWidget::clear()
 {
    impl->clear();
 }
 
-float SignalWidget::minimumRange() const
-{
-   return impl->minimumRange;
-}
-
-float SignalWidget::maximumRange() const
-{
-   return impl->maximumRange;
-}
-
-float SignalWidget::minimumScale() const
-{
-   return impl->minimumScale;
-}
-
-float SignalWidget::maximumScale() const
-{
-   return impl->maximumScale;
-}
-
-void SignalWidget::enterEvent(QEvent *event)
+void FourierWidget::enterEvent(QEvent *event)
 {
    impl->mouseEnter();
 }
 
-void SignalWidget::leaveEvent(QEvent *event)
+void FourierWidget::leaveEvent(QEvent *event)
 {
    impl->mouseLeave();
 }

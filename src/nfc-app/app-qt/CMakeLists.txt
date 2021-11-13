@@ -40,6 +40,7 @@ add_executable(nfc-lab
         src/main/cpp/protocol/ProtocolParser.cpp
         src/main/cpp/support/QCustomPlot.cpp
         src/main/cpp/widgets/FramesWidget.cpp
+        src/main/cpp/widgets/FourierWidget.cpp
         src/main/cpp/widgets/QuadratureWidget.cpp
         src/main/cpp/widgets/FrequencyWidget.cpp
         src/main/cpp/widgets/SignalWidget.cpp

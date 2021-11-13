@@ -329,7 +329,7 @@
         </font>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="parserTab">
         <attribute name="title">
@@ -852,10 +852,15 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>FrequencyWidget</class>
+   <class>FourierWidget</class>
    <extends>QWidget</extends>
-   <header>widgets/FrequencyWidget.h</header>
+   <header>widgets/FourierWidget.h</header>
   </customwidget>
+  <customwidget>
+  <class>FrequencyWidget</class>
+  <extends>QWidget</extends>
+  <header>widgets/FrequencyWidget.h</header>
+ </customwidget>
   <customwidget>
    <class>QuadratureWidget</class>
    <extends>QWidget</extends>
