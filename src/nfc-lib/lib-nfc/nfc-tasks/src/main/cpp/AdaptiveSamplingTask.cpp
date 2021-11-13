@@ -34,7 +34,7 @@
 
 #include "AbstractTask.h"
 
-#define WINDOW 51
+#define WINDOW 101
 #define THRESHOLD 0.005
 
 namespace nfc {
@@ -101,15 +101,15 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
       return true;
    }
 
-   void process(const sdr::SignalBuffer &buffer)
+   void process(const sdr::SignalBuffer &buffer) const
    {
       sdr::SignalBuffer resampled(buffer.elements() * 2, 2, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::ADAPTIVE_REAL);
 
-      double avrg = 0;
-      double last = buffer[0];
-      double step = 1.0f / float(buffer.sampleRate());
-      double start = float(buffer.offset()) / float(buffer.sampleRate());
-      double filter = THRESHOLD;
+      float avrg = 0;
+      float last = buffer[0];
+      float step = 1.0f / float(buffer.sampleRate());
+      float start = float(buffer.offset()) / float(buffer.sampleRate());
+      float filter = THRESHOLD;
 
       // initialize average
       for (int i = 0; i < (WINDOW / 2); i++)
@@ -140,12 +140,15 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
          // filter values
          if (stdev > filter || (i - c) > 100)
          {
+            float rp = fmaf(step, p, start); // ri = step * p + start
+            float ri = fmaf(step, i, start); // ri = step * i + start
+
             // append control point
             if (stdev > filter && c < p)
-               resampled.put(start + step * p).put(last);
+               resampled.put(rp).put(last);
 
             // append new value
-            resampled.put(start + step * i).put(value);
+            resampled.put(ri).put(value);
 
             // update control point index
             c = i;
@@ -157,7 +160,7 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
 
       // store last sample
       if (c < p)
-         resampled.put(start + step * p).put(last);
+         resampled.put(fmaf(step, p, start)).put(last);
 
       resampled.flip();
 

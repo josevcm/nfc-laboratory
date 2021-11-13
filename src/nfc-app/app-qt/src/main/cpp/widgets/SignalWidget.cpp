@@ -275,11 +275,11 @@ struct SignalWidget::Impl
 
    void refresh() const
    {
-      // fix range if current value is out
-      rangeChanged(plot->xAxis->range());
+      // refresh x range
+      plot->xAxis->setRange(minimumRange, maximumRange);
 
-      // fix scale if current value is out
-      scaleChanged(plot->yAxis->range());
+      // refresh y scale
+      plot->yAxis->setRange(minimumScale, maximumScale);
 
       // refresh graph
       plot->replot();

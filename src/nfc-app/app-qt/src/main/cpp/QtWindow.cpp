@@ -649,20 +649,13 @@ struct QtWindow::Impl
 
    void clearModel()
    {
-      streamModel->blockSignals(true);
       streamModel->resetModel();
-      streamModel->blockSignals(false);
    }
 
    void clearGraph()
    {
-      ui->framesView->blockSignals(true);
       ui->framesView->clear();
-      ui->framesView->blockSignals(false);
-
-      ui->signalView->blockSignals(true);
       ui->signalView->clear();
-      ui->signalView->blockSignals(false);
    }
 
    void refreshView()

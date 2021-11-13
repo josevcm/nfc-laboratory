@@ -243,13 +243,13 @@ struct FramesWidget::Impl
       minimumRange = +INT32_MAX;
       maximumRange = -INT32_MAX;
 
-      plot->xAxis->setRange(0, 1);
-
       for (int i = 0; i < plot->graphCount(); i++)
       {
          plot->graph(i)->data()->clear();
          plot->graph(i)->setSelection(QCPDataSelection());
       }
+
+      plot->xAxis->setRange(0, 1);
 
       cursor->hide();
       marker->hide();
