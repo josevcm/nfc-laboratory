@@ -34,7 +34,7 @@
 
 #include "AbstractTask.h"
 
-#define WINDOW 101
+#define WINDOW 51
 #define THRESHOLD 0.005
 
 namespace nfc {
