@@ -460,7 +460,7 @@
         </attribute>
         <layout class="QHBoxLayout" name="horizontalLayout_22">
          <item>
-          <widget class="FrequencyWidget" name="frequencyView" native="true">
+          <widget class="FourierWidget" name="frequencyView" native="true">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
              <horstretch>0</horstretch>

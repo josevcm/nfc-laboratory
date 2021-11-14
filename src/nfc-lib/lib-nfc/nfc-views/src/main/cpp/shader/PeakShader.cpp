@@ -31,14 +31,14 @@ struct PeakShader::Impl
    int peakMarkId = -1;
 };
 
-PeakShader::PeakShader(const gl::Assets *assets) : gl::GeometryShader(assets), self(std::make_shared<Impl>())
+PeakShader::PeakShader(const gl::Assets *assets) : gl::ObjectShader(assets), self(std::make_shared<Impl>())
 {
    load("PeakShader");
 }
 
 bool PeakShader::load(const std::string &name)
 {
-   if (gl::GeometryShader::load(name))
+   if (gl::ObjectShader::load(name))
    {
       self->peakMarkId = attribLocation("peakMark");
 
@@ -50,7 +50,7 @@ bool PeakShader::load(const std::string &name)
 
 void PeakShader::useProgram() const
 {
-   GeometryShader::useProgram();
+   ObjectShader::useProgram();
 
    enableAttribArray(self->peakMarkId);
 }
@@ -59,7 +59,7 @@ void PeakShader::endProgram() const
 {
    disableAttribArray(self->peakMarkId);
 
-   GeometryShader::endProgram();
+   ObjectShader::endProgram();
 }
 
 void PeakShader::setPeakMarks(const gl::Buffer &buffer) const

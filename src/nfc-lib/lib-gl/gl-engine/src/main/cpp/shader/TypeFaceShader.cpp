@@ -36,9 +36,9 @@ struct TypeFaceShader::Impl
    rt::Logger log {"TypeFaceShader"};
 };
 
-TypeFaceShader::TypeFaceShader(const Assets *assets) : GeometryShader(assets), self(new Impl())
+TypeFaceShader::TypeFaceShader(const Assets *assets) : ObjectShader(assets), self(new Impl())
 {
-   if (!GeometryShader::load("TypeFaceShader"))
+   if (!ObjectShader::load("TypeFaceShader"))
    {
       self->log.error("program load error, typeface shader not available!");
    }

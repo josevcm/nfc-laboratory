@@ -32,6 +32,7 @@
 
 #include <graph/RangeMarker.h>
 #include <graph/CursorMarker.h>
+#include <graph/AxisTickerFrequency.h>
 
 #include "FourierWidget.h"
 
@@ -47,13 +48,18 @@ struct FourierWidget::Impl
    QSharedPointer<CursorMarker> cursor;
    QSharedPointer<QCPGraphDataContainer> data;
 
-   float minimumRange = INT32_MAX;
-   float maximumRange = -INT32_MAX;
+   QSharedPointer<AxisTickerFrequency> frequencyTicker;
 
-   float minimumScale = INT32_MAX;
-   float maximumScale = -INT32_MAX;
+   double centerFreq;
+   double sampleRate;
 
-   float signalBuffer[65535] {0,};
+   double minimumRange = INT32_MAX;
+   double maximumRange = -INT32_MAX;
+
+   double minimumScale = INT32_MAX;
+   double maximumScale = -INT32_MAX;
+
+   double signalBuffer[65535] {0,};
 
    QColor signalColor {100, 255, 140, 255};
    QColor selectColor {0, 200, 255, 255};
@@ -71,6 +77,9 @@ struct FourierWidget::Impl
 
    void setup()
    {
+      // create frequency ticker
+      frequencyTicker.reset(new AxisTickerFrequency());
+
       // create data container
       data.reset(new QCPGraphDataContainer());
 
@@ -90,20 +99,23 @@ struct FourierWidget::Impl
       plot->axisRect()->setRangeZoomFactor(0.65, 0.75);
 
       // setup time axis
-      plot->xAxis->setBasePen(QPen(Qt::darkGray));
+      plot->xAxis->setBasePen(QPen(Qt::white));
       plot->xAxis->setTickPen(QPen(Qt::white));
       plot->xAxis->setTickLabelColor(Qt::white);
       plot->xAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
+      plot->xAxis->setTicker(frequencyTicker);
       plot->xAxis->setRange(-1, 1);
+      plot->xAxis->grid()->setZeroLinePen(Qt::NoPen);
 
       // setup Y axis
-      plot->yAxis->setBasePen(QPen(Qt::darkGray));
+      plot->yAxis->setBasePen(QPen(Qt::white));
       plot->yAxis->setTickPen(QPen(Qt::white));
       plot->yAxis->setTickLabelColor(Qt::white);
-      plot->yAxis->setSubTickPen(QPen(Qt::darkGray));
+//      plot->yAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
       plot->yAxis->setRange(0, 1);
+      plot->yAxis->grid()->setZeroLinePen(Qt::NoPen);
 
       graph = plot->addGraph();
 
@@ -157,7 +169,7 @@ struct FourierWidget::Impl
          refreshView();
       });
 
-      // start timer
+      // start timer at 40FPS (25ms / frame)
       refreshTimer->start(25);
    }
 
@@ -169,29 +181,40 @@ struct FourierWidget::Impl
       {
          case sdr::SignalType::FREQUENCY_BIN:
          {
-            float startFreq = -1;
-            float endFreq = +1;
-            float binStep = (endFreq - startFreq) / buffer.limit();
-            float binLength = buffer.limit();
-            float temp[buffer.limit()];
+            double temp[buffer.elements()];
+
+            // set decimation
+            double decimation = buffer.decimation() > 0 ? buffer.decimation() : 1.0f;
+
+            // set frequency bin size
+            double binSize = (sampleRate / decimation) / (float) buffer.elements();
+
+            // set lower frequency
+            double lowerFreq = centerFreq - (sampleRate / (decimation * 2));
+
+            // set lower frequency
+            double upperFreq = centerFreq + (sampleRate / (decimation * 2));
+
+            // set number of frequency bins
+            double binLength = buffer.elements();
 
             // update signal range
-            if (minimumRange > startFreq)
-               minimumRange = startFreq;
+            if (minimumRange > lowerFreq)
+               minimumRange = lowerFreq;
 
-            if (maximumRange < endFreq)
-               maximumRange = endFreq;
+            if (maximumRange < upperFreq)
+               maximumRange = upperFreq;
 
 #pragma GCC ivdep
             for (int i = 0; i < buffer.elements(); i++)
             {
-               temp[i] = 2.0 * 10 * log10f(buffer[i] / float(binLength));
+               temp[i] = 2.0 * 10 * log10(buffer[i] / double(binLength));
             }
 
             for (int i = 2; i < buffer.elements() - 2; i++)
             {
-               float range = fmaf(binStep, i, startFreq);
-               float value = (temp[i - 2] + temp[i - 1] + temp[i] + temp[i + 1] + temp[i + 2]) / 5.0f;
+               double range = fma(binSize, i, lowerFreq);
+               double value = (temp[i - 2] + temp[i - 1] + temp[i] + temp[i + 1] + temp[i + 2]) / 5.0f;
 
                if (signalBuffer[i] < value)
                   signalBuffer[i] = signalBuffer[i] * (1.0 - 0.50) + value * 0.50;
@@ -462,14 +485,6 @@ struct FourierWidget::Impl
       }
    }
 
-   void setCenterFreq(long value)
-   {
-   }
-
-   void setSampleRate(long value)
-   {
-   }
-
    void setRange(float lower, float upper)
    {
       plot->xAxis->setRange(lower, upper);
@@ -489,12 +504,12 @@ FourierWidget::FourierWidget(QWidget *parent) : QWidget(parent), impl(new Impl(t
 
 void FourierWidget::setCenterFreq(long value)
 {
-   impl->setCenterFreq(value);
+   impl->centerFreq = float(value);
 }
 
 void FourierWidget::setSampleRate(long value)
 {
-   impl->setSampleRate(value);
+   impl->sampleRate = float(value);
 }
 
 void FourierWidget::setRange(float lower, float upper)

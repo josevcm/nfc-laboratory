@@ -36,15 +36,15 @@ class Color;
 class Lighting;
 class Geometry;
 
-class GeometryShader : public AbstractShader
+class ObjectShader : public AbstractShader
 {
       struct Impl;
 
    public:
 
-      explicit GeometryShader(const Assets *asset, const std::string &name = {});
+      explicit ObjectShader(const Assets *asset, const std::string &name = {});
 
-      ~GeometryShader() override;
+      ~ObjectShader() override;
 
       bool load(const std::string &name) override;
 

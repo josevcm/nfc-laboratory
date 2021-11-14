@@ -26,7 +26,7 @@
 
 namespace nfc {
 
-DefaultShader::DefaultShader(const gl::Assets *assets) : gl::GeometryShader(assets)
+DefaultShader::DefaultShader(const gl::Assets *assets) : gl::ObjectShader(assets)
 {
    load("DefaultShader");
 }

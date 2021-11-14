@@ -27,11 +27,11 @@
 
 #include <memory>
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace nfc {
 
-class PeakShader : public gl::GeometryShader
+class PeakShader : public gl::ObjectShader
 {
       struct Impl;
 
