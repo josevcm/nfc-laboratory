@@ -26,7 +26,7 @@
 
 #include <gl/engine/Buffer.h>
 #include <gl/engine/Geometry.h>
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 #include <gl/widget/AxisWidget.h>
 
 namespace gl {
@@ -61,7 +61,7 @@ AxisWidget::~AxisWidget()
 
 void AxisWidget::draw(Device *device, Program *shader) const
 {
-   if (auto geometryShader = dynamic_cast<GeometryShader *>(shader))
+   if (auto geometryShader = dynamic_cast<ObjectShader *>(shader))
    {
       geometryShader->setMatrixBlock(*this);
       geometryShader->setLineThickness(1.0f);

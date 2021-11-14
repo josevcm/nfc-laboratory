@@ -37,7 +37,7 @@ void main()
     int frame0 = (dataBlock+0)%2;
     int frame1 = (dataBlock+1)%2;
 
-    float value = 2 * 10 * log(dataValue / config.length);
+    float value = 2 * 10 * log10(dataValue / config.length);
 
     if (storage.data[gl_VertexID].frame[frame0] < value)
         storage.data[gl_VertexID].frame[frame1] = storage.data[gl_VertexID].frame[frame0] * (1.0 - config.attack) + value * config.attack;

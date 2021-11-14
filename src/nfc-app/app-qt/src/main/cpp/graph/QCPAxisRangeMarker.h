@@ -22,35 +22,34 @@
 
 */
 
-#ifndef NFC_LAB_CURSORMARKER_H
-#define NFC_LAB_CURSORMARKER_H
+#ifndef NFC_LAB_QCPAXISRANGEMARKER_H
+#define NFC_LAB_QCPAXISRANGEMARKER_H
 
 #include <QString>
 
 #include <support/QCustomPlot.h>
 
-class CursorMarker
+class QCPAxisRangeMarker
 {
    public:
 
-      explicit CursorMarker(QCPAxis *axis);
+      explicit QCPAxisRangeMarker(QCPAxis *axis);
 
-      ~CursorMarker();
+      ~QCPAxisRangeMarker();
 
-      void setup();
-
-      void show();
+      void show(double from, double to, const QString &text);
 
       void hide();
 
-      void update(double from, const QString &text);
-
    private:
 
-      QCPAxis *axis;
+      QCPAxis *axis = nullptr;
       QCPItemTracer *tracer = nullptr;
+      QCPItemTracer *start = nullptr;
+      QCPItemTracer *end = nullptr;
       QCPItemText *label = nullptr;
+      QCPItemLine *arrow = nullptr;
 };
 
 
-#endif //NFC_LAB_CURSORMARKER_H
+#endif //NFC_LAB_QCPAXISRANGEMARKER_H

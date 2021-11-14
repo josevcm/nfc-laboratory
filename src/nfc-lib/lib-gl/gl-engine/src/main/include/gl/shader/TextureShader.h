@@ -25,11 +25,11 @@
 #ifndef UI_GL_TEXTURESHADER_H
 #define UI_GL_TEXTURESHADER_H
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace gl {
 
-class TextureShader : public GeometryShader
+class TextureShader : public ObjectShader
 {
       struct Impl;
 

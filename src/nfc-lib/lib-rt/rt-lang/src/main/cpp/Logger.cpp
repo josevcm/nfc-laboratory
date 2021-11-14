@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+#include <map>
 #include <string>
 #include <fstream>
 #include <cmath>
@@ -51,20 +52,11 @@ const char *tags[] = {
       "", // 0
       "ERROR", // 1
       "WARN", // 2
-      "", // 3
-      "INFO", // 4
-      "", // 5
+      "INFO", // 3
+      "DEBUG", // 4
+      "TRACE", // 5
       "", // 6
-      "", // 7
-      "DEBUG", // 8
-      "", // 9
-      "", // 10
-      "", // 11
-      "", // 12
-      "", // 13
-      "", // 14
-      "", // 15
-      "TRACE" // 16
+      "" // 7
 };
 
 // log event for store debugging information
@@ -278,76 +270,63 @@ struct LogWriter
 
 struct Logger::Impl
 {
-   int levels;
+   int level;
    std::string name;
 
-   Impl(int levels, std::string name) : levels(levels), name(std::move(name))
+   Impl(std::string name, int level) : name(std::move(name)), level(level)
    {
    }
 };
 
-Logger::Logger(const char *name, int level) : self(std::make_shared<Impl>(level, name))
-{
-}
+static std::map<std::string, std::shared_ptr<Logger::Impl>> loggers;
 
-Logger::Logger(const std::string &name, int level) : self(std::make_shared<Impl>(level, name))
+Logger::Logger(const std::string &name)
 {
+   if (loggers.find(name) == loggers.end())
+      loggers[name] = std::make_shared<Logger::Impl>(name, INFO);
+
+   impl = loggers[name];
 }
 
 void Logger::trace(const std::string &format, std::vector<Variant> params) const
 {
-   if (self->levels & TRACE)
-   {
-      writer.push(new LogEvent(tags[TRACE], self->name, format, std::move(params)));
-   }
+   if (impl->level >= TRACE)
+      writer.push(new LogEvent(tags[TRACE], impl->name, format, std::move(params)));
 }
 
 void Logger::debug(const std::string &format, std::vector<Variant> params) const
 {
-   if (self->levels & DEBUG)
-   {
-      writer.push(new LogEvent(tags[DEBUG], self->name, format, std::move(params)));
-   }
+   if (impl->level >= DEBUG)
+      writer.push(new LogEvent(tags[DEBUG], impl->name, format, std::move(params)));
 }
 
 void Logger::info(const std::string &format, std::vector<Variant> params) const
 {
-   if (self->levels & INFO)
-   {
-      writer.push(new LogEvent(tags[INFO], self->name, format, std::move(params)));
-   }
+   if (impl->level >= INFO)
+      writer.push(new LogEvent(tags[INFO], impl->name, format, std::move(params)));
 }
 
 void Logger::warn(const std::string &format, std::vector<Variant> params) const
 {
-   if (self->levels & WARN)
-   {
-      writer.push(new LogEvent(tags[WARN], self->name, format, std::move(params)));
-   }
+   if (impl->level >= WARN)
+      writer.push(new LogEvent(tags[WARN], impl->name, format, std::move(params)));
 }
 
 void Logger::error(const std::string &format, std::vector<Variant> params) const
 {
-   if (self->levels & ERROR)
-   {
-      writer.push(new LogEvent(tags[ERROR], self->name, format, std::move(params)));
-   }
+   if (impl->level >= ERROR)
+      writer.push(new LogEvent(tags[ERROR], impl->name, format, std::move(params)));
 }
 
 void Logger::print(int level, const std::string &format, std::vector<Variant> params) const
 {
-   if (self->levels & level)
-   {
-      writer.push(new LogEvent(tags[level & 0x07], self->name, format, std::move(params)));
-   }
+   if (impl->level >= level)
+      writer.push(new LogEvent(tags[level & 0x7], impl->name, format, std::move(params)));
 }
 
-void Logger::set(int levels, bool enabled)
+void Logger::setLevel(int value)
 {
-   if (enabled)
-      self->levels |= levels;
-   else
-      self->levels ^= levels;
+   impl->level = value;
 }
 
 }

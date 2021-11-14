@@ -28,7 +28,7 @@
 #include <gl/engine/Colors.h>
 #include <gl/engine/Vector.h>
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace gl {
 
@@ -37,7 +37,7 @@ class Vector;
 class Color;
 class Assets;
 
-class FontShader : public GeometryShader
+class FontShader : public ObjectShader
 {
       struct Impl;
 

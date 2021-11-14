@@ -20,7 +20,7 @@ add_library(gl-engine STATIC
         src/main/cpp/engine/Viewer.cpp
         src/main/cpp/engine/Widget.cpp
         src/main/cpp/shader/AbstractShader.cpp
-        src/main/cpp/shader/GeometryShader.cpp
+        src/main/cpp/shader/ObjectShader.cpp
         src/main/cpp/shader/FontShader.cpp
         src/main/cpp/shader/TextureShader.cpp
         src/main/cpp/shader/TypeFaceShader.cpp

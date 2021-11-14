@@ -26,7 +26,7 @@
 
 #include <gl/engine/Buffer.h>
 #include <gl/engine/Geometry.h>
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 #include <gl/widget/PanelWidget.h>
 
 namespace gl {
@@ -59,7 +59,7 @@ PanelWidget::~PanelWidget()
 
 void PanelWidget::draw(Device *device, Program *shader) const
 {
-   if (auto geometryShader = dynamic_cast<GeometryShader *>(shader))
+   if (auto geometryShader = dynamic_cast<ObjectShader *>(shader))
    {
       geometryShader->setMatrixBlock(*this);
       geometryShader->setVertexPoints(widget->vertex, offsetof(Vertex, point));

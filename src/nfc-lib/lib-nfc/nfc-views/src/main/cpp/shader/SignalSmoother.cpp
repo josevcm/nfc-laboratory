@@ -42,14 +42,14 @@ struct SignalSmoother::Impl
    gl::Buffer config;
 };
 
-SignalSmoother::SignalSmoother(const gl::Assets *assets) : gl::GeometryShader(assets), self(std::make_shared<Impl>())
+SignalSmoother::SignalSmoother(const gl::Assets *assets) : gl::ObjectShader(assets), self(std::make_shared<Impl>())
 {
    load("SignalSmoother");
 }
 
 bool SignalSmoother::load(const std::string &name)
 {
-   if (gl::GeometryShader::load(name))
+   if (gl::ObjectShader::load(name))
    {
       self->dataRangeId = attribLocation("dataRange");
       self->dataValueId = attribLocation("dataValue");
@@ -65,7 +65,7 @@ bool SignalSmoother::load(const std::string &name)
 
 void SignalSmoother::useProgram() const
 {
-   gl::GeometryShader::useProgram();
+   gl::ObjectShader::useProgram();
 
    enableAttribArray(self->dataRangeId);
    enableAttribArray(self->dataValueId);
@@ -76,7 +76,7 @@ void SignalSmoother::endProgram() const
    disableAttribArray(self->dataRangeId);
    disableAttribArray(self->dataValueId);
 
-   gl::GeometryShader::endProgram();
+   gl::ObjectShader::endProgram();
 }
 
 void SignalSmoother::process(const gl::Buffer &range, const gl::Buffer &value, const SmoothParameters &params, int elements)

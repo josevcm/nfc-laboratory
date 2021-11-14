@@ -29,7 +29,7 @@
 
 #include <gl/engine/Engine.h>
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 #include <gl/shader/TypeFaceShader.h>
 
 #include <nfc/QuadratureView.h>

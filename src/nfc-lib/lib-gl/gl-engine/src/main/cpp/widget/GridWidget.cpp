@@ -26,7 +26,7 @@
 
 #include <gl/engine/Buffer.h>
 #include <gl/engine/Geometry.h>
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 #include <gl/widget/GridWidget.h>
 
 namespace gl {
@@ -123,7 +123,7 @@ GridWidget::~GridWidget()
 
 void GridWidget::draw(Device *device, Program *shader) const
 {
-   if (auto geometryShader = dynamic_cast<GeometryShader *>(shader))
+   if (auto geometryShader = dynamic_cast<ObjectShader *>(shader))
    {
       geometryShader->setMatrixBlock(*this);
 

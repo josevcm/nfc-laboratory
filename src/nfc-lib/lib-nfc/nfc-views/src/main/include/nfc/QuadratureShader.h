@@ -27,11 +27,11 @@
 
 #include <memory>
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace nfc {
 
-class QuadratureShader : public gl::GeometryShader
+class QuadratureShader : public gl::ObjectShader
 {
       struct Impl;
 

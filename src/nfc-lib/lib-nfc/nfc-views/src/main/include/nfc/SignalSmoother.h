@@ -27,7 +27,7 @@
 
 #include <memory>
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace nfc {
 
@@ -40,7 +40,7 @@ struct SmoothParameters
    float decay;      // decay time
 } __attribute__((packed));
 
-class SignalSmoother : public gl::GeometryShader
+class SignalSmoother : public gl::ObjectShader
 {
       struct Impl;
 

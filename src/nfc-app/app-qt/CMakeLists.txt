@@ -27,8 +27,10 @@ add_executable(nfc-lab
         src/main/cpp/events/SignalBufferEvent.cpp
         src/main/cpp/events/SystemStartupEvent.cpp
         src/main/cpp/events/SystemShutdownEvent.cpp
-        src/main/cpp/graph/RangeMarker.cpp
-        src/main/cpp/graph/CursorMarker.cpp
+        src/main/cpp/graph/QCPAxisTickerFrequency.cpp
+        src/main/cpp/graph/QCPAxisRangeMarker.cpp
+        src/main/cpp/graph/QCPAxisCursorMarker.cpp
+        src/main/cpp/graph/QCPGraphValueMarker.cpp
         src/main/cpp/model/StreamModel.cpp
         src/main/cpp/model/ParserModel.cpp
         src/main/cpp/parser/ParserNfc.cpp
@@ -52,7 +54,9 @@ add_executable(nfc-lab
         src/main/assets/theme/dark/style.qrc
         )
 
-target_compile_definitions(nfc-lab PRIVATE QCUSTOMPLOT_USE_OPENGL)
+#target_compile_options(nfc-lab PRIVATE "-fopt-info-vec-optimized")
+
+#target_compile_definitions(nfc-lab PRIVATE QCUSTOMPLOT_USE_OPENGL)
 
 target_include_directories(nfc-lab PRIVATE ${FT_INCLUDE_DIR})
 target_include_directories(nfc-lab PRIVATE ${GLEW_INCLUDE_DIR})

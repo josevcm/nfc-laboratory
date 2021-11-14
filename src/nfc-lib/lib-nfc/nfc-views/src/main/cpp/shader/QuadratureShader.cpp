@@ -31,14 +31,14 @@ struct QuadratureShader::Impl
    int dataValueId = -1;
 };
 
-QuadratureShader::QuadratureShader(const gl::Assets *assets) : gl::GeometryShader(assets), self(std::make_shared<Impl>())
+QuadratureShader::QuadratureShader(const gl::Assets *assets) : gl::ObjectShader(assets), self(std::make_shared<Impl>())
 {
    load("QuadratureShader");
 }
 
 bool QuadratureShader::load(const std::string &name)
 {
-   if (gl::GeometryShader::load(name))
+   if (gl::ObjectShader::load(name))
    {
       self->dataValueId = attribLocation("dataValue");
 
@@ -50,7 +50,7 @@ bool QuadratureShader::load(const std::string &name)
 
 void QuadratureShader::useProgram() const
 {
-   GeometryShader::useProgram();
+   ObjectShader::useProgram();
 
    enableAttribArray(self->dataValueId);
 }
@@ -59,7 +59,7 @@ void QuadratureShader::endProgram() const
 {
    disableAttribArray(self->dataValueId);
 
-   GeometryShader::endProgram();
+   ObjectShader::endProgram();
 }
 
 void QuadratureShader::setDataValue(const gl::Buffer &buffer) const

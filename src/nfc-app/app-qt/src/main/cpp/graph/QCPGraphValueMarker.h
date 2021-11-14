@@ -22,36 +22,32 @@
 
 */
 
-#ifndef NFC_LAB_RANGEMARKER_H
-#define NFC_LAB_RANGEMARKER_H
+#ifndef NFC_LAB_QCPGRAPHVALUEMARKER_H
+#define NFC_LAB_QCPGRAPHVALUEMARKER_H
 
+#include <QColor>
 #include <QString>
 
 #include <support/QCustomPlot.h>
 
-class RangeMarker
+class QCPGraphValueMarker
 {
    public:
 
-      explicit RangeMarker(QCPAxis *axis);
+      explicit QCPGraphValueMarker(QCPGraph *graph, const QColor &color);
 
-      ~RangeMarker();
+      ~QCPGraphValueMarker();
 
-      void setup();
-
-      void show(double from, double to, const QString &text);
+      void show();
 
       void hide();
 
+      void update(double key, const QString &text);
+
    private:
 
-      QCPAxis *axis;
       QCPItemTracer *tracer = nullptr;
-      QCPItemTracer *start = nullptr;
-      QCPItemTracer *end = nullptr;
       QCPItemText *label = nullptr;
-      QCPItemLine *arrow = nullptr;
 };
 
-
-#endif //NFC_LAB_RANGEMARKER_H
+#endif //NFC_LAB_QCPGRAPHVALUEMARKER_H
