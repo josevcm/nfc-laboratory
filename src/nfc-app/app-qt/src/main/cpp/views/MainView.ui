@@ -456,9 +456,24 @@
        </widget>
        <widget class="QWidget" name="qualityTab">
         <attribute name="title">
-         <string>Quality</string>
+         <string>Frequency</string>
         </attribute>
         <layout class="QHBoxLayout" name="horizontalLayout_22">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="FourierWidget" name="frequencyView" native="true">
            <property name="sizePolicy">
@@ -466,22 +481,6 @@
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QuadratureWidget" name="quadratureView" native="true">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>100</width>
-             <height>0</height>
-            </size>
            </property>
           </widget>
          </item>

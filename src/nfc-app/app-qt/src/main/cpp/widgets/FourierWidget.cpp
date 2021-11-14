@@ -30,9 +30,9 @@
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 
-#include <graph/QCPRangeMarker.h>
-#include <graph/QCPCursorMarker.h>
+#include <graph/QCPAxisCursorMarker.h>
 #include <graph/QCPAxisTickerFrequency.h>
+#include <graph/QCPGraphValueMarker.h>
 
 #include "FourierWidget.h"
 
@@ -50,10 +50,10 @@ struct FourierWidget::Impl
 
    QCPGraph *graph = nullptr;
 
-   QSharedPointer<QCPRangeMarker> marker;
-   QSharedPointer<QCPCursorMarker> cursor;
+   QSharedPointer<QCPAxisCursorMarker> cursor;
+   QSharedPointer<QCPGraphValueMarker> peak;
    QSharedPointer<QCPGraphDataContainer> data;
-   QSharedPointer<QCPAxisTickerFrequency> frequencyTicker;
+   QSharedPointer<QCPAxisTickerFrequency> ticker;
 
    double centerFreq;
    double sampleRate;
@@ -66,8 +66,11 @@ struct FourierWidget::Impl
 
    double signalBuffer[65535] {0,};
 
+   double signalPeak;
+
    QColor signalColor {255, 255, 50, 255};
    QColor selectColor {0, 200, 255, 255};
+   QColor markerColor {255, 150, 150, 255};
 
    QPointer<QTimer> refreshTimer;
 
@@ -82,11 +85,11 @@ struct FourierWidget::Impl
 
    void setup()
    {
-      // create frequency ticker
-      frequencyTicker.reset(new QCPAxisTickerFrequency());
-
       // create data container
       data.reset(new QCPGraphDataContainer());
+
+      // create frequency ticker
+      ticker.reset(new QCPAxisTickerFrequency());
 
       // disable aliasing to increase performance
       plot->setNoAntialiasingOnDrag(true);
@@ -109,7 +112,7 @@ struct FourierWidget::Impl
       plot->xAxis->setTickLabelColor(Qt::white);
       plot->xAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->xAxis->setTicker(frequencyTicker);
+      plot->xAxis->setTicker(ticker);
       plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
       plot->xAxis->grid()->setZeroLinePen(Qt::NoPen);
 
@@ -132,11 +135,11 @@ struct FourierWidget::Impl
       // get storage backend
       data = graph->data();
 
-      // create range marker
-      marker.reset(new QCPRangeMarker(graph->keyAxis()));
+      // create cursor marker
+      cursor.reset(new QCPAxisCursorMarker(graph->keyAxis()));
 
       // create cursor marker
-      cursor.reset(new QCPCursorMarker(graph->keyAxis()));
+      peak.reset(new QCPGraphValueMarker(graph, markerColor));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -185,19 +188,10 @@ struct FourierWidget::Impl
          {
             double temp[buffer.elements()];
 
-            // set decimation
-            double decimation = buffer.decimation() > 0 ? buffer.decimation() : 1.0f;
-
-            // set frequency bin size
+            double decimation = buffer.decimation() > 0 ? (float) buffer.decimation() : 1.0f;
             double binSize = (sampleRate / decimation) / (float) buffer.elements();
-
-            // set lower frequency
             double lowerFreq = centerFreq - (sampleRate / (decimation * 2));
-
-            // set lower frequency
             double upperFreq = centerFreq + (sampleRate / (decimation * 2));
-
-            // set number of frequency bins
             double binLength = buffer.elements();
 
             // update signal range
@@ -207,17 +201,42 @@ struct FourierWidget::Impl
             if (maximumRange < upperFreq)
                maximumRange = upperFreq;
 
+            // reset frequency peak
+            signalPeak = 0;
+
+            // process signal average and variance
+            double average = 0;
+            double variance = 0;
+            double maximum = INT32_MIN;
+
 #pragma GCC ivdep
             for (int i = 0; i < buffer.elements(); i++)
-            {
-               temp[i] = 2.0 * 10 * log10(buffer[i] / double(binLength));
-            }
+               average += temp[i] = 2.0 * 10 * log10(buffer[i] / double(binLength));
 
+            average = average / buffer.elements();
+
+            // compute signal variance
+#pragma GCC ivdep
+            for (int i = 0; i < buffer.elements(); i++)
+               variance += (buffer[i] - average) * (buffer[i] - average);
+
+            variance = variance / buffer.elements();
+
+            // process signal bins and peak detector
             for (int i = 2; i < buffer.elements() - 2; i++)
             {
                double range = fma(binSize, i, lowerFreq);
                double value = (temp[i - 2] + temp[i - 1] + temp[i] + temp[i + 1] + temp[i + 2]) / 5.0f;
+               double stdev = (temp[i] - average) * (temp[i] - average);
 
+               // peak detector
+               if (maximum < temp[i] && (stdev > variance * 15 * 15))
+               {
+                  maximum = temp[i];
+                  signalPeak = range;
+               }
+
+               // attack and decay animation
                if (signalBuffer[i] < value)
                   signalBuffer[i] = signalBuffer[i] * (1.0 - 0.50) + value * 0.50;
                else if (signalBuffer[i] > value)
@@ -235,6 +254,17 @@ struct FourierWidget::Impl
             }
 
             data->set(bins, true);
+
+            if (maximum > INT32_MIN)
+            {
+               peak->update(signalPeak, frequencyString(signalPeak));
+               peak->show();
+            }
+            else
+            {
+               peak->hide();
+
+            }
 
             refreshReady.release();
 
@@ -262,7 +292,6 @@ struct FourierWidget::Impl
       }
 
       cursor->hide();
-      marker->hide();
 
       plot->replot();
    }
@@ -281,20 +310,24 @@ struct FourierWidget::Impl
 
    void mouseEnter() const
    {
+      peak->show();
       cursor->show();
       plot->replot();
    }
 
    void mouseLeave() const
    {
+      peak->hide();
       cursor->hide();
       plot->replot();
    }
 
    void mouseMove(QMouseEvent *event) const
    {
-      double time = plot->xAxis->pixelToCoord(event->pos().x());
-      cursor->update(time, QString("%1 s").arg(time, 10, 'f', 6));
+      double freq = plot->xAxis->pixelToCoord(event->pos().x());
+
+      cursor->update(freq, frequencyString(freq));
+
       plot->replot();
    }
 
@@ -364,6 +397,20 @@ struct FourierWidget::Impl
       {
          plot->replot();
       }
+   }
+
+   inline QString frequencyString(double frequency) const
+   {
+      if (frequency > 1E9)
+         return QString("%1GHz").arg(frequency / 1E9, 0, 'f', 3);
+
+      if (frequency > 1E6)
+         return QString("%1MHz").arg(frequency / 1E6, 0, 'f', 3);
+
+      if (frequency > 1E3)
+         return QString("%1KHz").arg(frequency / 1E3, 0, 'f', 3);
+
+      return QString("%1Hz").arg(frequency, 0, 'f', 3);
    }
 };
 

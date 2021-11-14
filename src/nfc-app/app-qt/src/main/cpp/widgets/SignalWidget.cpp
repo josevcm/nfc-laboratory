@@ -30,13 +30,13 @@
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 
-#include <graph/QCPRangeMarker.h>
-#include <graph/QCPCursorMarker.h>
+#include <graph/QCPAxisRangeMarker.h>
+#include <graph/QCPAxisCursorMarker.h>
 
 #include "SignalWidget.h"
 
-#define DEFAULT_LOWER_RANGE -1
-#define DEFAULT_UPPER_RANGE +1
+#define DEFAULT_LOWER_RANGE 0
+#define DEFAULT_UPPER_RANGE 1
 
 #define DEFAULT_LOWER_SCALE 0
 #define DEFAULT_UPPER_SCALE 1
@@ -49,8 +49,8 @@ struct SignalWidget::Impl
 
    QCPGraph *graph = nullptr;
 
-   QSharedPointer<QCPRangeMarker> marker;
-   QSharedPointer<QCPCursorMarker> cursor;
+   QSharedPointer<QCPAxisRangeMarker> marker;
+   QSharedPointer<QCPAxisCursorMarker> cursor;
    QSharedPointer<QCPGraphDataContainer> data;
 
    double minimumRange = INT32_MAX;
@@ -64,7 +64,7 @@ struct SignalWidget::Impl
    QColor signalColor {100, 255, 140, 255};
    QColor selectColor {0, 200, 255, 255};
 
-   explicit Impl(SignalWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
+   explicit Impl(SignalWidget *parent) : widget(parent), plot(new QCustomPlot(parent)), maximumEntries(512 * 1024 * 1024 / sizeof(QCPGraphData))
    {
       setup();
 
@@ -73,8 +73,6 @@ struct SignalWidget::Impl
 
    void setup()
    {
-      maximumEntries = (512 * 1024 * 1024) / sizeof(QCPGraphData);
-
       // create data container
       data.reset(new QCPGraphDataContainer());
 
@@ -119,10 +117,10 @@ struct SignalWidget::Impl
       data = graph->data();
 
       // create range marker
-      marker.reset(new QCPRangeMarker(graph->keyAxis()));
+      marker.reset(new QCPAxisRangeMarker(graph->keyAxis()));
 
       // create cursor marker
-      cursor.reset(new QCPCursorMarker(graph->keyAxis()));
+      cursor.reset(new QCPAxisCursorMarker(graph->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -351,16 +349,16 @@ struct SignalWidget::Impl
 
          while (itGraph != selectedGraphs.end())
          {
-            QCPGraph *graph = *itGraph++;
+            QCPGraph *entry = *itGraph++;
 
-            QCPDataSelection selection = graph->selection();
+            QCPDataSelection selection = entry->selection();
 
             for (int i = 0; i < selection.dataRangeCount(); i++)
             {
                QCPDataRange range = selection.dataRange(i);
 
-               QCPGraphDataContainer::const_iterator data = graph->data()->at(range.begin());
-               QCPGraphDataContainer::const_iterator end = graph->data()->at(range.end());
+               QCPGraphDataContainer::const_iterator data = entry->data()->at(range.begin());
+               QCPGraphDataContainer::const_iterator end = entry->data()->at(range.end());
 
                while (data != end)
                {

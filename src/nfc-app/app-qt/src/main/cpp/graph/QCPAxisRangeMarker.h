@@ -22,22 +22,20 @@
 
 */
 
-#ifndef NFC_LAB_QCPRANGEMARKER_H
-#define NFC_LAB_QCPRANGEMARKER_H
+#ifndef NFC_LAB_QCPAXISRANGEMARKER_H
+#define NFC_LAB_QCPAXISRANGEMARKER_H
 
 #include <QString>
 
 #include <support/QCustomPlot.h>
 
-class QCPRangeMarker
+class QCPAxisRangeMarker
 {
    public:
 
-      explicit QCPRangeMarker(QCPAxis *axis);
+      explicit QCPAxisRangeMarker(QCPAxis *axis);
 
-      ~QCPRangeMarker();
-
-      void setup();
+      ~QCPAxisRangeMarker();
 
       void show(double from, double to, const QString &text);
 
@@ -45,7 +43,7 @@ class QCPRangeMarker
 
    private:
 
-      QCPAxis *axis;
+      QCPAxis *axis = nullptr;
       QCPItemTracer *tracer = nullptr;
       QCPItemTracer *start = nullptr;
       QCPItemTracer *end = nullptr;
@@ -54,4 +52,4 @@ class QCPRangeMarker
 };
 
 
-#endif //NFC_LAB_QCPRANGEMARKER_H
+#endif //NFC_LAB_QCPAXISRANGEMARKER_H

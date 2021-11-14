@@ -22,35 +22,32 @@
 
 */
 
-#ifndef NFC_LAB_QCPCURSORMARKER_H
-#define NFC_LAB_QCPCURSORMARKER_H
+#ifndef NFC_LAB_QCPGRAPHVALUEMARKER_H
+#define NFC_LAB_QCPGRAPHVALUEMARKER_H
 
+#include <QColor>
 #include <QString>
 
 #include <support/QCustomPlot.h>
 
-class QCPCursorMarker
+class QCPGraphValueMarker
 {
    public:
 
-      explicit QCPCursorMarker(QCPAxis *axis);
+      explicit QCPGraphValueMarker(QCPGraph *graph, const QColor &color);
 
-      ~QCPCursorMarker();
-
-      void setup();
+      ~QCPGraphValueMarker();
 
       void show();
 
       void hide();
 
-      void update(double from, const QString &text);
+      void update(double key, const QString &text);
 
    private:
 
-      QCPAxis *axis;
       QCPItemTracer *tracer = nullptr;
       QCPItemText *label = nullptr;
 };
 
-
-#endif //NFC_LAB_QCPCURSORMARKER_H
+#endif //NFC_LAB_QCPGRAPHVALUEMARKER_H
