@@ -42,10 +42,10 @@ namespace nfc {
 struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
 {
    // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *samplingStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalRawStream = nullptr;
 
    // signal buffer frame stream subject
-   rt::Subject<sdr::SignalBuffer> *adaptiveStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalAdpStream = nullptr;
 
    // signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription samplingSubscription;
@@ -59,13 +59,13 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
    explicit Impl() : AbstractTask("AdaptiveSamplingTask", "adaptive")
    {
       // access to signal subject stream
-      samplingStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+      signalRawStream = rt::Subject<sdr::SignalBuffer>::name("signal.raw");
 
       // access to signal subject stream
-      adaptiveStream = rt::Subject<sdr::SignalBuffer>::name("signal.adaptive");
+      signalAdpStream = rt::Subject<sdr::SignalBuffer>::name("signal.adp");
 
       // subscribe to signal events
-      samplingSubscription = samplingStream->subscribe([=](const sdr::SignalBuffer &buffer) {
+      samplingSubscription = signalRawStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          signalQueue.add(buffer);
       });
    }
@@ -116,7 +116,8 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
          avrg += buffer[i];
 
       // always store first sample
-      resampled.put(start).put(buffer[0]);
+//      resampled.put(start).put(buffer[0]);
+      resampled.put(buffer[0]).put(0.0);
 
       // index of current point and last control point
       int i = 0, c = 0, p = -1;
@@ -140,15 +141,22 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
          // filter values
          if (stdev > filter || (i - c) > 100)
          {
-            float rp = fmaf(step, p, start); // ri = step * p + start
-            float ri = fmaf(step, i, start); // ri = step * i + start
+//            float rp = fmaf(step, p, start); // ri = step * p + start
+//            float ri = fmaf(step, i, start); // ri = step * i + start
+//
+//            // append control point
+//            if (stdev > filter && c < p)
+//               resampled.put(rp).put(last);
+//
+//            // append new value
+//            resampled.put(ri).put(value);
 
             // append control point
             if (stdev > filter && c < p)
-               resampled.put(rp).put(last);
+               resampled.put(last).put(float(p));
 
             // append new value
-            resampled.put(ri).put(value);
+            resampled.put(value).put(float(i));
 
             // update control point index
             c = i;
@@ -159,12 +167,15 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
       }
 
       // store last sample
+//      if (c < p)
+//         resampled.put(fmaf(step, p, start)).put(last);
+
       if (c < p)
-         resampled.put(fmaf(step, p, start)).put(last);
+         resampled.put(last).put(float(p));
 
       resampled.flip();
 
-      adaptiveStream->next(resampled);
+      signalAdpStream->next(resampled);
    }
 };
 
