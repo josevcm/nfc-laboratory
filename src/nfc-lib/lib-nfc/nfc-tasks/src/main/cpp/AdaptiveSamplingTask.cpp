@@ -116,7 +116,6 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
          avrg += buffer[i];
 
       // always store first sample
-//      resampled.put(start).put(buffer[0]);
       resampled.put(buffer[0]).put(0.0);
 
       // index of current point and last control point
@@ -141,16 +140,6 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
          // filter values
          if (stdev > filter || (i - c) > 100)
          {
-//            float rp = fmaf(step, p, start); // ri = step * p + start
-//            float ri = fmaf(step, i, start); // ri = step * i + start
-//
-//            // append control point
-//            if (stdev > filter && c < p)
-//               resampled.put(rp).put(last);
-//
-//            // append new value
-//            resampled.put(ri).put(value);
-
             // append control point
             if (stdev > filter && c < p)
                resampled.put(last).put(float(p));
@@ -167,9 +156,6 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
       }
 
       // store last sample
-//      if (c < p)
-//         resampled.put(fmaf(step, p, start)).put(last);
-
       if (c < p)
          resampled.put(last).put(float(p));
 
