@@ -107,8 +107,6 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
 
       float avrg = 0;
       float last = buffer[0];
-      float step = 1.0f / float(buffer.sampleRate());
-      float start = float(buffer.offset()) / float(buffer.sampleRate());
       float filter = THRESHOLD;
 
       // initialize average
