@@ -58,7 +58,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    Impl() : AbstractTask("FrameDecoderTask", "decoder"), status(FrameDecoderTask::Halt), decoder(new nfc::NfcDecoder())
    {
       // access to signal subject stream
-      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.raw");
 
       // create frame stream subject
       frameStream = rt::Subject<nfc::NfcFrame>::name("decoder.frame");

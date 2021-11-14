@@ -157,22 +157,14 @@ struct SignalWidget::Impl
       {
          case sdr::SignalType::SAMPLE_REAL:
          {
-            float sampleRate = buffer.sampleRate();
-            float sampleStep = 1 / sampleRate;
-            float startTime = buffer.offset() / sampleRate;
-            float endTime = startTime + buffer.elements() / sampleRate;
-
-            // update signal range
-            if (minimumRange > startTime)
-               minimumRange = startTime;
-
-            if (maximumRange < endTime)
-               maximumRange = endTime;
+            double sampleRate = buffer.sampleRate();
+            double sampleStep = 1 / sampleRate;
+            double startTime = buffer.offset() / sampleRate;
 
             for (int i = 0; i < buffer.elements(); i++)
             {
-               float range = fmaf(sampleStep, i, startTime);
-               float value = buffer[i];
+               double value = buffer[i];
+               double range = fma(sampleStep, i, startTime); // range = sampleStep * i + startTime
 
                if (minimumScale > value * 0.75)
                   minimumScale = value * 0.75;
@@ -183,22 +175,26 @@ struct SignalWidget::Impl
                data->add({range, value});
             }
 
+            // update signal range
+            if (data->size() > 0)
+            {
+               minimumRange = data->at(0)->key;
+               maximumRange = data->at(data->size() - 1)->key;
+            }
+
             break;
          }
 
          case sdr::SignalType::ADAPTIVE_REAL:
          {
+            double sampleRate = buffer.sampleRate();
+            double sampleStep = 1 / sampleRate;
+            double startTime = buffer.offset() / sampleRate;
+
             for (int i = 0; i < buffer.limit(); i += 2)
             {
-               float range = buffer[i + 0];
-               float value = buffer[i + 1];
-
-               // update signal range
-               if (minimumRange > range)
-                  minimumRange = range;
-
-               if (maximumRange < range)
-                  maximumRange = range;
+               double value = buffer[i + 0];
+               double range = fma(sampleStep, buffer[i + 1], startTime); // range = sampleStep * buffer[i + 1] + startTime
 
                // update signal scale
                if (minimumScale > value * 0.75)
@@ -210,6 +206,13 @@ struct SignalWidget::Impl
                data->add({range, value});
             }
 
+            // update signal range
+            if (data->size() > 0)
+            {
+               minimumRange = data->at(0)->key;
+               maximumRange = data->at(data->size() - 1)->key;
+            }
+
             break;
          }
       }
@@ -217,8 +220,8 @@ struct SignalWidget::Impl
       // remove old data when maximum memory threshold is reached
       if (data->size() > maximumEntries)
       {
-         minimumRange = data->at(data->size() - maximumEntries)->key;
          data->removeBefore(minimumRange);
+         minimumRange = data->at(0)->key;
       }
    }
 
