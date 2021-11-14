@@ -209,14 +209,18 @@ ProtocolFrame *ParserNfcA::parseRequestSELn(const nfc::NfcFrame &frame)
    flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
    flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
 
-   if (cmd == 0x93)
-      root = buildFrameInfo("SEL1", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SelectionFrame);
-   else if (cmd == 0x95)
-      root = buildFrameInfo("SEL2", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SelectionFrame);
-   else if (cmd == 0x97)
-      root = buildFrameInfo("SEL3", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SelectionFrame);
-   else
-      root = buildFrameInfo("SEL?", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SelectionFrame);
+   switch (cmd)
+   {
+      case 0x93:
+         root = buildFrameInfo("SEL1", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SelectionFrame);
+         break;
+      case 0x95:
+         root = buildFrameInfo("SEL2", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SelectionFrame);
+         break;
+      case 0x97:
+         root = buildFrameInfo("SEL3", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SelectionFrame);
+         break;
+   }
 
    // command detailed info
    root->appendChild(buildFieldInfo("NVB", nvb));

@@ -22,18 +22,35 @@
 
 */
 
-#include "AxisTickerFrequency.h"
+#ifndef NFC_LAB_QCPCURSORMARKER_H
+#define NFC_LAB_QCPCURSORMARKER_H
 
-QString AxisTickerFrequency::getTickLabel(double tick, const QLocale &locale, QChar formatChar, int precision)
+#include <QString>
+
+#include <support/QCustomPlot.h>
+
+class QCPCursorMarker
 {
-   if (tick > 1E9)
-      return QString("%1GHz").arg(tick / 1E9, 1, 'g', 2);
+   public:
 
-   if (tick > 1E6)
-      return QString("%1MHz").arg(tick / 1E6, 1, 'g', 2);
+      explicit QCPCursorMarker(QCPAxis *axis);
 
-   if (tick > 1E3)
-      return QString("%1KHz").arg(tick / 1E3, 1, 'g', 2);
+      ~QCPCursorMarker();
 
-   return QString("%1Hz").arg(tick / 1E6, 1, 'g', 2);
-}
+      void setup();
+
+      void show();
+
+      void hide();
+
+      void update(double from, const QString &text);
+
+   private:
+
+      QCPAxis *axis;
+      QCPItemTracer *tracer = nullptr;
+      QCPItemText *label = nullptr;
+};
+
+
+#endif //NFC_LAB_QCPCURSORMARKER_H

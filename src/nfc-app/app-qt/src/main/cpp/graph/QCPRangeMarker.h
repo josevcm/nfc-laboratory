@@ -22,19 +22,36 @@
 
 */
 
-#ifndef NFC_LAB_AXISTICKERFREQUENCY_H
-#define NFC_LAB_AXISTICKERFREQUENCY_H
+#ifndef NFC_LAB_QCPRANGEMARKER_H
+#define NFC_LAB_QCPRANGEMARKER_H
 
 #include <QString>
 
 #include <support/QCustomPlot.h>
 
-class AxisTickerFrequency : public QCPAxisTicker
+class QCPRangeMarker
 {
    public:
 
-      QString getTickLabel(double tick, const QLocale &locale, QChar formatChar, int precision) override;
+      explicit QCPRangeMarker(QCPAxis *axis);
+
+      ~QCPRangeMarker();
+
+      void setup();
+
+      void show(double from, double to, const QString &text);
+
+      void hide();
+
+   private:
+
+      QCPAxis *axis;
+      QCPItemTracer *tracer = nullptr;
+      QCPItemTracer *start = nullptr;
+      QCPItemTracer *end = nullptr;
+      QCPItemText *label = nullptr;
+      QCPItemLine *arrow = nullptr;
 };
 
 
-#endif //NFC_LAB_AXISTICKERFREQUENCY_H
+#endif //NFC_LAB_QCPRANGEMARKER_H

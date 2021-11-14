@@ -45,13 +45,7 @@ class FourierWidget: public QWidget
 
       void setSampleRate(long value);
 
-      void setRange(float lower, float upper);
-
-      void setCenter(float value);
-
       void refresh(const sdr::SignalBuffer &buffer);
-
-      void select(float from, float to);
 
       void refresh();
 
@@ -68,8 +62,6 @@ class FourierWidget: public QWidget
       Q_SIGNAL void rangeChanged(float from, float to);
 
       Q_SIGNAL void scaleChanged(float from, float to);
-
-      Q_SIGNAL void selectionChanged(float from, float to);
 
    private:
 

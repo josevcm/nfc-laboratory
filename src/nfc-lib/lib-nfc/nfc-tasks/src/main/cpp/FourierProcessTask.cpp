@@ -125,8 +125,8 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
    bool loop() override
    {
-      // process FFT at 40 fps (25ms / frame)
-      wait(25);
+      // process FFT at 50 fps (20ms / frame)
+      wait(20);
 
       // compute fast fourier transform
       process();

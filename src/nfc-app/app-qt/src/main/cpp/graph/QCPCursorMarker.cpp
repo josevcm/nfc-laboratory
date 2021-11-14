@@ -22,20 +22,20 @@
 
 */
 
-#include "CursorMarker.h"
+#include "QCPCursorMarker.h"
 
-CursorMarker::CursorMarker(QCPAxis *axis) : axis(axis)
+QCPCursorMarker::QCPCursorMarker(QCPAxis *axis) : axis(axis)
 {
    setup();
 }
 
-CursorMarker::~CursorMarker()
+QCPCursorMarker::~QCPCursorMarker()
 {
    delete label;
    delete tracer;
 }
 
-void CursorMarker::setup()
+void QCPCursorMarker::setup()
 {
    tracer = new QCPItemTracer(axis->parentPlot());
    tracer->setVisible(false);
@@ -56,17 +56,17 @@ void CursorMarker::setup()
    label->position->setParentAnchor(tracer->position);
 }
 
-void CursorMarker::show()
+void QCPCursorMarker::show()
 {
    label->setVisible(true);
 }
 
-void CursorMarker::hide()
+void QCPCursorMarker::hide()
 {
    label->setVisible(false);
 }
 
-void CursorMarker::update(double from, const QString &text)
+void QCPCursorMarker::update(double from, const QString &text)
 {
    label->setText(text);
    tracer->position->setCoords(from, 1);

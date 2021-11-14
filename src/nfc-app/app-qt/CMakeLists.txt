@@ -27,9 +27,9 @@ add_executable(nfc-lab
         src/main/cpp/events/SignalBufferEvent.cpp
         src/main/cpp/events/SystemStartupEvent.cpp
         src/main/cpp/events/SystemShutdownEvent.cpp
-        src/main/cpp/graph/AxisTickerFrequency.cpp
-        src/main/cpp/graph/RangeMarker.cpp
-        src/main/cpp/graph/CursorMarker.cpp
+        src/main/cpp/graph/QCPAxisTickerFrequency.cpp
+        src/main/cpp/graph/QCPRangeMarker.cpp
+        src/main/cpp/graph/QCPCursorMarker.cpp
         src/main/cpp/model/StreamModel.cpp
         src/main/cpp/model/ParserModel.cpp
         src/main/cpp/parser/ParserNfc.cpp

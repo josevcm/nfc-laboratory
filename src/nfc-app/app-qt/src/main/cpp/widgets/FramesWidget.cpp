@@ -31,8 +31,8 @@
 
 #include <support/QCustomPlot.h>
 
-#include <graph/RangeMarker.h>
-#include <graph/CursorMarker.h>
+#include <graph/QCPRangeMarker.h>
+#include <graph/QCPCursorMarker.h>
 
 #include "FramesWidget.h"
 
@@ -43,8 +43,8 @@ struct FramesWidget::Impl
 
    QCustomPlot *plot = nullptr;
 
-   QSharedPointer<RangeMarker> marker;
-   QSharedPointer<CursorMarker> cursor;
+   QSharedPointer<QCPRangeMarker> marker;
+   QSharedPointer<QCPCursorMarker> cursor;
 
    double minimumRange = +INT32_MAX;
    double maximumRange = -INT32_MAX;
@@ -133,10 +133,10 @@ struct FramesWidget::Impl
       }
 
       // create range marker
-      marker.reset(new RangeMarker(plot->graph(0)->keyAxis()));
+      marker.reset(new QCPRangeMarker(plot->graph(0)->keyAxis()));
 
       // create cursor marker
-      cursor.reset(new CursorMarker(plot->graph(0)->keyAxis()));
+      cursor.reset(new QCPCursorMarker(plot->graph(0)->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);

@@ -30,10 +30,16 @@
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 
-#include <graph/RangeMarker.h>
-#include <graph/CursorMarker.h>
+#include <graph/QCPRangeMarker.h>
+#include <graph/QCPCursorMarker.h>
 
 #include "SignalWidget.h"
+
+#define DEFAULT_LOWER_RANGE -1
+#define DEFAULT_UPPER_RANGE +1
+
+#define DEFAULT_LOWER_SCALE 0
+#define DEFAULT_UPPER_SCALE 1
 
 struct SignalWidget::Impl
 {
@@ -43,15 +49,15 @@ struct SignalWidget::Impl
 
    QCPGraph *graph = nullptr;
 
-   QSharedPointer<RangeMarker> marker;
-   QSharedPointer<CursorMarker> cursor;
+   QSharedPointer<QCPRangeMarker> marker;
+   QSharedPointer<QCPCursorMarker> cursor;
    QSharedPointer<QCPGraphDataContainer> data;
 
-   float minimumRange = INT32_MAX;
-   float maximumRange = -INT32_MAX;
+   double minimumRange = INT32_MAX;
+   double maximumRange = INT32_MIN;
 
-   float minimumScale = INT32_MAX;
-   float maximumScale = -INT32_MAX;
+   double minimumScale = INT32_MAX;
+   double maximumScale = INT32_MIN;
 
    unsigned int maximumEntries;
 
@@ -93,7 +99,7 @@ struct SignalWidget::Impl
       plot->xAxis->setTickLabelColor(Qt::white);
       plot->xAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->xAxis->setRange(0, 1);
+      plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
 
       // setup Y axis
       plot->yAxis->setBasePen(QPen(Qt::darkGray));
@@ -101,7 +107,7 @@ struct SignalWidget::Impl
       plot->yAxis->setTickLabelColor(Qt::white);
       plot->yAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->yAxis->setRange(0, 1);
+      plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_SCALE);
 
       graph = plot->addGraph();
 
@@ -113,10 +119,10 @@ struct SignalWidget::Impl
       data = graph->data();
 
       // create range marker
-      marker.reset(new RangeMarker(graph->keyAxis()));
+      marker.reset(new QCPRangeMarker(graph->keyAxis()));
 
       // create cursor marker
-      cursor.reset(new CursorMarker(graph->keyAxis()));
+      cursor.reset(new QCPCursorMarker(graph->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -256,16 +262,16 @@ struct SignalWidget::Impl
 
    void clear()
    {
-      minimumRange = +INT32_MAX;
-      maximumRange = -INT32_MAX;
+      minimumRange = INT32_MAX;
+      maximumRange = INT32_MIN;
 
-      minimumScale = +INT32_MAX;
-      maximumScale = -INT32_MAX;
+      minimumScale = INT32_MAX;
+      maximumScale = INT32_MIN;
 
       data->clear();
 
-      plot->xAxis->setRange(0, 1);
-      plot->yAxis->setRange(0, 1);
+      plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
+      plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_SCALE);
 
       for (int i = 0; i < plot->graphCount(); i++)
       {
@@ -378,9 +384,9 @@ struct SignalWidget::Impl
             double elapsed = endTime - startTime;
 
             if (elapsed < 1E-3)
-               text = QString("%1 us").arg(elapsed * 1000000, 3, 'f', 0);
+               text = QString("%1 us").arg(elapsed * 1E6, 3, 'f', 0);
             else if (elapsed < 1)
-               text = QString("%1 ms").arg(elapsed * 1000, 7, 'f', 3);
+               text = QString("%1 ms").arg(elapsed * 1E3, 7, 'f', 3);
             else
                text = QString("%1 s").arg(elapsed, 7, 'f', 5);
 
@@ -412,11 +418,11 @@ struct SignalWidget::Impl
 
       // check lower range limits
       if (newRange.lower < minimumRange || newRange.lower > maximumRange)
-         fixRange.lower = minimumRange < +INT32_MAX ? minimumRange : 0;
+         fixRange.lower = minimumRange < INT32_MAX ? minimumRange : DEFAULT_LOWER_RANGE;
 
       // check upper range limits
       if (newRange.upper > maximumRange || newRange.upper < minimumRange)
-         fixRange.upper = maximumRange > -INT32_MAX ? maximumRange : 1;
+         fixRange.upper = maximumRange > INT32_MIN ? maximumRange : DEFAULT_UPPER_RANGE;
 
       // fix visible range
       if (fixRange != newRange)
@@ -451,8 +457,8 @@ struct SignalWidget::Impl
 //         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
 
       // scale not allowed to change
-      fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
-      fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
+      fixScale.lower = minimumScale < INT32_MAX ? minimumScale : DEFAULT_LOWER_SCALE;
+      fixScale.upper = maximumScale > INT32_MIN ? maximumScale : DEFAULT_UPPER_SCALE;
 
       // fix visible scale
       if (fixScale != newScale)
@@ -478,9 +484,7 @@ struct SignalWidget::Impl
 
    void setCenter(float value)
    {
-      qDebug() << "setCenter(" << value << ")";
    }
-
 };
 
 SignalWidget::SignalWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))

@@ -22,36 +22,18 @@
 
 */
 
-#ifndef NFC_LAB_RANGEMARKER_H
-#define NFC_LAB_RANGEMARKER_H
+#include "QCPAxisTickerFrequency.h"
 
-#include <QString>
-
-#include <support/QCustomPlot.h>
-
-class RangeMarker
+QString QCPAxisTickerFrequency::getTickLabel(double tick, const QLocale &locale, QChar formatChar, int precision)
 {
-   public:
+   if (tick > 1E9)
+      return QString("%1GHz").arg(tick / 1E9, 0, 'f', 2);
 
-      explicit RangeMarker(QCPAxis *axis);
+   if (tick > 1E6)
+      return QString("%1MHz").arg(tick / 1E6, 0, 'f', 2);
 
-      ~RangeMarker();
+   if (tick > 1E3)
+      return QString("%1KHz").arg(tick / 1E3, 0, 'f', 2);
 
-      void setup();
-
-      void show(double from, double to, const QString &text);
-
-      void hide();
-
-   private:
-
-      QCPAxis *axis;
-      QCPItemTracer *tracer = nullptr;
-      QCPItemTracer *start = nullptr;
-      QCPItemTracer *end = nullptr;
-      QCPItemText *label = nullptr;
-      QCPItemLine *arrow = nullptr;
-};
-
-
-#endif //NFC_LAB_RANGEMARKER_H
+   return QString("%1Hz").arg(tick, 0, 'f', 2);
+}

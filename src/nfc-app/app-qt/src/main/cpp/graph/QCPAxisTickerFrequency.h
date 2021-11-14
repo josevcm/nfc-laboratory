@@ -22,35 +22,19 @@
 
 */
 
-#ifndef NFC_LAB_CURSORMARKER_H
-#define NFC_LAB_CURSORMARKER_H
+#ifndef NFC_LAB_QCPAXISTICKERFREQUENCY_H
+#define NFC_LAB_QCPAXISTICKERFREQUENCY_H
 
 #include <QString>
 
 #include <support/QCustomPlot.h>
 
-class CursorMarker
+class QCPAxisTickerFrequency : public QCPAxisTicker
 {
    public:
 
-      explicit CursorMarker(QCPAxis *axis);
-
-      ~CursorMarker();
-
-      void setup();
-
-      void show();
-
-      void hide();
-
-      void update(double from, const QString &text);
-
-   private:
-
-      QCPAxis *axis;
-      QCPItemTracer *tracer = nullptr;
-      QCPItemText *label = nullptr;
+      QString getTickLabel(double tick, const QLocale &locale, QChar formatChar, int precision) override;
 };
 
 
-#endif //NFC_LAB_CURSORMARKER_H
+#endif //NFC_LAB_QCPAXISTICKERFREQUENCY_H

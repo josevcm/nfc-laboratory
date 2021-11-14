@@ -30,11 +30,17 @@
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 
-#include <graph/RangeMarker.h>
-#include <graph/CursorMarker.h>
-#include <graph/AxisTickerFrequency.h>
+#include <graph/QCPRangeMarker.h>
+#include <graph/QCPCursorMarker.h>
+#include <graph/QCPAxisTickerFrequency.h>
 
 #include "FourierWidget.h"
+
+#define DEFAULT_LOWER_RANGE (40.68E6 - 10E6 / 32)
+#define DEFAULT_UPPER_RANGE (40.68E6 + 10E6 / 32)
+
+#define DEFAULT_LOWER_SCALE -120
+#define DEFAULT_UPPER_SCALE 0
 
 struct FourierWidget::Impl
 {
@@ -44,24 +50,23 @@ struct FourierWidget::Impl
 
    QCPGraph *graph = nullptr;
 
-   QSharedPointer<RangeMarker> marker;
-   QSharedPointer<CursorMarker> cursor;
+   QSharedPointer<QCPRangeMarker> marker;
+   QSharedPointer<QCPCursorMarker> cursor;
    QSharedPointer<QCPGraphDataContainer> data;
-
-   QSharedPointer<AxisTickerFrequency> frequencyTicker;
+   QSharedPointer<QCPAxisTickerFrequency> frequencyTicker;
 
    double centerFreq;
    double sampleRate;
 
    double minimumRange = INT32_MAX;
-   double maximumRange = -INT32_MAX;
+   double maximumRange = INT32_MIN;
 
    double minimumScale = INT32_MAX;
-   double maximumScale = -INT32_MAX;
+   double maximumScale = INT32_MIN;
 
    double signalBuffer[65535] {0,};
 
-   QColor signalColor {100, 255, 140, 255};
+   QColor signalColor {255, 255, 50, 255};
    QColor selectColor {0, 200, 255, 255};
 
    QPointer<QTimer> refreshTimer;
@@ -78,7 +83,7 @@ struct FourierWidget::Impl
    void setup()
    {
       // create frequency ticker
-      frequencyTicker.reset(new AxisTickerFrequency());
+      frequencyTicker.reset(new QCPAxisTickerFrequency());
 
       // create data container
       data.reset(new QCPGraphDataContainer());
@@ -105,21 +110,22 @@ struct FourierWidget::Impl
       plot->xAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
       plot->xAxis->setTicker(frequencyTicker);
-      plot->xAxis->setRange(-1, 1);
+      plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
       plot->xAxis->grid()->setZeroLinePen(Qt::NoPen);
 
       // setup Y axis
       plot->yAxis->setBasePen(QPen(Qt::white));
       plot->yAxis->setTickPen(QPen(Qt::white));
       plot->yAxis->setTickLabelColor(Qt::white);
-//      plot->yAxis->setSubTickPen(QPen(Qt::darkGray));
+      plot->yAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->yAxis->setRange(0, 1);
+      plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_RANGE);
       plot->yAxis->grid()->setZeroLinePen(Qt::NoPen);
 
       graph = plot->addGraph();
 
       graph->setPen(QPen(signalColor));
+//      graph->setBrush(QBrush(QColor(0, 0, 255, 20)));
       graph->setSelectable(QCP::stDataRange);
       graph->selectionDecorator()->setPen(QPen(selectColor));
 
@@ -127,10 +133,10 @@ struct FourierWidget::Impl
       data = graph->data();
 
       // create range marker
-      marker.reset(new RangeMarker(graph->keyAxis()));
+      marker.reset(new QCPRangeMarker(graph->keyAxis()));
 
       // create cursor marker
-      cursor.reset(new CursorMarker(graph->keyAxis()));
+      cursor.reset(new QCPCursorMarker(graph->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -150,10 +156,6 @@ struct FourierWidget::Impl
 
       QObject::connect(plot, &QCustomPlot::mouseWheel, [=](QWheelEvent *event) {
          mouseWheel(event);
-      });
-
-      QObject::connect(plot, &QCustomPlot::selectionChangedByUser, [=]() {
-         selectionChanged();
       });
 
       QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
@@ -241,47 +243,18 @@ struct FourierWidget::Impl
       }
    }
 
-   void select(float from, float to)
-   {
-      for (int i = 0; i < plot->graphCount(); i++)
-      {
-         QCPDataSelection selection;
-
-         QCPGraph *graph = plot->graph(i);
-
-         int begin = graph->findBegin(from, false);
-         int end = graph->findEnd(to, false);
-
-         selection.addDataRange(QCPDataRange(begin, end));
-
-         graph->setSelection(selection);
-      }
-
-      if (from > minimumRange && to < maximumRange)
-      {
-         QCPRange currentRange = plot->xAxis->range();
-
-         float center = float(from + to) / 2.0f;
-         float length = float(currentRange.upper - currentRange.lower);
-
-         plot->xAxis->setRange(center - length / 2, center + length / 2);
-      }
-
-      selectionChanged();
-   }
-
    void clear()
    {
-      minimumRange = +INT32_MAX;
-      maximumRange = -INT32_MAX;
+      minimumRange = INT32_MAX;
+      maximumRange = INT32_MIN;
 
-      minimumScale = +INT32_MAX;
-      maximumScale = -INT32_MAX;
+      minimumScale = INT32_MAX;
+      maximumScale = INT32_MIN;
 
       data->clear();
 
-      plot->xAxis->setRange(-1, 1);
-      plot->yAxis->setRange(0, 1);
+      plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
+      plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_SCALE);
 
       for (int i = 0; i < plot->graphCount(); i++)
       {
@@ -345,107 +318,21 @@ struct FourierWidget::Impl
          plot->axisRect()->setRangeZoom(Qt::Horizontal);
    }
 
-   void selectionChanged() const
-   {
-      QList<QCPGraph *> selectedGraphs = plot->selectedGraphs();
-
-      double startTime = 0;
-      double endTime = 0;
-
-      if (!selectedGraphs.empty())
-      {
-         QList<QCPGraph *>::Iterator itGraph = selectedGraphs.begin();
-
-         while (itGraph != selectedGraphs.end())
-         {
-            QCPGraph *graph = *itGraph++;
-
-            QCPDataSelection selection = graph->selection();
-
-            for (int i = 0; i < selection.dataRangeCount(); i++)
-            {
-               QCPDataRange range = selection.dataRange(i);
-
-               QCPGraphDataContainer::const_iterator data = graph->data()->at(range.begin());
-               QCPGraphDataContainer::const_iterator end = graph->data()->at(range.end());
-
-               while (data != end)
-               {
-                  double timestamp = data->key;
-
-                  if (startTime == 0 || timestamp < startTime)
-                     startTime = timestamp;
-
-                  if (endTime == 0 || timestamp > endTime)
-                     endTime = timestamp;
-
-                  data++;
-               }
-            }
-         }
-
-         if (startTime > 0 && startTime < endTime)
-         {
-            QString text;
-
-            double elapsed = endTime - startTime;
-
-            if (elapsed < 1E-3)
-               text = QString("%1 us").arg(elapsed * 1000000, 3, 'f', 0);
-            else if (elapsed < 1)
-               text = QString("%1 ms").arg(elapsed * 1000, 7, 'f', 3);
-            else
-               text = QString("%1 s").arg(elapsed, 7, 'f', 5);
-
-            // show timing marker
-            marker->show(startTime, endTime, text);
-         }
-         else
-         {
-            startTime = 0;
-            endTime = 0;
-            marker->hide();
-         }
-      }
-      else
-      {
-         marker->hide();
-      }
-
-      // refresh graph
-      plot->replot();
-
-      // trigger selection changed signal
-      widget->selectionChanged(startTime, endTime);
-   }
-
    void rangeChanged(const QCPRange &newRange) const
    {
       QCPRange fixRange = newRange;
 
       // check lower range limits
       if (newRange.lower < minimumRange || newRange.lower > maximumRange)
-         fixRange.lower = minimumRange < +INT32_MAX ? minimumRange : -1;
+         fixRange.lower = minimumRange < INT32_MAX ? minimumRange : DEFAULT_LOWER_RANGE;
 
       // check upper range limits
       if (newRange.upper > maximumRange || newRange.upper < minimumRange)
-         fixRange.upper = maximumRange > -INT32_MAX ? maximumRange : 1;
+         fixRange.upper = maximumRange > INT32_MIN ? maximumRange : DEFAULT_UPPER_RANGE;
 
       // fix visible range
       if (fixRange != newRange)
          plot->xAxis->setRange(fixRange);
-
-      // update scatter style for high zoom values
-      if ((fixRange.upper - fixRange.lower) < 1E-4)
-      {
-         graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, signalColor, signalColor, 4));
-         graph->selectionDecorator()->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, selectColor, selectColor, 4), QCPScatterStyle::spAll);
-      }
-      else if (!graph->scatterStyle().isNone())
-      {
-         graph->setScatterStyle(QCPScatterStyle::ssNone);
-         graph->selectionDecorator()->setScatterStyle(QCPScatterStyle::ssNone, QCPScatterStyle::spAll);
-      }
 
       // emit range signal
       widget->rangeChanged(fixRange.lower, fixRange.upper);
@@ -457,15 +344,11 @@ struct FourierWidget::Impl
 
       // check lower scale limits
       if (newScale.lower < minimumScale || newScale.lower > maximumScale)
-         fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : -1;
+         fixScale.lower = minimumScale < INT32_MAX ? minimumScale : DEFAULT_LOWER_SCALE;
 
       // check lower scale limits
       if (newScale.upper > maximumScale || newScale.upper < minimumScale)
-         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 0;
-
-//      // scale not allowed to change
-//      fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
-//      fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
+         fixScale.upper = maximumScale > INT32_MIN ? maximumScale : DEFAULT_UPPER_SCALE;
 
       // fix visible scale
       if (fixScale != newScale)
@@ -480,22 +363,8 @@ struct FourierWidget::Impl
       if (refreshReady.tryAcquire())
       {
          plot->replot();
-
-//         qDebug() << plot->replotTime(true);
       }
    }
-
-   void setRange(float lower, float upper)
-   {
-      plot->xAxis->setRange(lower, upper);
-      plot->replot();
-   }
-
-   void setCenter(float value)
-   {
-      qDebug() << "setCenter(" << value << ")";
-   }
-
 };
 
 FourierWidget::FourierWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))
@@ -512,24 +381,9 @@ void FourierWidget::setSampleRate(long value)
    impl->sampleRate = float(value);
 }
 
-void FourierWidget::setRange(float lower, float upper)
-{
-   impl->setRange(lower, upper);
-}
-
-void FourierWidget::setCenter(float value)
-{
-   impl->setCenter(value);
-}
-
 void FourierWidget::refresh(const sdr::SignalBuffer &buffer)
 {
    impl->update(buffer);
-}
-
-void FourierWidget::select(float from, float to)
-{
-   impl->select(from, to);
 }
 
 void FourierWidget::refresh()
