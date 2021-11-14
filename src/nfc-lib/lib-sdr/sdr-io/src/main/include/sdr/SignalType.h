@@ -29,10 +29,10 @@ namespace sdr {
 
 enum SignalType
 {
-   SAMPLE_REAL = 1, // 1 float component per sample (real value)
+   SAMPLE_REAL = 1, // 1 float component per sample (value)
    SAMPLE_IQ = 2, // 2 float components per sample (I / Q)
-   ADAPTIVE_REAL = 3, // 2 float components per sample (time / real value)
-   ADAPTIVE_IQ = 4, // 3 float components per sample (time / I / Q)
+   ADAPTIVE_REAL = 3, // 2 float components per sample (value / offset)
+   ADAPTIVE_IQ = 4, // 3 float components per sample (I / Q / offset)
    FREQUENCY_BIN = 10 // 2 float components per sample (magnitude / phase)
 };
 
