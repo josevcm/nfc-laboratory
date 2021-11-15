@@ -161,12 +161,12 @@ struct FourierWidget::Impl
          mouseWheel(event);
       });
 
-      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
-         rangeChanged(newRange);
+      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange, const QCPRange &oldRange) {
+         rangeChanged(newRange, oldRange);
       });
 
-      QObject::connect(plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
-         scaleChanged(newRange);
+      QObject::connect(plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange, const QCPRange &oldRange) {
+         scaleChanged(newRange, oldRange);
       });
 
       // connect refresh timer signal
@@ -218,7 +218,7 @@ struct FourierWidget::Impl
             // compute signal variance
 #pragma GCC ivdep
             for (int i = 0; i < buffer.elements(); i++)
-               variance += (buffer[i] - average) * (buffer[i] - average);
+               variance += (temp[i] - average) * (temp[i] - average);
 
             variance = variance / buffer.elements();
 
@@ -230,7 +230,7 @@ struct FourierWidget::Impl
                double stdev = (temp[i] - average) * (temp[i] - average);
 
                // peak detector
-               if (maximum < temp[i] && (stdev > variance * 15 * 15))
+               if (maximum < temp[i] && (stdev > variance * 50))
                {
                   maximum = temp[i];
                   signalPeak = range;
@@ -238,9 +238,9 @@ struct FourierWidget::Impl
 
                // attack and decay animation
                if (signalBuffer[i] < value)
-                  signalBuffer[i] = signalBuffer[i] * (1.0 - 0.50) + value * 0.50;
-               else if (signalBuffer[i] > value)
                   signalBuffer[i] = signalBuffer[i] * (1.0 - 0.30) + value * 0.30;
+               else if (signalBuffer[i] > value)
+                  signalBuffer[i] = signalBuffer[i] * (1.0 - 0.20) + value * 0.20;
 
                value = signalBuffer[i];
 
@@ -256,15 +256,9 @@ struct FourierWidget::Impl
             data->set(bins, true);
 
             if (maximum > INT32_MIN)
-            {
-               peak->update(signalPeak, frequencyString(signalPeak));
-               peak->show();
-            }
+               peak->show(signalPeak, frequencyString(signalPeak));
             else
-            {
                peak->hide();
-
-            }
 
             refreshReady.release();
 
@@ -310,14 +304,12 @@ struct FourierWidget::Impl
 
    void mouseEnter() const
    {
-      peak->show();
       cursor->show();
       plot->replot();
    }
 
    void mouseLeave() const
    {
-      peak->hide();
       cursor->hide();
       plot->replot();
    }
@@ -351,7 +343,7 @@ struct FourierWidget::Impl
          plot->axisRect()->setRangeZoom(Qt::Horizontal);
    }
 
-   void rangeChanged(const QCPRange &newRange) const
+   void rangeChanged(const QCPRange &newRange, const QCPRange &oldRange) const
    {
       QCPRange fixRange = newRange;
 
@@ -371,7 +363,7 @@ struct FourierWidget::Impl
       widget->rangeChanged(fixRange.lower, fixRange.upper);
    }
 
-   void scaleChanged(const QCPRange &newScale) const
+   void scaleChanged(const QCPRange &newScale, const QCPRange &oldScale) const
    {
       QCPRange fixScale = newScale;
 

@@ -43,8 +43,8 @@
 
 //#define NULL_LOG
 //#define STDERR_LOG
-#define STDOUT_LOG
-//#define FSTREAM_LOG
+//#define STDOUT_LOG
+#define FSTREAM_LOG
 
 namespace rt {
 
@@ -280,7 +280,7 @@ struct Logger::Impl
 
 static std::map<std::string, std::shared_ptr<Logger::Impl>> loggers;
 
-Logger::Logger(const std::string &name)
+Logger::Logger(const std::string &name, int level)
 {
    if (loggers.find(name) == loggers.end())
       loggers[name] = std::make_shared<Logger::Impl>(name, INFO);
