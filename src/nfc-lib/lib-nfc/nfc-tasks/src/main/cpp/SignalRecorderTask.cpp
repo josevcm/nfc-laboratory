@@ -60,7 +60,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
    {
       // access to signal subject stream
       signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
-      signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
+      signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.raw");
 
       // subscribe to signal events
 //      signalIqSubscription = signalIqStream->subscribe([this](const sdr::SignalBuffer &buffer) {

@@ -22,52 +22,45 @@
 
 */
 
-#include "CursorMarker.h"
+#include "QCPGraphValueMarker.h"
 
-CursorMarker::CursorMarker(QCPAxis *axis) : axis(axis)
-      {
-            setup();
-      }
+QCPGraphValueMarker::QCPGraphValueMarker(QCPGraph *graph, const QColor &color) : tracer(new QCPItemTracer(graph->parentPlot())), label(new QCPItemText(graph->parentPlot()))
+{
+   tracer->setVisible(false);
+   tracer->setGraph(graph);
+   tracer->setGraphKey(0);
+   tracer->setInterpolating(true);
+   tracer->setStyle(QCPItemTracer::tsSquare);
+   tracer->setPen(QPen(color, 2.5f));
+   tracer->setSize(10);
+   tracer->position->setTypeX(QCPItemPosition::ptPlotCoords);
+   tracer->position->setTypeY(QCPItemPosition::ptPlotCoords);
 
-CursorMarker::~CursorMarker()
+   label->setVisible(false);
+   label->setColor(Qt::white);
+   label->setLayer("overlay");
+   label->setClipToAxisRect(false);
+   label->setPadding(QMargins(0, 0, 0, 15));
+   label->setPositionAlignment(Qt::AlignBottom | Qt::AlignHCenter);
+   label->position->setParentAnchor(tracer->position);
+}
+
+QCPGraphValueMarker::~QCPGraphValueMarker()
 {
    delete label;
    delete tracer;
 }
 
-void CursorMarker::setup()
+void QCPGraphValueMarker::hide()
 {
-   tracer = new QCPItemTracer(axis->parentPlot());
+   label->setVisible(false);
    tracer->setVisible(false);
-   tracer->position->setTypeX(QCPItemPosition::ptPlotCoords);
-   tracer->position->setTypeY(QCPItemPosition::ptAxisRectRatio);
-   tracer->position->setAxisRect(axis->axisRect());
-   tracer->position->setAxes(axis, nullptr);
-   tracer->position->setCoords(0, 0);
-
-   label = new QCPItemText(axis->parentPlot());
-   label->setPen(QPen(Qt::darkGray));
-   label->setBrush(QBrush(Qt::white));
-   label->setLayer("overlay");
-   label->setVisible(false);
-   label->setClipToAxisRect(false);
-   label->setPadding(QMargins(2, 1, 4, 3));
-   label->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-   label->position->setParentAnchor(tracer->position);
 }
 
-void CursorMarker::show()
-{
-   label->setVisible(true);
-}
-
-void CursorMarker::hide()
-{
-   label->setVisible(false);
-}
-
-void CursorMarker::update(double from, const QString &text)
+void QCPGraphValueMarker::show(double key, const QString &text)
 {
    label->setText(text);
-   tracer->position->setCoords(from, 1);
+   tracer->setGraphKey(key);
+   label->setVisible(true);
+   tracer->setVisible(true);
 }

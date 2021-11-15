@@ -83,7 +83,7 @@ struct QtDecoder::Impl
    rt::Subject<nfc::NfcFrame> *storageFrameStream = nullptr;
 
    // signal data subjects
-   rt::Subject<sdr::SignalBuffer> *signalDataStream = nullptr;
+   rt::Subject<sdr::SignalBuffer> *signalStream = nullptr;
 
    // subscriptions
    rt::Subject<rt::Event>::Subscription decoderStatusSubscription;
@@ -96,7 +96,7 @@ struct QtDecoder::Impl
    rt::Subject<nfc::NfcFrame>::Subscription storageFrameSubscription;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalDataSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
 
    explicit Impl(QSettings &settings, QtMemory *cache) : settings(settings), cache(cache)
    {
@@ -117,7 +117,7 @@ struct QtDecoder::Impl
       storageFrameStream = rt::Subject<nfc::NfcFrame>::name("storage.frame");
 
       // create signal subject
-      signalDataStream = rt::Subject<sdr::SignalBuffer>::name("signal.adaptive");
+      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.adp");
    }
 
    void systemStartup(SystemStartupEvent *event)
@@ -147,7 +147,7 @@ struct QtDecoder::Impl
          frameEvent(frame);
       });
 
-      signalDataSubscription = signalDataStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+      signalSubscription = signalStream->subscribe([this](const sdr::SignalBuffer &buffer) {
          bufferEvent(buffer);
       });
 

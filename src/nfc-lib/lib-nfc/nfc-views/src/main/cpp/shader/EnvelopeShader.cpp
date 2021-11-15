@@ -31,14 +31,14 @@ struct EnvelopeShader::Impl
    int dataRangeId = -1;
 };
 
-EnvelopeShader::EnvelopeShader(const gl::Assets *assets) : gl::GeometryShader(assets), self(std::make_shared<Impl>())
+EnvelopeShader::EnvelopeShader(const gl::Assets *assets) : gl::ObjectShader(assets), self(std::make_shared<Impl>())
 {
    load("EnvelopeShader");
 }
 
 bool EnvelopeShader::load(const std::string &name)
 {
-   if (gl::GeometryShader::load(name))
+   if (gl::ObjectShader::load(name))
    {
       self->dataRangeId = attribLocation("dataRange");
 
@@ -50,7 +50,7 @@ bool EnvelopeShader::load(const std::string &name)
 
 void EnvelopeShader::useProgram() const
 {
-   GeometryShader::useProgram();
+   ObjectShader::useProgram();
 
    enableAttribArray(self->dataRangeId);
 }
@@ -59,7 +59,7 @@ void EnvelopeShader::endProgram() const
 {
    disableAttribArray(self->dataRangeId);
 
-   GeometryShader::endProgram();
+   ObjectShader::endProgram();
 }
 
 void EnvelopeShader::setDataRange(const gl::Buffer &buffer) const

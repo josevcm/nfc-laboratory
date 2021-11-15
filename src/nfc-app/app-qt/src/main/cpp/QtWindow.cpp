@@ -127,9 +127,9 @@ struct QtWindow::Impl
       frequencyStream = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
 
       // subscribe to signal events
-      signalIqSubscription = signalIqStream->subscribe([=](const sdr::SignalBuffer &buffer) {
-         ui->quadratureView->refresh(buffer);
-      });
+//      signalIqSubscription = signalIqStream->subscribe([=](const sdr::SignalBuffer &buffer) {
+//         ui->quadratureView->refresh(buffer);
+//      });
 
       // subscribe to signal events
       frequencySubscription = frequencyStream->subscribe([=](const sdr::SignalBuffer &buffer) {
@@ -443,7 +443,7 @@ struct QtWindow::Impl
          receiverFrequency = value;
 
          ui->frequencyView->setCenterFreq(receiverFrequency);
-         ui->quadratureView->setCenterFreq(receiverFrequency);
+//         ui->quadratureView->setCenterFreq(receiverFrequency);
 
          if (!receiverType.isEmpty())
             settings.setValue("device." + receiverType + "/centerFreq", receiverFrequency);
@@ -463,7 +463,7 @@ struct QtWindow::Impl
          receiverSampleRate = value;
 
          ui->frequencyView->setSampleRate(receiverSampleRate);
-         ui->quadratureView->setSampleRate(receiverSampleRate);
+//         ui->quadratureView->setSampleRate(receiverSampleRate);
 
          if (!receiverType.isEmpty())
             settings.setValue("device." + receiverType + "/sampleRate", receiverSampleRate);
@@ -649,20 +649,13 @@ struct QtWindow::Impl
 
    void clearModel()
    {
-      streamModel->blockSignals(true);
       streamModel->resetModel();
-      streamModel->blockSignals(false);
    }
 
    void clearGraph()
    {
-      ui->framesView->blockSignals(true);
       ui->framesView->clear();
-      ui->framesView->blockSignals(false);
-
-      ui->signalView->blockSignals(true);
       ui->signalView->clear();
-      ui->signalView->blockSignals(false);
    }
 
    void refreshView()

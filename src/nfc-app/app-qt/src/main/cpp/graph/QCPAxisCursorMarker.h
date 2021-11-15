@@ -22,35 +22,32 @@
 
 */
 
-#ifndef NFC_LAB_ENVELOPESHADER_H
-#define NFC_LAB_ENVELOPESHADER_H
+#ifndef NFC_LAB_QCPAXISCURSORMARKER_H
+#define NFC_LAB_QCPAXISCURSORMARKER_H
 
-#include <memory>
+#include <QString>
 
-#include <gl/shader/ObjectShader.h>
+#include <support/QCustomPlot.h>
 
-namespace nfc {
-
-class EnvelopeShader : public gl::ObjectShader
+class QCPAxisCursorMarker
 {
-      struct Impl;
-
    public:
 
-      explicit EnvelopeShader(const gl::Assets *assets);
+      explicit QCPAxisCursorMarker(QCPAxis *axis);
 
-      bool load(const std::string &name) override;
+      ~QCPAxisCursorMarker();
 
-      void useProgram() const override;
+      void show();
 
-      void endProgram() const override;
+      void hide();
 
-      void setDataRange(const gl::Buffer &buffer) const;
+      void update(double from, const QString &text);
 
    private:
 
-      std::shared_ptr<Impl> self;
+      QCPItemTracer *tracer = nullptr;
+      QCPItemText *label = nullptr;
 };
 
-}
-#endif //NFC_LAB_ENVELOPESHADER_H
+
+#endif //NFC_LAB_QCPAXISCURSORMARKER_H

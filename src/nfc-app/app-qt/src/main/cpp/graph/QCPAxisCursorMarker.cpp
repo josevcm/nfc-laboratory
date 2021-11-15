@@ -22,49 +22,45 @@
 
 */
 
-#include <nfc/PeakShader.h>
+#include "QCPAxisCursorMarker.h"
 
-namespace nfc {
-
-struct PeakShader::Impl
+QCPAxisCursorMarker::QCPAxisCursorMarker(QCPAxis *axis) : tracer(new QCPItemTracer(axis->parentPlot())), label(new QCPItemText(axis->parentPlot()))
 {
-   int peakMarkId = -1;
-};
+   tracer->setVisible(false);
+   tracer->position->setTypeX(QCPItemPosition::ptPlotCoords);
+   tracer->position->setTypeY(QCPItemPosition::ptAxisRectRatio);
+   tracer->position->setAxisRect(axis->axisRect());
+   tracer->position->setAxes(axis, nullptr);
+   tracer->position->setCoords(0, 0);
 
-PeakShader::PeakShader(const gl::Assets *assets) : gl::ObjectShader(assets), self(std::make_shared<Impl>())
-{
-   load("PeakShader");
+   label->setVisible(false);
+   label->setPen(QPen(Qt::darkGray));
+   label->setBrush(QBrush(Qt::white));
+   label->setLayer("overlay");
+   label->setClipToAxisRect(false);
+   label->setPadding(QMargins(2, 1, 4, 3));
+   label->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
+   label->position->setParentAnchor(tracer->position);
 }
 
-bool PeakShader::load(const std::string &name)
+QCPAxisCursorMarker::~QCPAxisCursorMarker()
 {
-   if (gl::ObjectShader::load(name))
-   {
-      self->peakMarkId = attribLocation("peakMark");
-
-      return true;
-   }
-
-   return false;
+   delete label;
+   delete tracer;
 }
 
-void PeakShader::useProgram() const
+void QCPAxisCursorMarker::show()
 {
-   ObjectShader::useProgram();
-
-   enableAttribArray(self->peakMarkId);
+   label->setVisible(true);
 }
 
-void PeakShader::endProgram() const
+void QCPAxisCursorMarker::hide()
 {
-   disableAttribArray(self->peakMarkId);
-
-   ObjectShader::endProgram();
+   label->setVisible(false);
 }
 
-void PeakShader::setPeakMarks(const gl::Buffer &buffer) const
+void QCPAxisCursorMarker::update(double from, const QString &text)
 {
-   setVertexFloatArray(self->peakMarkId, buffer, 1);
-}
-
+   label->setText(text);
+   tracer->position->setCoords(from, 1);
 }

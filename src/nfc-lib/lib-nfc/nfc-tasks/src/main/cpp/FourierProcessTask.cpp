@@ -125,8 +125,8 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
    bool loop() override
    {
-      // process FFT at 20 fps (50ms)
-      wait(50);
+      // process FFT at 50 fps (20ms / frame)
+      wait(20);
 
       // compute fast fourier transform
       process();
@@ -160,7 +160,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          // execute FFT
          mufft_execute_plan_1d(fftC2C, fftOut, fftIn);
 
-         // apply FFT complex to real
+         // transform complex FFT to real
 #pragma GCC ivdep
          for (int i = 0, w = 0; w < length; i += 2, w++)
          {

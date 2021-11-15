@@ -31,13 +31,13 @@
 #include <gl/engine/Geometry.h>
 #include <gl/engine/Assets.h>
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace gl {
 
-struct GeometryShader::Impl
+struct ObjectShader::Impl
 {
-   rt::Logger log {"GeometryShader"};
+   rt::Logger log {"ObjectShader"};
 
    const Assets *assets {};
 
@@ -56,7 +56,7 @@ struct GeometryShader::Impl
    }
 };
 
-GeometryShader::GeometryShader(const Assets *assets, const std::string &name) : self(new Impl(assets))
+ObjectShader::ObjectShader(const Assets *assets, const std::string &name) : self(new Impl(assets))
 {
    if (!name.empty())
    {
@@ -64,31 +64,31 @@ GeometryShader::GeometryShader(const Assets *assets, const std::string &name) : 
    }
 }
 
-GeometryShader::~GeometryShader()
+ObjectShader::~ObjectShader()
 {
    delete self;
 }
 
-bool GeometryShader::load(const std::string &name)
+bool ObjectShader::load(const std::string &name)
 {
    self->log.info("loading shader program {}", {name});
 
    // load vertex shader
    if (!loadShader(GL_VERTEX_SHADER, self->assets->readText("shader/" + name + ".v.glsl")))
    {
-      self->log.warn("vertex shader not available!");
+      self->log.warn("vertex shader {} do not not exists!", {name});
    }
 
    // load geometry shader
    if (!loadShader(GL_GEOMETRY_SHADER, self->assets->readText("shader/" + name + ".g.glsl")))
    {
-      self->log.warn("geometry shader not available!");
+      self->log.warn("geometry shader {} do not not exists!", {name});
    }
 
    // load fragment shader
    if (!loadShader(GL_FRAGMENT_SHADER, self->assets->readText("shader/" + name + ".f.glsl")))
    {
-      self->log.warn("fragment shader not available!");
+      self->log.warn("fragment shader {} do not not exists!", {name});
    }
 
    // load shader program
@@ -115,7 +115,7 @@ bool GeometryShader::load(const std::string &name)
 }
 
 
-void GeometryShader::useProgram() const
+void ObjectShader::useProgram() const
 {
    AbstractShader::useProgram();
 
@@ -125,7 +125,7 @@ void GeometryShader::useProgram() const
    enableAttribArray(self->vertexTexelId);
 }
 
-void GeometryShader::endProgram() const
+void ObjectShader::endProgram() const
 {
    disableAttribArray(self->vertexPointId);
    disableAttribArray(self->vertexColorId);
@@ -135,54 +135,54 @@ void GeometryShader::endProgram() const
    AbstractShader::endProgram();
 }
 
-void GeometryShader::setLightingModel(const Lighting &lighting) const
+void ObjectShader::setLightingModel(const Lighting &lighting) const
 {
    setAmbientLightColor(lighting.ambientLight.color);
    setDiffuseLightColor(lighting.diffuseLight.color);
    setDiffuseLightVector(lighting.diffuseLight.vector);
 }
 
-void GeometryShader::setAmbientLightColor(const Color &color) const
+void ObjectShader::setAmbientLightColor(const Color &color) const
 {
    setUniformFloat(self->ambientLightColorId, {color.r, color.g, color.b});
 }
 
-void GeometryShader::setDiffuseLightColor(const Color &color) const
+void ObjectShader::setDiffuseLightColor(const Color &color) const
 {
    setUniformFloat(self->diffuseLightColorId, {color.r, color.g, color.b});
 }
 
-void GeometryShader::setDiffuseLightVector(const Point &vector) const
+void ObjectShader::setDiffuseLightVector(const Point &vector) const
 {
    setUniformFloat(self->diffuseLightVectorId, {vector.x, vector.y, vector.z});
 }
 
-void GeometryShader::setObjectColor(const Color &color) const
+void ObjectShader::setObjectColor(const Color &color) const
 {
    setUniformFloat(self->objectColorId, {color.r, color.g, color.b, color.a});
 }
 
-void GeometryShader::setVertexColors(const Buffer &buffer, int components, int offset, int stride) const
+void ObjectShader::setVertexColors(const Buffer &buffer, int components, int offset, int stride) const
 {
    setVertexFloatArray(self->vertexColorId, buffer, components, offset, stride);
 }
 
-void GeometryShader::setVertexNormals(const Buffer &buffer, int components, int offset, int stride) const
+void ObjectShader::setVertexNormals(const Buffer &buffer, int components, int offset, int stride) const
 {
    setVertexFloatArray(self->vertexNormalId, buffer, components, offset, stride);
 }
 
-void GeometryShader::setVertexPoints(const Buffer &buffer, int components, int offset, int stride) const
+void ObjectShader::setVertexPoints(const Buffer &buffer, int components, int offset, int stride) const
 {
    setVertexFloatArray(self->vertexPointId, buffer, components, offset, stride);
 }
 
-void GeometryShader::setVertexTexels(const Buffer &buffer, int components, int offset, int stride) const
+void ObjectShader::setVertexTexels(const Buffer &buffer, int components, int offset, int stride) const
 {
    setVertexFloatArray(self->vertexTexelId, buffer, components, offset, stride);
 }
 
-void GeometryShader::drawGeometry(const Geometry &geometry, int elements) const
+void ObjectShader::drawGeometry(const Geometry &geometry, int elements) const
 {
    setVertexColors(geometry.vertex, 4, geometry.COLOR_OFFSET);
    setVertexPoints(geometry.vertex, 3, geometry.POINT_OFFSET);
@@ -192,7 +192,7 @@ void GeometryShader::drawGeometry(const Geometry &geometry, int elements) const
    drawTriangles(geometry.index, elements);
 }
 
-const Assets *GeometryShader::assets()
+const Assets *ObjectShader::assets()
 {
    return self->assets;
 }

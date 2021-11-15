@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>NFC laboratory - v2.4.2, Jose Vicente Campos Martinez - josevcm@gmail.com</string>
+   <string>NFC laboratory - v2.5.0, Jose Vicente Campos Martinez - josevcm@gmail.com</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -329,7 +329,7 @@
         </font>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="parserTab">
         <attribute name="title">
@@ -456,32 +456,31 @@
        </widget>
        <widget class="QWidget" name="qualityTab">
         <attribute name="title">
-         <string>Quality</string>
+         <string>Frequency</string>
         </attribute>
         <layout class="QHBoxLayout" name="horizontalLayout_22">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
-          <widget class="FrequencyWidget" name="frequencyView" native="true">
+          <widget class="FourierWidget" name="frequencyView" native="true">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QuadratureWidget" name="quadratureView" native="true">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>100</width>
-             <height>0</height>
-            </size>
            </property>
           </widget>
          </item>
@@ -852,10 +851,15 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>FrequencyWidget</class>
+   <class>FourierWidget</class>
    <extends>QWidget</extends>
-   <header>widgets/FrequencyWidget.h</header>
+   <header>widgets/FourierWidget.h</header>
   </customwidget>
+  <customwidget>
+  <class>FrequencyWidget</class>
+  <extends>QWidget</extends>
+  <header>widgets/FrequencyWidget.h</header>
+ </customwidget>
   <customwidget>
    <class>QuadratureWidget</class>
    <extends>QWidget</extends>

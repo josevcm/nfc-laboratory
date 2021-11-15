@@ -36,14 +36,14 @@ struct HeatmapShader::Impl
    gl::Texture heatmap;
 };
 
-HeatmapShader::HeatmapShader(const gl::Assets *assets) : gl::GeometryShader(assets), self(std::make_shared<Impl>())
+HeatmapShader::HeatmapShader(const gl::Assets *assets) : gl::ObjectShader(assets), self(std::make_shared<Impl>())
 {
    load("HeatmapShader");
 }
 
 bool HeatmapShader::load(const std::string &name)
 {
-   if (gl::GeometryShader::load(name))
+   if (gl::ObjectShader::load(name))
    {
       self->dataRangeId = attribLocation("dataRange");
 
@@ -57,7 +57,7 @@ bool HeatmapShader::load(const std::string &name)
 
 void HeatmapShader::useProgram() const
 {
-   GeometryShader::useProgram();
+   ObjectShader::useProgram();
 
    enableAttribArray(self->dataRangeId);
 
@@ -68,7 +68,7 @@ void HeatmapShader::endProgram() const
 {
    disableAttribArray(self->dataRangeId);
 
-   GeometryShader::endProgram();
+   ObjectShader::endProgram();
 }
 
 void HeatmapShader::setDataRange(const gl::Buffer &buffer) const

@@ -22,35 +22,30 @@
 
 */
 
-#ifndef NFC_LAB_ENVELOPESHADER_H
-#define NFC_LAB_ENVELOPESHADER_H
+#ifndef NFC_LAB_QCPGRAPHVALUEMARKER_H
+#define NFC_LAB_QCPGRAPHVALUEMARKER_H
 
-#include <memory>
+#include <QColor>
+#include <QString>
 
-#include <gl/shader/ObjectShader.h>
+#include <support/QCustomPlot.h>
 
-namespace nfc {
-
-class EnvelopeShader : public gl::ObjectShader
+class QCPGraphValueMarker
 {
-      struct Impl;
-
    public:
 
-      explicit EnvelopeShader(const gl::Assets *assets);
+      explicit QCPGraphValueMarker(QCPGraph *graph, const QColor &color);
 
-      bool load(const std::string &name) override;
+      ~QCPGraphValueMarker();
 
-      void useProgram() const override;
+      void show(double key, const QString &text);
 
-      void endProgram() const override;
-
-      void setDataRange(const gl::Buffer &buffer) const;
+      void hide();
 
    private:
 
-      std::shared_ptr<Impl> self;
+      QCPItemTracer *tracer = nullptr;
+      QCPItemText *label = nullptr;
 };
 
-}
-#endif //NFC_LAB_ENVELOPESHADER_H
+#endif //NFC_LAB_QCPGRAPHVALUEMARKER_H

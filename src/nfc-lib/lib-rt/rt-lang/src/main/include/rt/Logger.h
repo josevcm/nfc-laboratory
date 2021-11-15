@@ -36,25 +36,21 @@ namespace rt {
 
 class Logger
 {
-      struct Impl;
-
    public:
+
+      struct Impl;
 
       enum Level
       {
          NONE = 0,
          ERROR = 1,
          WARN = 2,
-         INFO = 4,
-         DEBUG = 8,
-         TRACE = 16
+         INFO = 3,
+         DEBUG = 4,
+         TRACE = 5
       };
 
-   public:
-
-      explicit Logger(const char *name = "", int levels = ERROR | WARN | INFO | DEBUG);
-
-      explicit Logger(const std::string &name, int levels = ERROR | WARN | INFO | DEBUG);
+      explicit Logger(const std::string &name, int level = INFO);
 
       void trace(const std::string &format, std::vector<Variant> params = {}) const;
 
@@ -68,11 +64,11 @@ class Logger
 
       void print(int level, const std::string &format, std::vector<Variant> params = {}) const;
 
-      void set(int levels, bool enabled);
+      void setLevel(int value);
 
    private:
 
-      std::shared_ptr<Impl> self;
+      std::shared_ptr<Impl> impl;
 };
 
 }

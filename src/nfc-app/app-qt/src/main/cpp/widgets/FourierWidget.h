@@ -22,35 +22,52 @@
 
 */
 
-#ifndef NFC_LAB_CURSORMARKER_H
-#define NFC_LAB_CURSORMARKER_H
+#ifndef NFC_LAB_FOURIERWIDGET_H
+#define NFC_LAB_FOURIERWIDGET_H
 
-#include <QString>
+#include <QWidget>
 
-#include <support/QCustomPlot.h>
+namespace sdr {
+class SignalBuffer;
+}
 
-class CursorMarker
+class FourierWidget: public QWidget
 {
+   Q_OBJECT
+
+      struct Impl;
+
    public:
 
-      explicit CursorMarker(QCPAxis *axis);
+      explicit FourierWidget(QWidget *parent = nullptr);
 
-      ~CursorMarker();
+      void setCenterFreq(long value);
 
-      void setup();
+      void setSampleRate(long value);
 
-      void show();
+      void refresh(const sdr::SignalBuffer &buffer);
 
-      void hide();
+      void refresh();
 
-      void update(double from, const QString &text);
+      void clear();
+
+   protected:
+
+      void enterEvent(QEvent *event) override;
+
+      void leaveEvent(QEvent *event) override;
+
+   public:
+
+      Q_SIGNAL void rangeChanged(float from, float to);
+
+      Q_SIGNAL void scaleChanged(float from, float to);
 
    private:
 
-      QCPAxis *axis;
-      QCPItemTracer *tracer = nullptr;
-      QCPItemText *label = nullptr;
+      QSharedPointer<Impl> impl;
+
 };
 
 
-#endif //NFC_LAB_CURSORMARKER_H
+#endif //NFC_LAB_FOURIERWIDGET_H

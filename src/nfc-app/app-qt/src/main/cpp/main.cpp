@@ -50,9 +50,7 @@
 
 using namespace rt;
 
-Logger logger("main");
-
-Logger qlog("QT");
+Logger qlog {"QT"};
 
 void messageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
@@ -83,9 +81,11 @@ void messageOutput(QtMsgType type, const QMessageLogContext &context, const QStr
  */
 int startTest1(int argc, char *argv[])
 {
-   logger.info("***********************************************************************");
-   logger.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
-   logger.info("***********************************************************************");
+   Logger log {"main"};
+
+   log.info("***********************************************************************");
+   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("***********************************************************************");
 
    nfc::NfcDecoder decoder;
 
@@ -105,11 +105,11 @@ int startTest1(int argc, char *argv[])
             {
                if (frame.isPollFrame())
                {
-                  logger.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+                  log.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
                }
                else if (frame.isListenFrame())
                {
-                  logger.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+                  log.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
                }
             }
          }
@@ -125,9 +125,11 @@ int startTest1(int argc, char *argv[])
 
 int startTest2(int argc, char *argv[])
 {
-   logger.info("***********************************************************************");
-   logger.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
-   logger.info("***********************************************************************");
+   Logger log {"main"};
+
+   log.info("***********************************************************************");
+   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("***********************************************************************");
 
    char file[128];
    struct tm timeinfo {};
@@ -153,7 +155,7 @@ int startTest2(int argc, char *argv[])
       // try to open Airspy
       if (receiver.open(sdr::SignalDevice::Read))
       {
-         logger.info("device {} connected!", {name});
+         log.info("device {} connected!", {name});
 
          sdr::RecordDevice recorder(file);
 
@@ -164,7 +166,7 @@ int startTest2(int argc, char *argv[])
          // open recorder
          if (recorder.open(sdr::RecordDevice::OpenMode::Write))
          {
-            logger.info("start streaming for device {}", {receiver.name()});
+            log.info("start streaming for device {}", {receiver.name()});
 
             // signal stream queue buffer
             rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
@@ -215,10 +217,10 @@ int startTest2(int argc, char *argv[])
 
             receiver.stop();
 
-            logger.info("stop streaming for device {}", {receiver.name()});
+            log.info("stop streaming for device {}", {receiver.name()});
          }
 
-         logger.info("capture finished");
+         log.info("capture finished");
       }
    }
 
@@ -227,9 +229,11 @@ int startTest2(int argc, char *argv[])
 
 int startApp(int argc, char *argv[])
 {
-   logger.info("***********************************************************************");
-   logger.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
-   logger.info("***********************************************************************");
+   Logger log {"main"};
+
+   log.info("***********************************************************************");
+   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("***********************************************************************");
 
    // create executor service
    Executor executor(128, 10);

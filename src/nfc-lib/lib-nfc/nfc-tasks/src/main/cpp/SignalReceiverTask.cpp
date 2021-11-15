@@ -41,11 +41,11 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
    // radio device
    std::shared_ptr<sdr::RadioDevice> receiver;
 
+   // signal stream subject for raw data
+   rt::Subject<sdr::SignalBuffer> *signalRvStream = nullptr;
+
    // signal stream subject for IQ data
    rt::Subject<sdr::SignalBuffer> *signalIqStream = nullptr;
-
-   // signal stream subject for real data
-   rt::Subject<sdr::SignalBuffer> *signalRvStream = nullptr;
 
    // signal stream queue buffer
    rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
@@ -55,8 +55,8 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
    Impl() : AbstractTask("SignalReceiverTask", "receiver")
    {
+      signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.raw");
       signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
-      signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.real");
    }
 
    void start() override

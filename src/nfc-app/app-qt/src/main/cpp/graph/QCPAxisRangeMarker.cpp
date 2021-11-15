@@ -22,23 +22,9 @@
 
 */
 
-#include "RangeMarker.h"
+#include "QCPAxisRangeMarker.h"
 
-RangeMarker::RangeMarker(QCPAxis *axis) : axis(axis)
-      {
-            setup();
-      }
-
-RangeMarker::~RangeMarker()
-{
-   delete label;
-   delete arrow;
-   delete end;
-   delete tracer;
-   delete start;
-}
-
-void RangeMarker::setup()
+QCPAxisRangeMarker::QCPAxisRangeMarker(QCPAxis *axis) : axis(axis)
 {
    tracer = new QCPItemTracer(axis->parentPlot());
    tracer->setVisible(false);
@@ -86,7 +72,16 @@ void RangeMarker::setup()
    label->position->setParentAnchor(tracer->position);
 }
 
-void RangeMarker::show(double from, double to, const QString &text)
+QCPAxisRangeMarker::~QCPAxisRangeMarker()
+{
+   delete label;
+   delete arrow;
+   delete end;
+   delete tracer;
+   delete start;
+}
+
+void QCPAxisRangeMarker::show(double from, double to, const QString &text)
 {
    label->setText(text);
    tracer->position->setCoords((from + to) / 2, 0);
@@ -99,7 +94,7 @@ void RangeMarker::show(double from, double to, const QString &text)
    end->setVisible(true);
 }
 
-void RangeMarker::hide()
+void QCPAxisRangeMarker::hide()
 {
    label->setVisible(false);
    arrow->setVisible(false);

@@ -38,9 +38,9 @@ struct TextureShader::Impl
    rt::Logger log {"TextureShader"};
 };
 
-TextureShader::TextureShader(const Assets *assets) : GeometryShader(assets), self(new Impl)
+TextureShader::TextureShader(const Assets *assets) : ObjectShader(assets), self(new Impl)
 {
-   if (!GeometryShader::load("TypeFaceShader"))
+   if (!ObjectShader::load("TypeFaceShader"))
    {
       self->log.error("program load error, texture shader not available!");
    }

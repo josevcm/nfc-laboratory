@@ -27,11 +27,11 @@
 
 #include <memory>
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace nfc {
 
-class HeatmapShader : public gl::GeometryShader
+class HeatmapShader : public gl::ObjectShader
 {
       struct Impl;
 

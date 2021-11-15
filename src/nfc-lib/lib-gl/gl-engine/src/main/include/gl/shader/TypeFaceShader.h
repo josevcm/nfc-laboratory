@@ -25,11 +25,11 @@
 #ifndef UI_GL_TYPEFACESHADER_H
 #define UI_GL_TYPEFACESHADER_H
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace gl {
 
-class TypeFaceShader : public GeometryShader
+class TypeFaceShader : public ObjectShader
 {
       struct Impl;
 

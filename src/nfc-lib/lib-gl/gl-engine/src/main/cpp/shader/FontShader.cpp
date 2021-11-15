@@ -45,7 +45,7 @@ struct FontShader::Impl
    int uShadowOffsetId = -1;
 };
 
-FontShader::FontShader(const Assets *assets) : GeometryShader(assets), self(new Impl)
+FontShader::FontShader(const Assets *assets) : ObjectShader(assets), self(new Impl)
 {
    if (!load("FontShader"))
    {
@@ -60,7 +60,7 @@ FontShader::~FontShader()
 
 bool FontShader::load(const std::string &name)
 {
-   if (GeometryShader::load(name))
+   if (ObjectShader::load(name))
    {
       // setup font render properties
       self->uFontColorId = uniformLocation("uFontColor");

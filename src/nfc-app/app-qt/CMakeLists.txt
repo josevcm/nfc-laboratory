@@ -8,8 +8,8 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 
 find_package(Qt5 COMPONENTS Core Widgets PrintSupport OpenGL REQUIRED)
 
-#add_executable(nfc-lab WIN32
-add_executable(nfc-lab
+add_executable(nfc-lab WIN32
+#add_executable(nfc-lab
         src/main/cpp/main.cpp
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
@@ -27,8 +27,10 @@ add_executable(nfc-lab
         src/main/cpp/events/SignalBufferEvent.cpp
         src/main/cpp/events/SystemStartupEvent.cpp
         src/main/cpp/events/SystemShutdownEvent.cpp
-        src/main/cpp/graph/RangeMarker.cpp
-        src/main/cpp/graph/CursorMarker.cpp
+        src/main/cpp/graph/QCPAxisTickerFrequency.cpp
+        src/main/cpp/graph/QCPAxisRangeMarker.cpp
+        src/main/cpp/graph/QCPAxisCursorMarker.cpp
+        src/main/cpp/graph/QCPGraphValueMarker.cpp
         src/main/cpp/model/StreamModel.cpp
         src/main/cpp/model/ParserModel.cpp
         src/main/cpp/parser/ParserNfc.cpp
@@ -40,6 +42,7 @@ add_executable(nfc-lab
         src/main/cpp/protocol/ProtocolParser.cpp
         src/main/cpp/support/QCustomPlot.cpp
         src/main/cpp/widgets/FramesWidget.cpp
+        src/main/cpp/widgets/FourierWidget.cpp
         src/main/cpp/widgets/QuadratureWidget.cpp
         src/main/cpp/widgets/FrequencyWidget.cpp
         src/main/cpp/widgets/SignalWidget.cpp
@@ -51,7 +54,9 @@ add_executable(nfc-lab
         src/main/assets/theme/dark/style.qrc
         )
 
-target_compile_definitions(nfc-lab PRIVATE QCUSTOMPLOT_USE_OPENGL)
+#target_compile_options(nfc-lab PRIVATE "-fopt-info-vec-optimized")
+
+#target_compile_definitions(nfc-lab PRIVATE QCUSTOMPLOT_USE_OPENGL)
 
 target_include_directories(nfc-lab PRIVATE ${FT_INCLUDE_DIR})
 target_include_directories(nfc-lab PRIVATE ${GLEW_INCLUDE_DIR})

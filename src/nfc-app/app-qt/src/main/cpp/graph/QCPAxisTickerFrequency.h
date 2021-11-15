@@ -22,35 +22,19 @@
 
 */
 
-#ifndef NFC_LAB_ENVELOPESHADER_H
-#define NFC_LAB_ENVELOPESHADER_H
+#ifndef NFC_LAB_QCPAXISTICKERFREQUENCY_H
+#define NFC_LAB_QCPAXISTICKERFREQUENCY_H
 
-#include <memory>
+#include <QString>
 
-#include <gl/shader/ObjectShader.h>
+#include <support/QCustomPlot.h>
 
-namespace nfc {
-
-class EnvelopeShader : public gl::ObjectShader
+class QCPAxisTickerFrequency : public QCPAxisTicker
 {
-      struct Impl;
-
    public:
 
-      explicit EnvelopeShader(const gl::Assets *assets);
-
-      bool load(const std::string &name) override;
-
-      void useProgram() const override;
-
-      void endProgram() const override;
-
-      void setDataRange(const gl::Buffer &buffer) const;
-
-   private:
-
-      std::shared_ptr<Impl> self;
+      QString getTickLabel(double tick, const QLocale &locale, QChar formatChar, int precision) override;
 };
 
-}
-#endif //NFC_LAB_ENVELOPESHADER_H
+
+#endif //NFC_LAB_QCPAXISTICKERFREQUENCY_H

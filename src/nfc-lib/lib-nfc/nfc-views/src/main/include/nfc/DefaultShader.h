@@ -25,11 +25,11 @@
 #ifndef NFC_LAB_DEFAULTSHADER_H
 #define NFC_LAB_DEFAULTSHADER_H
 
-#include <gl/shader/GeometryShader.h>
+#include <gl/shader/ObjectShader.h>
 
 namespace nfc {
 
-class DefaultShader : public gl::GeometryShader
+class DefaultShader : public gl::ObjectShader
 {
    public:
 

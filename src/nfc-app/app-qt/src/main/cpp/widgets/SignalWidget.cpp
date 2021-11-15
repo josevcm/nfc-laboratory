@@ -30,10 +30,16 @@
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 
-#include <graph/RangeMarker.h>
-#include <graph/CursorMarker.h>
+#include <graph/QCPAxisRangeMarker.h>
+#include <graph/QCPAxisCursorMarker.h>
 
 #include "SignalWidget.h"
+
+#define DEFAULT_LOWER_RANGE 0
+#define DEFAULT_UPPER_RANGE 1
+
+#define DEFAULT_LOWER_SCALE 0
+#define DEFAULT_UPPER_SCALE 0.5
 
 struct SignalWidget::Impl
 {
@@ -43,22 +49,22 @@ struct SignalWidget::Impl
 
    QCPGraph *graph = nullptr;
 
-   QSharedPointer<RangeMarker> marker;
-   QSharedPointer<CursorMarker> cursor;
+   QSharedPointer<QCPAxisRangeMarker> marker;
+   QSharedPointer<QCPAxisCursorMarker> cursor;
    QSharedPointer<QCPGraphDataContainer> data;
 
-   float minimumRange = INT32_MAX;
-   float maximumRange = -INT32_MAX;
+   double minimumRange = INT32_MAX;
+   double maximumRange = INT32_MIN;
 
-   float minimumScale = INT32_MAX;
-   float maximumScale = -INT32_MAX;
+   double minimumScale = INT32_MAX;
+   double maximumScale = INT32_MIN;
 
    unsigned int maximumEntries;
 
    QColor signalColor {100, 255, 140, 255};
    QColor selectColor {0, 200, 255, 255};
 
-   explicit Impl(SignalWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
+   explicit Impl(SignalWidget *parent) : widget(parent), plot(new QCustomPlot(parent)), maximumEntries(512 * 1024 * 1024 / sizeof(QCPGraphData))
    {
       setup();
 
@@ -67,8 +73,6 @@ struct SignalWidget::Impl
 
    void setup()
    {
-      maximumEntries = (512 * 1024 * 1024) / sizeof(QCPGraphData);
-
       // create data container
       data.reset(new QCPGraphDataContainer());
 
@@ -93,7 +97,7 @@ struct SignalWidget::Impl
       plot->xAxis->setTickLabelColor(Qt::white);
       plot->xAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->xAxis->setRange(0, 1);
+      plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
 
       // setup Y axis
       plot->yAxis->setBasePen(QPen(Qt::darkGray));
@@ -101,7 +105,7 @@ struct SignalWidget::Impl
       plot->yAxis->setTickLabelColor(Qt::white);
       plot->yAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->yAxis->setRange(0, 1);
+      plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_SCALE);
 
       graph = plot->addGraph();
 
@@ -113,10 +117,10 @@ struct SignalWidget::Impl
       data = graph->data();
 
       // create range marker
-      marker.reset(new RangeMarker(graph->keyAxis()));
+      marker.reset(new QCPAxisRangeMarker(graph->keyAxis()));
 
       // create cursor marker
-      cursor.reset(new CursorMarker(graph->keyAxis()));
+      cursor.reset(new QCPAxisCursorMarker(graph->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -142,43 +146,47 @@ struct SignalWidget::Impl
          selectionChanged();
       });
 
-      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
-         rangeChanged(newRange);
+      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange, const QCPRange &oldRange) {
+         rangeChanged(newRange, oldRange);
       });
 
-      QObject::connect(plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
-         scaleChanged(newRange);
+      QObject::connect(plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange, const QCPRange &oldRange) {
+         scaleChanged(newRange, oldRange);
       });
    }
 
    void append(const sdr::SignalBuffer &buffer)
    {
+      minimumScale = DEFAULT_LOWER_SCALE;
+      maximumScale = DEFAULT_UPPER_SCALE;
+
       switch (buffer.type())
       {
          case sdr::SignalType::SAMPLE_REAL:
          {
-            float sampleRate = buffer.sampleRate();
-            float startTime = buffer.offset() / sampleRate;
-            float endTime = startTime + buffer.elements() / sampleRate;
-
-            // update signal range
-            if (minimumRange > startTime)
-               minimumRange = startTime;
-
-            if (maximumRange < endTime)
-               maximumRange = endTime;
+            double sampleRate = buffer.sampleRate();
+            double sampleStep = 1 / sampleRate;
+            double startTime = buffer.offset() / sampleRate;
 
             for (int i = 0; i < buffer.elements(); i++)
             {
-               float value = buffer[i];
+               double value = buffer[i];
+               double range = fma(sampleStep, i, startTime); // range = sampleStep * i + startTime
 
-               if (minimumScale > value * 0.75)
-                  minimumScale = value * 0.75;
+//               if (minimumScale > value * 0.75)
+//                  minimumScale = value * 0.75;
+//
+//               if (maximumScale < value * 1.25)
+//                  maximumScale = value * 1.25;
 
-               if (maximumScale < value * 1.25)
-                  maximumScale = value * 1.25;
+               data->add({range, value});
+            }
 
-               data->add({startTime + (i / sampleRate), value});
+            // update signal range
+            if (data->size() > 0)
+            {
+               minimumRange = data->at(0)->key;
+               maximumRange = data->at(data->size() - 1)->key;
             }
 
             break;
@@ -186,26 +194,30 @@ struct SignalWidget::Impl
 
          case sdr::SignalType::ADAPTIVE_REAL:
          {
+            double sampleRate = buffer.sampleRate();
+            double sampleStep = 1 / sampleRate;
+            double startTime = buffer.offset() / sampleRate;
+
             for (int i = 0; i < buffer.limit(); i += 2)
             {
-               float range = buffer[i + 0];
-               float value = buffer[i + 1];
-
-               // update signal range
-               if (minimumRange > range)
-                  minimumRange = range;
-
-               if (maximumRange < range)
-                  maximumRange = range;
+               double value = buffer[i + 0];
+               double range = fma(sampleStep, buffer[i + 1], startTime); // range = sampleStep * buffer[i + 1] + startTime
 
                // update signal scale
-               if (minimumScale > value * 0.75)
-                  minimumScale = value * 0.75;
-
-               if (maximumScale < value * 1.25)
-                  maximumScale = value * 1.25;
+//               if (minimumScale > value * 0.75)
+//                  minimumScale = value * 0.75;
+//
+//               if (maximumScale < value * 1.25)
+//                  maximumScale = value * 1.25;
 
                data->add({range, value});
+            }
+
+            // update signal range
+            if (data->size() > 0)
+            {
+               minimumRange = data->at(0)->key;
+               maximumRange = data->at(data->size() - 1)->key;
             }
 
             break;
@@ -215,8 +227,8 @@ struct SignalWidget::Impl
       // remove old data when maximum memory threshold is reached
       if (data->size() > maximumEntries)
       {
-         minimumRange = data->at(data->size() - maximumEntries)->key;
          data->removeBefore(minimumRange);
+         minimumRange = data->at(0)->key;
       }
    }
 
@@ -251,16 +263,16 @@ struct SignalWidget::Impl
 
    void clear()
    {
-      minimumRange = +INT32_MAX;
-      maximumRange = -INT32_MAX;
+      minimumRange = INT32_MAX;
+      maximumRange = INT32_MIN;
 
-      minimumScale = +INT32_MAX;
-      maximumScale = -INT32_MAX;
+      minimumScale = INT32_MAX;
+      maximumScale = INT32_MIN;
 
       data->clear();
 
-      plot->xAxis->setRange(0, 1);
-      plot->yAxis->setRange(0, 1);
+      plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
+      plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_SCALE);
 
       for (int i = 0; i < plot->graphCount(); i++)
       {
@@ -275,11 +287,11 @@ struct SignalWidget::Impl
 
    void refresh() const
    {
-      // fix range if current value is out
-      rangeChanged(plot->xAxis->range());
+      // refresh x range
+      plot->xAxis->setRange(minimumRange, maximumRange);
 
-      // fix scale if current value is out
-      scaleChanged(plot->yAxis->range());
+      // refresh y scale
+      plot->yAxis->setRange(minimumScale, maximumScale);
 
       // refresh graph
       plot->replot();
@@ -311,6 +323,7 @@ struct SignalWidget::Impl
    {
       Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
 
+      // detect zoom key press
       if (keyModifiers & Qt::ControlModifier)
          plot->setSelectionRectMode(QCP::srmSelect);
       else
@@ -340,16 +353,16 @@ struct SignalWidget::Impl
 
          while (itGraph != selectedGraphs.end())
          {
-            QCPGraph *graph = *itGraph++;
+            QCPGraph *entry = *itGraph++;
 
-            QCPDataSelection selection = graph->selection();
+            QCPDataSelection selection = entry->selection();
 
             for (int i = 0; i < selection.dataRangeCount(); i++)
             {
                QCPDataRange range = selection.dataRange(i);
 
-               QCPGraphDataContainer::const_iterator data = graph->data()->at(range.begin());
-               QCPGraphDataContainer::const_iterator end = graph->data()->at(range.end());
+               QCPGraphDataContainer::const_iterator data = entry->data()->at(range.begin());
+               QCPGraphDataContainer::const_iterator end = entry->data()->at(range.end());
 
                while (data != end)
                {
@@ -373,9 +386,9 @@ struct SignalWidget::Impl
             double elapsed = endTime - startTime;
 
             if (elapsed < 1E-3)
-               text = QString("%1 us").arg(elapsed * 1000000, 3, 'f', 0);
+               text = QString("%1 us").arg(elapsed * 1E6, 3, 'f', 0);
             else if (elapsed < 1)
-               text = QString("%1 ms").arg(elapsed * 1000, 7, 'f', 3);
+               text = QString("%1 ms").arg(elapsed * 1E3, 7, 'f', 3);
             else
                text = QString("%1 s").arg(elapsed, 7, 'f', 5);
 
@@ -401,17 +414,17 @@ struct SignalWidget::Impl
       widget->selectionChanged(startTime, endTime);
    }
 
-   void rangeChanged(const QCPRange &newRange) const
+   void rangeChanged(const QCPRange &newRange, const QCPRange &oldRange) const
    {
       QCPRange fixRange = newRange;
 
       // check lower range limits
       if (newRange.lower < minimumRange || newRange.lower > maximumRange)
-         fixRange.lower = minimumRange < +INT32_MAX ? minimumRange : 0;
+         fixRange.lower = minimumRange < INT32_MAX ? minimumRange : DEFAULT_LOWER_RANGE;
 
       // check upper range limits
       if (newRange.upper > maximumRange || newRange.upper < minimumRange)
-         fixRange.upper = maximumRange > -INT32_MAX ? maximumRange : 1;
+         fixRange.upper = maximumRange > INT32_MIN ? maximumRange : DEFAULT_UPPER_RANGE;
 
       // fix visible range
       if (fixRange != newRange)
@@ -433,21 +446,17 @@ struct SignalWidget::Impl
       widget->rangeChanged(fixRange.lower, fixRange.upper);
    }
 
-   void scaleChanged(const QCPRange &newScale) const
+   void scaleChanged(const QCPRange &newScale, const QCPRange &oldScale) const
    {
       QCPRange fixScale = newScale;
 
       // check lower scale limits
-//      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
-//         fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
+      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
+         fixScale.lower = minimumScale < INT32_MAX ? minimumScale : DEFAULT_LOWER_SCALE;
 
       // check lower scale limits
-//      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
-//         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
-
-      // scale not allowed to change
-      fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
-      fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
+      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
+         fixScale.upper = maximumScale > INT32_MIN ? maximumScale : DEFAULT_UPPER_SCALE;
 
       // fix visible scale
       if (fixScale != newScale)
@@ -473,9 +482,7 @@ struct SignalWidget::Impl
 
    void setCenter(float value)
    {
-      qDebug() << "setCenter(" << value << ")";
    }
-
 };
 
 SignalWidget::SignalWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))
@@ -530,7 +537,6 @@ float SignalWidget::minimumRange() const
 float SignalWidget::maximumRange() const
 {
    return impl->maximumRange;
-
 }
 
 float SignalWidget::minimumScale() const
