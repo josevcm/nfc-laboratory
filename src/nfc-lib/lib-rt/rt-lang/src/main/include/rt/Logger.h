@@ -50,7 +50,7 @@ class Logger
          TRACE = 5
       };
 
-      explicit Logger(const std::string &name);
+      explicit Logger(const std::string &name, int level = INFO);
 
       void trace(const std::string &format, std::vector<Variant> params = {}) const;
 

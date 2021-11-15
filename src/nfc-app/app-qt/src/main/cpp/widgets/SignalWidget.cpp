@@ -39,7 +39,7 @@
 #define DEFAULT_UPPER_RANGE 1
 
 #define DEFAULT_LOWER_SCALE 0
-#define DEFAULT_UPPER_SCALE 1
+#define DEFAULT_UPPER_SCALE 0.5
 
 struct SignalWidget::Impl
 {
@@ -146,17 +146,20 @@ struct SignalWidget::Impl
          selectionChanged();
       });
 
-      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
-         rangeChanged(newRange);
+      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange, const QCPRange &oldRange) {
+         rangeChanged(newRange, oldRange);
       });
 
-      QObject::connect(plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
-         scaleChanged(newRange);
+      QObject::connect(plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange, const QCPRange &oldRange) {
+         scaleChanged(newRange, oldRange);
       });
    }
 
    void append(const sdr::SignalBuffer &buffer)
    {
+      minimumScale = DEFAULT_LOWER_SCALE;
+      maximumScale = DEFAULT_UPPER_SCALE;
+
       switch (buffer.type())
       {
          case sdr::SignalType::SAMPLE_REAL:
@@ -170,11 +173,11 @@ struct SignalWidget::Impl
                double value = buffer[i];
                double range = fma(sampleStep, i, startTime); // range = sampleStep * i + startTime
 
-               if (minimumScale > value * 0.75)
-                  minimumScale = value * 0.75;
-
-               if (maximumScale < value * 1.25)
-                  maximumScale = value * 1.25;
+//               if (minimumScale > value * 0.75)
+//                  minimumScale = value * 0.75;
+//
+//               if (maximumScale < value * 1.25)
+//                  maximumScale = value * 1.25;
 
                data->add({range, value});
             }
@@ -201,11 +204,11 @@ struct SignalWidget::Impl
                double range = fma(sampleStep, buffer[i + 1], startTime); // range = sampleStep * buffer[i + 1] + startTime
 
                // update signal scale
-               if (minimumScale > value * 0.75)
-                  minimumScale = value * 0.75;
-
-               if (maximumScale < value * 1.25)
-                  maximumScale = value * 1.25;
+//               if (minimumScale > value * 0.75)
+//                  minimumScale = value * 0.75;
+//
+//               if (maximumScale < value * 1.25)
+//                  maximumScale = value * 1.25;
 
                data->add({range, value});
             }
@@ -320,6 +323,7 @@ struct SignalWidget::Impl
    {
       Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
 
+      // detect zoom key press
       if (keyModifiers & Qt::ControlModifier)
          plot->setSelectionRectMode(QCP::srmSelect);
       else
@@ -410,7 +414,7 @@ struct SignalWidget::Impl
       widget->selectionChanged(startTime, endTime);
    }
 
-   void rangeChanged(const QCPRange &newRange) const
+   void rangeChanged(const QCPRange &newRange, const QCPRange &oldRange) const
    {
       QCPRange fixRange = newRange;
 
@@ -442,21 +446,17 @@ struct SignalWidget::Impl
       widget->rangeChanged(fixRange.lower, fixRange.upper);
    }
 
-   void scaleChanged(const QCPRange &newScale) const
+   void scaleChanged(const QCPRange &newScale, const QCPRange &oldScale) const
    {
       QCPRange fixScale = newScale;
 
       // check lower scale limits
-//      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
-//         fixScale.lower = minimumScale < +INT32_MAX ? minimumScale : 0;
+      if (newScale.lower < minimumScale || newScale.lower > maximumScale)
+         fixScale.lower = minimumScale < INT32_MAX ? minimumScale : DEFAULT_LOWER_SCALE;
 
       // check lower scale limits
-//      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
-//         fixScale.upper = maximumScale > -INT32_MAX ? maximumScale : 1;
-
-      // scale not allowed to change
-      fixScale.lower = minimumScale < INT32_MAX ? minimumScale : DEFAULT_LOWER_SCALE;
-      fixScale.upper = maximumScale > INT32_MIN ? maximumScale : DEFAULT_UPPER_SCALE;
+      if (newScale.upper > maximumScale || newScale.upper < minimumScale)
+         fixScale.upper = maximumScale > INT32_MIN ? maximumScale : DEFAULT_UPPER_SCALE;
 
       // fix visible scale
       if (fixScale != newScale)

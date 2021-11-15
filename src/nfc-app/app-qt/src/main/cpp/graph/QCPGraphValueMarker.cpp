@@ -51,20 +51,16 @@ QCPGraphValueMarker::~QCPGraphValueMarker()
    delete tracer;
 }
 
-void QCPGraphValueMarker::show()
-{
-   label->setVisible(true);
-   tracer->setVisible(true);
-}
-
 void QCPGraphValueMarker::hide()
 {
    label->setVisible(false);
    tracer->setVisible(false);
 }
 
-void QCPGraphValueMarker::update(double key, const QString &text)
+void QCPGraphValueMarker::show(double key, const QString &text)
 {
    label->setText(text);
    tracer->setGraphKey(key);
+   label->setVisible(true);
+   tracer->setVisible(true);
 }

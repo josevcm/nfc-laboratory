@@ -38,11 +38,9 @@ class QCPGraphValueMarker
 
       ~QCPGraphValueMarker();
 
-      void show();
+      void show(double key, const QString &text);
 
       void hide();
-
-      void update(double key, const QString &text);
 
    private:
 
