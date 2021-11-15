@@ -108,7 +108,7 @@ struct LogWriter
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      fprintf(stderr,"%s.%03d (thread-%d) %s [%s] %s\n", date, millis, event->thread, event->level.c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      fprintf(stderr, "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       delete event;
    }
@@ -176,7 +176,7 @@ struct LogWriter
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      fprintf(stdout, "%s.%03d (thread-%d) %s [%s] %s\n", date, millis, event->thread, event->level.c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      fprintf(stdout, "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       delete event;
    }
@@ -258,7 +258,7 @@ struct LogWriter
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      snprintf(buffer, sizeof(buffer), "%s.%03d (thread-%d) %s [%s] %s\n", date, millis, event->thread, event->level.c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      snprintf(buffer, sizeof(buffer), "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       stream << buffer;
 

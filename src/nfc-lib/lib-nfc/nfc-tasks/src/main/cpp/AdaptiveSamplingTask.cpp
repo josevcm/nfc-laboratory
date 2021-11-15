@@ -48,7 +48,7 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
    rt::Subject<sdr::SignalBuffer> *signalAdpStream = nullptr;
 
    // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription samplingSubscription;
+   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
 
    // signal stream queue buffer
    rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
@@ -65,7 +65,7 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
       signalAdpStream = rt::Subject<sdr::SignalBuffer>::name("signal.adp");
 
       // subscribe to signal events
-      samplingSubscription = signalRawStream->subscribe([=](const sdr::SignalBuffer &buffer) {
+      signalSubscription = signalRawStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          signalQueue.add(buffer);
       });
    }
