@@ -206,7 +206,7 @@ struct FourierWidget::Impl
 
             // process signal average and variance
             double average = 0;
-            double variance = 0;
+//            double variance = 0;
             double maximum = INT32_MIN;
 
 #pragma GCC ivdep
@@ -216,21 +216,21 @@ struct FourierWidget::Impl
             average = average / buffer.elements();
 
             // compute signal variance
-#pragma GCC ivdep
-            for (int i = 0; i < buffer.elements(); i++)
-               variance += (temp[i] - average) * (temp[i] - average);
-
-            variance = variance / buffer.elements();
+//#pragma GCC ivdep
+//            for (int i = 0; i < buffer.elements(); i++)
+//               variance += (temp[i] - average) * (temp[i] - average);
+//
+//            variance = variance / buffer.elements();
 
             // process signal bins and peak detector
             for (int i = 2; i < buffer.elements() - 2; i++)
             {
                double range = fma(binSize, i, lowerFreq);
                double value = (temp[i - 2] + temp[i - 1] + temp[i] + temp[i + 1] + temp[i + 2]) / 5.0f;
-               double stdev = (temp[i] - average) * (temp[i] - average);
+               double diffv = (value - average);
 
                // peak detector
-               if (maximum < temp[i] && (stdev > variance * 50))
+               if (maximum < temp[i] && (diffv > 10))
                {
                   maximum = temp[i];
                   signalPeak = range;
