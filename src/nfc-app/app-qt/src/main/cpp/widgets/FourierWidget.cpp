@@ -122,7 +122,7 @@ struct FourierWidget::Impl
       plot->yAxis->setTickLabelColor(Qt::white);
       plot->yAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_RANGE);
+      plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_SCALE);
       plot->yAxis->grid()->setZeroLinePen(Qt::NoPen);
 
       graph = plot->addGraph();
