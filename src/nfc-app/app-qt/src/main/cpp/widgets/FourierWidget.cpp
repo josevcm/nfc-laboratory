@@ -36,8 +36,11 @@
 
 #include "FourierWidget.h"
 
-#define DEFAULT_LOWER_RANGE (40.68E6 - 10E6 / 32)
-#define DEFAULT_UPPER_RANGE (40.68E6 + 10E6 / 32)
+#define DEFAULT_LOWER_RANGE (13.56E6 - 10E6 / 32)
+#define DEFAULT_UPPER_RANGE (13.56E6 + 10E6 / 32)
+
+//#define DEFAULT_LOWER_RANGE (40.68E6 - 10E6 / 32)
+//#define DEFAULT_UPPER_RANGE (40.68E6 + 10E6 / 32)
 
 #define DEFAULT_LOWER_SCALE -120
 #define DEFAULT_UPPER_SCALE 0
@@ -206,7 +209,6 @@ struct FourierWidget::Impl
 
             // process signal average and variance
             double average = 0;
-//            double variance = 0;
             double maximum = INT32_MIN;
 
 #pragma GCC ivdep
@@ -214,13 +216,6 @@ struct FourierWidget::Impl
                average += temp[i] = 2.0 * 10 * log10(buffer[i] / double(binLength));
 
             average = average / buffer.elements();
-
-            // compute signal variance
-//#pragma GCC ivdep
-//            for (int i = 0; i < buffer.elements(); i++)
-//               variance += (temp[i] - average) * (temp[i] - average);
-//
-//            variance = variance / buffer.elements();
 
             // process signal bins and peak detector
             for (int i = 2; i < buffer.elements() - 2; i++)
@@ -412,7 +407,7 @@ FourierWidget::FourierWidget(QWidget *parent) : QWidget(parent), impl(new Impl(t
 
 void FourierWidget::setCenterFreq(long value)
 {
-   impl->centerFreq = float(value);
+   impl->centerFreq = 13.56E6; //float(value);
 }
 
 void FourierWidget::setSampleRate(long value)

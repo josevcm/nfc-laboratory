@@ -36,6 +36,9 @@
 
 namespace nfc {
 
+#define LOWER_GAIN_THRESHOLD 0.05
+#define UPPER_GAIN_THRESHOLD 0.25
+
 struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 {
    // radio device
@@ -52,6 +55,15 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
    // last detection attempt
    std::chrono::time_point<std::chrono::steady_clock> lastSearch;
+
+   // current receiver gain mode
+   int receiverGainMode = 0;
+
+   // current receiver gain value
+   int receiverGainValue = 0;
+
+   // last control offset
+   unsigned int receiverGainChange = 0;
 
    Impl() : AbstractTask("SignalReceiverTask", "receiver")
    {
@@ -175,6 +187,12 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       {
          log.info("start streaming for device {}", {receiver->name()});
 
+         // read current gain mode and value
+         receiverGainChange = 0;
+
+         log.info("gain mode {} gain value {}", {receiverGainMode, receiverGainValue});
+
+         // start receiving
          receiver->start([this](sdr::SignalBuffer &buffer) {
             signalQueue.add(buffer);
          });
@@ -234,10 +252,29 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                receiver->setMixerAgc(config["mixerAgc"]);
 
             if (config.contains("gainMode"))
-               receiver->setGainMode(config["gainMode"]);
+            {
+               receiverGainMode = config["gainMode"];
+
+               if (receiverGainMode > 0)
+               {
+                  receiver->setGainMode(receiverGainMode);
+               }
+               else
+               {
+                  receiverGainValue = 0;
+                  receiver->setGainMode(sdr::AirspyDevice::Linearity);
+                  receiver->setGainValue(receiverGainValue);
+               }
+            }
 
             if (config.contains("gainValue"))
-               receiver->setGainValue(config["gainValue"]);
+            {
+               if (receiverGainMode > 0)
+               {
+                  receiverGainValue = config["gainValue"];
+                  receiver->setGainValue(config["gainValue"]);
+               }
+            }
          }
       }
 
@@ -272,12 +309,20 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          // send capabilities on data attach
          if (event == SignalReceiverTask::Attach)
          {
+            data["gainModes"].push_back({
+                                              {"value", 0},
+                                              {"name",  "Auto"}
+                                        });
+
             for (const auto &entry: receiver->supportedGainModes())
             {
-               data["gainModes"].push_back({
-                                                 {"value", entry.first},
-                                                 {"name",  entry.second}
-                                           });
+               if (entry.first > 0)
+               {
+                  data["gainModes"].push_back({
+                                                    {"value", entry.first},
+                                                    {"name",  entry.second}
+                                              });
+               }
             }
 
             for (const auto &entry: receiver->supportedGainValues())
@@ -314,13 +359,17 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
          float *src = buffer.data();
          float *dst = result.pull(buffer.elements());
+         float avrg = 0;
 
-#pragma GCC ivdep
+         // compute real signal value and average value
          for (int i = 0, n = 0; i < buffer.elements(); i++, n += 2)
          {
             dst[i] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
+
+            avrg = avrg * (1 - 0.01f) + dst[i] * 0.01f;
          }
 
+         // flip buffer pointers
          result.flip();
 
          // send IQ value buffer
@@ -328,6 +377,26 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
          // send Real value buffer
          signalRvStream->next(result);
+
+         // if automatic gain control is engaged adjust gain dynamically
+         if (receiverGainMode == 0 && buffer.offset() > receiverGainChange)
+         {
+            // for weak signals, increase receiver gain
+            if (avrg < LOWER_GAIN_THRESHOLD && receiverGainValue < 6)
+            {
+               receiverGainChange = buffer.offset() + buffer.elements();
+               receiver->setGainValue(++receiverGainValue);
+               log.info("increase gain {}", {receiverGainValue});
+            }
+
+            // for strong signals, decrease receiver gain
+            if (avrg > UPPER_GAIN_THRESHOLD && receiverGainValue > 0)
+            {
+               receiverGainChange = buffer.offset() + buffer.elements();
+               receiver->setGainValue(--receiverGainValue);
+               log.info("decrease gain {}", {receiverGainValue});
+            }
+         }
       }
    }
 };

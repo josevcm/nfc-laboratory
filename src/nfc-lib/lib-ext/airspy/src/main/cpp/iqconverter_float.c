@@ -26,6 +26,10 @@ THE SOFTWARE.
 
 #include <stdio.h>
 
+#ifdef USE_SSE2
+#include <xmmintrin.h>
+#endif
+
 #if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
   #include <malloc.h>
   #define _aligned_malloc __mingw_aligned_malloc
@@ -205,7 +209,7 @@ static _inline float process_fir_taps(const float *kernel, const float *queue, i
 #ifdef __FreeBSD__
 	float sum = acc[0];
 #else
-	float sum = acc.m128_f32[0];
+	float sum = acc[0];
 #endif
 
 #endif

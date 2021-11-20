@@ -7,7 +7,7 @@ add_library(airspy STATIC
         src/main/cpp/iqconverter_float.c
         src/main/cpp/iqconverter_int16.c)
 
-#target_compile_options(airspy PRIVATE -DUSE_SSE2)
+target_compile_options(airspy PRIVATE "-msse3" -DUSE_SSE2)
 
 target_include_directories(airspy PUBLIC ${PUBLIC_SOURCE_DIR})
 target_include_directories(airspy PRIVATE ${USB_INCLUDE_DIR})

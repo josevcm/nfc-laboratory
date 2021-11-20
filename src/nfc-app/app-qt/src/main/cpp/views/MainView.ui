@@ -509,26 +509,6 @@
              <number>10</number>
             </property>
             <item>
-             <widget class="QCheckBox" name="tunerAgc">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="text">
-               <string>Tuner AGC</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="mixerAgc">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="text">
-               <string>Mixer AGC</string>
-              </property>
-             </widget>
-            </item>
-            <item>
              <widget class="QComboBox" name="gainMode">
               <property name="enabled">
                <bool>false</bool>
@@ -748,20 +728,6 @@
     <string>Filter</string>
    </property>
   </action>
-  <action name="actionLive">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <activeoff>:/app_icons/live-off</activeoff>
-     <activeon>:/app_icons/live-on</activeon>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Live</string>
-   </property>
-  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -882,22 +848,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionLive</sender>
-   <signal>triggered()</signal>
-   <receiver>MainView</receiver>
-   <slot>toggleLive()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>319</x>
-     <y>193</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>listenButton</sender>
    <signal>clicked()</signal>
    <receiver>MainView</receiver>
@@ -938,38 +888,6 @@
     <hint type="sourcelabel">
      <x>268</x>
      <y>30</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>tunerAgc</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>MainView</receiver>
-   <slot>toggleTunerAgc(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>916</x>
-     <y>333</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>mixerAgc</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>MainView</receiver>
-   <slot>toggleMixerAgc(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>916</x>
-     <y>356</y>
     </hint>
     <hint type="destinationlabel">
      <x>490</x>

@@ -69,7 +69,6 @@ struct QtWindow::Impl
    QtMemory *cache;
 
    // Toolbar status
-   bool liveEnabled = false;
    bool recordEnabled = false;
    bool followEnabled = false;
    bool filterEnabled = false;
@@ -88,8 +87,6 @@ struct QtWindow::Impl
    int receiverSampleCount = 0;
    int receiverGainMode = -1;
    int receiverGainValue = -1;
-   int receiverTunerAgc = -1;
-   int receiverMixerAgc = -1;
 
    // interface
    QSharedPointer<Ui_MainView> ui;
@@ -127,11 +124,6 @@ struct QtWindow::Impl
       frequencyStream = rt::Subject<sdr::SignalBuffer>::name("signal.fft");
 
       // subscribe to signal events
-//      signalIqSubscription = signalIqStream->subscribe([=](const sdr::SignalBuffer &buffer) {
-//         ui->quadratureView->refresh(buffer);
-//      });
-
-      // subscribe to signal events
       frequencySubscription = frequencyStream->subscribe([=](const sdr::SignalBuffer &buffer) {
          ui->frequencyView->refresh(buffer);
       });
@@ -144,8 +136,6 @@ struct QtWindow::Impl
       // setup default controls status
       ui->gainMode->setEnabled(false);
       ui->gainValue->setEnabled(false);
-      ui->tunerAgc->setEnabled(false);
-      ui->mixerAgc->setEnabled(false);
 
       ui->listenButton->setEnabled(false);
       ui->recordButton->setEnabled(false);
@@ -332,8 +322,6 @@ struct QtWindow::Impl
 
             ui->gainMode->setEnabled(false);
             ui->gainValue->setEnabled(false);
-            ui->tunerAgc->setEnabled(false);
-            ui->mixerAgc->setEnabled(false);
 
             ui->statusBar->showMessage("No device found");
          }
@@ -344,10 +332,8 @@ struct QtWindow::Impl
             ui->recordButton->setEnabled(true);
             ui->stopButton->setEnabled(false);
 
-            ui->gainMode->setEnabled(true);
-            ui->gainValue->setEnabled(true);
-            ui->tunerAgc->setEnabled(true);
-            ui->mixerAgc->setEnabled(true);
+            setReceiverGainMode(receiverGainMode);
+            setReceiverGainValue(receiverGainValue);
          }
 
          else if (receiverStatus == ReceiverStatusEvent::Streaming)
@@ -356,12 +342,8 @@ struct QtWindow::Impl
             ui->recordButton->setEnabled(false);
             ui->stopButton->setEnabled(true);
 
-            ui->gainMode->setEnabled(true);
-            ui->gainValue->setEnabled(true);
-            ui->tunerAgc->setEnabled(true);
-            ui->mixerAgc->setEnabled(true);
-
-            setLiveEnabled(true);
+            setReceiverGainMode(receiverGainMode);
+            setReceiverGainValue(receiverGainValue);
          }
       }
    }
@@ -384,8 +366,6 @@ struct QtWindow::Impl
             setReceiverSampleRate(settings.value("device." + receiverType + "/sampleRate", "10000000").toInt());
             setReceiverGainMode(settings.value("device." + receiverType + "/gainMode", "1").toInt());
             setReceiverGainValue(settings.value("device." + receiverType + "/gainValue", "6").toInt());
-            setReceiverMixerAgc(settings.value("device." + receiverType + "/mixerAgc", "0").toInt());
-            setReceiverTunerAgc(settings.value("device." + receiverType + "/tunerAgc", "0").toInt());
 
             ui->eventsLog->append(QString("Detected device %1").arg(receiverName));
          }
@@ -443,7 +423,6 @@ struct QtWindow::Impl
          receiverFrequency = value;
 
          ui->frequencyView->setCenterFreq(receiverFrequency);
-//         ui->quadratureView->setCenterFreq(receiverFrequency);
 
          if (!receiverType.isEmpty())
             settings.setValue("device." + receiverType + "/centerFreq", receiverFrequency);
@@ -463,7 +442,6 @@ struct QtWindow::Impl
          receiverSampleRate = value;
 
          ui->frequencyView->setSampleRate(receiverSampleRate);
-//         ui->quadratureView->setSampleRate(receiverSampleRate);
 
          if (!receiverType.isEmpty())
             settings.setValue("device." + receiverType + "/sampleRate", receiverSampleRate);
@@ -478,9 +456,9 @@ struct QtWindow::Impl
    {
       if (receiverGainMode != value)
       {
-         qInfo() << "receiver gain mode changed:" << value;
-
          receiverGainMode = value;
+
+         qInfo() << "receiver gain mode changed:" << value;
 
          if (!receiverType.isEmpty())
             settings.setValue("device." + receiverType + "/gainMode", receiverGainMode);
@@ -498,9 +476,9 @@ struct QtWindow::Impl
                ui->gainLabel->setText(QString("Gain AUTO"));
             }
 
-            ui->tunerAgc->setEnabled(receiverGainMode == 0);
-            ui->mixerAgc->setEnabled(receiverGainMode == 0);
+            ui->gainMode->setEnabled(true);
             ui->gainValue->setEnabled(receiverGainMode != 0);
+
             ui->gainMode->setCurrentIndex(ui->gainMode->findData(receiverGainMode));
 
             QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {
@@ -515,50 +493,23 @@ struct QtWindow::Impl
    {
       if (receiverGainValue != value)
       {
-         qInfo() << "receiver gain value changed:" << value;
-
          receiverGainValue = value;
 
-         ui->gainValue->setValue(receiverGainValue);
-         ui->gainLabel->setText(QString("Gain %1").arg(receiverGainValues[receiverGainValue]));
+         if (receiverGainMode != 0)
+         {
+            qInfo() << "receiver gain value changed:" << value;
 
-         if (!receiverType.isEmpty())
-            settings.setValue("device." + receiverType + "/gainValue", receiverGainValue);
+            ui->gainValue->setValue(receiverGainValue);
+            ui->gainLabel->setText(QString("Gain %1").arg(receiverGainValues[receiverGainValue]));
 
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {
-               {"gainMode",  receiverGainMode},
-               {"gainValue", receiverGainValue}
-         }));
-      }
-   }
+            if (!receiverType.isEmpty())
+               settings.setValue("device." + receiverType + "/gainValue", receiverGainValue);
 
-   void setReceiverTunerAgc(int value)
-   {
-      if (receiverTunerAgc != value)
-      {
-         qInfo() << "receiver tuner AGC changed:" << value;
-
-         receiverTunerAgc = value;
-
-         ui->tunerAgc->setEnabled(receiverTunerAgc >= 0);
-         ui->tunerAgc->setChecked(receiverTunerAgc == 1);
-
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {{"tunerAgc", receiverTunerAgc}}));
-      }
-   }
-
-   void setReceiverMixerAgc(int value)
-   {
-      if (receiverMixerAgc != value)
-      {
-         qInfo() << "receiver mixer AGC changed:" << value;
-
-         receiverMixerAgc = value;
-
-         ui->mixerAgc->setEnabled(receiverMixerAgc >= 0);
-         ui->mixerAgc->setChecked(receiverMixerAgc == 1);
-
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {{"mixerAgc", receiverMixerAgc}}));
+            QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {
+                  {"gainMode",  receiverGainMode},
+                  {"gainValue", receiverGainValue}
+            }));
+         }
       }
    }
 
@@ -575,14 +526,6 @@ struct QtWindow::Impl
    void setSignalPower(float value)
    {
       ui->signalStrength->setValue(value * 100);
-   }
-
-   void setLiveEnabled(bool value)
-   {
-      liveEnabled = value;
-
-      ui->streamView->setVisible(liveEnabled);
-      ui->actionLive->setChecked(liveEnabled);
    }
 
    void setFollowEnabled(bool value)
@@ -605,6 +548,7 @@ struct QtWindow::Impl
 
       ui->listenButton->setEnabled(false);
       ui->recordButton->setEnabled(false);
+      ui->statusTabs->setCurrentWidget(ui->receiverTab);
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverDecode));
    }
@@ -624,11 +568,6 @@ struct QtWindow::Impl
       ui->stopButton->setEnabled(false);
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::StopDecode));
-   }
-
-   void toggleLive()
-   {
-      setLiveEnabled(!liveEnabled);
    }
 
    void toggleFollow()
@@ -870,7 +809,6 @@ QtWindow::QtWindow(QSettings &settings, QtMemory *cache) : impl(new Impl(setting
    impl->setupUi(this);
 
    // restore interface preferences
-   impl->setLiveEnabled(settings.value("window/liveEnabled", false).toBool());
    impl->setFollowEnabled(settings.value("window/followEnabled", true).toBool());
    impl->setFilterEnabled(settings.value("window/filterEnabled", true).toBool());
 
@@ -943,11 +881,6 @@ void QtWindow::toggleStop()
    impl->toggleStop();
 }
 
-void QtWindow::toggleLive()
-{
-   impl->toggleLive();
-}
-
 void QtWindow::toggleFollow()
 {
    impl->toggleFollow();
@@ -956,16 +889,6 @@ void QtWindow::toggleFollow()
 void QtWindow::toggleFilter()
 {
    impl->toggleFilter();
-}
-
-void QtWindow::toggleTunerAgc(bool value)
-{
-   impl->setReceiverTunerAgc(value);
-}
-
-void QtWindow::toggleMixerAgc(bool value)
-{
-   impl->setReceiverMixerAgc(value);
 }
 
 void QtWindow::changeGainMode(int index)

@@ -63,15 +63,15 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
       signalRvStream = rt::Subject<sdr::SignalBuffer>::name("signal.raw");
 
       // subscribe to signal events
-//      signalIqSubscription = signalIqStream->subscribe([this](const sdr::SignalBuffer &buffer) {
-//         if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
-//            signalQueue.add(buffer);
-//      });
-
-      signalRvSubscription = signalRvStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+      signalIqSubscription = signalIqStream->subscribe([this](const sdr::SignalBuffer &buffer) {
          if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
             signalQueue.add(buffer);
       });
+
+//      signalRvSubscription = signalRvStream->subscribe([this](const sdr::SignalBuffer &buffer) {
+//         if (status == SignalRecorderTask::Writing || status == SignalRecorderTask::Capture)
+//            signalQueue.add(buffer);
+//      });
    }
 
    void start() override
@@ -202,7 +202,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
          device = std::make_shared<sdr::RecordDevice>(file.value());
 
          device->setSampleRate(10E6);
-         device->setChannelCount(1);
+         device->setChannelCount(2);
 
          signalQueue.clear();
 

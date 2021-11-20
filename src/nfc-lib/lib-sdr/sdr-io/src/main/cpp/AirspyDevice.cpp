@@ -355,8 +355,10 @@ struct AirspyDevice::Impl
 
    int setTunerAgc(int value)
    {
-      gainMode = AirspyDevice::Auto;
       tunerAgc = value;
+
+      if (tunerAgc)
+         gainMode = AirspyDevice::Auto;
 
       if (deviceHandle)
       {
@@ -371,8 +373,10 @@ struct AirspyDevice::Impl
 
    int setMixerAgc(int value)
    {
-      gainMode = AirspyDevice::Auto;
       mixerAgc = value;
+
+      if (mixerAgc)
+         gainMode = AirspyDevice::Auto;
 
       if (deviceHandle)
       {
