@@ -101,17 +101,21 @@ This version includes a OpenGL spectrum analyzer and IQ graph to show the qualit
 
 An example of the result can be seen below.
 
-Signal capture with spectrum analysis and IQ diagram.
+Signal spectrum view.
 
 ![APP](doc/nfc-lab-capture1.png?raw=true "Application example")
 
-Capture of the protocol and time measurement.
+Signal wave view.
 
-![APP](doc/nfc-lab-capture2.png?raw=true "Protocol timing example")
+![APP](doc/nfc-lab-capture2.png?raw=true "Application example")
+
+Signal frame and protocol time measurement.
+
+![APP](doc/nfc-lab-capture3.png?raw=true "Protocol timing example")
 
 Protocol detail view.
 
-![APP](doc/nfc-lab-capture3.png?raw=true "Protocol detail example")
+![APP](doc/nfc-lab-capture4.png?raw=true "Protocol detail example")
 
 Inside the "doc" folder you can find a [video](doc/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
 
@@ -343,4 +347,4 @@ receiver and sniff NFC frames in real-time, interesting thing to investigate, ma
 
 ## Releases
 
-Precompiled installer for x86 64 bit can be found in repository, check this MD5 first! cf088515b4321b9c10d9d5d37bfebbc8
+Precompiled installer for x86 64 bit can be found in repository
