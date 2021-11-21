@@ -454,6 +454,9 @@ struct QtWindow::Impl
 
    void setReceiverGainMode(int value)
    {
+      ui->gainMode->setEnabled(ui->gainMode->count() > 0);
+      ui->gainValue->setEnabled(receiverGainMode != 0);
+
       if (receiverGainMode != value)
       {
          receiverGainMode = value;
@@ -475,9 +478,6 @@ struct QtWindow::Impl
                ui->gainValue->setValue(0);
                ui->gainLabel->setText(QString("Gain AUTO"));
             }
-
-            ui->gainMode->setEnabled(true);
-            ui->gainValue->setEnabled(receiverGainMode != 0);
 
             ui->gainMode->setCurrentIndex(ui->gainMode->findData(receiverGainMode));
 
