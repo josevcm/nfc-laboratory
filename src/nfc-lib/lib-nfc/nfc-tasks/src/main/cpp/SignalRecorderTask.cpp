@@ -90,7 +90,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
        */
       if (auto command = commandQueue.get())
       {
-         log.info("recorder command [{}]", {command->code});
+         log.debug("recorder command [{}]", {command->code});
 
          if (command->code == SignalRecorderTask::Read)
          {

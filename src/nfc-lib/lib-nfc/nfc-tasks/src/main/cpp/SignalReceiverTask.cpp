@@ -92,7 +92,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
        */
       if (auto command = commandQueue.get())
       {
-         log.info("receiver command [{}]", {command->code});
+         log.debug("receiver command [{}]", {command->code});
 
          if (command->code == SignalReceiverTask::Start)
          {
