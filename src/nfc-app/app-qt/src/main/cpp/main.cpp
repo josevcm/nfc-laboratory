@@ -148,7 +148,7 @@ int startTest2(int argc, char *argv[])
       receiver.setCenterFreq(40.68E6);
       receiver.setSampleRate(10E6);
       receiver.setGainMode(2);
-      receiver.setGainValue(4);
+      receiver.setGainValue(3);
       receiver.setMixerAgc(0);
       receiver.setTunerAgc(0);
 
@@ -159,7 +159,7 @@ int startTest2(int argc, char *argv[])
 
          sdr::RecordDevice recorder(file);
 
-         recorder.setChannelCount(4);
+         recorder.setChannelCount(3);
          recorder.setSampleRate(receiver.sampleRate());
          recorder.open(sdr::RecordDevice::Write);
 
@@ -180,38 +180,38 @@ int startTest2(int argc, char *argv[])
 
             while (auto buffer = signalQueue.get(-1))
             {
-               if (++count == 100)
+               if (++count == 1000)
                   break;
 
                if (!buffer->isEmpty())
                {
-                  recorder.write(buffer.value());
+//                  recorder.write(buffer.value());
 
-//                     // convert I/Q samples to Real sample
-//                     sdr::SignalBuffer result(buffer->elements(), 3, buffer->sampleRate(), 0, 0, 0);
-//
-//                     switch (buffer->type())
-//                     {
-//                        case sdr::SignalType::SAMPLE_IQ:
-//                        {
-//                           buffer->stream([&result](const float *value, int stride) {
-//                              result.put(value[0]).put(value[1]).put(sqrtf(value[0] * value[0] + value[1] * value[1]));
-//                           });
-//                           break;
-//                        }
-//
-//                        case sdr::SignalType::SAMPLE_REAL:
-//                        {
-//                           buffer->stream([&result](const float *value, int stride) {
-//                              result.put(value[0]).put(0.0f).put(0.0f);
-//                           });
-//                           break;
-//                        }
-//                     }
-//
-//                     result.flip();
-//
-//                     recorder.write(result);
+                  // convert I/Q samples to Real sample
+                  sdr::SignalBuffer result(buffer->elements(), 3, buffer->sampleRate(), 0, 0, 0);
+
+                  switch (buffer->type())
+                  {
+                     case sdr::SignalType::SAMPLE_IQ:
+                     {
+                        buffer->stream([&result](const float *value, int stride) {
+                           result.put(value[0]).put(value[1]).put(sqrtf(value[0] * value[0] + value[1] * value[1]));
+                        });
+                        break;
+                     }
+
+                     case sdr::SignalType::SAMPLE_REAL:
+                     {
+                        buffer->stream([&result](const float *value, int stride) {
+                           result.put(value[0]).put(0.0f).put(0.0f);
+                        });
+                        break;
+                     }
+                  }
+
+                  result.flip();
+
+                  recorder.write(result);
                }
             }
 

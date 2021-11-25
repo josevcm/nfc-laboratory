@@ -454,9 +454,6 @@ struct QtWindow::Impl
 
    void setReceiverGainMode(int value)
    {
-      ui->gainMode->setEnabled(ui->gainMode->count() > 0);
-      ui->gainValue->setEnabled(receiverGainMode != 0);
-
       if (receiverGainMode != value)
       {
          receiverGainMode = value;
@@ -486,6 +483,12 @@ struct QtWindow::Impl
                   {"gainValue", receiverGainValue}
             }));
          }
+      }
+
+      if (ui->gainMode->count() > 0)
+      {
+         ui->gainMode->setEnabled(true);
+         ui->gainValue->setEnabled(receiverGainMode != 0);
       }
    }
 

@@ -34,6 +34,10 @@
 
 #include "AbstractTask.h"
 
+#ifdef __SSE2__
+#include <xmmintrin.h>
+#endif
+
 namespace nfc {
 
 #define LOWER_GAIN_THRESHOLD 0.05
@@ -362,11 +366,49 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          float avrg = 0;
 
          // compute real signal value and average value
-         for (int i = 0, n = 0; i < buffer.elements(); i++, n += 2)
+         for (int j = 0, n = 0; j < buffer.elements(); j += 8, n += 16)
          {
-            dst[i] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
+#ifdef __SSE2__
+            // load 8 I/Q vectors
+            __m128 a1 = _mm_loadu_ps(src + n + 0);  // I0, Q0, I1, Q1
+            __m128 a2 = _mm_loadu_ps(src + n + 4);  // I2, Q2, I3, Q3
+            __m128 a3 = _mm_loadu_ps(src + n + 8);  // I4, Q4, I5, Q5
+            __m128 a4 = _mm_loadu_ps(src + n + 12); // I6, Q6, I7, Q7
 
-            avrg = avrg * (1 - 0.01f) + dst[i] * 0.01f;
+            // square all components
+            __m128 p1 = _mm_mul_ps(a1, a1); // I0^2, Q0^2, I1^2, Q1^2
+            __m128 p2 = _mm_mul_ps(a2, a2); // I2^2, Q2^2, I3^2, Q3^2
+            __m128 p3 = _mm_mul_ps(a3, a3); // I4^2, Q4^2, I5^2, Q5^2
+            __m128 p4 = _mm_mul_ps(a4, a4); // I6^2, Q6^2, I6^2, Q7^2
+
+            // permute components
+            __m128 i1 = _mm_shuffle_ps(p1, p2, _MM_SHUFFLE(2, 0, 2, 0)); // I0^2, I1^2, I2^2, I3^2
+            __m128 i2 = _mm_shuffle_ps(p3, p4, _MM_SHUFFLE(2, 0, 2, 0)); // I4^2, I5^2, I6^2, I7^2
+            __m128 q1 = _mm_shuffle_ps(p1, p2, _MM_SHUFFLE(3, 1, 3, 1)); // Q0^2, Q1^2, Q2^2, Q3^2
+            __m128 q2 = _mm_shuffle_ps(p3, p4, _MM_SHUFFLE(3, 1, 3, 1)); // Q4^2, Q5^2, Q6^2, Q7^2
+
+            // add vector components
+            __m128 r1 = _mm_add_ps(i1, q1); // I0^2+Q0^2, I1^2+Q1^2, I2^2+Q2^2, I3^2+Q3^2
+            __m128 r2 = _mm_add_ps(i2, q2); // I4^2+Q4^2, I5^2+Q5^2, I6^2+Q6^2, I7^2+Q7^2
+
+            // square-root vectors
+            __m128 m1 = _mm_sqrt_ps(r1); // sqrt(I0^2+Q0^2), sqrt(I1^2+Q1^2), sqrt(I2^2+Q2^2), sqrt(I3^2+Q3^2)
+            __m128 m2 = _mm_sqrt_ps(r2); // sqrt(I4^2+Q4^2), sqrt(I5^2+Q5^2), sqrt(I6^2+Q6^2), sqrt(I7^2+Q7^2)
+
+            // store results
+            _mm_storeu_ps(dst + j + 0, m1);
+            _mm_storeu_ps(dst + j + 4, m2);
+#else
+            dst[j + 0] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
+            dst[j + 1] = sqrtf(src[n + 2] * src[n + 2] + src[n + 3] * src[n + 3]);
+            dst[j + 2] = sqrtf(src[n + 4] * src[n + 4] + src[n + 5] * src[n + 5]);
+            dst[j + 3] = sqrtf(src[n + 6] * src[n + 6] + src[n + 7] * src[n + 7]);
+            dst[j + 4] = sqrtf(src[n + 8] * src[n + 8] + src[n + 9] * src[n + 9]);
+            dst[j + 5] = sqrtf(src[n + 10] * src[n + 10] + src[n + 11] * src[n + 11]);
+            dst[j + 6] = sqrtf(src[n + 12] * src[n + 12] + src[n + 13] * src[n + 13]);
+            dst[j + 7] = sqrtf(src[n + 14] * src[n + 14] + src[n + 15] * src[n + 15]);
+#endif
+            avrg = avrg * (1 - 0.001f) + dst[j] * 0.001f;
          }
 
          // flip buffer pointers

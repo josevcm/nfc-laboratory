@@ -26,7 +26,7 @@ THE SOFTWARE.
 
 #include <stdio.h>
 
-#ifdef USE_SSE2
+#ifdef __SSE2__
 #include <xmmintrin.h>
 #endif
 
