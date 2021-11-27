@@ -22,26 +22,46 @@
 
 */
 
-#ifndef SDR_FOURIERTRANFORM_H
-#define SDR_FOURIERTRANFORM_H
+#include <fft.h>
 
-#include <rt/Shared.h>
-#include <rt/FloatBuffer.h>
+#include <sdr/SignalBuffer.h>
+#include <sdr/FourierTransform.h>
 
 namespace sdr {
 
-struct FourierTranformPriv;
-
-class FourierTranform : public Opaque<FourierTranformPriv>
+struct FourierTransform::Impl
 {
-   public:
+   int points;
 
-      explicit FourierTranform(int points);
+   mufft_plan_1d *plan;
 
-      ~FourierTranform();
+   explicit Impl(int points) : points(points)
+   {
+      plan = mufft_create_plan_1d_c2c(points, MUFFT_FORWARD, MUFFT_FLAG_CPU_ANY);
+   }
 
-      void execute(SignalBuffer &in, SignalBuffer &out);
+   ~Impl()
+   {
+      mufft_free_plan_1d(plan);
+   }
+
+   void execute(SignalBuffer &dataIn, SignalBuffer &dataOut) const
+   {
+      // execute FFT
+      mufft_execute_plan_1d(plan, dataOut.pull(2 * points), dataIn.data());
+
+      // prepare to read
+      dataOut.flip();
+   }
 };
 
+FourierTransform::FourierTransform(int points) : impl(new Impl(points))
+{
 }
-#endif
+
+void FourierTransform::execute(SignalBuffer &in, SignalBuffer &out)
+{
+   impl->execute(in, out);
+}
+
+}
