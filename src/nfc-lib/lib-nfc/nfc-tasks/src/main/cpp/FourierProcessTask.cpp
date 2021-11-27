@@ -22,6 +22,12 @@
 
 */
 
+#ifdef __SSE2__
+
+#include <xmmintrin.h>
+
+#endif
+
 #include <fft.h>
 #include <mutex>
 
@@ -150,22 +156,79 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          float *data = signalBuffer.data();
 
          // apply signal windowing and decimation
-#pragma GCC ivdep
-         for (int i = 0, w = 0; w < length; i += 2, w++)
+#ifdef __SSE2__
+         for (int i = 0, w = 0; w < length; i += 8, w += 4)
          {
-            fftIn[i + 0] = data[decimation * i + 0] * fftWin[w];
-            fftIn[i + 1] = data[decimation * i + 1] * fftWin[w];
+            __m128 w1 = _mm_set_ps(fftWin[w + 1], fftWin[w + 1], fftWin[w + 0], fftWin[w + 0]);
+            __m128 w2 = _mm_set_ps(fftWin[w + 3], fftWin[w + 3], fftWin[w + 2], fftWin[w + 2]);
+
+            __m128 a1 = _mm_loadu_ps(data + i + 0);
+            __m128 a2 = _mm_loadu_ps(data + i + 4);
+
+            __m128 r1 = _mm_mul_ps(a1, w1);
+            __m128 r2 = _mm_mul_ps(a2, w2);
+
+            _mm_storeu_ps(fftIn + i + 0, r1);
+            _mm_storeu_ps(fftIn + i + 4, r2);
          }
+#else
+#pragma GCC ivdep
+         for (int i = 0, w = 0; w < length; i += 4, w += 2)
+         {
+            fftIn[i + 0] = data[decimation * i + 0] * fftWin[w + 0];
+            fftIn[i + 1] = data[decimation * i + 1] * fftWin[w + 0];
+            fftIn[i + 2] = data[decimation * i + 2] * fftWin[w + 1];
+            fftIn[i + 3] = data[decimation * i + 3] * fftWin[w + 1];
+         }
+#endif
 
          // execute FFT
          mufft_execute_plan_1d(fftC2C, fftOut, fftIn);
 
          // transform complex FFT to real
-#pragma GCC ivdep
-         for (int i = 0, w = 0; w < length; i += 2, w++)
+#ifdef __SSE2__
+         for (int i = 0, w = 0; w < length; i += 16, w += 8)
          {
-            fftMag[w] = std::sqrt(fftOut[i] * fftOut[i] + fftOut[i + 1] * fftOut[i + 1]);
+            // load 8 I/Q vectors
+            __m128 a1 = _mm_loadu_ps(fftOut + i + 0);  // r0, i0, r1, i1
+            __m128 a2 = _mm_loadu_ps(fftOut + i + 4);  // r2, i2, r3, i3
+            __m128 a3 = _mm_loadu_ps(fftOut + i + 8);  // r4, i4, r5, i5
+            __m128 a4 = _mm_loadu_ps(fftOut + i + 12); // r6, i6, r7, i7
+
+            // square all components
+            __m128 p1 = _mm_mul_ps(a1, a1); // r0^2, Q0^2, r1^2, Q1^2
+            __m128 p2 = _mm_mul_ps(a2, a2); // r2^2, Q2^2, r3^2, Q3^2
+            __m128 p3 = _mm_mul_ps(a3, a3); // r4^2, Q4^2, r5^2, Q5^2
+            __m128 p4 = _mm_mul_ps(a4, a4); // r6^2, Q6^2, r6^2, Q7^2
+
+            // permute components
+            __m128 i1 = _mm_shuffle_ps(p1, p2, _MM_SHUFFLE(2, 0, 2, 0)); // r0^2, r1^2, r2^2, r3^2
+            __m128 i2 = _mm_shuffle_ps(p3, p4, _MM_SHUFFLE(2, 0, 2, 0)); // r4^2, r5^2, r6^2, r7^2
+            __m128 q1 = _mm_shuffle_ps(p1, p2, _MM_SHUFFLE(3, 1, 3, 1)); // Q0^2, Q1^2, Q2^2, Q3^2
+            __m128 q2 = _mm_shuffle_ps(p3, p4, _MM_SHUFFLE(3, 1, 3, 1)); // Q4^2, Q5^2, Q6^2, Q7^2
+
+            // add vector components
+            __m128 r1 = _mm_add_ps(i1, q1); // r0^2+Q0^2, r1^2+Q1^2, r2^2+Q2^2, r3^2+Q3^2
+            __m128 r2 = _mm_add_ps(i2, q2); // r4^2+Q4^2, r5^2+Q5^2, r6^2+Q6^2, r7^2+Q7^2
+
+            // square-root vectors
+            __m128 m1 = _mm_sqrt_ps(r1); // sqrt(I0^2+Q0^2), sqrt(I1^2+Q1^2), sqrt(I2^2+Q2^2), sqrt(I3^2+Q3^2)
+            __m128 m2 = _mm_sqrt_ps(r2); // sqrt(I4^2+Q4^2), sqrt(I5^2+Q5^2), sqrt(I6^2+Q6^2), sqrt(I7^2+Q7^2)
+
+            // store results
+            _mm_storeu_ps(fftMag + w + 0, m1);
+            _mm_storeu_ps(fftMag + w + 4, m2);
          }
+#else
+#pragma GCC ivdep
+         for (int i = 0, w = 0; w < length; i += 8, w += 4)
+         {
+            fftMag[w + 0] = std::sqrt(fftOut[i + 0] * fftOut[i + 0] + fftOut[i + 1] * fftOut[i + 1]);
+            fftMag[w + 1] = std::sqrt(fftOut[i + 2] * fftOut[i + 2] + fftOut[i + 3] * fftOut[i + 3]);
+            fftMag[w + 2] = std::sqrt(fftOut[i + 4] * fftOut[i + 4] + fftOut[i + 5] * fftOut[i + 5]);
+            fftMag[w + 3] = std::sqrt(fftOut[i + 6] * fftOut[i + 6] + fftOut[i + 7] * fftOut[i + 7]);
+         }
+#endif
 
          // create output buffer
          sdr::SignalBuffer result(length, 1, signalBuffer.sampleRate(), 0, decimation, sdr::SignalType::FREQUENCY_BIN);

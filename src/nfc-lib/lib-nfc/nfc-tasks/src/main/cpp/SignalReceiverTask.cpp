@@ -35,7 +35,9 @@
 #include "AbstractTask.h"
 
 #ifdef __SSE2__
+
 #include <xmmintrin.h>
+
 #endif
 
 namespace nfc {
@@ -366,9 +368,9 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          float avrg = 0;
 
          // compute real signal value and average value
+#ifdef __SSE2__
          for (int j = 0, n = 0; j < buffer.elements(); j += 8, n += 16)
          {
-#ifdef __SSE2__
             // load 8 I/Q vectors
             __m128 a1 = _mm_loadu_ps(src + n + 0);  // I0, Q0, I1, Q1
             __m128 a2 = _mm_loadu_ps(src + n + 4);  // I2, Q2, I3, Q3
@@ -398,18 +400,23 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
             // store results
             _mm_storeu_ps(dst + j + 0, m1);
             _mm_storeu_ps(dst + j + 4, m2);
+
+            // compute exponential average
+            avrg = avrg * (1 - 0.001f) + dst[j+0] * 0.001f;
+            avrg = avrg * (1 - 0.001f) + dst[j+4] * 0.001f;
+         }
 #else
+#pragma GCC ivdep
+         for (int j = 0, n = 0; j < buffer.elements(); j += 4, n += 8)
+         {
             dst[j + 0] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
             dst[j + 1] = sqrtf(src[n + 2] * src[n + 2] + src[n + 3] * src[n + 3]);
             dst[j + 2] = sqrtf(src[n + 4] * src[n + 4] + src[n + 5] * src[n + 5]);
             dst[j + 3] = sqrtf(src[n + 6] * src[n + 6] + src[n + 7] * src[n + 7]);
-            dst[j + 4] = sqrtf(src[n + 8] * src[n + 8] + src[n + 9] * src[n + 9]);
-            dst[j + 5] = sqrtf(src[n + 10] * src[n + 10] + src[n + 11] * src[n + 11]);
-            dst[j + 6] = sqrtf(src[n + 12] * src[n + 12] + src[n + 13] * src[n + 13]);
-            dst[j + 7] = sqrtf(src[n + 14] * src[n + 14] + src[n + 15] * src[n + 15]);
-#endif
-            avrg = avrg * (1 - 0.001f) + dst[j] * 0.001f;
+
+            avrg = avrg * (1 - 0.001f) + dst[j + 0] * 0.001f;
          }
+#endif
 
          // flip buffer pointers
          result.flip();
