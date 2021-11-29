@@ -206,7 +206,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
          device = std::make_shared<sdr::RecordDevice>(file.value());
 
          device->setSampleRate(10E6);
-         device->setChannelCount(2);
+         device->setChannelCount(1);
 
          signalQueue.clear();
 
