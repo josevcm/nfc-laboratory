@@ -162,14 +162,14 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
             __m128 w1 = _mm_set_ps(fftWin[w + 1], fftWin[w + 1], fftWin[w + 0], fftWin[w + 0]);
             __m128 w2 = _mm_set_ps(fftWin[w + 3], fftWin[w + 3], fftWin[w + 2], fftWin[w + 2]);
 
-            __m128 a1 = _mm_loadu_ps(data + i + 0);
-            __m128 a2 = _mm_loadu_ps(data + i + 4);
+            __m128 a1 = _mm_load_ps(data + i + 0);
+            __m128 a2 = _mm_load_ps(data + i + 4);
 
             __m128 r1 = _mm_mul_ps(a1, w1);
             __m128 r2 = _mm_mul_ps(a2, w2);
 
-            _mm_storeu_ps(fftIn + i + 0, r1);
-            _mm_storeu_ps(fftIn + i + 4, r2);
+            _mm_store_ps(fftIn + i + 0, r1);
+            _mm_store_ps(fftIn + i + 4, r2);
          }
 #else
 #pragma GCC ivdep
@@ -190,14 +190,14 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          for (int i = 0, n = 0; i < length; i += 16, n += 32)
          {
             // load 16 I/Q vectors
-            __m128 a0 = _mm_loadu_ps(fftOut + n + 0);  // I0, Q0, I1, Q1
-            __m128 a1 = _mm_loadu_ps(fftOut + n + 4);  // I2, Q2, I3, Q3
-            __m128 a2 = _mm_loadu_ps(fftOut + n + 8);  // I4, Q4, I5, Q5
-            __m128 a3 = _mm_loadu_ps(fftOut + n + 12); // I6, Q6, I7, Q7
-            __m128 a4 = _mm_loadu_ps(fftOut + n + 16);  // I8, Q8, I9, Q9
-            __m128 a5 = _mm_loadu_ps(fftOut + n + 20); // I10, Q10, I11, Q11
-            __m128 a6 = _mm_loadu_ps(fftOut + n + 24);  // I12, Q12, I13, Q13
-            __m128 a7 = _mm_loadu_ps(fftOut + n + 28); // I14, Q14, I15, Q15
+            __m128 a0 = _mm_load_ps(fftOut + n + 0);  // I0, Q0, I1, Q1
+            __m128 a1 = _mm_load_ps(fftOut + n + 4);  // I2, Q2, I3, Q3
+            __m128 a2 = _mm_load_ps(fftOut + n + 8);  // I4, Q4, I5, Q5
+            __m128 a3 = _mm_load_ps(fftOut + n + 12); // I6, Q6, I7, Q7
+            __m128 a4 = _mm_load_ps(fftOut + n + 16);  // I8, Q8, I9, Q9
+            __m128 a5 = _mm_load_ps(fftOut + n + 20); // I10, Q10, I11, Q11
+            __m128 a6 = _mm_load_ps(fftOut + n + 24);  // I12, Q12, I13, Q13
+            __m128 a7 = _mm_load_ps(fftOut + n + 28); // I14, Q14, I15, Q15
 
             // square all components
             __m128 p0 = _mm_mul_ps(a0, a0); // I0^2, Q0^2, I1^2, Q1^2
@@ -232,10 +232,10 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
             __m128 m3 = _mm_sqrt_ps(r3); // sqrt(I12^2+Q12^2), sqrt(I13^2+Q13^2), sqrt(I14^2+Q14^2), sqrt(I15^2+Q15^2)
 
             // store results
-            _mm_storeu_ps(fftMag + i + 0, m0);
-            _mm_storeu_ps(fftMag + i + 4, m1);
-            _mm_storeu_ps(fftMag + i + 8, m2);
-            _mm_storeu_ps(fftMag + i + 12, m3);
+            _mm_store_ps(fftMag + i + 0, m0);
+            _mm_store_ps(fftMag + i + 4, m1);
+            _mm_store_ps(fftMag + i + 8, m2);
+            _mm_store_ps(fftMag + i + 12, m3);
          }
 #else
 #pragma GCC ivdep
