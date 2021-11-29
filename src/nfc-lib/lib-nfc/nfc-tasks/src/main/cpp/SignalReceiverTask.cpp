@@ -22,16 +22,9 @@
 
 */
 
-#ifdef __SSE2__
-
-#include <x86intrin.h>
-
-#endif
-
 #include <rt/Logger.h>
 #include <rt/Format.h>
 #include <rt/BlockingQueue.h>
-#include <rt/Throughput.h>
 
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
@@ -40,6 +33,10 @@
 #include <nfc/SignalReceiverTask.h>
 
 #include "AbstractTask.h"
+
+#ifdef __SSE2__
+#include <x86intrin.h>
+#endif
 
 namespace nfc {
 
@@ -131,7 +128,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
          if (receiver && receiver->isStreaming())
          {
-            log.info("receiver throughput capacity: {.2} Msps", {taskThroughput.rate() / 1E6});
+            log.info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
          }
       }
 
@@ -383,14 +380,14 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          for (int j = 0, n = 0; j < buffer.elements(); j += 16, n += 32)
          {
             // load 16 I/Q vectors
-            __m128 a0 = _mm_loadu_ps(src + n + 0);  // I0, Q0, I1, Q1
-            __m128 a1 = _mm_loadu_ps(src + n + 4);  // I2, Q2, I3, Q3
-            __m128 a2 = _mm_loadu_ps(src + n + 8);  // I4, Q4, I5, Q5
-            __m128 a3 = _mm_loadu_ps(src + n + 12); // I6, Q6, I7, Q7
-            __m128 a4 = _mm_loadu_ps(src + n + 16);  // I8, Q8, I9, Q9
-            __m128 a5 = _mm_loadu_ps(src + n + 20); // I10, Q10, I11, Q11
-            __m128 a6 = _mm_loadu_ps(src + n + 24);  // I12, Q12, I13, Q13
-            __m128 a7 = _mm_loadu_ps(src + n + 28); // I14, Q14, I15, Q15
+            __m128 a0 = _mm_load_ps(src + n + 0);  // I0, Q0, I1, Q1
+            __m128 a1 = _mm_load_ps(src + n + 4);  // I2, Q2, I3, Q3
+            __m128 a2 = _mm_load_ps(src + n + 8);  // I4, Q4, I5, Q5
+            __m128 a3 = _mm_load_ps(src + n + 12); // I6, Q6, I7, Q7
+            __m128 a4 = _mm_load_ps(src + n + 16);  // I8, Q8, I9, Q9
+            __m128 a5 = _mm_load_ps(src + n + 20); // I10, Q10, I11, Q11
+            __m128 a6 = _mm_load_ps(src + n + 24);  // I12, Q12, I13, Q13
+            __m128 a7 = _mm_load_ps(src + n + 28); // I14, Q14, I15, Q15
 
             // square all components
             __m128 p0 = _mm_mul_ps(a0, a0); // I0^2, Q0^2, I1^2, Q1^2
@@ -425,10 +422,10 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
             __m128 m3 = _mm_sqrt_ps(r3); // sqrt(I12^2+Q12^2), sqrt(I13^2+Q13^2), sqrt(I14^2+Q14^2), sqrt(I15^2+Q15^2)
 
             // store results
-            _mm_storeu_ps(dst + j + 0, m0);
-            _mm_storeu_ps(dst + j + 4, m1);
-            _mm_storeu_ps(dst + j + 8, m2);
-            _mm_storeu_ps(dst + j + 12, m3);
+            _mm_store_ps(dst + j + 0, m0);
+            _mm_store_ps(dst + j + 4, m1);
+            _mm_store_ps(dst + j + 8, m2);
+            _mm_store_ps(dst + j + 12, m3);
 
             // compute exponential average
             avrg = avrg * (1 - 0.001f) + dst[j + 0] * 0.001f;

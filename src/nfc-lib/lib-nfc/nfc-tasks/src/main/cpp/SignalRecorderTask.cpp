@@ -206,7 +206,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
          device = std::make_shared<sdr::RecordDevice>(file.value());
 
          device->setSampleRate(10E6);
-         device->setChannelCount(2);
+         device->setChannelCount(1);
 
          signalQueue.clear();
 
@@ -295,10 +295,10 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
                   for (int j = 0, n = 0; j < buffer.elements(); j += 8, n += 16)
                   {
                      // load 8 I/Q vectors
-                     __m128 a1 = _mm_loadu_ps(src + n + 0);  // I0, Q0, I1, Q1
-                     __m128 a2 = _mm_loadu_ps(src + n + 4);  // I2, Q2, I3, Q3
-                     __m128 a3 = _mm_loadu_ps(src + n + 8);  // I4, Q4, I5, Q5
-                     __m128 a4 = _mm_loadu_ps(src + n + 12); // I6, Q6, I7, Q7
+                     __m128 a1 = _mm_load_ps(src + n + 0);  // I0, Q0, I1, Q1
+                     __m128 a2 = _mm_load_ps(src + n + 4);  // I2, Q2, I3, Q3
+                     __m128 a3 = _mm_load_ps(src + n + 8);  // I4, Q4, I5, Q5
+                     __m128 a4 = _mm_load_ps(src + n + 12); // I6, Q6, I7, Q7
 
                      // square all components
                      __m128 p1 = _mm_mul_ps(a1, a1); // I0^2, Q0^2, I1^2, Q1^2
@@ -321,8 +321,8 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
                      __m128 m2 = _mm_sqrt_ps(r2); // sqrt(I4^2+Q4^2), sqrt(I5^2+Q5^2), sqrt(I6^2+Q6^2), sqrt(I7^2+Q7^2)
 
                      // store results
-                     _mm_storeu_ps(dst + j + 0, m1);
-                     _mm_storeu_ps(dst + j + 4, m2);
+                     _mm_store_ps(dst + j + 0, m1);
+                     _mm_store_ps(dst + j + 4, m2);
                   }
 #else
 #pragma GCC ivdep

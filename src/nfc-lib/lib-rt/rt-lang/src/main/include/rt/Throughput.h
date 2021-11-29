@@ -67,12 +67,12 @@ class Throughput
          r = r * (1 - 0.01) + (elements / double(e.count()) * 1E6) * 0.01;
       }
 
-      inline double time() const
+      inline double elapsed() const
       {
          return a;
       }
 
-      inline double rate() const
+      inline double average() const
       {
          return r;
       }
