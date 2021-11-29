@@ -22,9 +22,14 @@
 
 */
 
+#ifdef __SSE2__
+#include <x86intrin.h>
+#endif
+
 #include <rt/Logger.h>
 #include <rt/Format.h>
 #include <rt/BlockingQueue.h>
+#include <rt/Throughput.h>
 
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
@@ -33,10 +38,6 @@
 #include <nfc/SignalReceiverTask.h>
 
 #include "AbstractTask.h"
-
-#ifdef __SSE2__
-#include <x86intrin.h>
-#endif
 
 namespace nfc {
 

@@ -23,7 +23,9 @@
 */
 
 #ifdef __SSE2__
+
 #include <x86intrin.h>
+
 #endif
 
 #include <rt/Logger.h>
@@ -346,9 +348,14 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
 
                break;
             }
+
+            default:
+            {
+               device->close();
+            }
          }
 
-         if (device->isEof())
+         if (device->isEof() || !device->isOpen())
          {
             log.info("streaming finished for file [{}]", {device->name()});
 
