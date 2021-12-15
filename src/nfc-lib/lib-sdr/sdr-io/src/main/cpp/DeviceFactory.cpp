@@ -23,6 +23,7 @@
 */
 
 #include <sdr/AirspyDevice.h>
+#include <sdr/RealtekDevice.h>
 #include <sdr/DeviceFactory.h>
 
 namespace sdr {
@@ -35,11 +36,8 @@ SignalDevice *DeviceFactory::newInstance(const std::string &name)
    if (name.rfind("airspy://", 0) == 0)
       return new AirspyDevice(name);
 
-//   if (name.startsWith("rtlsdr://"))
-//      return new RealtekDevice(name, parent);
-
-//   if (name.startsWith("record://"))
-//      return new RecordDevice(name, parent);
+   if (name.rfind("rtlsdr://"))
+      return new AirspyDevice(name);
 
    return nullptr;
 }

@@ -39,6 +39,11 @@ class RealtekDevice : public RadioDevice
 
    public:
 
+      enum GainMode
+      {
+         Auto = 0, Manual = 1
+      };
+
       explicit RealtekDevice(int fd);
 
       explicit RealtekDevice(const std::string &name);
@@ -48,6 +53,8 @@ class RealtekDevice : public RadioDevice
    public:
 
       const std::string &name() override;
+
+      const std::string &version() override;
 
       bool open(SignalDevice::OpenMode mode) override;
 
@@ -61,11 +68,9 @@ class RealtekDevice : public RadioDevice
 
       bool isEof() const override;
 
+      bool isReady() const override;
+
       bool isStreaming() const override;
-
-      long centerFreq() const override;
-
-      int setCenterFreq(long value) override;
 
       int sampleSize() const override;
 
@@ -78,6 +83,10 @@ class RealtekDevice : public RadioDevice
       int sampleType() const override;
 
       int setSampleType(int value) override;
+
+      long centerFreq() const override;
+
+      int setCenterFreq(long value) override;
 
       int tunerAgc() const override;
 
@@ -94,6 +103,10 @@ class RealtekDevice : public RadioDevice
       int gainValue() const override;
 
       int setGainValue(int value) override;
+
+      int decimation() const override;
+
+      int setDecimation(int value) override;
 
       long samplesReceived() override;
 
