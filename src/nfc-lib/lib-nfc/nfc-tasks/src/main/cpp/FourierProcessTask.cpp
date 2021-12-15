@@ -22,7 +22,7 @@
 
 */
 
-#ifdef __SSE2__
+#if defined(__SSE2__) && defined(USE_SSE2)
 #include <x86intrin.h>
 #endif
 
@@ -154,7 +154,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          float *data = signalBuffer.data();
 
          // apply signal windowing and decimation
-#ifdef __SSE2__
+#if defined(__SSE2__) && defined(USE_SSE2)
          for (int i = 0, w = 0; w < length; i += 8, w += 4)
          {
             __m128 w1 = _mm_set_ps(fftWin[w + 1], fftWin[w + 1], fftWin[w + 0], fftWin[w + 0]);
@@ -184,7 +184,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          mufft_execute_plan_1d(fftC2C, fftOut, fftIn);
 
          // transform complex FFT to real
-#ifdef __SSE2__
+#if defined(__SSE2__) && defined(USE_SSE2)
          for (int i = 0, n = 0; i < length; i += 16, n += 32)
          {
             // load 16 I/Q vectors

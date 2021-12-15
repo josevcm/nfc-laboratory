@@ -22,7 +22,7 @@
 
 */
 
-#ifdef __SSE2__
+#if defined(__SSE2__) && defined(USE_SSE2)
 #include <x86intrin.h>
 #endif
 
@@ -377,7 +377,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          taskThroughput.begin();
 
          // compute real signal value and average value
-#ifdef __SSE2__
+#if defined(__SSE2__) && defined(USE_SSE2)
          for (int j = 0, n = 0; j < buffer.elements(); j += 16, n += 32)
          {
             // load 16 I/Q vectors

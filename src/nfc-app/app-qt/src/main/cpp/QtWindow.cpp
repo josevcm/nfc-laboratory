@@ -332,6 +332,9 @@ struct QtWindow::Impl
             ui->recordButton->setEnabled(true);
             ui->stopButton->setEnabled(false);
 
+            ui->gainMode->setEnabled(true);
+            ui->gainValue->setEnabled(true);
+
             setReceiverGainMode(receiverGainMode);
             setReceiverGainValue(receiverGainValue);
          }
@@ -485,11 +488,11 @@ struct QtWindow::Impl
          }
       }
 
-      if (ui->gainMode->count() > 0)
-      {
-         ui->gainMode->setEnabled(true);
-         ui->gainValue->setEnabled(receiverGainMode != 0);
-      }
+//      if (ui->gainMode->count() > 0)
+//      {
+//         ui->gainMode->setEnabled(true);
+//         ui->gainValue->setEnabled(receiverGainMode != 0);
+//      }
    }
 
    void setReceiverGainValue(int value)

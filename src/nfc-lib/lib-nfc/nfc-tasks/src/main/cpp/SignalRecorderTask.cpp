@@ -22,10 +22,8 @@
 
 */
 
-#ifdef __SSE2__
-
+#if defined(__SSE2__) && defined(USE_SSE2)
 #include <x86intrin.h>
-
 #endif
 
 #include <rt/Logger.h>
@@ -293,7 +291,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
                   float *dst = result.pull(buffer.elements());
 
                   // compute real signal value
-#ifdef __SSE2__
+#if defined(__SSE2__) && defined(USE_SSE2)
                   for (int j = 0, n = 0; j < buffer.elements(); j += 8, n += 16)
                   {
                      // load 8 I/Q vectors
