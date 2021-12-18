@@ -67,7 +67,6 @@ struct AirspyDevice::Impl
 
    long samplesReceived = 0;
    long samplesDropped = 0;
-   long samplesStreamed = 0;
 
    explicit Impl(std::string name) : deviceName(std::move(name))
    {
@@ -215,7 +214,8 @@ struct AirspyDevice::Impl
          // clear counters
          samplesDropped = 0;
          samplesReceived = 0;
-         samplesStreamed = 0;
+
+         // reset stream status
          streamCallback = std::move(handler);
          streamQueue = std::queue<SignalBuffer>();
 
@@ -396,6 +396,12 @@ struct AirspyDevice::Impl
       return 0;
    }
 
+   int setTestMode(int value)
+   {
+      log.warn("test mode not supported on this device!");
+
+      return -1;
+   }
 
    std::map<int, std::string> supportedSampleRates() const
    {
@@ -635,6 +641,16 @@ int AirspyDevice::setDecimation(int value)
    return impl->setDecimation(value);
 }
 
+int AirspyDevice::testMode() const
+{
+   return 0;
+}
+
+int AirspyDevice::setTestMode(int value)
+{
+   return impl->setTestMode(value);
+}
+
 long AirspyDevice::samplesReceived()
 {
    return impl->samplesReceived;
@@ -643,11 +659,6 @@ long AirspyDevice::samplesReceived()
 long AirspyDevice::samplesDropped()
 {
    return impl->samplesDropped;
-}
-
-long AirspyDevice::samplesStreamed()
-{
-   return impl->samplesStreamed;
 }
 
 std::map<int, std::string> AirspyDevice::supportedSampleRates() const
@@ -700,7 +711,6 @@ int process_transfer(airspy_transfer *transfer)
       // stream to buffer callback
       if (device->streamCallback)
       {
-         device->samplesStreamed += transfer->sample_count;
          device->streamCallback(buffer);
       }
 

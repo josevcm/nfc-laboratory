@@ -27,7 +27,7 @@
 
 #include <string>
 
-#include <sdr/SignalDevice.h>
+#include <sdr/RadioDevice.h>
 
 namespace sdr {
 
@@ -39,7 +39,9 @@ class DeviceFactory
 
    public:
 
-      static SignalDevice *newInstance(const std::string &name);
+      static std::vector<std::string> deviceList();
+
+      static RadioDevice *newInstance(const std::string &name);
 };
 
 }

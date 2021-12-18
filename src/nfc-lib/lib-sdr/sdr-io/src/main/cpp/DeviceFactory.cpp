@@ -28,16 +28,31 @@
 
 namespace sdr {
 
-SignalDevice *DeviceFactory::newInstance(const std::string &name)
+std::vector<std::string> DeviceFactory::deviceList()
 {
-//   if (name.startsWith("lime://"))
-//      return new LimeDevice(name, parent);
+   std::vector<std::string> devices;
 
+   // add AirSpy devices
+   for (const auto &entry: sdr::AirspyDevice::listDevices())
+      devices.push_back(entry);
+
+   // add RTl-SDR devices
+   for (const auto &entry: sdr::RealtekDevice::listDevices())
+      devices.push_back(entry);
+
+   return devices;
+}
+
+RadioDevice *DeviceFactory::newInstance(const std::string &name)
+{
    if (name.rfind("airspy://", 0) == 0)
       return new AirspyDevice(name);
 
-   if (name.rfind("rtlsdr://"))
-      return new AirspyDevice(name);
+   if (name.rfind("rtlsdr://", 0) == 0)
+      return new RealtekDevice(name);
+
+   //   if (name.startsWith("lime://"))
+//      return new LimeDevice(name, parent);
 
    return nullptr;
 }

@@ -68,11 +68,13 @@ class RadioDevice : public SignalDevice
 
       virtual int setDecimation(int value) = 0;
 
+      virtual int testMode() const  = 0;;
+
+      virtual int setTestMode(int value)  = 0;;
+
       virtual long samplesReceived() = 0;
 
       virtual long samplesDropped() = 0;
-
-      virtual long samplesStreamed() = 0;
 
       virtual std::map<int, std::string> supportedSampleRates() const = 0;
 

@@ -23,7 +23,9 @@
 */
 
 #if defined(__SSE2__) && defined(USE_SSE2)
+
 #include <x86intrin.h>
+
 #endif
 
 #include <rt/Logger.h>
@@ -33,7 +35,7 @@
 
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
-#include <sdr/AirspyDevice.h>
+#include <sdr/DeviceFactory.h>
 
 #include <nfc/SignalReceiverTask.h>
 
@@ -145,32 +147,36 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       if (!receiver)
       {
          // open first available receiver
-         for (const auto &name: sdr::AirspyDevice::listDevices())
+         for (const auto &name: sdr::DeviceFactory::deviceList())
          {
             // create device instance
-            receiver.reset(new sdr::AirspyDevice(name));
+            receiver.reset(sdr::DeviceFactory::newInstance(name));
 
-            // default parameters
-            receiver->setCenterFreq(13.56E6);
-            receiver->setSampleRate(10E6);
-            receiver->setGainMode(0);
-            receiver->setGainValue(0);
-            receiver->setMixerAgc(0);
-            receiver->setTunerAgc(0);
-
-            // try to open...
-            if (receiver->open(sdr::SignalDevice::Read))
+            if (receiver)
             {
-               log.info("device {} connected!", {name});
+               // default parameters
+               receiver->setCenterFreq(13.56E6);
+               receiver->setSampleRate(10E6);
+               receiver->setGainMode(0);
+               receiver->setGainValue(0);
+               receiver->setMixerAgc(0);
+               receiver->setTunerAgc(0);
+               receiver->setTestMode(0);
 
-               mode = SignalReceiverTask::Attach;
+               // try to open...
+               if (receiver->open(sdr::SignalDevice::Read))
+               {
+                  log.info("device {} connected!", {name});
 
-               break;
+                  mode = SignalReceiverTask::Attach;
+
+                  break;
+               }
+
+               receiver.reset();
+
+               log.warn("device {} open failed", {name});
             }
-
-            receiver.reset();
-
-            log.warn("device {} open failed", {name});
          }
       }
       else if (!receiver->isReady())
@@ -275,7 +281,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                else
                {
                   receiverGainValue = 0;
-                  receiver->setGainMode(sdr::AirspyDevice::Linearity);
+                  receiver->setGainMode(1);
                   receiver->setGainValue(receiverGainValue);
                }
             }
@@ -285,7 +291,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                if (receiverGainMode > 0)
                {
                   receiverGainValue = config["gainValue"];
-                  receiver->setGainValue(config["gainValue"]);
+                  receiver->setGainValue(receiverGainValue);
                }
             }
          }

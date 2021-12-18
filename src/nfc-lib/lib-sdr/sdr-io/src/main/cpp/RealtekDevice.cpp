@@ -22,15 +22,29 @@
 
 */
 
+#ifdef _WIN32
+
+#include <windows.h>
+
+#undef ERROR
+#endif
+
 #include <queue>
 #include <mutex>
+#include <thread>
 
 #include <rtl-sdr.h>
 
 #include <rt/Logger.h>
 
+#include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 #include <sdr/RealtekDevice.h>
+
+#define READER_SAMPLES 2048
+#define BUFFER_SAMPLES 65536
+
+#define MAX_QUEUE_SIZE 4
 
 typedef struct rtlsdr_dev *rtldev;
 
@@ -52,10 +66,15 @@ struct RealtekDevice::Impl
    int tunerAgc = 0;
    int mixerAgc = 0;
    int decimation = 0;
+   int testMode = 0;
 
    int rtlsdrResult = 0;
    rtlsdr_dev *rtlsdrHandle {};
-   bool rtlsdrStreaming = false;
+   rtlsdr_tuner rtlsdrTuner;
+
+   std::mutex workerMutex;
+   std::atomic_bool workerStreaming {false};
+   std::thread workerThread;
 
    std::mutex streamMutex;
    std::queue<SignalBuffer> streamQueue;
@@ -63,9 +82,8 @@ struct RealtekDevice::Impl
 
    long samplesReceived = 0;
    long samplesDropped = 0;
-   long samplesStreamed = 0;
 
-   explicit Impl(const std::string &name) : deviceName(name)
+   explicit Impl(std::string name) : deviceName(std::move(name))
    {
       log.debug("created RealtekDevice for name [{}]", {this->deviceName});
    }
@@ -79,7 +97,9 @@ struct RealtekDevice::Impl
    {
       log.debug("destroy RealtekDevice");
 
+      // close underline device
       close();
+
    }
 
    static std::vector<std::string> listDevices()
@@ -116,7 +136,7 @@ struct RealtekDevice::Impl
 
       close();
 
-      int index = -1;
+      int index;
 
       // extract serial number from device name
       auto serial = deviceName.substr(9);
@@ -133,9 +153,15 @@ struct RealtekDevice::Impl
          {
             rtlsdrHandle = device;
 
+            // read tuner type
+            rtlsdrTuner = rtlsdr_get_tuner_type(rtldev(rtlsdrHandle));
+
+            // set default tuner bandwidth
+            if ((rtlsdrResult = rtlsdr_set_tuner_bandwidth(rtldev(rtlsdrHandle), 0)) < 0)
+               log.warn("failed rtlsdr_set_tuner_bandwidth: [{}]", {rtlsdrResult});
+
             // disable test mode
-            if ((rtlsdrResult = rtlsdr_set_testmode(rtldev(rtlsdrHandle), 0)) < 0)
-               log.warn("failed rtlsdr_set_testmode: [{}]", {rtlsdrResult});
+            setTestMode(testMode);
 
             // configure frequency
             setCenterFreq(centerFreq);
@@ -149,29 +175,11 @@ struct RealtekDevice::Impl
             // configure gain value
             setGainValue(gainValue);
 
-            log.info("openned rtlsdr device {}", {deviceName});
+            log.info("openned rtlsdr device {} width tuner type {}", {deviceName, rtlsdrTuner});
 
             return true;
          }
       }
-
-//   int index = listDevices().indexOf(name);
-//
-//   // open RTL device
-//   if ((result = rtlsdr_open((rtldev *) &device, (unsigned int) index)) == 0)
-//   {
-//      // start prefetch worker
-//      QThreadPool::globalInstance()->start(new TaskRunner<RealtekDevice>(this, &RealtekDevice::prefetch), QThread::HighPriority);
-//   }
-//   else
-//   {
-//      qWarning() << "failed rtlsdr_open:" << result;
-//      return false;
-//   }
-//
-//   return QIODevice::open(mode);
-//
-//   return true;
 
       return false;
    }
@@ -199,18 +207,32 @@ struct RealtekDevice::Impl
    {
       if (rtlsdrHandle)
       {
-         log.info("start streaming for device {}", {deviceName});
+         // delay worker start until method is finished
+         std::lock_guard<std::mutex> lock(workerMutex);
 
          // clear counters
          samplesDropped = 0;
          samplesReceived = 0;
-         samplesStreamed = 0;
+
+         // reset stream status
          streamCallback = std::move(handler);
          streamQueue = std::queue<SignalBuffer>();
 
          // reset buffer to start streaming
          if ((rtlsdrResult = rtlsdr_reset_buffer(rtldev(rtlsdrHandle))) < 0)
             log.warn("failed rtlsdr_reset_buffer: [{}] {}", {rtlsdrResult});
+
+         // enable worker thread on success
+         if (rtlsdrResult == 0)
+         {
+            log.info("start streaming for device {}", {deviceName});
+
+            // set streaming flag to enable worker
+            workerStreaming = true;
+
+            // run worker thread
+            workerThread = std::thread([this] { streamWorker(); });
+         }
 
          return rtlsdrResult;
       }
@@ -220,7 +242,27 @@ struct RealtekDevice::Impl
 
    int stop()
    {
-      return 0;
+      if (rtlsdrHandle && workerStreaming)
+      {
+         log.info("stop streaming for device {}", {deviceName});
+
+         // signal finish to running thread
+         workerStreaming = false;
+
+         // wait until worker is finished
+         std::lock_guard<std::mutex> lock(workerMutex);
+
+         // wait for thread joint
+         workerThread.join();
+
+         // disable stream callback and queue
+         streamCallback = nullptr;
+         streamQueue = std::queue<SignalBuffer>();
+
+         return 0;
+      }
+
+      return -1;
    }
 
    bool isOpen() const
@@ -230,7 +272,7 @@ struct RealtekDevice::Impl
 
    bool isEof() const
    {
-      return !rtlsdrHandle || !rtlsdrStreaming;
+      return !rtlsdrHandle || !workerStreaming;
    }
 
    bool isReady() const
@@ -240,7 +282,7 @@ struct RealtekDevice::Impl
 
    bool isStreaming() const
    {
-      return rtlsdrStreaming;
+      return workerStreaming;
    }
 
    int setCenterFreq(long value)
@@ -358,9 +400,31 @@ struct RealtekDevice::Impl
    {
       decimation = value;
 
-      return 0;
+      if (rtlsdrHandle)
+      {
+         if ((rtlsdrResult = rtlsdr_set_agc_mode(rtldev(rtlsdrHandle), mixerAgc)) < 0)
+            log.warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
+
+         return rtlsdrResult;
+      }
+
+      return -1;
    }
 
+   int setTestMode(int value)
+   {
+      testMode = value;
+
+      if (rtlsdrHandle)
+      {
+         if ((rtlsdrResult = rtlsdr_set_testmode(rtldev(rtlsdrHandle), testMode)) < 0)
+            log.warn("failed rtlsdr_set_testmode: [{}]", {rtlsdrResult});
+
+         return rtlsdrResult;
+      }
+
+      return 0;
+   }
 
    std::map<int, std::string> supportedSampleRates() const
    {
@@ -411,7 +475,7 @@ struct RealtekDevice::Impl
 
                snprintf(buffer, sizeof(buffer), "%.2f db", float(values[i]) / 10.0f);
 
-               result[i] = buffer;
+               result[values[i]] = buffer;
             }
          }
       }
@@ -441,6 +505,82 @@ struct RealtekDevice::Impl
       log.warn("write not supported on this device!");
 
       return -1;
+   }
+
+   void streamWorker()
+   {
+      float scaled[READER_SAMPLES * 2];
+      unsigned char data[READER_SAMPLES * 2];
+
+#ifdef _WIN32
+      SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#elif
+      sched_param param {20};
+
+      if (pthread_setschedparam(workerThread.native_handle(), SCHED_MAX, &param))
+         log.warn("error setting logger thread priority: {}", {std::strerror(errno)});
+#endif
+
+      std::lock_guard<std::mutex> lock(workerMutex);
+
+      log.info("stream worker started for device {}", {deviceName});
+
+      while (workerStreaming)
+      {
+         int length;
+
+         SignalBuffer buffer = SignalBuffer(BUFFER_SAMPLES * 2, 2, sampleRate, samplesReceived, 0, SignalType::SAMPLE_IQ);
+
+         while (buffer.available() > READER_SAMPLES && (rtlsdr_read_sync(rtldev(rtlsdrHandle), data, sizeof(data), &length) == 0))
+         {
+            int dropped = sizeof(data) - length;
+
+            for (int i = 0; i < length; i += 2)
+            {
+               scaled[i + 0] = float((data[i + 0] - 128) / 256.0);
+               scaled[i + 1] = float((data[i + 1] - 128) / 256.0);
+            }
+
+            // add data to buffer
+            buffer.put(scaled, length);
+
+            // update counters
+            samplesReceived += length >> 1;
+            samplesDropped += dropped >> 1;
+
+            // trace dropped samples
+            if (dropped > 0)
+               log.warn("dropped samples {}", {samplesDropped});
+         }
+
+         // flip buffer contents
+         buffer.flip();
+
+         // stream to buffer callback
+         if (streamCallback)
+         {
+            streamCallback(buffer);
+         }
+
+            // or store buffer in receive queue
+         else
+         {
+            // lock buffer access
+            std::lock_guard<std::mutex> lock(streamMutex);
+
+            // discard oldest buffers
+            if (streamQueue.size() >= MAX_QUEUE_SIZE)
+            {
+               samplesDropped += streamQueue.front().elements();
+               streamQueue.pop();
+            }
+
+            // queue new sample buffer
+            streamQueue.push(buffer);
+         }
+      }
+
+      log.info("stream worker finished for device {}", {deviceName});
    }
 };
 
@@ -601,6 +741,16 @@ int RealtekDevice::setDecimation(int value)
    return impl->setDecimation(value);
 }
 
+int RealtekDevice::testMode() const
+{
+   return impl->testMode;
+}
+
+int RealtekDevice::setTestMode(int value)
+{
+   return impl->setTestMode(value);
+}
+
 long RealtekDevice::samplesReceived()
 {
    return impl->samplesReceived;
@@ -609,11 +759,6 @@ long RealtekDevice::samplesReceived()
 long RealtekDevice::samplesDropped()
 {
    return impl->samplesDropped;
-}
-
-long RealtekDevice::samplesStreamed()
-{
-   return impl->samplesStreamed;
 }
 
 std::map<int, std::string> RealtekDevice::supportedSampleRates() const
@@ -640,193 +785,4 @@ int RealtekDevice::write(SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }
-
-//int RealtekDevice::start(StreamHandler handler)
-//{
-//   int result = -1;
-//
-//   if (device->handle)
-//   {
-//      device->log.info("start streaming for device %s", device->name.c_str());
-//
-//      // setup stream callback
-//      device->streamCallback = std::move(handler);
-//
-//      // start reception
-//      if ((result = airspy_start_rx(device->handle, reinterpret_cast<airspy_sample_block_cb_fn>(process_transfer), device)) != AIRSPY_SUCCESS)
-//         device->log.warn("failed airspy_start_rx: [%d] %s", result, airspy_error_name((enum airspy_error) result));
-//   }
-//
-//   return result;
-//}
-
-//int RealtekDevice::stop()
-//{
-//   int result = -1;
-//
-//   if (device->handle)
-//   {
-//      device->log.info("stop stream %s", device->name.c_str());
-//
-//      // stop reception
-//      if ((result = airspy_stop_rx(device->handle)) != AIRSPY_SUCCESS)
-//         device->log.warn("failed airspy_stop_rx: [%d] %s", result, airspy_error_name((enum airspy_error) result));
-//
-//      // disable stream callback
-//      device->streamCallback = nullptr;
-//   }
-//
-//   return result;
-//}
-
-//int RealtekDevice::setSampleRate(long value)
-//{
-//   int result;
-//
-//   sampleRate = sampleRate;
-//
-//   if (mDevice)
-//   {
-//      if ((result = rtlsdr_set_sample_rate(rtldev(mDevice), sampleRate)) < 0)
-//         qWarning() << "failed rtlsdr_set_sample_rate(" << sampleRate << ")" << result;
-//   }
-//
-//   return -1;
-//}
-
-
-//int RealtekDevice::setTunerAgc(int value)
-//{
-//   int result;
-//
-//   mGainMode = gainMode;
-//
-//   if (mDevice)
-//   {
-//      if (gainMode & TUNER_AUTO)
-//      {
-//         qInfo() << "enable tuner AGC";
-//
-//         // set automatic gain
-//         if ((result = rtlsdr_set_tuner_gain_mode(rtldev(mDevice), 0)) < 0)
-//            qWarning() << "failed rtlsdr_set_tuner_gain_mode(" << 0 << ")" << result;
-//      }
-//      else if (mTunerGain != -1)
-//      {
-//         qInfo() << "set tuner gain to" << mTunerGain << "db";
-//
-//         // set manual gain
-//         if ((result = rtlsdr_set_tuner_gain_mode(rtldev(mDevice), 1)) < 0)
-//            qWarning() << "failed rtlsdr_set_tuner_gain_mode(" << 1 << ")" << result;
-//
-//         if ((result = rtlsdr_set_tuner_gain(rtldev(mDevice), mTunerGain)) < 0)
-//            qWarning() << "failed rtlsdr_set_tuner_gain(" << mTunerGain << ")" << result;
-//      }
-//
-//      if (gainMode & DIGITAL_AUTO)
-//      {
-//         qInfo() << "enable digital AGC";
-//
-//         // enable digital AGC
-//         if ((result = rtlsdr_set_agc_mode(rtldev(mDevice), 1)) < 0)
-//            qWarning() << "failed rtlsdr_set_agc_mode(" << 1 << ")" << result;
-//      }
-//      else
-//      {
-//         qInfo() << "disable digital AGC";
-//
-//         // disable digital AGC
-//         if ((result = rtlsdr_set_agc_mode(rtldev(mDevice), 0)) < 0)
-//            qWarning() << "failed rtlsdr_set_agc_mode(" << 0 << ")" << result;
-//      }
-//   }
-//
-//   return 0;
-//}
-
-//
-//int RealtekDevice::setMixerAgc(int value)
-//{
-//   mTunerGain = tunerGain;
-//
-//   if (mDevice)
-//   {
-//      int gain = tunerGain * 10;
-//
-//      if (rtlsdr_set_tuner_gain(rtldev(mDevice), gain) < 0)
-//      {
-//         qWarning() << "rtlsdr_set_tuner_gain failed!";
-//      }
-//   }
-//
-//   return 0;
-//}
-
-//void RealtekDevice::prefetch()
-//{
-//   static int prefetchCount1 = 0;
-//   static int prefetchCount2 = 0;
-//
-//   int stored;
-//   int readed;
-//   char data[4096];
-//
-//   QMutexLocker lock(&mWorker);
-//
-//   qWarning() << "starting realtek prefetch thread";
-//
-//   while (isOpen())
-//   {
-//      if (rtlsdr_read_sync(rtldev(mDevice), data, sizeof(data), &readed) < 0)
-//         qWarning() << "failed rtlsdr_read_sync!";
-//      else if (readed != sizeof(data))
-//         qWarning() << "short read, samples lost!";
-//
-//      prefetchCount1++;
-//
-//      if (prefetchCount1 - prefetchCount2 == 100)
-//      {
-//         qInfo().noquote() << "prefetch," << prefetchCount1 << "blocks," << mReceivedSamples << "samples," << "buffer load" << QString("%1 %").arg(100 * double(mBufferLoad) / double(BUFFER_SIZE), 1, 'f', 2);
-//         prefetchCount2 = prefetchCount1;
-//      }
-//
-//      if ((stored = mBufferLoad) < BUFFER_SIZE && readed > 0)
-//      {
-//         unsigned int blocks = 0;
-//         unsigned int length = readed >> 1;
-//
-//         unsigned char *src = (unsigned char *) data;
-//         float *dst = mBufferHead;
-//         int i, q;
-//
-//         while (blocks < length && stored < BUFFER_SIZE)
-//         {
-//            i = *src++;
-//            q = *src++;
-//
-//            *dst++ = float((i - 128) / 128.0);
-//            *dst++ = float((q - 128) / 128.0);
-//
-//            if (dst >= mBufferLimit)
-//               dst = mBufferData;
-//
-//            blocks++;
-//            stored++;
-//         }
-//
-//         // update sample counter
-//         mReceivedSamples += blocks;
-//
-//         // update buffer status
-//         mBufferHead = dst;
-//         mBufferLoad.fetchAndAddOrdered(blocks);
-//      }
-//      else
-//      {
-//         qWarning() << "buffer full, samples lost!";
-//      }
-//   }
-//
-//   qWarning() << "terminate realtek prefetch";
-//}
 }
