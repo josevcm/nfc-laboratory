@@ -1,6 +1,6 @@
 # SDR nfc-laboratory v2.0
 
-A simple NFC signal sniffer and protocol decoder using SDR receiver, capable of demodulate in real-time the comunication
+NFC signal sniffer and protocol decoder using SDR receiver, capable of demodulate in real-time the comunication
 with contacless cards up to 424Kpbs.
 
 ## Description
@@ -11,7 +11,7 @@ reader.
 I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation
 accessible through Google, I will describe as simply as possible the method that i have used to implement this software.
 
-Currently, detection and decoding for NFC-A, NFC-B and NFC-V modulation has been implemented.
+Currently, detection and decoding for NFC-A (ISO14443A), NFC-B (ISO14443B) and NFC-V (ISO15693) modulation has been implemented.
 
 ## Signal processing
 
@@ -33,7 +33,7 @@ after the command.
 
 ### Demodulation
 
-Due to the digital nature of the signal i used a technique called symbol correlation which is equivalent to carrying out
+Due to the digital nature of the signal I used a technique called symbol correlation which is equivalent to carrying out
 the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A
 modulation is based on 6 patterns: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications
 for complete description).
@@ -130,8 +130,6 @@ works with others.
 - RTL SDR: It works by tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling frequency 
   of 3Mbps and its 8 bits of precision only allows you to capture the commands.
 
-NOTE: Due to the above, the support for RTL-SDR is not finalized due to its limited application.
-
 ![Devices](doc/nfc-lab-devices1.png?raw=true "Devices")
 
 ![Devices](doc/nfc-lab-devices3.png?raw=true "Devices")
@@ -148,8 +146,6 @@ The demodulator is designed to run in real time, so it requires a recent compute
 During development, I have opted for a mixed approach where some optimizations are sacrificed in favor of maintaining clarity in the code and facilitating its monitoring and debugging.
 
 For this reason it is possible that certain parts can be improved in performance, but I have done it as a didactic exercise rather than a production application.
-
-The real-time spectrum analyzer requires a graphics card with OpenGL support and geometry shaders, otherwise the "NFC Frequency" view will not be displayed correctly.
 
 ## Build instructions
 
@@ -342,7 +338,7 @@ licenses, please check if you are interested in this work.
 
 ## Next steps, work in Android?
 
-I have not spent much time, but i been able to migrate this SW to Android (very simplified) by connecting an SDR
+I have been able to migrate this SW to Android (very simplified) by connecting an SDR
 receiver and sniff NFC frames in real-time, interesting thing to investigate, maybe start a new project with this...
 
 ## Releases

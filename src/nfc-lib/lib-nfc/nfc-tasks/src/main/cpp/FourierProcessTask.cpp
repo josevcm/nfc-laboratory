@@ -23,7 +23,9 @@
 */
 
 #if defined(__SSE2__) && defined(USE_SSE2)
+
 #include <x86intrin.h>
+
 #endif
 
 #include <fft.h>
@@ -49,7 +51,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
    // FFT length and decimation
    int length;
-   int decimation = 16;
+   int decimation = 4;
 
    // FFT buffers
    float *fftIn = nullptr;
@@ -160,8 +162,8 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
             __m128 w1 = _mm_set_ps(fftWin[w + 1], fftWin[w + 1], fftWin[w + 0], fftWin[w + 0]);
             __m128 w2 = _mm_set_ps(fftWin[w + 3], fftWin[w + 3], fftWin[w + 2], fftWin[w + 2]);
 
-            __m128 a1 = _mm_load_ps(data + i + 0);
-            __m128 a2 = _mm_load_ps(data + i + 4);
+            __m128 a1 = _mm_load_ps(data + i * decimation + 0);
+            __m128 a2 = _mm_load_ps(data + i * decimation + 4);
 
             __m128 r1 = _mm_mul_ps(a1, w1);
             __m128 r2 = _mm_mul_ps(a2, w2);
