@@ -913,7 +913,7 @@
   </connection>
   <connection>
    <sender>gainValue</sender>
-   <signal>sliderMoved(int)</signal>
+   <signal>valueChanged(int)</signal>
    <receiver>MainView</receiver>
    <slot>changeGainValue(int)</slot>
    <hints>
@@ -927,11 +927,29 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>gainValue</sender>
+   <signal>sliderMoved(int)</signal>
+   <receiver>MainView</receiver>
+   <slot>trackGainValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>946</x>
+     <y>555</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>361</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>openFile()</slot>
   <slot>selectionChanged(QItemSelection,QItemSelection)</slot>
+  <slot>changeGainMode(int)</slot>
   <slot>changeGainValue(int)</slot>
+  <slot>trackGainValue(int)</slot>
   <slot>openSettings()</slot>
   <slot>saveFile()</slot>
   <slot>clearView()</slot>
@@ -943,6 +961,5 @@
   <slot>toggleStop()</slot>
   <slot>toggleTunerAgc(bool)</slot>
   <slot>toggleMixerAgc(bool)</slot>
-  <slot>changeGainMode(int)</slot>
  </slots>
 </ui>

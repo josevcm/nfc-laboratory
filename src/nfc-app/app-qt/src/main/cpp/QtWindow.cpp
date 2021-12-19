@@ -75,18 +75,19 @@ struct QtWindow::Impl
 
    // receiver parameters
    QStringList deviceList;
-   QMap<int, QString> receiverGainModes;
-   QMap<int, QString> receiverGainValues;
+   QList<int> deviceGainList;
+   QMap<int, QString> deviceGainValues;
+   QMap<int, QString> deviceGainModes;
 
    // current device parameters
-   QString receiverName;
-   QString receiverType;
-   QString receiverStatus;
-   int receiverFrequency = 0;
-   int receiverSampleRate = 0;
-   int receiverSampleCount = 0;
-   int receiverGainMode = -1;
-   int receiverGainValue = -1;
+   QString deviceName;
+   QString deviceType;
+   QString deviceStatus;
+   int deviceFrequency = 0;
+   int deviceSampleRate = 0;
+   int deviceSampleCount = 0;
+   int deviceGainMode = -1;
+   int deviceGainValue = -1;
 
    // interface
    QSharedPointer<Ui_MainView> ui;
@@ -204,7 +205,7 @@ struct QtWindow::Impl
    void systemStartup(SystemStartupEvent *event)
    {
       // configure decoder parameters on startup
-      DecoderControlEvent *decoderControlEvent = new DecoderControlEvent(DecoderControlEvent::DecoderConfig);
+      auto *decoderConfigEvent = new DecoderControlEvent(DecoderControlEvent::DecoderConfig);
 
       for (QString &group: settings.childGroups())
       {
@@ -221,13 +222,13 @@ struct QtWindow::Impl
                   QString nfc = group.mid(sep + 1);
 
                   if (key.toLower().contains("enabled"))
-                     decoderControlEvent->setBoolean(nfc + "/" + key, settings.value(key).toBool());
+                     decoderConfigEvent->setBoolean(nfc + "/" + key, settings.value(key).toBool());
                   else
-                     decoderControlEvent->setFloat(nfc + "/" + key, settings.value(key).toFloat());
+                     decoderConfigEvent->setFloat(nfc + "/" + key, settings.value(key).toFloat());
                }
                else
                {
-                  decoderControlEvent->setFloat(key, settings.value(key).toFloat());
+                  decoderConfigEvent->setFloat(key, settings.value(key).toFloat());
                }
             }
 
@@ -235,7 +236,7 @@ struct QtWindow::Impl
          }
       }
 
-      QtApplication::post(decoderControlEvent);
+      QtApplication::post(decoderConfigEvent);
    }
 
    void systemShutdown(SystemShutdownEvent *event)
@@ -257,22 +258,22 @@ struct QtWindow::Impl
    void receiverStatusEvent(ReceiverStatusEvent *event)
    {
       if (event->hasGainModeList())
-         setReceiverGainModes(event->gainModeList());
+         updateGainModes(event->gainModeList());
 
       if (event->hasGainValueList())
-         setReceiverGainValues(event->gainValueList());
+         updateGainValues(event->gainValueList());
 
       if (event->hasReceiverName())
-         setReceiverDevice(event->source());
+         updateDeviceName(event->source());
 
       if (event->hasReceiverStatus())
-         setReceiverStatus(event->status());
+         updateDeviceStatus(event->status());
 
       if (event->hasSignalPower())
-         setSignalPower(event->signalPower());
+         updateSignalPower(event->signalPower());
 
       if (event->hasSampleCount())
-         setReceiverSampleCount(event->sampleCount());
+         updateSampleCount(event->sampleCount());
    }
 
    void storageStatusEvent(StorageStatusEvent *event) const
@@ -306,15 +307,41 @@ struct QtWindow::Impl
    {
    }
 
-   void setReceiverStatus(const QString &value)
+   void updateDeviceName(const QString &value)
    {
-      if (receiverStatus != value)
+      if (deviceName != value)
+      {
+         qInfo() << "receiver device changed:" << value;
+
+         deviceName = value;
+
+         if (!deviceName.isEmpty())
+         {
+            deviceType = deviceName.left(deviceName.indexOf("://"));
+
+            ui->statusBar->showMessage(deviceName);
+
+            updateFrequency(settings.value("device." + deviceType + "/centerFreq", "13560000").toInt());
+            updateSampleRate(settings.value("device." + deviceType + "/sampleRate", "10000000").toInt());
+            updateGainMode(settings.value("device." + deviceType + "/gainMode", "1").toInt());
+            updateGainValue(settings.value("device." + deviceType + "/gainValue", "6").toInt());
+
+            ui->eventsLog->append(QString("Detected device %1").arg(deviceName));
+         }
+
+         updateHeader();
+      }
+   }
+
+   void updateDeviceStatus(const QString &value)
+   {
+      if (deviceStatus != value)
       {
          qInfo() << "receiver status changed:" << value;
 
-         receiverStatus = value;
+         deviceStatus = value;
 
-         if (receiverStatus == ReceiverStatusEvent::NoDevice)
+         if (deviceStatus == ReceiverStatusEvent::NoDevice)
          {
             ui->listenButton->setEnabled(false);
             ui->recordButton->setEnabled(false);
@@ -326,7 +353,7 @@ struct QtWindow::Impl
             ui->statusBar->showMessage("No device found");
          }
 
-         else if (receiverStatus == ReceiverStatusEvent::Idle)
+         else if (deviceStatus == ReceiverStatusEvent::Idle)
          {
             ui->listenButton->setEnabled(true);
             ui->recordButton->setEnabled(true);
@@ -335,80 +362,54 @@ struct QtWindow::Impl
             ui->gainMode->setEnabled(true);
             ui->gainValue->setEnabled(true);
 
-            setReceiverGainMode(receiverGainMode);
-            setReceiverGainValue(receiverGainValue);
+            updateGainMode(deviceGainMode);
+            updateGainValue(deviceGainValue);
          }
 
-         else if (receiverStatus == ReceiverStatusEvent::Streaming)
+         else if (deviceStatus == ReceiverStatusEvent::Streaming)
          {
             ui->listenButton->setEnabled(false);
             ui->recordButton->setEnabled(false);
             ui->stopButton->setEnabled(true);
 
-            setReceiverGainMode(receiverGainMode);
-            setReceiverGainValue(receiverGainValue);
+            updateGainMode(deviceGainMode);
+            updateGainValue(deviceGainValue);
          }
       }
    }
 
-   void setReceiverDevice(const QString &value)
+   void updateGainModes(const QMap<int, QString> &value)
    {
-      if (receiverName != value)
-      {
-         qInfo() << "receiver device changed:" << value;
-
-         receiverName = value;
-
-         if (!receiverName.isEmpty())
-         {
-            receiverType = receiverName.left(receiverName.indexOf("://"));
-
-            ui->statusBar->showMessage(receiverName);
-
-            setReceiverFrequency(settings.value("device." + receiverType + "/centerFreq", "13560000").toInt());
-            setReceiverSampleRate(settings.value("device." + receiverType + "/sampleRate", "10000000").toInt());
-            setReceiverGainMode(settings.value("device." + receiverType + "/gainMode", "1").toInt());
-            setReceiverGainValue(settings.value("device." + receiverType + "/gainValue", "6").toInt());
-
-            ui->eventsLog->append(QString("Detected device %1").arg(receiverName));
-         }
-
-         updateHeader();
-      }
-   }
-
-   void setReceiverGainModes(const QMap<int, QString> &value)
-   {
-      if (receiverGainModes != value)
+      if (deviceGainModes != value)
       {
          qInfo() << "receiver gains modes changed:" << value;
 
-         receiverGainModes = value;
+         deviceGainModes = value;
 
          ui->gainMode->blockSignals(true);
          ui->gainMode->clear();
 
-         for (auto const &mode: receiverGainModes.keys())
-            ui->gainMode->addItem(receiverGainModes[mode], mode);
+         for (auto const &mode: deviceGainModes.keys())
+            ui->gainMode->addItem(deviceGainModes[mode], mode);
 
-         ui->gainMode->setCurrentIndex(ui->gainMode->findData(receiverGainMode));
+         ui->gainMode->setCurrentIndex(ui->gainMode->findData(deviceGainMode));
          ui->gainMode->blockSignals(false);
       }
    }
 
-   void setReceiverGainValues(const QMap<int, QString> &value)
+   void updateGainValues(const QMap<int, QString> &value)
    {
-      if (receiverGainValues != value)
+      if (deviceGainValues != value)
       {
          qInfo() << "receiver gains values changed:" << value;
 
-         receiverGainValues = value;
+         deviceGainValues = value;
+         deviceGainList = deviceGainValues.keys();
 
-         if (!receiverGainValues.isEmpty())
+         if (!deviceGainList.isEmpty())
          {
-            ui->gainValue->setRange(receiverGainValues.keys().first(), receiverGainValues.keys().last());
-            ui->gainValue->setValue(receiverGainValue);
-
+            ui->gainValue->setRange(0, deviceGainList.count());
+            ui->gainValue->setValue(deviceGainList.indexOf(deviceGainValue));
          }
          else
          {
@@ -417,61 +418,63 @@ struct QtWindow::Impl
       }
    }
 
-   void setReceiverFrequency(long value)
+   void updateFrequency(long value)
    {
-      if (receiverFrequency != value)
+      if (deviceFrequency != value)
       {
          qInfo() << "receiver frequency changed:" << value;
 
-         receiverFrequency = value;
+         deviceFrequency = value;
 
-         ui->frequencyView->setCenterFreq(receiverFrequency);
+         ui->frequencyView->setCenterFreq(deviceFrequency);
 
-         if (!receiverType.isEmpty())
-            settings.setValue("device." + receiverType + "/centerFreq", receiverFrequency);
+         if (!deviceType.isEmpty())
+            settings.setValue("device." + deviceType + "/centerFreq", deviceFrequency);
 
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {{"centerFreq", receiverFrequency}}));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {
+               {"centerFreq", deviceFrequency}
+         }));
 
          updateHeader();
       }
    }
 
-   void setReceiverSampleRate(long value)
+   void updateSampleRate(long value)
    {
-      if (receiverSampleRate != value)
+      if (deviceSampleRate != value)
       {
          qInfo() << "receiver samplerate changed:" << value;
 
-         receiverSampleRate = value;
+         deviceSampleRate = value;
 
-         ui->frequencyView->setSampleRate(receiverSampleRate);
+         ui->frequencyView->setSampleRate(deviceSampleRate);
 
-         if (!receiverType.isEmpty())
-            settings.setValue("device." + receiverType + "/sampleRate", receiverSampleRate);
+         if (!deviceType.isEmpty())
+            settings.setValue("device." + deviceType + "/sampleRate", deviceSampleRate);
 
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {{"sampleRate", receiverSampleRate}}));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {{"sampleRate", deviceSampleRate}}));
 
          updateHeader();
       }
    }
 
-   void setReceiverGainMode(int value)
+   void updateGainMode(int value)
    {
-      if (receiverGainMode != value)
+      if (deviceGainMode != value)
       {
-         receiverGainMode = value;
+         deviceGainMode = value;
 
          qInfo() << "receiver gain mode changed:" << value;
 
-         if (!receiverType.isEmpty())
-            settings.setValue("device." + receiverType + "/gainMode", receiverGainMode);
+         if (!deviceType.isEmpty())
+            settings.setValue("device." + deviceType + "/gainMode", deviceGainMode);
 
          if (ui->gainMode->count() > 0)
          {
-            if (receiverGainMode)
+            if (deviceGainMode)
             {
-               ui->gainValue->setValue(receiverGainValue);
-               ui->gainLabel->setText(QString("Gain %1").arg(receiverGainValues[receiverGainValue]));
+               ui->gainValue->setValue(deviceGainList.indexOf(deviceGainValue));
+               ui->gainLabel->setText(QString("Gain %1").arg(deviceGainValues[deviceGainValue]));
             }
             else
             {
@@ -479,11 +482,11 @@ struct QtWindow::Impl
                ui->gainLabel->setText(QString("Gain AUTO"));
             }
 
-            ui->gainMode->setCurrentIndex(ui->gainMode->findData(receiverGainMode));
+            ui->gainMode->setCurrentIndex(ui->gainMode->findData(deviceGainMode));
 
             QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {
-                  {"gainMode",  receiverGainMode},
-                  {"gainValue", receiverGainValue}
+                  {"gainMode",  deviceGainMode},
+                  {"gainValue", deviceGainValue}
             }));
          }
       }
@@ -495,41 +498,41 @@ struct QtWindow::Impl
 //      }
    }
 
-   void setReceiverGainValue(int value)
+   void updateGainValue(int value)
    {
-      if (receiverGainValue != value)
+      if (deviceGainValue != value)
       {
-         receiverGainValue = value;
+         deviceGainValue = value;
 
-         if (receiverGainMode != 0)
+         if (deviceGainMode != 0)
          {
             qInfo() << "receiver gain value changed:" << value;
 
-            ui->gainValue->setValue(receiverGainValue);
-            ui->gainLabel->setText(QString("Gain %1").arg(receiverGainValues[receiverGainValue]));
+            ui->gainValue->setValue(deviceGainList.indexOf(deviceGainValue));
+            ui->gainLabel->setText(QString("Gain %1").arg(deviceGainValues[deviceGainValue]));
 
-            if (!receiverType.isEmpty())
-               settings.setValue("device." + receiverType + "/gainValue", receiverGainValue);
+            if (!deviceType.isEmpty())
+               settings.setValue("device." + deviceType + "/gainValue", deviceGainValue);
 
             QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, {
-                  {"gainMode",  receiverGainMode},
-                  {"gainValue", receiverGainValue}
+                  {"gainMode",  deviceGainMode},
+                  {"gainValue", deviceGainValue}
             }));
          }
       }
    }
 
-   void setReceiverSampleCount(long value)
+   void updateSampleCount(long value)
    {
-      if (receiverSampleCount != value)
+      if (deviceSampleCount != value)
       {
-         receiverSampleCount = value;
+         deviceSampleCount = value;
 
          updateHeader();
       }
    }
 
-   void setSignalPower(float value)
+   void updateSignalPower(float value)
    {
       ui->signalStrength->setValue(value * 100);
    }
@@ -546,6 +549,15 @@ struct QtWindow::Impl
       filterEnabled = value;
 
       ui->actionFilter->setChecked(filterEnabled);
+   }
+
+   void trackGainValue(int index)
+   {
+      int value = deviceGainList[index];
+
+      qInfo() << "receiver gain value changed:" << value;
+
+      ui->gainLabel->setText(QString("Gain %1").arg(deviceGainValues[value]));
    }
 
    void toggleListen()
@@ -566,7 +578,12 @@ struct QtWindow::Impl
       ui->listenButton->setEnabled(false);
       ui->recordButton->setEnabled(false);
 
-      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverRecord));
+      QString fileName = QString("record-%1.wav").arg(QDateTime::currentDateTime().toString("yyyyMMddHHmmss"));
+
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverRecord, {
+            {"fileName",   fileName},
+            {"sampleRate", deviceSampleRate}
+      }));
    }
 
    void toggleStop()
@@ -618,9 +635,9 @@ struct QtWindow::Impl
 
    void updateHeader()
    {
-      if (receiverType == "airspy")
+      if (deviceType == "airspy")
       {
-         QString info = QString("Airspy, %1MHz %2Msp (%3MB)").arg(receiverFrequency / 1E6, -1, 'f', 2).arg(receiverSampleRate / 1E6, -1, 'f', 2).arg(receiverSampleCount >> 19);
+         QString info = QString("Airspy, %1MHz %2Msp (%3MB)").arg(deviceFrequency / 1E6, -1, 'f', 2).arg(deviceSampleRate / 1E6, -1, 'f', 2).arg(deviceSampleCount >> 19);
 
          ui->headerLabel->setText(info);
       }
@@ -855,7 +872,9 @@ void QtWindow::openFile()
 
       clearView();
 
-      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReadFile, "file", fileName));
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReadFile, {
+            {"fileName", fileName}
+      }));
    }
 }
 
@@ -868,7 +887,10 @@ void QtWindow::saveFile()
 
    if (!fileName.isEmpty())
    {
-      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::WriteFile, "file", fileName));
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::WriteFile, {
+            {"fileName",   fileName},
+            {"sampleRate", impl->deviceSampleRate}
+      }));
    }
 }
 
@@ -899,12 +921,17 @@ void QtWindow::toggleFilter()
 
 void QtWindow::changeGainMode(int index)
 {
-   impl->setReceiverGainMode(impl->ui->gainMode->itemData(index).toInt());
+   impl->updateGainMode(impl->ui->gainMode->itemData(index).toInt());
 }
 
-void QtWindow::changeGainValue(int value)
+void QtWindow::changeGainValue(int index)
 {
-   impl->setReceiverGainValue(value);
+   impl->updateGainValue(impl->deviceGainList[index]);
+}
+
+void QtWindow::trackGainValue(int index)
+{
+   impl->trackGainValue(index);
 }
 
 void QtWindow::keyPressEvent(QKeyEvent *event)

@@ -65,6 +65,8 @@ class QtWindow : public QMainWindow
 
       void changeGainValue(int value);
 
+      void trackGainValue(int value);
+
    protected:
 
       void keyPressEvent(QKeyEvent *event) override;

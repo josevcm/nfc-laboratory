@@ -23,7 +23,9 @@
 */
 
 #if defined(__SSE2__) && defined(USE_SSE2)
+
 #include <x86intrin.h>
+
 #endif
 
 #include <rt/Logger.h>
@@ -155,84 +157,113 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
 
    void readFile(const rt::Event &command)
    {
-      if (auto file = command.get<std::string>("file"))
+      if (auto data = command.get<std::string>("data"))
       {
-         device = std::make_shared<sdr::RecordDevice>(file.value());
+         auto config = json::parse(data.value());
 
-         signalQueue.clear();
+         log.info("read file command: {}", {config.dump()});
 
-         if (device->open(sdr::SignalDevice::Read))
+         if (config.contains("fileName"))
          {
-            if (device->channelCount() <= 2)
+            device = std::make_shared<sdr::RecordDevice>(config["fileName"]);
+
+            signalQueue.clear();
+
+            if (device->open(sdr::SignalDevice::Read))
             {
-               log.info("streaming started for file [{}]", {device->name()});
+               if (device->channelCount() <= 2)
+               {
+                  log.info("streaming started for file [{}]", {device->name()});
 
-               command.resolve();
+                  command.resolve();
 
-               updateRecorderStatus(SignalRecorderTask::Reading);
+                  updateRecorderStatus(SignalRecorderTask::Reading);
+
+                  return;
+               }
+               else
+               {
+                  log.warn("too many channels in file [{}]", {device->name()});
+
+                  device.reset();
+               }
             }
             else
             {
-               log.warn("too many channels in file [{}]", {device->name()});
+               log.warn("unable to open file [{}]", {device->name()});
 
                device.reset();
-
-               command.reject();
-
-               updateRecorderStatus(SignalRecorderTask::Idle);
             }
          }
          else
          {
-            log.warn("unable to open file [{}]", {device->name()});
-
-            device.reset();
-
-            command.reject();
-
-            updateRecorderStatus(SignalRecorderTask::Idle);
+            log.info("recording failed, no file name");
          }
       }
       else
       {
-         command.reject();
+         log.info("recording failed, invalid command data");
       }
+
+      command.reject();
+
+      updateRecorderStatus(SignalRecorderTask::Idle);
    }
 
    void writeFile(const rt::Event &command)
    {
-      if (auto file = command.get<std::string>("file"))
+      if (auto data = command.get<std::string>("data"))
       {
-         device = std::make_shared<sdr::RecordDevice>(file.value());
+         auto config = json::parse(data.value());
 
-         device->setSampleRate(10E6);
-         device->setChannelCount(1);
+         log.info("write file command: {}", {config.dump()});
 
-         signalQueue.clear();
-
-         if (device->open(sdr::SignalDevice::Write))
+         if (config.contains("fileName"))
          {
-            log.info("enable recording {}", {device->name()});
+            device = std::make_shared<sdr::RecordDevice>(config["fileName"]);
 
-            command.resolve();
+            if (config.contains("sampleRate"))
+               device->setSampleRate(config["sampleRate"]);
+            else
+               device->setSampleRate(10E6);
 
-            updateRecorderStatus(SignalRecorderTask::Writing);
+            if (config.contains("channelCount"))
+               device->setChannelCount(config["channelCount"]);
+            else
+               device->setChannelCount(1);
+
+            signalQueue.clear();
+
+            if (device->open(sdr::SignalDevice::Write))
+            {
+               log.info("enable recording {}", {device->name()});
+
+               command.resolve();
+
+               updateRecorderStatus(SignalRecorderTask::Writing);
+
+               return;
+            }
+            else
+            {
+               log.info("enable recording {} failed!", {device->name()});
+
+               device.reset();
+            }
          }
          else
          {
-            log.info("enable recording {} failed!", {device->name()});
-
-            device.reset();
-
-            command.reject();
-
-            updateRecorderStatus(SignalRecorderTask::Idle);
+            log.info("recording failed, no file name");
          }
       }
       else
       {
-         command.reject();
+         log.info("recording failed, invalid command data");
       }
+
+      command.reject();
+
+      updateRecorderStatus(SignalRecorderTask::Idle);
    }
 
    void closeFile(const rt::Event &command)

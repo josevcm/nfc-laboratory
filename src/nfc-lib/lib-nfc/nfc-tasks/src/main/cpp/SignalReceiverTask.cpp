@@ -154,11 +154,31 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
             if (receiver)
             {
-               // default parameters
-               receiver->setCenterFreq(13.56E6);
-               receiver->setSampleRate(10E6);
-               receiver->setGainMode(0);
-               receiver->setGainValue(0);
+               // default parameters for AirSpy
+               if (name.find("airspy") == 0)
+               {
+                  receiver->setCenterFreq(40.68E6);
+                  receiver->setSampleRate(10E6);
+                  receiver->setGainMode(1);
+                  receiver->setGainValue(4);
+               }
+                  // default parameters for Rtl SDR
+               else if (name.find("rtlsdr") == 0)
+               {
+                  receiver->setCenterFreq(27.12E6);
+                  receiver->setSampleRate(3.2E6);
+                  receiver->setGainMode(1);
+                  receiver->setGainValue(77);
+               }
+                  // default parameters for others
+               else
+               {
+                  receiver->setCenterFreq(13.56E6);
+                  receiver->setSampleRate(10E6);
+                  receiver->setGainMode(0);
+                  receiver->setGainValue(0);
+               }
+
                receiver->setMixerAgc(0);
                receiver->setTunerAgc(0);
                receiver->setTestMode(0);

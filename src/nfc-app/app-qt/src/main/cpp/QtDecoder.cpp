@@ -268,7 +268,10 @@ struct QtDecoder::Impl
 
    void doReceiverRecord(DecoderControlEvent *event) const
    {
-      QString name = QString("record-%1.wav").arg(QDateTime::currentDateTime().toString("yyyyMMddHHmmss"));
+      QJsonObject json;
+
+      json["fileName"] = event->getString("fileName");
+      json["sampleRate"] = event->getInteger("sampleRate");
 
       // clear signal cache
       cache->clear();
@@ -277,7 +280,7 @@ struct QtDecoder::Impl
       taskStorageClear();
 
       // start recorder and...
-      taskRecorderWrite(name, [=] {
+      taskRecorderWrite(json, [=] {
          // start decoder and...
          taskDecoderStart([=] {
             // enable receiver
@@ -387,26 +390,31 @@ struct QtDecoder::Impl
 
    void doReadFile(DecoderControlEvent *event) const
    {
-      QString name = event->getString("file");
+      QJsonObject json;
 
-      if (name.endsWith(".wav"))
+      QString fileName = event->getString("fileName");
+
+      json["fileName"] = fileName;
+
+      if (fileName.endsWith(".wav"))
       {
          // clear storage queue
          taskStorageClear();
 
          // start decoder and...
          taskDecoderStart([=] {
+
             // read file
-            taskRecorderRead(name);
+            taskRecorderRead(json);
          });
       }
-      else if (name.endsWith(".xml") || name.endsWith(".json"))
+      else if (fileName.endsWith(".xml") || fileName.endsWith(".json"))
       {
          // clear storage queue
          taskStorageClear();
 
          // start XML file read
-         taskStorageRead(name);
+         taskStorageRead(fileName);
       }
    }
 
@@ -472,14 +480,18 @@ struct QtDecoder::Impl
    /*
     * Recorder Task control
     */
-   void taskRecorderRead(const QString &name, std::function<void()> onComplete = nullptr) const
+   void taskRecorderRead(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
-      recorderCommandStream->next({nfc::SignalRecorderTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
+      QJsonDocument doc(data);
+
+      recorderCommandStream->next({nfc::SignalRecorderTask::Read, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
-   void taskRecorderWrite(const QString &name, std::function<void()> onComplete = nullptr) const
+   void taskRecorderWrite(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
-      recorderCommandStream->next({nfc::SignalRecorderTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
+      QJsonDocument doc(data);
+
+      recorderCommandStream->next({nfc::SignalRecorderTask::Write, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
    void taskRecorderStop(std::function<void()> onComplete = nullptr) const
