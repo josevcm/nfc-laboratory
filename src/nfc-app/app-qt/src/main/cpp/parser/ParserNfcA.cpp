@@ -74,10 +74,7 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
             info = ParserNfcIsoDep::parse(frame);
 
          } while (false);
-
-         lastCommand = frame[0];
       }
-
          // Mifare AUTH, two pass
       else if (frameChain == 0x60 || frameChain == 0x61)
       {
@@ -120,6 +117,8 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
          info = ParserNfcIsoDep::parse(frame);
 
       } while (false);
+
+      lastCommand = 0;
    }
 
    return info;
@@ -127,8 +126,10 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcA::parseRequestREQA(const nfc::NfcFrame &frame)
 {
-   if (frame[0] != 0x26)
+   if (frame[0] != 0x26 || frame.size() != 1)
       return nullptr;
+
+   lastCommand = frame[0];
 
    int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
 
@@ -184,6 +185,8 @@ ProtocolFrame *ParserNfcA::parseRequestWUPA(const nfc::NfcFrame &frame)
    if (frame[0] != 0x52)
       return nullptr;
 
+   lastCommand = frame[0];
+
    int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
 
    return buildFrameInfo("WUPA", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
@@ -201,7 +204,9 @@ ProtocolFrame *ParserNfcA::parseRequestSELn(const nfc::NfcFrame &frame)
    if (cmd != 0x93 && cmd != 0x95 && cmd != 0x97)
       return nullptr;
 
-   ProtocolFrame *root = nullptr;
+   lastCommand = frame[0];
+
+   ProtocolFrame *root;
 
    int nvb = frame[1] >> 4;
    int flags = 0;
@@ -299,6 +304,8 @@ ProtocolFrame *ParserNfcA::parseRequestRATS(const nfc::NfcFrame &frame)
 {
    if (frame[0] != 0xE0)
       return nullptr;
+
+   lastCommand = frame[0];
 
    int par = frame[1];
    int cdi = (par & 0x0F);
@@ -440,6 +447,8 @@ ProtocolFrame *ParserNfcA::parseRequestHLTA(const nfc::NfcFrame &frame)
    if (frame[0] != 0x50)
       return nullptr;
 
+   lastCommand = frame[0];
+
    int flags = 0;
 
    flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
@@ -468,6 +477,8 @@ ProtocolFrame *ParserNfcA::parseRequestPPSr(const nfc::NfcFrame &frame)
 
    if ((pps & 0xF0) != 0xD0)
       return nullptr;
+
+   lastCommand = frame[0];
 
    int flags = 0;
 
@@ -526,6 +537,8 @@ ProtocolFrame *ParserNfcA::parseRequestAUTH(const nfc::NfcFrame &frame)
 {
    if (frame[0] != 0x60 && frame[0] != 0x61)
       return nullptr;
+
+   lastCommand = frame[0];
 
    int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
 

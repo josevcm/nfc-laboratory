@@ -110,11 +110,13 @@ class AirspyDevice : public RadioDevice
 
       int setDecimation(int value) override;
 
+      int testMode() const override;
+
+      int setTestMode(int value) override;
+
       long samplesReceived() override;
 
       long samplesDropped() override;
-
-      long samplesStreamed() override;
 
       std::map<int, std::string> supportedSampleRates() const override;
 

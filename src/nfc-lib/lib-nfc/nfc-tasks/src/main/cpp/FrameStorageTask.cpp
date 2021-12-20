@@ -80,7 +80,7 @@ struct FrameStorageTask::Impl : FrameStorageTask, AbstractTask
        */
       if (auto command = commandQueue.get())
       {
-         log.info("recorder command [{}]", {command->code});
+         log.debug("recorder command [{}]", {command->code});
 
          if (command->code == FrameStorageTask::Read)
          {

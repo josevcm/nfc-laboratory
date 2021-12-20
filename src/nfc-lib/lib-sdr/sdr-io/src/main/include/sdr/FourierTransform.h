@@ -22,39 +22,29 @@
 
 */
 
-#include <sdr/AirspyDevice.h>
-#include <sdr/RealtekDevice.h>
-#include <sdr/DeviceFactory.h>
+#ifndef SDR_FOURIERTRANSFORM_H
+#define SDR_FOURIERTRANSFORM_H
+
+#include <sdr/SignalBuffer.h>
 
 namespace sdr {
 
-std::vector<std::string> DeviceFactory::deviceList()
+class FourierTransform
 {
-   std::vector<std::string> devices;
+   public:
 
-   // add AirSpy devices
-   for (const auto &entry: sdr::AirspyDevice::listDevices())
-      devices.push_back(entry);
+      struct Impl;
 
-   // add RTl-SDR devices
-   for (const auto &entry: sdr::RealtekDevice::listDevices())
-      devices.push_back(entry);
+   public:
 
-   return devices;
-}
+      explicit FourierTransform(int points);
 
-RadioDevice *DeviceFactory::newInstance(const std::string &name)
-{
-   if (name.rfind("airspy://", 0) == 0)
-      return new AirspyDevice(name);
+      void execute(SignalBuffer &in, SignalBuffer &out);
 
-   if (name.rfind("rtlsdr://", 0) == 0)
-      return new RealtekDevice(name);
+   private:
 
-   //   if (name.startsWith("lime://"))
-//      return new LimeDevice(name, parent);
-
-   return nullptr;
-}
+      std::shared_ptr<Impl> impl;
+};
 
 }
+#endif

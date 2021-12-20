@@ -57,19 +57,15 @@ class QtWindow : public QMainWindow
 
       void toggleStop();
 
-      void toggleLive();
-
       void toggleFollow();
 
       void toggleFilter();
 
-      void toggleTunerAgc(bool value);
-
-      void toggleMixerAgc(bool value);
-
       void changeGainMode(int index);
 
       void changeGainValue(int value);
+
+      void trackGainValue(int value);
 
    protected:
 

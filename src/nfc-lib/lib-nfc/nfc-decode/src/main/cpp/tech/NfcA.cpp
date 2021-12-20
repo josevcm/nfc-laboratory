@@ -49,7 +49,8 @@ enum PatternType
    PatternF = 7,
    PatternM = 8,
    PatternN = 9,
-   PatternO = 10
+   PatternS = 10,
+   PatternO = 11
 };
 
 struct NfcA::Impl
@@ -573,7 +574,7 @@ struct NfcA::Impl
             pattern = decodeListenFrameStartBpsk(buffer);
 
             // Pattern-M found, mark frame start time
-            if (pattern == PatternType::PatternM)
+            if (pattern == PatternType::PatternS)
             {
                frameStatus.frameStart = symbolStatus.start;
             }
@@ -1185,7 +1186,7 @@ struct NfcA::Impl
 #endif
          // set symbol window
          modulation->symbolSyncTime = 0;
-         modulation->symbolStartTime = modulation->searchPeakTime;
+         modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples - 500 * decoder->signalParams.sampleTimeUnit;
          modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
          modulation->symbolPhase = modulation->phaseIntegrate;
          modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
@@ -1196,7 +1197,7 @@ struct NfcA::Impl
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-         pattern = PatternType::PatternM;
+         pattern = PatternType::PatternS;
          break;
       }
 

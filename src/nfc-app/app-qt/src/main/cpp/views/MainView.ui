@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>NFC laboratory - v2.5.0, Jose Vicente Campos Martinez - josevcm@gmail.com</string>
+   <string>NFC laboratory - v2.6.0, Jose Vicente Campos Martinez - josevcm@gmail.com</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -331,6 +331,9 @@
        <property name="currentIndex">
         <number>3</number>
        </property>
+       <property name="tabBarAutoHide">
+        <bool>true</bool>
+       </property>
        <widget class="QWidget" name="parserTab">
         <attribute name="title">
          <string>Protocol</string>
@@ -454,9 +457,9 @@
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="qualityTab">
+       <widget class="QWidget" name="receiverTab">
         <attribute name="title">
-         <string>Frequency</string>
+         <string>Receiver</string>
         </attribute>
         <layout class="QHBoxLayout" name="horizontalLayout_22">
          <property name="spacing">
@@ -482,6 +485,89 @@
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="widget" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <property name="leftMargin">
+             <number>10</number>
+            </property>
+            <property name="topMargin">
+             <number>10</number>
+            </property>
+            <property name="rightMargin">
+             <number>10</number>
+            </property>
+            <property name="bottomMargin">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QComboBox" name="gainMode">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_5">
+              <item>
+               <widget class="QSlider" name="gainValue">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>24</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="tracking">
+                 <bool>false</bool>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QProgressBar" name="signalStrength">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="value">
+                 <number>0</number>
+                </property>
+                <property name="textVisible">
+                 <bool>false</bool>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QLabel" name="gainLabel">
+              <property name="text">
+               <string>Gain: </string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </widget>
          </item>
         </layout>
@@ -515,198 +601,6 @@
             </font>
            </property>
           </widget>
-         </item>
-        </layout>
-       </widget>
-      </widget>
-     </item>
-     <item>
-      <widget class="QTabWidget" name="controlTabs">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>150</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="font">
-        <font>
-         <family>Verdana</family>
-         <pointsize>8</pointsize>
-        </font>
-       </property>
-       <property name="currentIndex">
-        <number>0</number>
-       </property>
-       <widget class="QWidget" name="receiverOptions">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
-        </property>
-        <attribute name="title">
-         <string>Receiver</string>
-        </attribute>
-        <layout class="QVBoxLayout" name="verticalLayout_4">
-         <item>
-          <widget class="QCheckBox" name="tunerAgc">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="text">
-            <string>Tuner AGC</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="mixerAgc">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="text">
-            <string>Mixer AGC</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="gainMode">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_5">
-           <item>
-            <widget class="QSlider" name="gainValue">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>24</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="tracking">
-              <bool>false</bool>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QProgressBar" name="signalStrength">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="value">
-              <number>0</number>
-             </property>
-             <property name="textVisible">
-              <bool>false</bool>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <widget class="QLabel" name="gainLabel">
-           <property name="text">
-            <string>Gain: </string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="signalOptions">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
-        </property>
-        <attribute name="title">
-         <string>Decoder</string>
-        </attribute>
-        <layout class="QVBoxLayout" name="verticalLayout_5">
-         <property name="leftMargin">
-          <number>5</number>
-         </property>
-         <property name="topMargin">
-          <number>5</number>
-         </property>
-         <property name="rightMargin">
-          <number>5</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Power threshold: </string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Mod. threshold:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-           <item>
-            <widget class="QSlider" name="verticalSlider">
-             <property name="tracking">
-              <bool>false</bool>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSlider" name="verticalSlider_2">
-             <property name="tracking">
-              <bool>false</bool>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
          </item>
         </layout>
        </widget>
@@ -834,36 +728,12 @@
     <string>Filter</string>
    </property>
   </action>
-  <action name="actionLive">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <activeoff>:/app_icons/live-off</activeoff>
-     <activeon>:/app_icons/live-on</activeon>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Live</string>
-   </property>
-  </action>
  </widget>
  <customwidgets>
   <customwidget>
    <class>FourierWidget</class>
    <extends>QWidget</extends>
    <header>widgets/FourierWidget.h</header>
-  </customwidget>
-  <customwidget>
-  <class>FrequencyWidget</class>
-  <extends>QWidget</extends>
-  <header>widgets/FrequencyWidget.h</header>
- </customwidget>
-  <customwidget>
-   <class>QuadratureWidget</class>
-   <extends>QWidget</extends>
-   <header>widgets/QuadratureWidget.h</header>
   </customwidget>
   <customwidget>
    <class>FramesWidget</class>
@@ -978,22 +848,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionLive</sender>
-   <signal>triggered()</signal>
-   <receiver>MainView</receiver>
-   <slot>toggleLive()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>319</x>
-     <y>193</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>listenButton</sender>
    <signal>clicked()</signal>
    <receiver>MainView</receiver>
@@ -1042,38 +896,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>tunerAgc</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>MainView</receiver>
-   <slot>toggleTunerAgc(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>916</x>
-     <y>333</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>mixerAgc</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>MainView</receiver>
-   <slot>toggleMixerAgc(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>916</x>
-     <y>356</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>gainMode</sender>
    <signal>currentIndexChanged(int)</signal>
    <receiver>MainView</receiver>
@@ -1091,7 +913,7 @@
   </connection>
   <connection>
    <sender>gainValue</sender>
-   <signal>sliderMoved(int)</signal>
+   <signal>valueChanged(int)</signal>
    <receiver>MainView</receiver>
    <slot>changeGainValue(int)</slot>
    <hints>
@@ -1105,11 +927,29 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>gainValue</sender>
+   <signal>sliderMoved(int)</signal>
+   <receiver>MainView</receiver>
+   <slot>trackGainValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>946</x>
+     <y>555</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>511</x>
+     <y>361</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>openFile()</slot>
   <slot>selectionChanged(QItemSelection,QItemSelection)</slot>
+  <slot>changeGainMode(int)</slot>
   <slot>changeGainValue(int)</slot>
+  <slot>trackGainValue(int)</slot>
   <slot>openSettings()</slot>
   <slot>saveFile()</slot>
   <slot>clearView()</slot>
@@ -1121,6 +961,5 @@
   <slot>toggleStop()</slot>
   <slot>toggleTunerAgc(bool)</slot>
   <slot>toggleMixerAgc(bool)</slot>
-  <slot>changeGainMode(int)</slot>
  </slots>
 </ui>

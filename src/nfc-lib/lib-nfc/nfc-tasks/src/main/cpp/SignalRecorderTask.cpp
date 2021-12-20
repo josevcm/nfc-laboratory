@@ -22,6 +22,12 @@
 
 */
 
+#if defined(__SSE2__) && defined(USE_SSE2)
+
+#include <x86intrin.h>
+
+#endif
+
 #include <rt/Logger.h>
 
 #include <sdr/SignalType.h>
@@ -90,7 +96,7 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
        */
       if (auto command = commandQueue.get())
       {
-         log.info("recorder command [{}]", {command->code});
+         log.debug("recorder command [{}]", {command->code});
 
          if (command->code == SignalRecorderTask::Read)
          {
@@ -151,84 +157,113 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
 
    void readFile(const rt::Event &command)
    {
-      if (auto file = command.get<std::string>("file"))
+      if (auto data = command.get<std::string>("data"))
       {
-         device = std::make_shared<sdr::RecordDevice>(file.value());
+         auto config = json::parse(data.value());
 
-         signalQueue.clear();
+         log.info("read file command: {}", {config.dump()});
 
-         if (device->open(sdr::SignalDevice::Read))
+         if (config.contains("fileName"))
          {
-            if (device->channelCount() <= 2)
+            device = std::make_shared<sdr::RecordDevice>(config["fileName"]);
+
+            signalQueue.clear();
+
+            if (device->open(sdr::SignalDevice::Read))
             {
-               log.info("streaming started for file [{}]", {device->name()});
+               if (device->channelCount() <= 2)
+               {
+                  log.info("streaming started for file [{}]", {device->name()});
 
-               command.resolve();
+                  command.resolve();
 
-               updateRecorderStatus(SignalRecorderTask::Reading);
+                  updateRecorderStatus(SignalRecorderTask::Reading);
+
+                  return;
+               }
+               else
+               {
+                  log.warn("too many channels in file [{}]", {device->name()});
+
+                  device.reset();
+               }
             }
             else
             {
-               log.warn("too many channels in file [{}]", {device->name()});
+               log.warn("unable to open file [{}]", {device->name()});
 
                device.reset();
-
-               command.reject();
-
-               updateRecorderStatus(SignalRecorderTask::Idle);
             }
          }
          else
          {
-            log.warn("unable to open file [{}]", {device->name()});
-
-            device.reset();
-
-            command.reject();
-
-            updateRecorderStatus(SignalRecorderTask::Idle);
+            log.info("recording failed, no file name");
          }
       }
       else
       {
-         command.reject();
+         log.info("recording failed, invalid command data");
       }
+
+      command.reject();
+
+      updateRecorderStatus(SignalRecorderTask::Idle);
    }
 
    void writeFile(const rt::Event &command)
    {
-      if (auto file = command.get<std::string>("file"))
+      if (auto data = command.get<std::string>("data"))
       {
-         device = std::make_shared<sdr::RecordDevice>(file.value());
+         auto config = json::parse(data.value());
 
-         device->setSampleRate(10E6);
-         device->setChannelCount(1);
+         log.info("write file command: {}", {config.dump()});
 
-         signalQueue.clear();
-
-         if (device->open(sdr::SignalDevice::Write))
+         if (config.contains("fileName"))
          {
-            log.info("enable recording {}", {device->name()});
+            device = std::make_shared<sdr::RecordDevice>(config["fileName"]);
 
-            command.resolve();
+            if (config.contains("sampleRate"))
+               device->setSampleRate(config["sampleRate"]);
+            else
+               device->setSampleRate(10E6);
 
-            updateRecorderStatus(SignalRecorderTask::Writing);
+            if (config.contains("channelCount"))
+               device->setChannelCount(config["channelCount"]);
+            else
+               device->setChannelCount(1);
+
+            signalQueue.clear();
+
+            if (device->open(sdr::SignalDevice::Write))
+            {
+               log.info("enable recording {}", {device->name()});
+
+               command.resolve();
+
+               updateRecorderStatus(SignalRecorderTask::Writing);
+
+               return;
+            }
+            else
+            {
+               log.info("enable recording {} failed!", {device->name()});
+
+               device.reset();
+            }
          }
          else
          {
-            log.info("enable recording {} failed!", {device->name()});
-
-            device.reset();
-
-            command.reject();
-
-            updateRecorderStatus(SignalRecorderTask::Idle);
+            log.info("recording failed, no file name");
          }
       }
       else
       {
-         command.reject();
+         log.info("recording failed, invalid command data");
       }
+
+      command.reject();
+
+      updateRecorderStatus(SignalRecorderTask::Idle);
    }
 
    void closeFile(const rt::Event &command)
@@ -277,27 +312,79 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
             }
             case 2:
             {
-               sdr::SignalBuffer buffer(65536 * channelCount * 2, 2, sampleRate, sampleOffset, 0, sdr::SignalType::SAMPLE_IQ);
+               sdr::SignalBuffer buffer(65536 * channelCount, 2, sampleRate, sampleOffset >> 1, 0, sdr::SignalType::SAMPLE_IQ);
 
                if (device->read(buffer) > 0)
                {
-                  sdr::SignalBuffer result(65536 * channelCount, 1, sampleRate, sampleOffset >> 1, 0, sdr::SignalType::SAMPLE_REAL);
+                  sdr::SignalBuffer result(buffer.elements(), 1, buffer.sampleRate(), buffer.offset(), 0, sdr::SignalType::SAMPLE_REAL);
 
-                  buffer.stream([&result](const float *value, int stride) {
-                     result.put(sqrtf(value[0] * value[0] + value[1] * value[1]));
-                  });
+                  float *src = buffer.data();
+                  float *dst = result.pull(buffer.elements());
 
+                  // compute real signal value
+#if defined(__SSE2__) && defined(USE_SSE2)
+                  for (int j = 0, n = 0; j < buffer.elements(); j += 8, n += 16)
+                  {
+                     // load 8 I/Q vectors
+                     __m128 a1 = _mm_load_ps(src + n + 0);  // I0, Q0, I1, Q1
+                     __m128 a2 = _mm_load_ps(src + n + 4);  // I2, Q2, I3, Q3
+                     __m128 a3 = _mm_load_ps(src + n + 8);  // I4, Q4, I5, Q5
+                     __m128 a4 = _mm_load_ps(src + n + 12); // I6, Q6, I7, Q7
+
+                     // square all components
+                     __m128 p1 = _mm_mul_ps(a1, a1); // I0^2, Q0^2, I1^2, Q1^2
+                     __m128 p2 = _mm_mul_ps(a2, a2); // I2^2, Q2^2, I3^2, Q3^2
+                     __m128 p3 = _mm_mul_ps(a3, a3); // I4^2, Q4^2, I5^2, Q5^2
+                     __m128 p4 = _mm_mul_ps(a4, a4); // I6^2, Q6^2, I6^2, Q7^2
+
+                     // permute components
+                     __m128 i1 = _mm_shuffle_ps(p1, p2, _MM_SHUFFLE(2, 0, 2, 0)); // I0^2, I1^2, I2^2, I3^2
+                     __m128 i2 = _mm_shuffle_ps(p3, p4, _MM_SHUFFLE(2, 0, 2, 0)); // I4^2, I5^2, I6^2, I7^2
+                     __m128 q1 = _mm_shuffle_ps(p1, p2, _MM_SHUFFLE(3, 1, 3, 1)); // Q0^2, Q1^2, Q2^2, Q3^2
+                     __m128 q2 = _mm_shuffle_ps(p3, p4, _MM_SHUFFLE(3, 1, 3, 1)); // Q4^2, Q5^2, Q6^2, Q7^2
+
+                     // add vector components
+                     __m128 r1 = _mm_add_ps(i1, q1); // I0^2+Q0^2, I1^2+Q1^2, I2^2+Q2^2, I3^2+Q3^2
+                     __m128 r2 = _mm_add_ps(i2, q2); // I4^2+Q4^2, I5^2+Q5^2, I6^2+Q6^2, I7^2+Q7^2
+
+                     // square-root vectors
+                     __m128 m1 = _mm_sqrt_ps(r1); // sqrt(I0^2+Q0^2), sqrt(I1^2+Q1^2), sqrt(I2^2+Q2^2), sqrt(I3^2+Q3^2)
+                     __m128 m2 = _mm_sqrt_ps(r2); // sqrt(I4^2+Q4^2), sqrt(I5^2+Q5^2), sqrt(I6^2+Q6^2), sqrt(I7^2+Q7^2)
+
+                     // store results
+                     _mm_store_ps(dst + j + 0, m1);
+                     _mm_store_ps(dst + j + 4, m2);
+                  }
+#else
+#pragma GCC ivdep
+                  for (int j = 0, n = 0; j < buffer.elements(); j += 4, n += 8)
+                  {
+                     dst[j + 0] = sqrtf(src[n + 0] * src[n + 0] + src[n + 1] * src[n + 1]);
+                     dst[j + 1] = sqrtf(src[n + 2] * src[n + 2] + src[n + 3] * src[n + 3]);
+                     dst[j + 2] = sqrtf(src[n + 4] * src[n + 4] + src[n + 5] * src[n + 5]);
+                     dst[j + 3] = sqrtf(src[n + 6] * src[n + 6] + src[n + 7] * src[n + 7]);
+                  }
+#endif
+                  // flip buffer pointers
                   result.flip();
 
+                  // send IQ value buffer
                   signalIqStream->next(buffer);
+
+                  // send Real value buffer
                   signalRvStream->next(result);
                }
 
                break;
             }
+
+            default:
+            {
+               device->close();
+            }
          }
 
-         if (device->isEof())
+         if (device->isEof() || !device->isOpen())
          {
             log.info("streaming finished for file [{}]", {device->name()});
 

@@ -87,7 +87,7 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
        */
       if (auto command = commandQueue.get())
       {
-         log.info("adaptive command [{}]", {command->code});
+         log.debug("adaptive command [{}]", {command->code});
       }
 
       if (auto buffer = signalQueue.get(50))

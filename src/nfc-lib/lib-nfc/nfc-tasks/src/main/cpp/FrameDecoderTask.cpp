@@ -85,7 +85,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
        */
       if (auto command = commandQueue.get())
       {
-         log.info("decoder command [{}]", {command->code});
+         log.debug("decoder command [{}]", {command->code});
 
          if (command->code == FrameDecoderTask::Start)
          {

@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="texture">
-        <file alias="color-magma">rc/color-magma.png</file>
-        <file alias="color-plasma">rc/color-plasma.png</file>
-        <file alias="color-vidris">rc/color-vidris.png</file>
-    </qresource>
-</RCC>

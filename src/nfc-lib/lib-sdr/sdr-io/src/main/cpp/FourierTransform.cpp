@@ -22,39 +22,46 @@
 
 */
 
-#include <sdr/AirspyDevice.h>
-#include <sdr/RealtekDevice.h>
-#include <sdr/DeviceFactory.h>
+#include <fft.h>
+
+#include <sdr/SignalBuffer.h>
+#include <sdr/FourierTransform.h>
 
 namespace sdr {
 
-std::vector<std::string> DeviceFactory::deviceList()
+struct FourierTransform::Impl
 {
-   std::vector<std::string> devices;
+   int points;
 
-   // add AirSpy devices
-   for (const auto &entry: sdr::AirspyDevice::listDevices())
-      devices.push_back(entry);
+   mufft_plan_1d *plan;
 
-   // add RTl-SDR devices
-   for (const auto &entry: sdr::RealtekDevice::listDevices())
-      devices.push_back(entry);
+   explicit Impl(int points) : points(points)
+   {
+      plan = mufft_create_plan_1d_c2c(points, MUFFT_FORWARD, MUFFT_FLAG_CPU_ANY);
+   }
 
-   return devices;
+   ~Impl()
+   {
+      mufft_free_plan_1d(plan);
+   }
+
+   void execute(SignalBuffer &dataIn, SignalBuffer &dataOut) const
+   {
+      // execute FFT
+      mufft_execute_plan_1d(plan, dataOut.pull(2 * points), dataIn.data());
+
+      // prepare to read
+      dataOut.flip();
+   }
+};
+
+FourierTransform::FourierTransform(int points) : impl(new Impl(points))
+{
 }
 
-RadioDevice *DeviceFactory::newInstance(const std::string &name)
+void FourierTransform::execute(SignalBuffer &in, SignalBuffer &out)
 {
-   if (name.rfind("airspy://", 0) == 0)
-      return new AirspyDevice(name);
-
-   if (name.rfind("rtlsdr://", 0) == 0)
-      return new RealtekDevice(name);
-
-   //   if (name.startsWith("lime://"))
-//      return new LimeDevice(name, parent);
-
-   return nullptr;
+   impl->execute(in, out);
 }
 
 }

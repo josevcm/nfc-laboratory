@@ -22,39 +22,62 @@
 
 */
 
-#include <sdr/AirspyDevice.h>
-#include <sdr/RealtekDevice.h>
-#include <sdr/DeviceFactory.h>
+#ifndef NFC_LAB_THROUGHPUT_H
+#define NFC_LAB_THROUGHPUT_H
 
-namespace sdr {
+#include <chrono>
 
-std::vector<std::string> DeviceFactory::deviceList()
+namespace rt {
+
+class Throughput
 {
-   std::vector<std::string> devices;
+   private:
 
-   // add AirSpy devices
-   for (const auto &entry: sdr::AirspyDevice::listDevices())
-      devices.push_back(entry);
+      // average time
+      double a = 0;
 
-   // add RTl-SDR devices
-   for (const auto &entry: sdr::RealtekDevice::listDevices())
-      devices.push_back(entry);
+      // average throughput
+      double r = 0;
 
-   return devices;
+      // elapsed time
+      std::chrono::microseconds e;
+
+      // start time
+      std::chrono::steady_clock::time_point t;
+
+   public:
+
+      inline void begin()
+      {
+         t = std::chrono::steady_clock::now();
+      }
+
+      inline void update(double elements = 1)
+      {
+         // calculate elapsed time since start
+         auto s = std::chrono::steady_clock::now() - t;
+
+         // get elapsed time in microseconds
+         e = std::chrono::duration_cast<std::chrono::microseconds>(s);
+
+         // process exponential average time
+         a = a * (1 - 0.01) + double(e.count()) * 0.01;
+
+         // process exponential average throughput
+         r = r * (1 - 0.01) + (elements / double(e.count()) * 1E6) * 0.01;
+      }
+
+      inline double elapsed() const
+      {
+         return a;
+      }
+
+      inline double average() const
+      {
+         return r;
+      }
+};
+
 }
 
-RadioDevice *DeviceFactory::newInstance(const std::string &name)
-{
-   if (name.rfind("airspy://", 0) == 0)
-      return new AirspyDevice(name);
-
-   if (name.rfind("rtlsdr://", 0) == 0)
-      return new RealtekDevice(name);
-
-   //   if (name.startsWith("lime://"))
-//      return new LimeDevice(name, parent);
-
-   return nullptr;
-}
-
-}
+#endif //NFC_LAB_THROUGHPUT_H

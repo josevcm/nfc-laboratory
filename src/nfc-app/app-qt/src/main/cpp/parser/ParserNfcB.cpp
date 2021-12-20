@@ -55,8 +55,6 @@ ProtocolFrame *ParserNfcB::parse(const nfc::NfcFrame &frame)
          info = ParserNfcIsoDep::parse(frame);
 
       } while (false);
-
-      lastCommand = frame[0];
    }
    else
    {
@@ -78,6 +76,8 @@ ProtocolFrame *ParserNfcB::parse(const nfc::NfcFrame &frame)
          info = ParserNfcIsoDep::parse(frame);
 
       } while (false);
+
+      lastCommand = 0;
    }
 
    return info;
@@ -87,6 +87,8 @@ ProtocolFrame *ParserNfcB::parseRequestREQB(const nfc::NfcFrame &frame)
 {
    if (frame[0] != 0x05)
       return nullptr;
+
+   lastCommand = frame[0];
 
    int flags = 0;
    int apf = frame[0];
@@ -238,6 +240,8 @@ ProtocolFrame *ParserNfcB::parseRequestATTRIB(const nfc::NfcFrame &frame)
    if (frame[0] != 0x1d)
       return nullptr;
 
+   lastCommand = frame[0];
+
    int flags = 0;
    int param1 = frame[5];
    int param2 = frame[6];
@@ -351,6 +355,8 @@ ProtocolFrame *ParserNfcB::parseRequestHLTB(const nfc::NfcFrame &frame)
 {
    if (frame[0] != 0x50)
       return nullptr;
+
+   lastCommand = frame[0];
 
    int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
 

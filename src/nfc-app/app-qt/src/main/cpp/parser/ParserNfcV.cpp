@@ -103,8 +103,6 @@ ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
          info = parseRequestGeneric(frame);
 
       } while (false);
-
-      lastCommand = frame[1];
    }
    else
    {
@@ -170,6 +168,8 @@ ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
          info = parseResponseGeneric(frame);
 
       } while (false);
+
+      lastCommand = 0;
    }
 
    return info;
@@ -184,6 +184,8 @@ ProtocolFrame *ParserNfcV::parseRequestInventory(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x01)
       return nullptr;
+
+   lastCommand = frame[1];
 
    int offset = 2;
 
@@ -235,6 +237,8 @@ ProtocolFrame *ParserNfcV::parseRequestStayQuiet(const nfc::NfcFrame &frame)
    if (frame[1] != 0x02)
       return nullptr;
 
+   lastCommand = frame[1];
+
    ProtocolFrame *root = buildFrameInfo("StayQuiet", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::SelectionFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
@@ -261,6 +265,8 @@ ProtocolFrame *ParserNfcV::parseRequestReadSingle(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x20)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("ReadBlock", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
@@ -312,6 +318,8 @@ ProtocolFrame *ParserNfcV::parseRequestWriteSingle(const nfc::NfcFrame &frame)
    if (frame[1] != 0x21)
       return nullptr;
 
+   lastCommand = frame[1];
+
    ProtocolFrame *root = buildFrameInfo("WriteBlock", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
@@ -359,6 +367,8 @@ ProtocolFrame *ParserNfcV::parseRequestLockBlock(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x22)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("LockBlock", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
@@ -408,6 +418,8 @@ ProtocolFrame *ParserNfcV::parseRequestReadMultiple(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x23)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("ReadBlocks", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
@@ -459,6 +471,8 @@ ProtocolFrame *ParserNfcV::parseRequestWriteMultiple(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x24)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("WriteBlocks", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
@@ -512,6 +526,8 @@ ProtocolFrame *ParserNfcV::parseRequestSelect(const nfc::NfcFrame &frame)
    if (frame[1] != 0x25)
       return nullptr;
 
+   lastCommand = frame[1];
+
    ProtocolFrame *root = buildFrameInfo("Select", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
@@ -544,6 +560,8 @@ ProtocolFrame *ParserNfcV::parseRequestResetReady(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x26)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("Reset", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
@@ -582,6 +600,8 @@ ProtocolFrame *ParserNfcV::parseRequestWriteAFI(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x27)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("WriteAFI", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
@@ -632,6 +652,8 @@ ProtocolFrame *ParserNfcV::parseRequestLockAFI(const nfc::NfcFrame &frame)
    if (frame[1] != 0x28)
       return nullptr;
 
+   lastCommand = frame[1];
+
    ProtocolFrame *root = buildFrameInfo("LockAFI", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
    int offset = 2;
@@ -679,6 +701,8 @@ ProtocolFrame *ParserNfcV::parseRequestWriteDSFID(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x29)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("WriteDSFID", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
@@ -729,6 +753,8 @@ ProtocolFrame *ParserNfcV::parseRequestLockDSFID(const nfc::NfcFrame &frame)
    if (frame[1] != 0x2A)
       return nullptr;
 
+   lastCommand = frame[1];
+
    ProtocolFrame *root = buildFrameInfo("LockDSFID", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
    int offset = 2;
@@ -775,6 +801,8 @@ ProtocolFrame *ParserNfcV::parseRequestSysInfo(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x2B)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("SysInfo", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
@@ -879,6 +907,8 @@ ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const nfc::NfcFrame &frame)
 {
    if (frame[1] != 0x2C)
       return nullptr;
+
+   lastCommand = frame[1];
 
    ProtocolFrame *root = buildFrameInfo("GetSecurity", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
 
