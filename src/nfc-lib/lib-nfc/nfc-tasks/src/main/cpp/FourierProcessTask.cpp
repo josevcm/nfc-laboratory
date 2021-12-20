@@ -51,7 +51,8 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
    // FFT length and decimation
    int length;
-   int decimation = 4;
+   int decimation = 1;
+   int bandwith = 10E6 / 16;
 
    // FFT buffers
    float *fftIn = nullptr;
@@ -154,6 +155,9 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       if (signalBuffer.isValid() && signalBuffer.type() == sdr::SignalType::SAMPLE_IQ)
       {
          float *data = signalBuffer.data();
+
+         // calculate decimation for required bandwith
+         decimation = int(signalBuffer.sampleRate() / bandwith);
 
          // apply signal windowing and decimation
 #if defined(__SSE2__) && defined(USE_SSE2)
