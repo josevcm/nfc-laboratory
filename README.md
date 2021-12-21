@@ -95,7 +95,7 @@ more complex since timing and synchronization must be considered.
 
 ### Signal quality analysis
 
-This version includes a OpenGL spectrum analyzer and IQ graph to show the quality of the received signal.
+This version includes a spectrum analyzer to show the power and quality of the received signal.
 
 ## Application example
 
@@ -131,6 +131,8 @@ works with others.
   of 3Mbps and its 8 bits of precision only allows you to capture the commands.
 
 ![Devices](doc/nfc-lab-devices1.png?raw=true "Devices")
+
+![Devices](doc/nfc-lab-devices2.png?raw=true "Devices")
 
 ![Devices](doc/nfc-lab-devices3.png?raw=true "Devices")
 
