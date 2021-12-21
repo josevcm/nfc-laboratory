@@ -128,11 +128,17 @@ works with others.
   parameters it is possible to capture the communication up to 424 Kbps.
 
 - RTL SDR: It works by tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling frequency 
-  of 3Mbps and its 8 bits of precision only allows you to capture the commands.
+  of 3Mbps and its 8 bits of precision only allows you to capture the commands up to 106Kbps and some responses in very clean signals.
+
+Receivers tested:
 
 ![Devices](doc/nfc-lab-devices1.png?raw=true "Devices")
 
+Nooelec RTL-SDR with HydraNFC calibration coil:
+
 ![Devices](doc/nfc-lab-devices2.png?raw=true "Devices")
+
+AirSpy with custom antenna and ARC122U reader:
 
 ![Devices](doc/nfc-lab-devices3.png?raw=true "Devices")
 
