@@ -118,7 +118,7 @@ struct NfcA::Impl
       // clear frame processing status
       frameStatus = {0,};
 
-      // compute symbol parameters for 106Kbps, 212Kbps, 424Kbps and 848Kbps
+      // compute symbol parameters for 106Kbps, 212Kbps and 424Kbps
       for (int rate = r106k; rate <= r424k; rate++)
       {
          // clear bitrate parameters

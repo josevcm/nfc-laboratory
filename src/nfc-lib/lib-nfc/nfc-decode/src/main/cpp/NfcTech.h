@@ -32,7 +32,7 @@
 
 #include <nfc/Nfc.h>
 
-//#define DEBUG_SIGNAL
+#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
@@ -245,6 +245,7 @@ struct ModulationStatus
    unsigned int searchEndTime;      // sample end of symbol search window
    unsigned int searchPeakTime;     // sample time for maximum correlation peak
    unsigned int searchPulseWidth;   // detected signal pulse width
+   unsigned int searchPulseCount;   // detected signal pulse counter
    float searchThreshold;           // signal threshold
 
    // symbol parameters

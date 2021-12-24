@@ -116,7 +116,7 @@ struct NfcB::Impl
       // clear frame processing status
       frameStatus = {0,};
 
-      // compute symbol parameters for 106Kbps, 212Kbps, 424Kbps and 848Kbps
+      // compute symbol parameters for 106Kbps, 212Kbps and 424Kbps
       for (int rate = r106k; rate <= r424k; rate++)
       {
          // clear bitrate parameters
@@ -284,9 +284,9 @@ struct NfcB::Impl
                      modulation->searchStartTime = 0;
                      modulation->searchEndTime = 0;
                      modulation->searchPeakTime = 0;
-                     modulation->detectorPeek = 0;
                      modulation->symbolStartTime = 0;
                      modulation->symbolEndTime = 0;
+                     modulation->detectorPeek = 0;
 
                      break;
                   }
@@ -306,9 +306,9 @@ struct NfcB::Impl
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
                   modulation->searchPeakTime = 0;
-                  modulation->detectorPeek = 0;
                   modulation->symbolStartTime = 0;
                   modulation->symbolEndTime = 0;
+                  modulation->detectorPeek = 0;
                }
 
                break;
@@ -338,9 +338,9 @@ struct NfcB::Impl
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
                   modulation->searchPeakTime = 0;
-                  modulation->detectorPeek = 0;
                   modulation->symbolStartTime = 0;
                   modulation->symbolEndTime = 0;
+                  modulation->detectorPeek = 0;
 
                   break;
                }
