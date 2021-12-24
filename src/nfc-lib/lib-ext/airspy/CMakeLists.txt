@@ -1,11 +1,11 @@
 set(CMAKE_C_STANDARD 99)
 
-set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
+set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/c)
 
 add_library(airspy STATIC
-        src/main/cpp/airspy.c
-        src/main/cpp/iqconverter_float.c
-        src/main/cpp/iqconverter_int16.c)
+        src/main/c/airspy.c
+        src/main/c/iqconverter_float.c
+        src/main/c/iqconverter_int16.c)
 
 target_compile_options(airspy PRIVATE "-msse2" -DUSE_SSE2)
 

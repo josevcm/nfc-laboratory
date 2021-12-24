@@ -1,12 +1,12 @@
 set(CMAKE_C_STANDARD 99)
-set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
+set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/c)
 
 project(mufft LANGUAGES C)
 
-add_library(mufft STATIC src/main/cpp/fft.c src/main/cpp/kernel.c src/main/cpp/cpu.c)
-add_library(mufft-avx STATIC src/main/cpp/x86/kernel.avx.c)
-add_library(mufft-sse STATIC src/main/cpp/x86/kernel.sse.c)
-add_library(mufft-sse3 STATIC src/main/cpp/x86/kernel.sse3.c)
+add_library(mufft STATIC src/main/c/fft.c src/main/c/kernel.c src/main/c/cpu.c)
+add_library(mufft-avx STATIC src/main/c/x86/kernel.avx.c)
+add_library(mufft-sse STATIC src/main/c/x86/kernel.sse.c)
+add_library(mufft-sse3 STATIC src/main/c/x86/kernel.sse3.c)
 
 target_compile_options(mufft PRIVATE -Wall -Wextra -DMUFFT_HAVE_X86)
 target_compile_options(mufft-sse PRIVATE -Wall -Wextra -msse -mno-sse3 -mno-avx -DMUFFT_HAVE_SSE)
