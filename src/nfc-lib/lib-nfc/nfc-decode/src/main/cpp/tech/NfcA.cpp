@@ -53,7 +53,7 @@ enum PatternType
    PatternO = 11
 };
 
-struct NfcA::Impl
+struct NfcA::Impl : NfcTech
 {
    rt::Logger log {"NfcA"};
 
@@ -767,7 +767,7 @@ struct NfcA::Impl
             modulation->correlationPeek = correlatedSD;
             modulation->symbolCorr0 = correlatedS0;
             modulation->symbolCorr1 = correlatedS1;
-            modulation->symbolEndTime = decoder->signalClock;
+            modulation->searchPeakTime = decoder->signalClock;
          }
 
          // wait until correlation search finish
@@ -782,31 +782,35 @@ struct NfcA::Impl
 
             // setup symbol info
             symbolStatus.value = 1;
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
             symbolStatus.pattern = PatternType::PatternY;
-            break;
          }
 
-         // detect Pattern-Z
-         if (modulation->symbolCorr0 > modulation->symbolCorr1)
+            // detect Pattern-Z
+         else if (modulation->symbolCorr0 > modulation->symbolCorr1)
          {
+            // re-sync symbol end from correlate peak detector
+            modulation->symbolEndTime = modulation->searchPeakTime;
+
             // setup symbol info
             symbolStatus.value = 0;
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
             symbolStatus.pattern = PatternType::PatternZ;
-            break;
          }
 
-         // detect Pattern-X, setup symbol info
-         symbolStatus.value = 1;
+            // detect Pattern-X
+         else
+         {
+            // re-sync symbol end from correlate peak detector
+            modulation->symbolEndTime = modulation->searchPeakTime;
+
+            // detect Pattern-X, setup symbol info
+            symbolStatus.value = 1;
+            symbolStatus.pattern = PatternType::PatternX;
+         }
+
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
-         symbolStatus.pattern = PatternType::PatternX;
+
          break;
       }
 
@@ -1857,30 +1861,17 @@ struct NfcA::Impl
    }
 
    /*
-    * Check NFC-A crc
+    * Check NFC-A crc NFC-A ITU-V.41
     */
-   inline static bool checkCrc(NfcFrame &frame)
+   inline bool checkCrc(NfcFrame &frame)
    {
-      unsigned short crc = 0x6363; // NFC-A ITU-V.41
-      unsigned short res = 0;
+      int size = frame.limit();
 
-      int length = frame.limit();
-
-      if (length <= 2)
+      if (size < 3)
          return false;
 
-      for (int i = 0; i < length - 2; i++)
-      {
-         auto d = (unsigned char) frame[i];
-
-         d = (d ^ (unsigned int) (crc & 0xff));
-         d = (d ^ (d << 4));
-
-         crc = (crc >> 8) ^ ((unsigned short) (d << 8)) ^ ((unsigned short) (d << 3)) ^ ((unsigned short) (d >> 4));
-      }
-
-      res |= ((unsigned int) frame[length - 2] & 0xff);
-      res |= ((unsigned int) frame[length - 1] & 0xff) << 8;
+      unsigned short crc = crc16(frame, 0, size - 2, 0x6363, true);
+      unsigned short res = ((unsigned int) frame[size - 2] & 0xff) | ((unsigned int) frame[size - 1] & 0xff) << 8;
 
       return res == crc;
    }

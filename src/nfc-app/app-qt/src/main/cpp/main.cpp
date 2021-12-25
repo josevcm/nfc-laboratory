@@ -90,6 +90,11 @@ int startTest1(int argc, char *argv[])
 
    nfc::NfcDecoder decoder;
 
+   decoder.setEnableNfcA(false);
+   decoder.setEnableNfcB(false);
+   decoder.setEnableNfcF(true);
+   decoder.setEnableNfcV(false);
+
    sdr::RecordDevice source(argv[1]);
 
    if (source.open(sdr::RecordDevice::OpenMode::Read))
@@ -355,6 +360,9 @@ int startApp(int argc, char *argv[])
    log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
 
+   for (int i = 0; i < argc; i++)
+      log.info("\t{}", {argv[i]});
+
    // create executor service
    Executor executor(128, 10);
 
@@ -395,5 +403,7 @@ int main(int argc, char *argv[])
 //   return startTest2(argc, argv);
 //   return startTest3(argc, argv);
 //   return startApp(argc, argv);
+
+//   generate_table(0x1021, true);
 }
 

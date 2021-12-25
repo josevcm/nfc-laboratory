@@ -44,6 +44,11 @@ struct NfcF
 
    Impl *self;
 
+   enum CommandType
+   {
+      NFCB_REQC = 0x00,
+   };
+
    explicit NfcF(DecoderStatus *decoder);
 
    ~NfcF();

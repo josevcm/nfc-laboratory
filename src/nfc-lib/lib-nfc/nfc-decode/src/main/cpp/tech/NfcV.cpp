@@ -46,7 +46,7 @@ enum PatternType
    PatternE = 7, // frame error pattern
 };
 
-struct NfcV::Impl
+struct NfcV::Impl : NfcTech
 {
    rt::Logger log {"NfcV"};
 
@@ -425,19 +425,19 @@ struct NfcV::Impl
                // set last symbol timing
                frameStatus.frameEnd = symbolStatus.end;
 
-               NfcFrame response = NfcFrame(TechType::NfcV, FrameType::PollFrame);
+               NfcFrame request = NfcFrame(TechType::NfcV, FrameType::PollFrame);
 
-               response.setFrameRate(frameStatus.symbolRate);
-               response.setSampleStart(frameStatus.frameStart);
-               response.setSampleEnd(frameStatus.frameEnd);
-               response.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
-               response.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
+               request.setFrameRate(frameStatus.symbolRate);
+               request.setSampleStart(frameStatus.frameStart);
+               request.setSampleEnd(frameStatus.frameEnd);
+               request.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
+               request.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
 
                if (truncateError || streamError)
-                  response.setFrameFlags(FrameFlags::Truncated);
+                  request.setFrameFlags(FrameFlags::Truncated);
 
                // add bytes to frame and flip to prepare read
-               response.put(streamStatus.buffer, streamStatus.bytes).flip();
+               request.put(streamStatus.buffer, streamStatus.bytes).flip();
 
                // clear modulation status for next frame search
                decoder->modulation->symbolStartTime = 0;
@@ -451,10 +451,10 @@ struct NfcV::Impl
                streamStatus = {0,};
 
                // process frame
-               process(response);
+               process(request);
 
                // add to frame list
-               frames.push_back(response);
+               frames.push_back(request);
 
                return true;
             }
