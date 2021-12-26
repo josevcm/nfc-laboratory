@@ -33,6 +33,62 @@ void ParserNfcF::reset()
 
 ProtocolFrame *ParserNfcF::parse(const nfc::NfcFrame &frame)
 {
+   ProtocolFrame *info = nullptr;
+
+   if (frame.isPollFrame())
+   {
+      do
+      {
+         // Request Command
+         if ((info = parseRequestREQC(frame)))
+            break;
+
+         // generic NFC-F request frame...
+         info = parseRequestGeneric(frame);
+
+      } while (false);
+   }
+   else
+   {
+      do
+      {
+         // Request Command
+         if ((info = parseResponseREQC(frame)))
+            break;
+
+         // generic NFC-F request frame...
+         info = parseResponseGeneric(frame);
+
+      } while (false);
+
+      lastCommand = 0;
+   }
+
+   return info;
+}
+
+ProtocolFrame *ParserNfcF::parseRequestREQC(const nfc::NfcFrame &frame)
+{
    return nullptr;
 }
 
+ProtocolFrame *ParserNfcF::parseResponseREQC(const nfc::NfcFrame &frame)
+{
+   return nullptr;
+}
+
+ProtocolFrame *ParserNfcF::parseRequestGeneric(const nfc::NfcFrame &frame)
+{
+   int cmd = frame[2]; // frame command
+
+   ProtocolFrame *root = buildFrameInfo(QString("CMD %1").arg(cmd, 2, 16, QChar('0')), frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+
+   return root;
+}
+
+ProtocolFrame *ParserNfcF::parseResponseGeneric(const nfc::NfcFrame &frame)
+{
+   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+
+   return root;
+}

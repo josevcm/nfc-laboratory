@@ -32,6 +32,14 @@ struct ParserNfcF : ParserNfc
    void reset() override;
 
    ProtocolFrame *parse(const nfc::NfcFrame &frame) override;
+
+   ProtocolFrame *parseRequestREQC(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseREQC(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseRequestGeneric(const nfc::NfcFrame &frame);
+
+   ProtocolFrame *parseResponseGeneric(const nfc::NfcFrame &frame);
 };
 
 

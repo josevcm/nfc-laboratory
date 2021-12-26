@@ -61,6 +61,10 @@ static QMap<int, QString> NfcBCmd = {
       {0x50, "HLTB"}
 };
 
+static QMap<int, QString> NfcFCmd = {
+      {0x00, "REQC"},
+};
+
 static QMap<int, QString> NfcVCmd = {
       {0x01, "Inventory"},
       {0x02, "StayQuiet"},
@@ -205,6 +209,15 @@ struct StreamModel::Impl
                // ISO-DEP protocol S-Block
                if ((command & 0xC7) == 0xC2)
                   return "S-Block";
+            }
+            else if (frame->isNfcF())
+            {
+               int command = (*frame)[3];
+
+               if (NfcFCmd.contains(command))
+                  return NfcFCmd[command];
+
+               return QString("CMD %1").arg(command, 2, 16, QChar('0'));
             }
             else if (frame->isNfcV())
             {
