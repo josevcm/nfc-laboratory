@@ -298,7 +298,7 @@ struct NfcF::Impl : NfcTech
          // setup frame info
          frameStatus.frameType = PollFrame;
          frameStatus.symbolRate = bitrate->symbolsPerSecond;
-         frameStatus.frameStart = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         frameStatus.frameStart = modulation->symbolStartTime - 48 * bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
          frameStatus.frameEnd = 0;
 
          decoder->bitrate = bitrate;
