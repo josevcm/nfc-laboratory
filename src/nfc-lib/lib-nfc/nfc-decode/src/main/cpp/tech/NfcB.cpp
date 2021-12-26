@@ -1252,40 +1252,11 @@ struct NfcB::Impl : NfcTech
       if (size < 3)
          return false;
 
-      unsigned short crc = crc16(frame, 0, size - 2, 0xFFFF, true);
+      unsigned short crc = ~crc16(frame, 0, size - 2, 0xFFFF, true);
       unsigned short res = ((unsigned int) frame[size - 2] & 0xff) | ((unsigned int) frame[size - 1] & 0xff) << 8;
 
       return res == crc;
    }
-
-
-//   static inline bool checkCrc(NfcFrame &frame)
-//   {
-//      unsigned short crc = 0xFFFF; // NFC-B ISO/IEC 13239
-//      unsigned short res = 0;
-//
-//      int length = frame.limit();
-//
-//      if (length <= 2)
-//         return false;
-//
-//      for (int i = 0; i < length - 2; i++)
-//      {
-//         auto d = (unsigned char) frame[i];
-//
-//         d = (d ^ (unsigned int) (crc & 0xff));
-//         d = (d ^ (d << 4));
-//
-//         crc = (crc >> 8) ^ ((unsigned short) (d << 8)) ^ ((unsigned short) (d << 3)) ^ ((unsigned short) (d >> 4));
-//      }
-//
-//      crc = ~crc;
-//
-//      res |= ((unsigned int) frame[length - 2] & 0xff);
-//      res |= ((unsigned int) frame[length - 1] & 0xff) << 8;
-//
-//      return res == crc;
-//   }
 };
 
 NfcB::NfcB(DecoderStatus *decoder) : self(new Impl(decoder))

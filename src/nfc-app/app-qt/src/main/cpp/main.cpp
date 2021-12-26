@@ -90,9 +90,9 @@ int startTest1(int argc, char *argv[])
 
    nfc::NfcDecoder decoder;
 
-   decoder.setEnableNfcA(false);
+   decoder.setEnableNfcA(true);
    decoder.setEnableNfcB(false);
-   decoder.setEnableNfcF(true);
+   decoder.setEnableNfcF(false);
    decoder.setEnableNfcV(false);
 
    sdr::RecordDevice source(argv[1]);
@@ -399,11 +399,9 @@ int startApp(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-   return startTest1(argc, argv);
+//   return startTest1(argc, argv);
 //   return startTest2(argc, argv);
 //   return startTest3(argc, argv);
-//   return startApp(argc, argv);
-
-//   generate_table(0x1021, true);
+   return startApp(argc, argv);
 }
 
