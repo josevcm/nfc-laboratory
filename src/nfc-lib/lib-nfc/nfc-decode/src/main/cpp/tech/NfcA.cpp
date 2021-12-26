@@ -146,8 +146,8 @@ struct NfcA::Impl : NfcTech
          bitrate->period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
          // delay guard for each symbol rate
-         bitrate->symbolDelayDetect = rate == r106k ? int(std::round(decoder->signalParams.sampleTimeUnit * 2048)) : bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples;
-//         bitrate->symbolDelayDetect = rate == r106k ? int(std::round(decoder->signalParams.sampleTimeUnit * 0)) : bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples;
+//         bitrate->symbolDelayDetect = rate == r106k ? int(std::round(decoder->signalParams.sampleTimeUnit * 2048)) : bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples;
+         bitrate->symbolDelayDetect = rate == r106k ? int(std::round(decoder->signalParams.sampleTimeUnit * 0)) : bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples;
 
          // moving average offsets
          bitrate->offsetFutureIndex = BUFFER_SIZE;
@@ -784,7 +784,7 @@ struct NfcA::Impl : NfcTech
          // detect Pattern-Y when no modulation occurs (below search detection threshold)
          if (modulation->correlationPeek < modulation->searchThreshold)
          {
-            // estimate symbol end from synchronization point (peak detection not valid due lack of modulation)
+            // estimate symbol timings from synchronization point (peak detection not valid due lack of modulation)
             modulation->symbolEndTime = modulation->symbolSyncTime;
 
             // setup symbol info
@@ -841,7 +841,8 @@ struct NfcA::Impl : NfcTech
     */
    inline int decodeListenFrameStartAsk(sdr::SignalBuffer &buffer)
    {
-      int pattern = PatternType::Invalid;
+//      int pattern = PatternType::Invalid;
+      symbolStatus.pattern = PatternType::Invalid;
 
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
@@ -904,17 +905,11 @@ struct NfcA::Impl : NfcTech
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
-         {
-            pattern = PatternType::NoPattern;
-            break;
-         }
+            return PatternType::NoPattern;
 
          // poll frame modulation detected while waiting for response
          if (signalDeep > 0.95)
-         {
-            pattern = PatternType::NoPattern;
-            break;
-         }
+            return PatternType::NoPattern;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->searchThreshold);
@@ -943,41 +938,38 @@ struct NfcA::Impl : NfcTech
 #ifdef DEBUG_ASK_SYNC_CHANNEL
          decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
 #endif
-         if (modulation->searchPulseWidth > bitrate->period8SymbolSamples)
+         if (modulation->searchPulseWidth <= bitrate->period8SymbolSamples)
          {
-            // set pattern search window
-            modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
-            modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
-
-            // setup symbol info
-            symbolStatus.value = 1;
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
-
-            pattern = PatternType::PatternD;
+            // if no valid modulation is found, we restart SOF search
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->correlationPeek = 0;
+            modulation->searchPulseWidth = 0;
             break;
          }
 
-         // if no valid modulation is found, we restart SOF search
-         modulation->searchStartTime = 0;
-         modulation->searchEndTime = 0;
+         // set pattern search window
+         modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples;
+         modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period2SymbolSamples;
+         modulation->symbolSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
+
+         // timing search window
+         modulation->searchStartTime = modulation->symbolSyncTime - bitrate->period8SymbolSamples;
+         modulation->searchEndTime = modulation->symbolSyncTime + bitrate->period8SymbolSamples;
+         modulation->searchPeakTime = 0;
          modulation->correlationPeek = 0;
-         modulation->searchPulseWidth = 0;
+
+         // setup symbol info
+         symbolStatus.value = 1;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.length = symbolStatus.end - symbolStatus.start;
+         symbolStatus.pattern = PatternType::PatternD;
+
+         break;
       }
 
-      // reset search status
-      if (pattern != PatternType::Invalid)
-      {
-         symbolStatus.pattern = pattern;
-
-         modulation->searchStartTime = 0;
-         modulation->searchEndTime = 0;
-         modulation->correlationPeek = 0;
-         modulation->searchPulseWidth = 0;
-      }
-
-      return pattern;
+      return symbolStatus.pattern;
    }
 
    /*
@@ -985,7 +977,7 @@ struct NfcA::Impl : NfcTech
     */
    inline int decodeListenFrameSymbolAsk(sdr::SignalBuffer &buffer)
    {
-      int pattern = PatternType::Invalid;
+      symbolStatus.pattern = PatternType::Invalid;
 
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
@@ -1031,22 +1023,6 @@ struct NfcA::Impl : NfcTech
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
-         // set next search window from previous symbol
-         if (!modulation->searchStartTime)
-         {
-            // estimated symbol start and end
-            modulation->symbolStartTime = modulation->symbolEndTime;
-            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
-            modulation->symbolSyncTime = modulation->symbolEndTime;
-
-            // timing search window
-            modulation->searchStartTime = modulation->symbolSyncTime - bitrate->period8SymbolSamples;
-            modulation->searchEndTime = modulation->symbolSyncTime + bitrate->period8SymbolSamples;
-
-            // reset symbol parameters
-            modulation->symbolCorr0 = 0;
-            modulation->symbolCorr1 = 0;
-         }
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
          if (decoder->signalClock == modulation->symbolSyncTime)
@@ -1061,9 +1037,14 @@ struct NfcA::Impl : NfcTech
          if (correlatedSD > modulation->correlationPeek)
          {
             modulation->correlationPeek = correlatedSD;
+            modulation->searchPeakTime = decoder->signalClock;
+         }
+
+         // capture symbol correlation values at synchronization point
+         if (decoder->signalClock == modulation->symbolSyncTime)
+         {
             modulation->symbolCorr0 = correlatedS0;
             modulation->symbolCorr1 = correlatedS1;
-            modulation->symbolEndTime = decoder->signalClock;
          }
 
          // wait until correlation search finish
@@ -1072,40 +1053,47 @@ struct NfcA::Impl : NfcTech
 
          if (modulation->correlationPeek > modulation->searchThreshold)
          {
-            // setup symbol info
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-            symbolStatus.length = symbolStatus.end - symbolStatus.start;
+            modulation->symbolStartTime = modulation->symbolEndTime;
+            modulation->symbolEndTime = modulation->searchPeakTime;
 
             if (modulation->symbolCorr0 > modulation->symbolCorr1)
             {
                symbolStatus.value = 0;
-               pattern = PatternType::PatternE;
-               break;
+               symbolStatus.pattern = PatternType::PatternE;
             }
+            else
+            {
+               symbolStatus.value = 1;
+               symbolStatus.pattern = PatternType::PatternD;
+            }
+         }
+         else
+         {
+            modulation->symbolStartTime = modulation->symbolEndTime;
+            modulation->symbolEndTime = modulation->symbolSyncTime;
 
-            symbolStatus.value = 1;
-            pattern = PatternType::PatternD;
-            break;
+            // no modulation (End Of Frame) EoF
+            symbolStatus.pattern = PatternType::PatternF;
          }
 
-         // no modulation (End Of Frame) EoF
-         pattern = PatternType::PatternF;
+         // estimated symbol start and end
+         modulation->symbolSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
+
+         // timing search window
+         modulation->searchStartTime = modulation->symbolSyncTime - bitrate->period8SymbolSamples;
+         modulation->searchEndTime = modulation->symbolSyncTime + bitrate->period8SymbolSamples;
+         modulation->searchPeakTime = 0;
+         modulation->correlationPeek = 0;
+
+         // setup symbol info
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.length = symbolStatus.end - symbolStatus.start;
+
          break;
       }
 
-      // reset search status
-      if (pattern != PatternType::Invalid)
-      {
-         symbolStatus.pattern = pattern;
-
-         modulation->searchStartTime = 0;
-         modulation->searchEndTime = 0;
-         modulation->correlationPeek = 0;
-         modulation->searchPulseWidth = 0;
-      }
-
-      return pattern;
+      return symbolStatus.pattern;
    }
 
    /*
