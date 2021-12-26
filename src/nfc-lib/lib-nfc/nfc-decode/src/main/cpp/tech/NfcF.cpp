@@ -423,8 +423,6 @@ struct NfcF::Impl : NfcTech
     */
    inline int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
    {
-      symbolStatus.pattern = PatternType::Invalid;
-
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
@@ -489,12 +487,9 @@ struct NfcF::Impl : NfcTech
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         // no modulation detected
+         // no modulation (End Of Frame) EoF
          if (!modulation->searchPeakTime)
-         {
-            symbolStatus.pattern = PatternType::PatternE;
-            break;
-         }
+            return PatternType::PatternE;
 
          // detect Pattern type
          if (modulation->symbolCorr0 > modulation->symbolCorr1)
@@ -524,10 +519,10 @@ struct NfcF::Impl : NfcTech
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-         break;
+         return symbolStatus.pattern;
       }
 
-      return symbolStatus.pattern;
+      return PatternType::Invalid;
    }
 
    /*

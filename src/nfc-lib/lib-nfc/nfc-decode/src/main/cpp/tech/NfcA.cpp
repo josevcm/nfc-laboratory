@@ -635,7 +635,7 @@ struct NfcA::Impl : NfcTech
                   if (streamStatus.bytes > 0)
                   {
                      // mark frame end at star of EoF symbol
-                     frameStatus.frameEnd = symbolStatus.start;
+                     frameStatus.frameEnd = symbolStatus.end;
 
                      // build responde frame
                      NfcFrame response = NfcFrame(TechType::NfcA, FrameType::ListenFrame);
@@ -712,8 +712,6 @@ struct NfcA::Impl : NfcTech
     */
    inline int decodePollFrameSymbolAsk(sdr::SignalBuffer &buffer)
    {
-      symbolStatus.pattern = PatternType::Invalid;
-
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
@@ -830,10 +828,10 @@ struct NfcA::Impl : NfcTech
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-         break;
+         return symbolStatus.pattern;
       }
 
-      return symbolStatus.pattern;
+      return PatternType::Invalid;
    }
 
    /*
@@ -841,9 +839,6 @@ struct NfcA::Impl : NfcTech
     */
    inline int decodeListenFrameStartAsk(sdr::SignalBuffer &buffer)
    {
-//      int pattern = PatternType::Invalid;
-      symbolStatus.pattern = PatternType::Invalid;
-
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
@@ -966,10 +961,10 @@ struct NfcA::Impl : NfcTech
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
          symbolStatus.pattern = PatternType::PatternD;
 
-         break;
+         return symbolStatus.pattern;
       }
 
-      return symbolStatus.pattern;
+      return PatternType::Invalid;
    }
 
    /*
@@ -977,8 +972,6 @@ struct NfcA::Impl : NfcTech
     */
    inline int decodeListenFrameSymbolAsk(sdr::SignalBuffer &buffer)
    {
-      symbolStatus.pattern = PatternType::Invalid;
-
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
@@ -1090,10 +1083,10 @@ struct NfcA::Impl : NfcTech
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-         break;
+         return symbolStatus.pattern;
       }
 
-      return symbolStatus.pattern;
+      return PatternType::Invalid;
    }
 
    /*
@@ -1101,8 +1094,6 @@ struct NfcA::Impl : NfcTech
     */
    inline int decodeListenFrameStartBpsk(sdr::SignalBuffer &buffer)
    {
-      int pattern = PatternType::Invalid;
-
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
@@ -1154,17 +1145,11 @@ struct NfcA::Impl : NfcTech
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock >= frameStatus.waitingEnd)
-         {
-            pattern = PatternType::NoPattern;
-            break;
-         }
+            return PatternType::NoPattern;
 
          // check if poll frame modulation is detected while waiting for response
          if (signalDeep > 0.95)
-         {
-            pattern = PatternType::NoPattern;
-            break;
-         }
+            return PatternType::NoPattern;
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->searchThreshold);
@@ -1187,35 +1172,26 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
 #endif
          // set symbol window
-         modulation->symbolSyncTime = 0;
          modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period2SymbolSamples - 500 * decoder->signalParams.sampleTimeUnit;
          modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
+         modulation->symbolSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
          modulation->symbolPhase = modulation->phaseIntegrate;
          modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
+
+         modulation->correlationPeek = 0;
+         modulation->searchPulseWidth = 0;
 
          // set symbol info
          symbolStatus.value = 0;
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
+         symbolStatus.pattern = PatternType::PatternS;
 
-         pattern = PatternType::PatternS;
-         break;
+         return symbolStatus.pattern;
       }
 
-      // reset search status
-      if (pattern != PatternType::Invalid)
-      {
-         symbolStatus.pattern = pattern;
-
-         modulation->searchStartTime = 0;
-         modulation->searchEndTime = 0;
-         modulation->symbolSyncTime = 0;
-         modulation->correlationPeek = 0;
-         modulation->searchPulseWidth = 0;
-      }
-
-      return pattern;
+      return PatternType::Invalid;
    }
 
    /*
@@ -1223,8 +1199,6 @@ struct NfcA::Impl : NfcTech
     */
    inline int decodeListenFrameSymbolBpsk(sdr::SignalBuffer &buffer)
    {
-      int pattern = PatternType::Invalid;
-
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
@@ -1260,23 +1234,11 @@ struct NfcA::Impl : NfcTech
          // edge detector for re-synchronization
          if ((modulation->phaseIntegrate > 0 && modulation->symbolPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0))
          {
-            modulation->searchPeakTime = decoder->signalClock;
-            modulation->symbolStartTime = decoder->signalClock;
-            modulation->symbolEndTime = decoder->signalClock + bitrate->period1SymbolSamples;
             modulation->symbolSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
             modulation->symbolPhase = modulation->phaseIntegrate;
          }
 
-         // set next search sync window from previous
-         if (!modulation->symbolSyncTime)
-         {
-            // estimated symbol start and end
-            modulation->symbolStartTime = modulation->symbolEndTime;
-            modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
-            modulation->symbolSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
-         }
-
-         // wait until search synchronization is reached
+         // wait until synchronization point is reached
          if (decoder->signalClock != modulation->symbolSyncTime)
             continue;
 
@@ -1284,46 +1246,32 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.50f);
 #endif
 
+         // set symbol timings
          modulation->symbolPhase = modulation->phaseIntegrate;
+         modulation->symbolStartTime = modulation->symbolEndTime;
+         modulation->symbolEndTime = modulation->symbolSyncTime + bitrate->period2SymbolSamples;
+         modulation->symbolSyncTime = modulation->symbolSyncTime + bitrate->period1SymbolSamples;
+
+         // no modulation detected, generate End Of Frame
+         if (std::abs(modulation->phaseIntegrate) < std::abs(modulation->phaseThreshold))
+            return PatternType::PatternO;
+
+         // symbol change, invert pattern and value
+         if (modulation->phaseIntegrate < -modulation->phaseThreshold)
+         {
+            symbolStatus.value = !symbolStatus.value;
+            symbolStatus.pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
+         }
 
          // setup symbol info
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-         // no symbol change, keep previous symbol pattern
-         if (modulation->phaseIntegrate > modulation->phaseThreshold)
-         {
-            pattern = symbolStatus.pattern;
-            break;
-         }
-
-         // symbol change, invert pattern and value
-         if (modulation->phaseIntegrate < -modulation->phaseThreshold)
-         {
-            symbolStatus.value = !symbolStatus.value;
-            pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
-            break;
-         }
-
-         // no modulation detected, generate End Of Frame symbol
-         pattern = PatternType::PatternO;
-         break;
+         return symbolStatus.pattern;
       }
 
-      // reset search status
-      if (pattern != PatternType::Invalid)
-      {
-         symbolStatus.pattern = pattern;
-
-         modulation->searchStartTime = 0;
-         modulation->searchEndTime = 0;
-         modulation->symbolSyncTime = 0;
-         modulation->correlationPeek = 0;
-         modulation->searchPulseWidth = 0;
-      }
-
-      return pattern;
+      return PatternType::Invalid;
    }
 
    /*
@@ -1335,7 +1283,6 @@ struct NfcA::Impl : NfcTech
       if (decoder->modulation)
       {
          decoder->modulation->symbolEndTime = 0;
-         decoder->modulation->searchPeakTime = 0;
          decoder->modulation->searchEndTime = 0;
          decoder->modulation->correlationPeek = 0;
       }
