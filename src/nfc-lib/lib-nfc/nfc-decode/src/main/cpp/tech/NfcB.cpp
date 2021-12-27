@@ -180,18 +180,24 @@ struct NfcB::Impl : NfcTech
       protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF);
       protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCB_FWT_DEF);
       protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCB_RGT_DEF);
+      protocolStatus.tr1MinimumTime = int(decoder->signalParams.sampleTimeUnit * 250);
+      protocolStatus.tr1MaximumTime = int(decoder->signalParams.sampleTimeUnit * 500);
 
       // initialize frame parameters to default protocol parameters
       frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
       frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
       frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
       frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
+      frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
+      frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
 
       log.info("Startup parameters");
       log.info("\tmaxFrameSize {} bytes", {protocolStatus.maxFrameSize});
       log.info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / decoder->sampleRate});
       log.info("\tframeWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / decoder->sampleRate});
       log.info("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / decoder->sampleRate});
+      log.info("\ttr1MinimumTime {} samples ({} us)", {protocolStatus.tr1MinimumTime, 1000000.0 * protocolStatus.tr1MinimumTime / decoder->sampleRate});
+      log.info("\ttr1MaximumTime {} samples ({} us)", {protocolStatus.tr1MaximumTime, 1000000.0 * protocolStatus.tr1MaximumTime / decoder->sampleRate});
    }
 
    /*
@@ -1026,6 +1032,8 @@ struct NfcB::Impl : NfcTech
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
          frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
+         frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
+         frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
       }
 
       do

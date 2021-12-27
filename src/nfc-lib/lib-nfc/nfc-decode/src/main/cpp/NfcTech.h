@@ -26,6 +26,7 @@
 #define NFC_NFCTECH_H
 
 #include <cmath>
+#include <algorithm>
 
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
@@ -38,10 +39,10 @@
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-//#define DEBUG_SIGNAL_AVERG_CHANNEL 2
+#define DEBUG_SIGNAL_AVERG_CHANNEL 2
 //#define DEBUG_SIGNAL_STDEV_CHANNEL 2
 //#define DEBUG_SIGNAL_EDGE_CHANNEL 3
-//#define DEBUG_SIGNAL_DEEP_CHANNEL 3
+#define DEBUG_SIGNAL_DEEP_CHANNEL 3
 #endif
 
 namespace nfc {
@@ -326,6 +327,10 @@ struct FrameStatus
 
    // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
    unsigned int requestGuardTime;
+
+   // Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation
+   unsigned int tr1MinimumTime;
+   unsigned int tr1MaximumTime;
 };
 
 /*
@@ -347,6 +352,10 @@ struct ProtocolStatus
 
    // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
    unsigned int requestGuardTime;
+
+   // Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation
+   unsigned int tr1MinimumTime;
+   unsigned int tr1MaximumTime;
 };
 
 struct DecoderStatus
@@ -373,7 +382,7 @@ struct DecoderStatus
    unsigned int signalClock = 0;
 
    // minimum signal level
-   float powerLevelThreshold = 0.010f;
+   float powerLevelThreshold = 0.01f;
 
    // signal debugger
    std::shared_ptr<SignalDebug> debug;
@@ -431,7 +440,7 @@ struct DecoderStatus
       signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalEdge0 - signalStatus.signalEdge1);
 
       // store next edge value in sample buffer
-      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - signalStatus.signalValue) / signalStatus.signalAverg;
+      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalStatus.signalValue, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
 
 #ifdef DEBUG_SIGNAL
       debug->block(signalClock);
@@ -454,7 +463,7 @@ struct DecoderStatus
 #endif
 
 #ifdef DEBUG_SIGNAL_DEEP_CHANNEL
-      debug->set(DEBUG_SIGNAL_DEEP_CHANNEL, signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] / 10.0);
+      debug->set(DEBUG_SIGNAL_DEEP_CHANNEL, signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)]);
 #endif
 
       return true;
