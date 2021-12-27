@@ -714,7 +714,6 @@ struct NfcB::Impl : NfcTech
          // get signal samples
          float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
          float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)];
-         float signalMDev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average
          modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
@@ -728,9 +727,6 @@ struct NfcB::Impl : NfcTech
          // store signal phase in filter buffer
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = phase;
 
-#ifdef DEBUG_BPSK_PHASE_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, signalMDev);
-#endif
          // integrate response from PICC after guard time (TR0)
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
             continue;
@@ -744,7 +740,7 @@ struct NfcB::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = signalMDev;
+            modulation->searchThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->searchThreshold);

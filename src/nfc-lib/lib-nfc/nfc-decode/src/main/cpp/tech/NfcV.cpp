@@ -262,7 +262,6 @@ struct NfcV::Impl : NfcTech
                modulation->searchPeakTime = 0;
                modulation->searchEndTime = 0;
                modulation->correlationPeek = 0;
-
                break;
             }
 
@@ -372,8 +371,6 @@ struct NfcV::Impl : NfcTech
             // invalid code detected, reset symbol status
             modulation->symbolStartTime = 0;
             modulation->symbolEndTime = 0;
-
-            break;
       }
 
       return false;
@@ -757,7 +754,6 @@ struct NfcV::Impl : NfcTech
 
          // get signal samples
          float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float signalMDev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
 
          // compute symbol average (signal offset)
@@ -793,7 +789,7 @@ struct NfcV::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = signalMDev;
+            modulation->searchThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS0);
@@ -1004,9 +1000,6 @@ struct NfcV::Impl : NfcTech
          // no modulation found(End Of Frame)
          if (modulation->correlationPeek < modulation->searchThreshold)
          {
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
-#endif
             pattern = PatternType::PatternS;
             break;
          }
