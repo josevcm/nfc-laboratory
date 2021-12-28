@@ -245,6 +245,7 @@ struct ModulationStatus
    unsigned int searchStage;        // search stage control
    unsigned int searchStartTime;    // sample start of symbol search window
    unsigned int searchEndTime;      // sample end of symbol search window
+   unsigned int searchSyncTime;     // sample at next synchronization
    unsigned int searchPeakTime;     // sample time for maximum correlation peak
    unsigned int searchPulseWidth;   // detected signal pulse width
    float searchThreshold;           // signal threshold
@@ -252,10 +253,9 @@ struct ModulationStatus
    // symbol parameters
    unsigned int symbolStartTime;
    unsigned int symbolEndTime;
-   unsigned int symbolSyncTime;
    float symbolCorr0;
    float symbolCorr1;
-   float symbolPhase;
+   float searchPhase;
    float symbolAverage;
 
    // integrator processor

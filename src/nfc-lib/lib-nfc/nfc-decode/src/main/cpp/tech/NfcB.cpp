@@ -357,10 +357,10 @@ struct NfcB::Impl : NfcTech
 
                // set SOF symbol parameters
                modulation->symbolEndTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
-               modulation->symbolSyncTime = 0;
 
                // reset modulation for next search
                modulation->searchStage = SOF_BEGIN;
+               modulation->searchSyncTime = 0;
                modulation->searchStartTime = 0;
                modulation->searchEndTime = 0;
                modulation->detectorPeek = 0;
@@ -446,10 +446,10 @@ struct NfcB::Impl : NfcTech
                // clear modulation status for next frame search
                decoder->modulation->symbolStartTime = 0;
                decoder->modulation->symbolEndTime = 0;
-               decoder->modulation->symbolSyncTime = 0;
                decoder->modulation->filterIntegrate = 0;
                decoder->modulation->detectIntegrate = 0;
                decoder->modulation->phaseIntegrate = 0;
+               decoder->modulation->searchSyncTime = 0;
                decoder->modulation->searchStartTime = 0;
                decoder->modulation->searchEndTime = 0;
                decoder->modulation->searchPulseWidth = 0;
@@ -637,21 +637,23 @@ struct NfcB::Impl : NfcTech
             {
                modulation->detectorPeek = signalEdge;
                modulation->symbolEndTime = decoder->signalClock - bitrate->period8SymbolSamples;
-               modulation->symbolSyncTime = 0;
+               modulation->searchSyncTime = 0;
             }
          }
 
          // estimate next symbol timings
-         if (!modulation->symbolSyncTime)
+         if (!modulation->searchSyncTime)
          {
             // estimated symbol start and end
             modulation->symbolStartTime = modulation->symbolEndTime;
             modulation->symbolEndTime = modulation->symbolStartTime + bitrate->period1SymbolSamples;
-            modulation->symbolSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
+
+            // set next synchronization point
+            modulation->searchSyncTime = modulation->symbolStartTime + bitrate->period2SymbolSamples;
          }
 
          // wait until sync time is reached
-         if (decoder->signalClock != modulation->symbolSyncTime)
+         if (decoder->signalClock != modulation->searchSyncTime)
             continue;
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
@@ -684,7 +686,7 @@ struct NfcB::Impl : NfcTech
          modulation->searchEndTime = modulation->symbolEndTime + bitrate->period4SymbolSamples;
 
          // reset status for next symbol
-         modulation->symbolSyncTime = 0;
+         modulation->searchSyncTime = 0;
          modulation->detectorPeek = 0;
 
          return symbolStatus.pattern;
@@ -879,9 +881,12 @@ struct NfcB::Impl : NfcTech
                }
 
                // if found, set SOF symbol end and reference phase
-               modulation->symbolPhase = modulation->phaseIntegrate;
                modulation->symbolEndTime = modulation->searchPeakTime;
-               modulation->symbolSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
+
+               // set next synchronization point
+               modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
+               modulation->searchPhase = modulation->phaseIntegrate;
+
                modulation->phaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
 
                // reset modulation to continue search
@@ -941,23 +946,25 @@ struct NfcB::Impl : NfcTech
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
 #endif
          // edge detector for re-synchronization
-         if ((modulation->phaseIntegrate > 0 && modulation->symbolPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->symbolPhase > 0))
+         if ((modulation->phaseIntegrate > 0 && modulation->searchPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->searchPhase > 0))
          {
-            modulation->symbolSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
-            modulation->symbolPhase = modulation->phaseIntegrate;
+            modulation->searchSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
+            modulation->searchPhase = modulation->phaseIntegrate;
          }
 
          // wait until sync time is reached
-         if (decoder->signalClock != modulation->symbolSyncTime)
+         if (decoder->signalClock != modulation->searchSyncTime)
             continue;
 
 #ifdef DEBUG_BPSK_SYNC_CHANNEL
          decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.5);
 #endif
-         modulation->symbolPhase = modulation->phaseIntegrate;
          modulation->symbolStartTime = modulation->symbolEndTime;
-         modulation->symbolEndTime = modulation->symbolSyncTime + bitrate->period2SymbolSamples;
-         modulation->symbolSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
+         modulation->symbolEndTime = modulation->searchSyncTime + bitrate->period2SymbolSamples;
+
+         // set next synchronization point
+         modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
+         modulation->searchPhase = modulation->phaseIntegrate;
 
          // no modulation detected, generate End Of Frame
          if (std::abs(modulation->phaseIntegrate) < std::abs(modulation->phaseThreshold))
@@ -990,10 +997,11 @@ struct NfcB::Impl : NfcTech
       for (int rate = r106k; rate <= r424k; rate++)
       {
          modulationStatus[rate].searchStage = 0;
+         modulationStatus[rate].searchSyncTime= 0;
          modulationStatus[rate].searchStartTime = 0;
          modulationStatus[rate].searchEndTime = 0;
+         modulationStatus[rate].searchPhase = NAN;
          modulationStatus[rate].symbolAverage = 0;
-         modulationStatus[rate].symbolPhase = NAN;
          modulationStatus[rate].detectorPeek = 0;
       }
 

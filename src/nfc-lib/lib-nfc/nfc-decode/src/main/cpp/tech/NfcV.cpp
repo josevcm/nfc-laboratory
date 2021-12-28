@@ -332,11 +332,11 @@ struct NfcV::Impl : NfcTech
             {
                // set SOF symbol parameters
                modulation->symbolEndTime = modulation->searchPeakTime + bitrate->period1SymbolSamples;
-               modulation->symbolSyncTime = modulation->symbolEndTime;
 
                // timing search window
-               modulation->searchStartTime = modulation->symbolSyncTime;
-               modulation->searchEndTime = modulation->symbolSyncTime + pulseParams[0].length;
+               modulation->searchSyncTime = modulation->symbolEndTime;
+               modulation->searchStartTime = modulation->searchSyncTime;
+               modulation->searchEndTime = modulation->searchSyncTime + pulseParams[0].length;
 
                // setup frame info
                frameStatus.frameType = PollFrame;
@@ -358,11 +358,11 @@ struct NfcV::Impl : NfcTech
             {
                // set SOF symbol parameters
                modulation->symbolEndTime = modulation->searchPeakTime;
-               modulation->symbolSyncTime = modulation->symbolEndTime;
 
                // timing search window
-               modulation->searchStartTime = modulation->symbolSyncTime;
-               modulation->searchEndTime = modulation->symbolSyncTime + pulseParams[1].length;
+               modulation->searchSyncTime = modulation->symbolEndTime;
+               modulation->searchStartTime = modulation->searchSyncTime;
+               modulation->searchEndTime = modulation->searchSyncTime + pulseParams[1].length;
                modulation->searchPeakTime = 0;
                modulation->correlationPeek = 0;
 
@@ -701,11 +701,11 @@ struct NfcV::Impl : NfcTech
                // re-synchronize
                modulation->symbolStartTime = modulation->searchPeakTime - slot->end;
                modulation->symbolEndTime = modulation->symbolStartTime + pulse->length;
-               modulation->symbolSyncTime = modulation->symbolEndTime;
 
                // next search
-               modulation->searchStartTime = modulation->symbolSyncTime;
-               modulation->searchEndTime = modulation->symbolSyncTime + pulse->length;
+               modulation->searchSyncTime = modulation->symbolEndTime;
+               modulation->searchStartTime = modulation->searchSyncTime;
+               modulation->searchEndTime = modulation->searchSyncTime + pulse->length;
                modulation->searchPeakTime = 0;
                modulation->correlationPeek = 0;
 
@@ -871,13 +871,13 @@ struct NfcV::Impl : NfcTech
 
             // if found, set SOF symbol end and next sync point
             modulation->symbolEndTime = modulation->searchPeakTime;
-            modulation->symbolSyncTime = modulation->symbolEndTime + decoder->bitrate->period0SymbolSamples;
             modulation->symbolCorr0 = 0;
             modulation->symbolCorr1 = 0;
 
             // next search window timing
-            modulation->searchStartTime = modulation->symbolSyncTime - decoder->bitrate->period4SymbolSamples;
-            modulation->searchEndTime = modulation->symbolSyncTime + decoder->bitrate->period4SymbolSamples;
+            modulation->searchSyncTime = modulation->symbolEndTime + decoder->bitrate->period0SymbolSamples;
+            modulation->searchStartTime = modulation->searchSyncTime - decoder->bitrate->period4SymbolSamples;
+            modulation->searchEndTime = modulation->searchSyncTime + decoder->bitrate->period4SymbolSamples;
             modulation->searchPulseWidth = 0;
             modulation->searchPeakTime = 0;
             modulation->correlationPeek = 0;
@@ -974,11 +974,11 @@ struct NfcV::Impl : NfcTech
          // estimated symbol start and end
          modulation->symbolStartTime = modulation->symbolEndTime;
          modulation->symbolEndTime = modulation->symbolStartTime + decoder->bitrate->period0SymbolSamples;
-         modulation->symbolSyncTime = modulation->symbolEndTime;
 
          // timing search window
-         modulation->searchStartTime = modulation->symbolSyncTime - decoder->bitrate->period4SymbolSamples;
-         modulation->searchEndTime = modulation->symbolSyncTime + decoder->bitrate->period4SymbolSamples;
+         modulation->searchSyncTime = modulation->symbolEndTime;
+         modulation->searchStartTime = modulation->searchSyncTime - decoder->bitrate->period4SymbolSamples;
+         modulation->searchEndTime = modulation->searchSyncTime + decoder->bitrate->period4SymbolSamples;
          modulation->searchPulseWidth = 0;
          modulation->searchPeakTime = 0;
          modulation->correlationPeek = 0;
