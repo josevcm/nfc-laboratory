@@ -246,7 +246,6 @@ struct ModulationStatus
    unsigned int searchStartTime;    // sample start of symbol search window
    unsigned int searchEndTime;      // sample end of symbol search window
    unsigned int searchSyncTime;     // sample at next synchronization
-   unsigned int searchPeakTime;     // sample time for maximum correlation peak
    unsigned int searchPulseWidth;   // detected signal pulse width
    float searchPhaseValue;          // signal phase value at search
 
@@ -266,11 +265,13 @@ struct ModulationStatus
    float detectIntegrate;
    float phaseIntegrate;
 
-   // correlation values
-   float correlationPeek;
+   // auxiliary detector peak values
+   float correlatedPeekValue;
+   float detectorPeekValue;
 
-   // edge detector values
-   float detectorPeek;
+   // auxiliary detector peak times
+   unsigned int correlatedPeakTime;     // sample time for maximum correlation peak
+   unsigned int detectorPeakTime;     // sample time for maximum detector peak
 
    // data buffers
    float integrationData[BUFFER_SIZE];

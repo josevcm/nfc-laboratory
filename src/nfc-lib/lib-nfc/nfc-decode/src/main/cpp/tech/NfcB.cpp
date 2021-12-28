@@ -231,7 +231,7 @@ struct NfcB::Impl : NfcTech
             modulation->searchStage = SOF_BEGIN;
             modulation->searchStartTime = 0;
             modulation->searchEndTime = 0;
-            modulation->detectorPeek = 0;
+            modulation->detectorPeekValue = 0;
 
             return false;
          }
@@ -242,10 +242,10 @@ struct NfcB::Impl : NfcTech
             case SOF_BEGIN:
 
                // detect edge at maximum peak
-               if (signalEdge < -0.001 && modulation->detectorPeek > signalEdge && signalDeep > minimumModulationThreshold)
+               if (signalEdge < -0.001 && modulation->detectorPeekValue > signalEdge && signalDeep > minimumModulationThreshold)
                {
-                  modulation->detectorPeek = signalEdge;
-                  modulation->searchPeakTime = decoder->signalClock;
+                  modulation->detectorPeekValue = signalEdge;
+                  modulation->correlatedPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
                }
 
@@ -254,14 +254,14 @@ struct NfcB::Impl : NfcTech
                   break;
 
                // sets SOF symbol frame start (also frame start)
-               modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
+               modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period8SymbolSamples;
 
                // and triger next stage
                modulation->searchStage = SOF_IDLE;
-               modulation->searchStartTime = modulation->searchPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-               modulation->searchEndTime = modulation->searchPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-               modulation->searchPeakTime = 0;
-               modulation->detectorPeek = 0;
+               modulation->searchStartTime = modulation->correlatedPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+               modulation->searchEndTime = modulation->correlatedPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+               modulation->correlatedPeakTime = 0;
+               modulation->detectorPeekValue = 0;
 
                break;
 
@@ -271,10 +271,10 @@ struct NfcB::Impl : NfcTech
                if (decoder->signalClock > modulation->searchStartTime)
                {
                   // detect edge at maximum peak
-                  if (signalEdge > 0.001 && modulation->detectorPeek < signalEdge)
+                  if (signalEdge > 0.001 && modulation->detectorPeekValue < signalEdge)
                   {
-                     modulation->detectorPeek = signalEdge;
-                     modulation->searchPeakTime = decoder->signalClock;
+                     modulation->detectorPeekValue = signalEdge;
+                     modulation->correlatedPeakTime = decoder->signalClock;
                      modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
                   }
 
@@ -283,26 +283,26 @@ struct NfcB::Impl : NfcTech
                      break;
 
                   // if no edge detected reset modulation search
-                  if (!modulation->searchPeakTime)
+                  if (!modulation->correlatedPeakTime)
                   {
                      // if no edge found, restart search
                      modulation->searchStage = SOF_BEGIN;
                      modulation->searchStartTime = 0;
                      modulation->searchEndTime = 0;
-                     modulation->searchPeakTime = 0;
+                     modulation->correlatedPeakTime = 0;
                      modulation->symbolStartTime = 0;
                      modulation->symbolEndTime = 0;
-                     modulation->detectorPeek = 0;
+                     modulation->detectorPeekValue = 0;
 
                      break;
                   }
 
                   // trigger last search stage
                   modulation->searchStage = SOF_END;
-                  modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                  modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                  modulation->searchPeakTime = 0;
-                  modulation->detectorPeek = 0;
+                  modulation->searchStartTime = modulation->correlatedPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->searchEndTime = modulation->correlatedPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->correlatedPeakTime = 0;
+                  modulation->detectorPeekValue = 0;
                }
 
                else if (signalEdge > 0.001)
@@ -311,10 +311,10 @@ struct NfcB::Impl : NfcTech
                   modulation->searchStage = SOF_BEGIN;
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
-                  modulation->searchPeakTime = 0;
+                  modulation->correlatedPeakTime = 0;
                   modulation->symbolStartTime = 0;
                   modulation->symbolEndTime = 0;
-                  modulation->detectorPeek = 0;
+                  modulation->detectorPeekValue = 0;
                }
 
                break;
@@ -326,10 +326,10 @@ struct NfcB::Impl : NfcTech
                   break;
 
                // detect edge at maximum peak
-               if (signalEdge < -0.001 && modulation->detectorPeek > signalEdge && signalDeep > minimumModulationThreshold)
+               if (signalEdge < -0.001 && modulation->detectorPeekValue > signalEdge && signalDeep > minimumModulationThreshold)
                {
-                  modulation->detectorPeek = signalEdge;
-                  modulation->searchPeakTime = decoder->signalClock;
+                  modulation->detectorPeekValue = signalEdge;
+                  modulation->correlatedPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period8SymbolSamples;
                }
 
@@ -338,15 +338,15 @@ struct NfcB::Impl : NfcTech
                   break;
 
                // if no edge detected reset modulation search
-               if (!modulation->searchPeakTime)
+               if (!modulation->correlatedPeakTime)
                {
                   modulation->searchStage = SOF_BEGIN;
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
-                  modulation->searchPeakTime = 0;
+                  modulation->correlatedPeakTime = 0;
                   modulation->symbolStartTime = 0;
                   modulation->symbolEndTime = 0;
-                  modulation->detectorPeek = 0;
+                  modulation->detectorPeekValue = 0;
 
                   break;
                }
@@ -356,14 +356,14 @@ struct NfcB::Impl : NfcTech
 #endif
 
                // set SOF symbol parameters
-               modulation->symbolEndTime = modulation->searchPeakTime - bitrate->period8SymbolSamples;
+               modulation->symbolEndTime = modulation->correlatedPeakTime - bitrate->period8SymbolSamples;
 
                // reset modulation for next search
                modulation->searchStage = SOF_BEGIN;
                modulation->searchSyncTime = 0;
                modulation->searchStartTime = 0;
                modulation->searchEndTime = 0;
-               modulation->detectorPeek = 0;
+               modulation->detectorPeekValue = 0;
 
                // setup frame info
                frameStatus.frameType = PollFrame;
@@ -633,9 +633,9 @@ struct NfcB::Impl : NfcTech
             signalEdge = std::abs(signalEdge);
 
             // detect edge at maximum peak
-            if (signalEdge > 0.001 && modulation->detectorPeek < signalEdge && signalDeep > minimumModulationThreshold)
+            if (signalEdge > 0.001 && modulation->detectorPeekValue < signalEdge && signalDeep > minimumModulationThreshold)
             {
-               modulation->detectorPeek = signalEdge;
+               modulation->detectorPeekValue = signalEdge;
                modulation->symbolEndTime = decoder->signalClock - bitrate->period8SymbolSamples;
                modulation->searchSyncTime = 0;
             }
@@ -687,7 +687,7 @@ struct NfcB::Impl : NfcTech
 
          // reset status for next symbol
          modulation->searchSyncTime = 0;
-         modulation->detectorPeek = 0;
+         modulation->detectorPeekValue = 0;
 
          return symbolStatus.pattern;
       }
@@ -759,7 +759,7 @@ struct NfcB::Impl : NfcTech
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
                   decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
 #endif
-                  modulation->searchPeakTime = decoder->signalClock;
+                  modulation->correlatedPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
                   modulation->searchPulseWidth++;
                }
@@ -779,13 +779,13 @@ struct NfcB::Impl : NfcTech
                   decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
 #endif
                   // if edge found, set SOF symbol start
-                  modulation->symbolStartTime = modulation->searchPeakTime - bitrate->period1SymbolSamples * 11;
+                  modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period1SymbolSamples * 11;
 
                   // and trigger next stage
                   modulation->searchStage = SOF_IDLE;
-                  modulation->searchStartTime = modulation->searchPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                  modulation->searchEndTime = modulation->searchPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-                  modulation->searchPeakTime = 0;
+                  modulation->searchStartTime = modulation->correlatedPeakTime + (10 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->searchEndTime = modulation->correlatedPeakTime + (11 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+                  modulation->correlatedPeakTime = 0;
                }
                else
                {
@@ -793,7 +793,7 @@ struct NfcB::Impl : NfcTech
                   modulation->searchStage = SOF_BEGIN;
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
-                  modulation->searchPeakTime = 0;
+                  modulation->correlatedPeakTime = 0;
                   modulation->searchPulseWidth = 0;
                   modulation->symbolStartTime = 0;
                   modulation->symbolEndTime = 0;
@@ -813,7 +813,7 @@ struct NfcB::Impl : NfcTech
                // detect second zero-cross
                if (modulation->phaseIntegrate > 0.001f)
                {
-                  modulation->searchPeakTime = decoder->signalClock;
+                  modulation->correlatedPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
                }
 
@@ -822,13 +822,13 @@ struct NfcB::Impl : NfcTech
                   break;
 
                // if no edge found, restart search
-               if (!modulation->searchPeakTime)
+               if (!modulation->correlatedPeakTime)
                {
                   // if no edge is found, we restart SOF search
                   modulation->searchStage = SOF_BEGIN;
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
-                  modulation->searchPeakTime = 0;
+                  modulation->correlatedPeakTime = 0;
                   modulation->searchPulseWidth = 0;
                   modulation->symbolStartTime = 0;
                   modulation->symbolEndTime = 0;
@@ -840,9 +840,9 @@ struct NfcB::Impl : NfcTech
 #endif
                // if edge found, synchronize symbol and check for end of SOF
                modulation->searchStage = SOF_END;
-               modulation->searchStartTime = modulation->searchPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-               modulation->searchEndTime = modulation->searchPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
-               modulation->searchPeakTime = 0;
+               modulation->searchStartTime = modulation->correlatedPeakTime + (2 * bitrate->period1SymbolSamples) - bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+               modulation->searchEndTime = modulation->correlatedPeakTime + (3 * bitrate->period1SymbolSamples) + bitrate->period2SymbolSamples; // search falling edge up to 11 etu
+               modulation->correlatedPeakTime = 0;
 
                break;
 
@@ -858,7 +858,7 @@ struct NfcB::Impl : NfcTech
                // detect start bit zero-cross
                if (modulation->phaseIntegrate > 0.001f)
                {
-                  modulation->searchPeakTime = decoder->signalClock;
+                  modulation->correlatedPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
                }
 
@@ -867,13 +867,13 @@ struct NfcB::Impl : NfcTech
                   break;
 
                // if no modulation found, restart search
-               if (!modulation->searchPeakTime)
+               if (!modulation->correlatedPeakTime)
                {
                   // if no edge is found, we restart SOF search
                   modulation->searchStage = SOF_BEGIN;
                   modulation->searchStartTime = 0;
                   modulation->searchEndTime = 0;
-                  modulation->searchPeakTime = 0;
+                  modulation->correlatedPeakTime = 0;
                   modulation->searchPulseWidth = 0;
                   modulation->symbolStartTime = 0;
                   modulation->symbolEndTime = 0;
@@ -881,7 +881,7 @@ struct NfcB::Impl : NfcTech
                }
 
                // if found, set SOF symbol end and reference phase
-               modulation->symbolEndTime = modulation->searchPeakTime;
+               modulation->symbolEndTime = modulation->correlatedPeakTime;
 
                // set next synchronization point
                modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
@@ -1002,7 +1002,7 @@ struct NfcB::Impl : NfcTech
          modulationStatus[rate].searchEndTime = 0;
          modulationStatus[rate].searchPhaseValue = NAN;
          modulationStatus[rate].symbolAverage = 0;
-         modulationStatus[rate].detectorPeek = 0;
+         modulationStatus[rate].detectorPeekValue = 0;
       }
 
       // clear stream status
