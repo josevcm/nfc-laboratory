@@ -48,7 +48,7 @@
 namespace nfc {
 
 // Buffer length for signal integration, must be power of 2^n
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 1024
 
 /*
  * Signal debugger
@@ -248,21 +248,23 @@ struct ModulationStatus
    unsigned int searchSyncTime;     // sample at next synchronization
    unsigned int searchPeakTime;     // sample time for maximum correlation peak
    unsigned int searchPulseWidth;   // detected signal pulse width
-   float searchThreshold;           // signal threshold
+   float searchPhaseValue;          // signal phase value at search
 
    // symbol parameters
    unsigned int symbolStartTime;
    unsigned int symbolEndTime;
    float symbolCorr0;
    float symbolCorr1;
-   float searchPhase;
    float symbolAverage;
+
+   // signal thresholds
+   float signalValueThreshold;   // signal value threshold
+   float signalPhaseThreshold;   // signal phase threshold
 
    // integrator processor
    float filterIntegrate;
    float detectIntegrate;
    float phaseIntegrate;
-   float phaseThreshold;
 
    // correlation values
    float correlationPeek;

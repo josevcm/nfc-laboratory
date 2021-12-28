@@ -324,7 +324,7 @@ struct NfcV::Impl : NfcTech
             modulation->correlationPeek = 0;
 
             // set lower threshold to detect valid response pattern
-            modulation->searchThreshold = decoder->signalStatus.signalAverg * minimumModulationThreshold;
+            modulation->signalValueThreshold = decoder->signalStatus.signalAverg * minimumModulationThreshold;
 
             // check for 1 of 4 code
             if (modulation->searchPeakTime > (modulation->symbolStartTime + 3 * bitrate->period1SymbolSamples - bitrate->period8SymbolSamples) &&
@@ -642,7 +642,7 @@ struct NfcV::Impl : NfcTech
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-         if (decoder->signalClock == modulation->symbolSyncTime)
+         if (decoder->signalClock == modulation->searchSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
 
@@ -782,7 +782,7 @@ struct NfcV::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+            modulation->signalValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS0);
@@ -798,7 +798,7 @@ struct NfcV::Impl : NfcTech
             if (decoder->signalClock >= frameStatus.waitingEnd)
                return PatternType::NoPattern;
 
-            if (correlatedS0 < -modulation->searchThreshold)
+            if (correlatedS0 < -modulation->signalValueThreshold)
             {
                modulation->searchPulseWidth++;
 
@@ -844,7 +844,7 @@ struct NfcV::Impl : NfcTech
                continue;
 
             // max correlation peak detector
-            if (correlatedS0 < -modulation->searchThreshold && correlatedS0 < modulation->correlationPeek)
+            if (correlatedS0 < -modulation->signalValueThreshold && correlatedS0 < modulation->correlationPeek)
             {
                modulation->searchPeakTime = decoder->signalClock;
                modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
@@ -947,7 +947,7 @@ struct NfcV::Impl : NfcTech
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-         if (decoder->signalClock == modulation->symbolSyncTime)
+         if (decoder->signalClock == modulation->searchSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
          // wait until search window start
@@ -955,7 +955,7 @@ struct NfcV::Impl : NfcTech
             continue;
 
          // detect max correlation peak
-         if (correlatedSD > modulation->searchThreshold && correlatedSD > modulation->correlationPeek)
+         if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlationPeek)
          {
             modulation->correlationPeek = correlatedSD;
             modulation->symbolCorr0 = correlatedS0;
@@ -968,7 +968,7 @@ struct NfcV::Impl : NfcTech
             continue;
 
          // no modulation found(End Of Frame)
-         if (modulation->correlationPeek < modulation->searchThreshold)
+         if (modulation->correlationPeek < modulation->signalValueThreshold)
             return PatternType::PatternS;
 
          // estimated symbol start and end

@@ -92,7 +92,7 @@ int startTest1(int argc, char *argv[])
 
    decoder.setEnableNfcA(true);
    decoder.setEnableNfcB(false);
-   decoder.setEnableNfcF(false);
+   decoder.setEnableNfcF(true);
    decoder.setEnableNfcV(false);
 
    sdr::RecordDevice source(argv[1]);

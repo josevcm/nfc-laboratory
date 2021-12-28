@@ -226,7 +226,7 @@ struct NfcF::Impl : NfcTech
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-         if (decoder->signalClock == modulation->symbolSyncTime)
+         if (decoder->signalClock == modulation->searchSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
 
@@ -248,7 +248,7 @@ struct NfcF::Impl : NfcTech
             continue;
 
          // detect maximum correlation peak for synchronization
-         if (correlatedSD > modulation->searchThreshold && correlatedSD > modulation->correlationPeek)
+         if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlationPeek)
          {
             modulation->searchPeakTime = decoder->signalClock;
             modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
@@ -288,10 +288,12 @@ struct NfcF::Impl : NfcTech
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
          modulation->searchStartTime = modulation->searchSyncTime - bitrate->period4SymbolSamples;
          modulation->searchEndTime = modulation->searchSyncTime + bitrate->period4SymbolSamples;
-         modulation->searchThreshold = decoder->signalStatus.signalAverg * minimumModulationThreshold;
          modulation->searchPeakTime = 0;
          modulation->correlationPeek = 0;
          modulation->searchPulseWidth++;
+
+         // set signal threshold for modulation detector
+         modulation->signalValueThreshold = decoder->signalStatus.signalAverg * minimumModulationThreshold;
 
          // capture SoS symbol start at first bit
          if (modulation->searchPulseWidth == 1)
@@ -564,7 +566,7 @@ struct NfcF::Impl : NfcTech
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-         if (decoder->signalClock == modulation->symbolSyncTime)
+         if (decoder->signalClock == modulation->searchSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
 
@@ -573,7 +575,7 @@ struct NfcF::Impl : NfcTech
             continue;
 
          // detect maximum symbol correlation
-         if (correlatedSD > modulation->searchThreshold && correlatedSD > modulation->correlationPeek)
+         if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlationPeek)
          {
             modulation->correlationPeek = correlatedSD;
             modulation->searchPeakTime = decoder->signalClock;
@@ -677,7 +679,7 @@ struct NfcF::Impl : NfcTech
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-         if (decoder->signalClock == modulation->symbolSyncTime)
+         if (decoder->signalClock == modulation->searchSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
 #endif
 
@@ -687,7 +689,7 @@ struct NfcF::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * 10;
+            modulation->signalValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * 10;
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -702,7 +704,7 @@ struct NfcF::Impl : NfcTech
             continue;
 
          // detect maximum correlation peak for synchronization
-         if (correlatedSD > modulation->searchThreshold && correlatedSD > modulation->correlationPeek)
+         if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlationPeek)
          {
             modulation->searchPeakTime = decoder->signalClock;
             modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
@@ -800,7 +802,7 @@ struct NfcF::Impl : NfcTech
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
-         if (decoder->signalClock == modulation->symbolSyncTime)
+         if (decoder->signalClock == modulation->searchSyncTime)
             decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
 #endif
 
@@ -809,7 +811,7 @@ struct NfcF::Impl : NfcTech
             continue;
 
          // detect maximum symbol correlation
-         if (correlatedSD > modulation->searchThreshold && correlatedSD > modulation->correlationPeek)
+         if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlationPeek)
          {
             modulation->correlationPeek = correlatedSD;
             modulation->searchPeakTime = decoder->signalClock;
