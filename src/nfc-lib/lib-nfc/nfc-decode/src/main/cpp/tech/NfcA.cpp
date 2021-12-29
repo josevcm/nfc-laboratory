@@ -1203,7 +1203,7 @@ struct NfcA::Impl : NfcTech
 
          // set next synchronization point
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
-         modulation->searchPhaseValue = modulation->phaseIntegrate;
+         modulation->searchLastPhase = modulation->phaseIntegrate;
          modulation->searchPulseWidth = 0;
 
          modulation->signalPhaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
@@ -1260,10 +1260,10 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
 #endif
          // edge detector for re-synchronization
-         if ((modulation->phaseIntegrate > 0 && modulation->searchPhaseValue < 0) || (modulation->phaseIntegrate < 0 && modulation->searchPhaseValue > 0))
+         if ((modulation->phaseIntegrate > 0 && modulation->searchLastPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->searchLastPhase > 0))
          {
             modulation->searchSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
-            modulation->searchPhaseValue = modulation->phaseIntegrate;
+            modulation->searchLastPhase = modulation->phaseIntegrate;
          }
 
          // wait until synchronization point is reached
@@ -1280,7 +1280,7 @@ struct NfcA::Impl : NfcTech
 
          // next synchronization point
          modulation->searchSyncTime = modulation->searchSyncTime + bitrate->period1SymbolSamples;
-         modulation->searchPhaseValue = modulation->phaseIntegrate;
+         modulation->searchLastPhase = modulation->phaseIntegrate;
 
          // no modulation detected, generate End Of Frame
          if (std::abs(modulation->phaseIntegrate) < std::abs(modulation->signalPhaseThreshold))
@@ -1333,7 +1333,7 @@ struct NfcA::Impl : NfcTech
          modulationStatus[rate].searchStartTime = 0;
          modulationStatus[rate].searchEndTime = 0;
          modulationStatus[rate].searchPulseWidth = 0;
-         modulationStatus[rate].searchPhaseValue = NAN;
+         modulationStatus[rate].searchLastPhase = NAN;
          modulationStatus[rate].correlatedPeekValue = 0;
          modulationStatus[rate].detectorPeekValue = 0;
          modulationStatus[rate].symbolAverage = 0;

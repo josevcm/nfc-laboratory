@@ -132,7 +132,7 @@ struct NfcF::Impl : NfcTech
          bitrate->period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
          // delay guard for each symbol rate
-         bitrate->symbolDelayDetect = 0; //rate == r106k ? int(std::round(decoder->signalParams.sampleTimeUnit * 2048)) : bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples;
+         bitrate->symbolDelayDetect = 0;
 
          // moving average offsets
          bitrate->offsetFutureIndex = BUFFER_SIZE;
@@ -189,8 +189,11 @@ struct NfcF::Impl : NfcTech
       if (decoder->signalStatus.signalAverg < decoder->powerLevelThreshold)
          return false;
 
+      // minimum correlation value for valid NFC-F symbols
+      float minimumCorrelation = decoder->signalStatus.signalAverg * minimumModulationThreshold;
+
       // POLL frame ASK detector for 212Kbps and 424Kbps
-      for (int rate = r212k; rate <= r212k; rate++)
+      for (int rate = r212k; rate <= r424k; rate++)
       {
          BitrateParams *bitrate = bitrateParams + rate;
          ModulationStatus *modulation = modulationStatus + rate;
@@ -222,12 +225,12 @@ struct NfcF::Impl : NfcTech
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS1 / float(bitrate->period2SymbolSamples));
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
 #endif
 
          // reset modulation if exceed limits
@@ -245,83 +248,90 @@ struct NfcF::Impl : NfcTech
             return false;
          }
 
-         // wait until search start (or no search at all)
+         // wait until search start
          if (decoder->signalClock < modulation->searchStartTime)
             continue;
 
-         // detect maximum correlation peak for synchronization
-         if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlatedPeekValue)
+         // detect maximum correlation peak
+         if (correlatedSD > minimumCorrelation && correlatedSD > modulation->correlatedPeekValue)
          {
-            modulation->correlatedPeakTime = decoder->signalClock;
-            modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
             modulation->correlatedPeekValue = correlatedSD;
+            modulation->correlatedPeakTime = decoder->signalClock;
+
+            // update search end if no search window is defined from previous symbol
+            if (!modulation->searchStartTime)
+               modulation->searchEndTime = decoder->signalClock + bitrate->period8SymbolSamples;
          }
 
-         // capture symbol correlation values at synchronization point
+         // detect synchronization in preamble and count transitions
          if (decoder->signalClock == modulation->searchSyncTime)
          {
-            modulation->symbolCorr0 = correlatedS0;
-            modulation->symbolCorr1 = correlatedS1;
+            // capture symbol correlation at synchronization point
+            modulation->searchSyncValue = correlatedSD;
+
+            // preamble sync code starts now! detect if manchester is inverted
+            if (++modulation->searchPulseWidth == 95)
+            {
+               // check for inverted manchester mode
+               modulation->searchModeState = correlatedSD < modulation->searchLastValue / 2;
+            }
          }
 
          // wait until search finished
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         // check for manchester code synchronization after 48bit preamble
-//         if (modulation->searchPulseWidth == 47 && modulation->symbolCorr1 > modulation->symbolCorr0)
-//         {
-//            modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period1SymbolSamples;
-//            modulation->symbolEndTime = modulation->correlatedPeakTime;
-//         }
-
-         // no valid modulation found, reset search
-         if (!modulation->correlatedPeakTime || modulation->symbolCorr1 > modulation->symbolCorr0)
+         // if no valid modulation found during preanble search, abort...
+         if (modulation->searchPulseWidth < 95)
          {
-            // reset modulation to continue search
-            modulation->searchSyncTime = 0;
-            modulation->searchStartTime = 0;
-            modulation->searchEndTime = 0;
-            modulation->searchPulseWidth = 0;
-            modulation->correlatedPeekValue = 0;
-            modulation->symbolStartTime = 0;
-            modulation->symbolEndTime = 0;
-            modulation->symbolCorr0 = 0;
-            modulation->symbolCorr1 = 0;
-            continue;
+            if (!modulation->correlatedPeakTime || modulation->searchSyncValue < modulation->searchLastValue / 2)
+            {
+               // reset modulation to continue search
+               modulation->searchModeState = 0;
+               modulation->searchSyncTime = 0;
+               modulation->searchStartTime = 0;
+               modulation->searchEndTime = 0;
+               modulation->searchPulseWidth = 0;
+               modulation->searchSyncValue = 0;
+               modulation->searchLastValue = 0;
+               modulation->correlatedPeekValue = 0;
+               modulation->symbolStartTime = 0;
+               modulation->symbolEndTime = 0;
+               continue;
+            }
          }
 
+         // set symbol timings, first symbol and rest
          if (!modulation->symbolStartTime)
-         {
-            // first symbol
             modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
-            modulation->symbolEndTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-         }
          else
-         {
-            // rest of symbols
-            modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period1SymbolSamples;
-            modulation->symbolEndTime = modulation->correlatedPeakTime;
-            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
-         }
+            modulation->symbolEndTime = modulation->searchSyncTime;
+
+         // set next synchronization point for current manchester mode
+         if (modulation->searchModeState)
+            modulation->searchSyncTime = modulation->searchSyncTime + bitrate->period2SymbolSamples;
+         else
+            modulation->searchSyncTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
+
+         // set next search window parameters
+         modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
+         modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
+         modulation->searchLastValue = modulation->correlatedPeekValue;
 
          // sets next search window
-         modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
-         modulation->searchStartTime = modulation->searchSyncTime - bitrate->period4SymbolSamples;
-         modulation->searchEndTime = modulation->searchSyncTime + bitrate->period4SymbolSamples;
          modulation->correlatedPeakTime = 0;
          modulation->correlatedPeekValue = 0;
-         modulation->searchPulseWidth++;
-
-         // set signal threshold for modulation detector
-         modulation->signalValueThreshold = decoder->signalStatus.signalAverg * minimumModulationThreshold;
 
          // wait until preamble finished (48 bits)
-         if (modulation->searchPulseWidth < 6 * 8)
+         if (modulation->searchPulseWidth < 95)
             continue;
 
+         // set signal threshold for modulation detector
+         modulation->signalValueThreshold = minimumCorrelation;
+
          // setup symbol info
+         symbolStatus.start = modulation->symbolStartTime;
+         symbolStatus.end = modulation->symbolEndTime;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
          symbolStatus.pattern = PatternType::PatternS;
 
@@ -396,11 +406,14 @@ struct NfcF::Impl : NfcTech
                request.put(streamStatus.buffer, streamStatus.bytes).flip();
 
                // clear modulation status for next frame search
-               decoder->modulation->searchSyncTime = 0;
+               decoder->modulation->searchModeState = 0;
                decoder->modulation->symbolStartTime = 0;
                decoder->modulation->symbolEndTime = 0;
+               decoder->modulation->searchSyncTime = 0;
                decoder->modulation->searchStartTime = 0;
                decoder->modulation->searchEndTime = 0;
+               decoder->modulation->searchSyncValue = 0;
+               decoder->modulation->searchLastValue = 0;
                decoder->modulation->correlatedPeekValue = 0;
                decoder->modulation->searchPulseWidth = 0;
 
@@ -445,7 +458,7 @@ struct NfcF::Impl : NfcTech
    inline bool decodeListenFrame(sdr::SignalBuffer &buffer, std::list<NfcFrame> &frames)
    {
       int pattern;
-      bool frameEnd = false, truncateError = false, streamError = false;
+      bool frameEnd = false, truncateError = false;
 
       if (!frameStatus.frameStart)
       {
@@ -579,7 +592,7 @@ struct NfcF::Impl : NfcTech
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS1 / float(bitrate->period2SymbolSamples));
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
@@ -601,8 +614,17 @@ struct NfcF::Impl : NfcTech
          // capture symbol correlation values at synchronization point
          if (decoder->signalClock == modulation->searchSyncTime)
          {
-            modulation->symbolCorr0 = correlatedS0;
-            modulation->symbolCorr1 = correlatedS1;
+            if (modulation->searchModeState)
+            {
+               // inverted manchester code
+               modulation->symbolCorr0 = correlatedS1;
+               modulation->symbolCorr1 = correlatedS0;
+            }
+            else
+            {
+               modulation->symbolCorr0 = correlatedS0;
+               modulation->symbolCorr1 = correlatedS1;
+            }
          }
 
          // wait until correlation search finish
@@ -692,7 +714,7 @@ struct NfcF::Impl : NfcTech
          float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS1 / float(bitrate->period2SymbolSamples));
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
@@ -713,60 +735,89 @@ struct NfcF::Impl : NfcTech
             return PatternType::NoPattern;
 
          // poll frame modulation detected while waiting for response
-         if (signalDeep > minimumModulationThreshold)
-            return PatternType::NoPattern;
+//         if (signalDeep > minimumModulationThreshold)
+//            return PatternType::NoPattern;
 
          // wait until search start (or no search at all)
          if (decoder->signalClock < modulation->searchStartTime)
             continue;
 
-         // detect maximum correlation peak for synchronization
+         // detect maximum correlation peak
          if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlatedPeekValue)
          {
-            modulation->correlatedPeakTime = decoder->signalClock;
-            modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
             modulation->correlatedPeekValue = correlatedSD;
+            modulation->correlatedPeakTime = decoder->signalClock;
+
+            // update search end if no search window is defined from previous symbol
+            if (!modulation->searchStartTime)
+               modulation->searchEndTime = decoder->signalClock + bitrate->period8SymbolSamples;
+         }
+
+         // detect synchronization in preamble and count transitions
+         if (decoder->signalClock == modulation->searchSyncTime)
+         {
+            // capture symbol correlation at synchronization point
+            modulation->searchSyncValue = correlatedSD;
+
+            // preamble sync code starts now! detect if manchester is inverted
+            if (++modulation->searchPulseWidth == 95)
+            {
+               // check for inverted manchester mode
+               modulation->searchModeState = correlatedSD < modulation->searchLastValue / 2;
+            }
          }
 
          // wait until search finished
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         // no valid modulation found, reset search
-         if (!modulation->correlatedPeakTime || modulation->symbolCorr1 > modulation->symbolCorr0)
+         // if no valid modulation found during preanble search, abort...
+         if (modulation->searchPulseWidth < 95)
          {
-            // reset modulation to continue search
-            modulation->searchSyncTime = 0;
-            modulation->searchStartTime = 0;
-            modulation->searchEndTime = 0;
-            modulation->searchPulseWidth = 0;
-            modulation->correlatedPeekValue = 0;
-            modulation->symbolCorr0 = 0;
-            modulation->symbolCorr1 = 0;
-            continue;
+            if (!modulation->correlatedPeakTime || modulation->searchSyncValue < modulation->searchLastValue / 2)
+            {
+               // reset modulation to continue search
+               modulation->searchModeState = 0;
+               modulation->searchSyncTime = 0;
+               modulation->searchStartTime = 0;
+               modulation->searchEndTime = 0;
+               modulation->searchPulseWidth = 0;
+               modulation->searchSyncValue = 0;
+               modulation->searchLastValue = 0;
+               modulation->correlatedPeekValue = 0;
+               modulation->symbolStartTime = 0;
+               modulation->symbolEndTime = 0;
+               continue;
+            }
          }
 
-         // sets symbol start and end time
-         modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period1SymbolSamples;
-         modulation->symbolEndTime = modulation->correlatedPeakTime;
+         // set symbol timings, first symbol and rest
+         if (!modulation->symbolStartTime)
+            modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
+         else
+            modulation->symbolEndTime = modulation->searchSyncTime;
+
+         // set next synchronization point for current manchester mode
+         if (modulation->searchModeState)
+            modulation->searchSyncTime = modulation->searchSyncTime + bitrate->period2SymbolSamples;
+         else
+            modulation->searchSyncTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
+
+         // set next search window parameters
+         modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
+         modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
+         modulation->searchLastValue = modulation->correlatedPeekValue;
 
          // sets next search window
-         modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
-         modulation->searchStartTime = modulation->searchSyncTime - bitrate->period4SymbolSamples;
-         modulation->searchEndTime = modulation->searchSyncTime + bitrate->period4SymbolSamples;
          modulation->correlatedPeakTime = 0;
          modulation->correlatedPeekValue = 0;
-         modulation->searchPulseWidth++;
-
-         // capture SoS symbol start at first bit
-         if (modulation->searchPulseWidth == 1)
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
 
          // wait until preamble finished (48 bits)
-         if (modulation->searchPulseWidth < 6 * 8)
+         if (modulation->searchPulseWidth < 95)
             continue;
 
          // set symbol info
+         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
          symbolStatus.pattern = PatternType::PatternS;
@@ -815,7 +866,7 @@ struct NfcF::Impl : NfcTech
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS1 / float(bitrate->period2SymbolSamples));
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
@@ -837,8 +888,17 @@ struct NfcF::Impl : NfcTech
          // capture symbol correlation values at synchronization point
          if (decoder->signalClock == modulation->searchSyncTime)
          {
-            modulation->symbolCorr0 = correlatedS0;
-            modulation->symbolCorr1 = correlatedS1;
+            if (modulation->searchModeState)
+            {
+               // inverted manchester code
+               modulation->symbolCorr0 = correlatedS1;
+               modulation->symbolCorr1 = correlatedS0;
+            }
+            else
+            {
+               modulation->symbolCorr0 = correlatedS0;
+               modulation->symbolCorr1 = correlatedS1;
+            }
          }
 
          // wait until correlation search finish
@@ -891,10 +951,14 @@ struct NfcF::Impl : NfcTech
       // reset modulation detection for all rates
       for (int rate = r212k; rate <= r424k; rate++)
       {
+         modulationStatus[rate].searchModeState = 0;
          modulationStatus[rate].searchStartTime = 0;
          modulationStatus[rate].searchEndTime = 0;
-         modulationStatus[rate].correlatedPeekValue = 0;
+         modulationStatus[rate].searchSyncTime = 0;
+         modulationStatus[rate].searchSyncValue = 0;
+         modulationStatus[rate].searchLastValue = 0;
          modulationStatus[rate].searchPulseWidth = 0;
+         modulationStatus[rate].correlatedPeekValue = 0;
          modulationStatus[rate].symbolAverage = 0;
          modulationStatus[rate].symbolCorr0 = 0;
          modulationStatus[rate].symbolCorr1 = 0;

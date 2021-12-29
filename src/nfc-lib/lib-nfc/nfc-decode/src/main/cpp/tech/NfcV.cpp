@@ -240,7 +240,7 @@ struct NfcV::Impl : NfcTech
 #endif
 
       // search for first falling edge
-      switch (modulation->searchStage)
+      switch (modulation->searchModeState)
       {
          case SOF_BEGIN:
 
@@ -272,7 +272,7 @@ struct NfcV::Impl : NfcTech
             modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
 
             // and triger next stage
-            modulation->searchStage = SOF_MODE;
+            modulation->searchModeState = SOF_MODE;
             modulation->searchStartTime = modulation->symbolStartTime + (2 * bitrate->period1SymbolSamples);
             modulation->searchEndTime = modulation->symbolStartTime + (4 * bitrate->period1SymbolSamples);
             modulation->correlatedPeakTime = 0;
@@ -302,7 +302,7 @@ struct NfcV::Impl : NfcTech
             if (!modulation->correlatedPeakTime)
             {
                // if no edge found, restart search
-               modulation->searchStage = SOF_BEGIN;
+               modulation->searchModeState = SOF_BEGIN;
                modulation->searchStartTime = 0;
                modulation->searchEndTime = 0;
                modulation->correlatedPeakTime = 0;
@@ -318,7 +318,7 @@ struct NfcV::Impl : NfcTech
 #endif
 
             // reset modulation for next search
-            modulation->searchStage = SOF_BEGIN;
+            modulation->searchModeState = SOF_BEGIN;
             modulation->searchStartTime = 0;
             modulation->searchEndTime = 0;
             modulation->correlatedPeekValue = 0;
@@ -1008,7 +1008,7 @@ struct NfcV::Impl : NfcTech
       symbolStatus = {0,};
 
       // clear modulation status
-      modulationStatus.searchStage = 0;
+      modulationStatus.searchModeState = 0;
       modulationStatus.searchStartTime = 0;
       modulationStatus.searchEndTime = 0;
       modulationStatus.symbolAverage = 0;

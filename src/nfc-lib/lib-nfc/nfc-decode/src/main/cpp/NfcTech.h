@@ -242,12 +242,14 @@ struct SignalStatus
 struct ModulationStatus
 {
    // symbol search status
-   unsigned int searchStage;        // search stage control
+   unsigned int searchModeState;    // search mode / state control
    unsigned int searchStartTime;    // sample start of symbol search window
    unsigned int searchEndTime;      // sample end of symbol search window
    unsigned int searchSyncTime;     // sample at next synchronization
    unsigned int searchPulseWidth;   // detected signal pulse width
-   float searchPhaseValue;          // signal phase value at search
+   float searchLastPhase;           // auxiliary signal phase
+   float searchLastValue;           // auxiliary signal value
+   float searchSyncValue;           // auxiliary signal value at synchronization point
 
    // symbol parameters
    unsigned int symbolStartTime;
