@@ -217,8 +217,8 @@ struct NfcF::Impl : NfcTech
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factors
-         float correlatedS1 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
-         float correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
+         float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
@@ -238,6 +238,8 @@ struct NfcF::Impl : NfcTech
             modulation->searchEndTime = 0;
             modulation->searchPulseWidth = 0;
             modulation->correlatedPeekValue = 0;
+            modulation->symbolStartTime = 0;
+            modulation->symbolEndTime = 0;
             modulation->symbolCorr0 = 0;
             modulation->symbolCorr1 = 0;
             return false;
@@ -266,6 +268,13 @@ struct NfcF::Impl : NfcTech
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
+         // check for manchester code synchronization after 48bit preamble
+//         if (modulation->searchPulseWidth == 47 && modulation->symbolCorr1 > modulation->symbolCorr0)
+//         {
+//            modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period1SymbolSamples;
+//            modulation->symbolEndTime = modulation->correlatedPeakTime;
+//         }
+
          // no valid modulation found, reset search
          if (!modulation->correlatedPeakTime || modulation->symbolCorr1 > modulation->symbolCorr0)
          {
@@ -275,14 +284,27 @@ struct NfcF::Impl : NfcTech
             modulation->searchEndTime = 0;
             modulation->searchPulseWidth = 0;
             modulation->correlatedPeekValue = 0;
+            modulation->symbolStartTime = 0;
+            modulation->symbolEndTime = 0;
             modulation->symbolCorr0 = 0;
             modulation->symbolCorr1 = 0;
             continue;
          }
 
-         // sets symbol start and end time
-         modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period1SymbolSamples;
-         modulation->symbolEndTime = modulation->correlatedPeakTime;
+         if (!modulation->symbolStartTime)
+         {
+            // first symbol
+            modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
+            modulation->symbolEndTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
+            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
+         }
+         else
+         {
+            // rest of symbols
+            modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period1SymbolSamples;
+            modulation->symbolEndTime = modulation->correlatedPeakTime;
+            symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         }
 
          // sets next search window
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
@@ -295,16 +317,11 @@ struct NfcF::Impl : NfcTech
          // set signal threshold for modulation detector
          modulation->signalValueThreshold = decoder->signalStatus.signalAverg * minimumModulationThreshold;
 
-         // capture SoS symbol start at first bit
-         if (modulation->searchPulseWidth == 1)
-            symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-
          // wait until preamble finished (48 bits)
          if (modulation->searchPulseWidth < 6 * 8)
             continue;
 
          // setup symbol info
-         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
          symbolStatus.pattern = PatternType::PatternS;
 
@@ -557,8 +574,8 @@ struct NfcF::Impl : NfcTech
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factors
-         float correlatedS1 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
-         float correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
+         float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
