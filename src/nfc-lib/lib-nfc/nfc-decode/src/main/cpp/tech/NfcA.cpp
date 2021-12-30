@@ -221,12 +221,8 @@ struct NfcA::Impl : NfcTech
          return false;
 
       // minimum correlation value for valid NFC-A symbols
-      float minimumCorrelation = decoder->signalStatus.signalAverg * minimumCorrelationThreshold;
+      float minimumCorrelation = decoder->signalStatus.signalAverg * minimumModulationThreshold;
 
-      if (decoder->signalClock == 438500)
-         log.info("");
-
-      // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
       for (int rate = r106k; rate <= r424k; rate++)
       {
          BitrateParams *bitrate = bitrateParams + rate;
@@ -262,38 +258,6 @@ struct NfcA::Impl : NfcTech
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS1);
 #endif
-
-         // detect modulation deep
-//         if (correlatedS1 > 0)
-//         {
-//            // reset previous detector peak values
-//            if (modulation->detectorPeakTime && modulation->detectorPeakTime < decoder->signalClock - bitrate->period1SymbolSamples)
-//            {
-//               modulation->detectorPeakValue = 0;
-//               modulation->detectorPeakTime = 0;
-//            }
-//
-//            // maximum modulation deep
-//            if (signalDeep > modulation->detectorPeakValue)
-//            {
-//               modulation->detectorPeakValue = signalDeep;
-//               modulation->detectorPeakTime = decoder->signalClock;
-//            }
-//         }
-//
-//         // detect modulation peak
-//         if (correlatedS1 >= minimumCorrelation)
-//         {
-//            modulation->searchPulseWidth++;
-//
-//            // detect maximum correlation point
-//            if (correlatedS1 > modulation->correlatedPeakValue)
-//            {
-//               modulation->correlatedPeakValue = correlatedS1;
-//               modulation->correlatedPeakTime = decoder->signalClock;
-//               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-//            }
-//         }
 
          // detect modulation deep and pulse width
          if (signalDeep > minimumModulationThreshold)
