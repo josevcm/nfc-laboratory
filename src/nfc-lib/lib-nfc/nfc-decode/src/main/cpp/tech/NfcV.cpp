@@ -262,6 +262,7 @@ struct NfcV::Impl : NfcTech
          {
             modulation->detectorPeakValue = 0;
             modulation->detectorPeakTime = 0;
+            modulation->searchPulseWidth = 0;
          }
 
          // maximum modulation deep

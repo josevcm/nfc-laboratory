@@ -33,7 +33,6 @@
 #define DEBUG_ASK_SYNC_CHANNEL 1
 #define DEBUG_BPSK_PHASE_CHANNEL 1
 #define DEBUG_BPSK_SYNC_CHANNEL 1
-#define DEBUG_ASK_DEEP_CHANNEL 2
 #endif
 
 namespace nfc {
@@ -220,7 +219,7 @@ struct NfcA::Impl : NfcTech
       if (decoder->signalStatus.signalAverg < decoder->powerLevelThreshold)
          return false;
 
-      // minimum correlation value for valid NFC-A symbols
+      // for NFC-A minimum correlation value is based on minimum modulation deep to filter-out higher bit-rates, only valid rate can reach the threshold
       float minimumCorrelationValue = decoder->signalStatus.signalAverg * minimumModulationDeep;
 
       for (int rate = r106k; rate <= r424k; rate++)
@@ -267,6 +266,7 @@ struct NfcA::Impl : NfcTech
             {
                modulation->detectorPeakValue = 0;
                modulation->detectorPeakTime = 0;
+               modulation->searchPulseWidth = 0;
             }
 
             // detect maximum modulation deep
@@ -900,6 +900,10 @@ struct NfcA::Impl : NfcTech
          // store signal square in filter buffer
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
 
+#ifdef DEBUG_ASK_CORR_CHANNEL
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL + 1, modulation->symbolAverage);
+#endif
+
          // wait until frame guard time is reached
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
             continue;
@@ -971,7 +975,7 @@ struct NfcA::Impl : NfcTech
             modulation->searchEndTime = 0;
             modulation->correlatedPeakValue = 0;
             modulation->searchPulseWidth = 0;
-            break;
+            continue;
          }
 
          // set pattern search window
@@ -1045,7 +1049,11 @@ struct NfcA::Impl : NfcTech
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1);
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL + 1, modulation->symbolAverage);
+#endif
+
+#ifdef DEBUG_ASK_CORR_CHANNEL
+         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS1);
 #endif
 
 #ifdef DEBUG_ASK_SYNC_CHANNEL
