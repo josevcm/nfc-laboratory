@@ -55,6 +55,8 @@ struct NfcF
 
    void setModulationThreshold(float min, float max);
 
+   void setCorrelationThreshold(float value);
+
    void configure(long sampleRate);
 
    bool detect();

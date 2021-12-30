@@ -103,20 +103,20 @@ constexpr int NFCB_TR1_MIN_TABLE[] = {0, 64 * 16, 16 * 16, 0};
  * NFC-F parameters
  */
 
-// NFC-V Default Request Guard Time
+// NFC-F Default Request Guard Time
 constexpr int NFCF_FGT_DEF = NFC_TR0_MIN;
 
-// NFC-V Default Frame Waiting Time
+// NFC-F Default Frame Waiting Time
 constexpr int NFCF_FWT_DEF = 256 * 16 * (1 << 4);
 
-// NFC-V Default Start-up Frame Guard Time
+// NFC-F Default Start-up Frame Guard Time
 constexpr int NFCF_SFGT_DEF = 4096;
 
-// NFC-V Default Request Guard Time, defined as the minimum time between the start bits of two consecutive REQV commands.
+// NFC-F Default Request Guard Time, defined as the minimum time between the start bits of two consecutive REQC commands.
 constexpr int NFCF_RGT_DEF = 7000;
 
-// NFC-B Frame Waiting Time for ATQC response
-constexpr int NFCF_FWT_ATQC = 7680;
+// NFC-F Frame Waiting Time for ATQC response
+constexpr int NFCF_FWT_ATQC = 512 * 64 + 4 * 256 * 64;
 
 /*
  * NFC-V parameters

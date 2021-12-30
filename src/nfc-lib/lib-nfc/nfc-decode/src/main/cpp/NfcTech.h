@@ -34,7 +34,7 @@
 
 #include <nfc/Nfc.h>
 
-#define DEBUG_SIGNAL
+//#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 4
@@ -268,8 +268,8 @@ struct ModulationStatus
    float phaseIntegrate;
 
    // auxiliary detector peak values
-   float correlatedPeekValue;
-   float detectorPeekValue;
+   float correlatedPeakValue;
+   float detectorPeakValue;
 
    // auxiliary detector peak times
    unsigned int correlatedPeakTime;     // sample time for maximum correlation peak
