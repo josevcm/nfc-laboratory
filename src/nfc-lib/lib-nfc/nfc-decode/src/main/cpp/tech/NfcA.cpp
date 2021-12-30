@@ -80,10 +80,10 @@ struct NfcA::Impl : NfcTech
    ModulationStatus modulationStatus[4] {0,};
 
    // minimum modulation threshold to detect valid signal for NFC-A (default 95%)
-   float minimumModulationThreshold = 0.95f;
+   float minimumModulationDeep = 0.95f;
 
    // minimum modulation threshold to detect valid signal for NFC-A (default 100%)
-   float maximumModulationThreshold = 1.00f;
+   float maximumModulationDeep = 1.00f;
 
    // minimum correlation threshold to detect valid NFC-V pulse (default 50%)
    float minimumCorrelationThreshold = 0.50f;
@@ -109,7 +109,7 @@ struct NfcA::Impl : NfcTech
       log.info("\tsignalSampleRate     {}", {decoder->sampleRate});
       log.info("\tpowerLevelThreshold  {}", {decoder->powerLevelThreshold});
       log.info("\tcorrelationThreshold {}", {minimumCorrelationThreshold});
-      log.info("\tmodulationThreshold  {} -> {}", {minimumModulationThreshold, maximumModulationThreshold});
+      log.info("\tmodulationThreshold  {} -> {}", {minimumModulationDeep, maximumModulationDeep});
 
       // clear last detected frame end
       lastFrameEnd = 0;
@@ -221,7 +221,7 @@ struct NfcA::Impl : NfcTech
          return false;
 
       // minimum correlation value for valid NFC-A symbols
-      float minimumCorrelation = decoder->signalStatus.signalAverg * minimumModulationThreshold;
+      float minimumCorrelationValue = decoder->signalStatus.signalAverg * minimumModulationDeep;
 
       for (int rate = r106k; rate <= r424k; rate++)
       {
@@ -260,7 +260,7 @@ struct NfcA::Impl : NfcTech
 #endif
 
          // detect modulation deep and pulse width
-         if (signalDeep > minimumModulationThreshold)
+         if (signalDeep > minimumModulationDeep)
          {
             // reset previous detector peak values
             if (modulation->detectorPeakTime && modulation->detectorPeakTime < decoder->signalClock - bitrate->period1SymbolSamples)
@@ -281,7 +281,7 @@ struct NfcA::Impl : NfcTech
          }
 
          // detect modulation peak
-         if (correlatedS1 >= minimumCorrelation)
+         if (correlatedS1 >= minimumCorrelationValue)
          {
             // detect maximum correlation point
             if (correlatedS1 > modulation->correlatedPeakValue)
@@ -301,7 +301,7 @@ struct NfcA::Impl : NfcTech
 
          // check for valid NFC-A modulated pulse
          if (modulation->correlatedPeakTime == 0 || // no modulation found
-             modulation->detectorPeakValue < minimumModulationThreshold || // insufficient modulation deep
+             modulation->detectorPeakValue < minimumModulationDeep || // insufficient modulation deep
              modulation->searchPulseWidth > maximumPulseWidth) // pulse too wide, possible NFC-V modulation
          {
             // reset modulation to continue search
@@ -333,7 +333,7 @@ struct NfcA::Impl : NfcTech
          modulation->correlatedPeakTime = 0;
          modulation->correlatedPeakValue = 0;
 
-         modulation->signalValueThreshold = decoder->signalStatus.signalAverg * minimumModulationThreshold;
+         modulation->signalValueThreshold = decoder->signalStatus.signalAverg * minimumModulationDeep;
 
          // setup frame info
          frameStatus.frameType = PollFrame;
@@ -934,7 +934,7 @@ struct NfcA::Impl : NfcTech
             return PatternType::NoPattern;
 
          // poll frame modulation detected while waiting for response
-         if (signalDeep > minimumModulationThreshold)
+         if (signalDeep > minimumModulationDeep)
             return PatternType::NoPattern;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
@@ -1177,7 +1177,7 @@ struct NfcA::Impl : NfcTech
             return PatternType::NoPattern;
 
          // check if poll frame modulation is detected while waiting for response
-         if (signalDeep > minimumModulationThreshold)
+         if (signalDeep > minimumModulationDeep)
             return PatternType::NoPattern;
 
          // detect first zero-cross
@@ -1894,10 +1894,10 @@ NfcA::~NfcA()
 void NfcA::setModulationThreshold(float min, float max)
 {
    if (!std::isnan(min))
-      self->minimumModulationThreshold = min;
+      self->minimumModulationDeep = min;
 
    if (!std::isnan(max))
-      self->maximumModulationThreshold = max;
+      self->maximumModulationDeep = max;
 }
 
 void NfcA::setCorrelationThreshold(float value)

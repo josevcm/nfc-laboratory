@@ -66,10 +66,10 @@ struct NfcF::Impl : NfcTech
    ModulationStatus modulationStatus[4] {0,};
 
    // minimum modulation threshold to detect valid signal for NFC-F (default 10%)
-   float minimumModulationThreshold = 0.10f;
+   float minimumModulationDeep = 0.10f;
 
    // minimum modulation threshold to detect valid signal for NFC-F (default 75%)
-   float maximumModulationThreshold = 0.75f;
+   float maximumModulationDeep = 0.75f;
 
    // minimum correlation threshold to detect valid NFC-V pulse (default 50%)
    float minimumCorrelationThreshold = 0.50f;
@@ -92,7 +92,7 @@ struct NfcF::Impl : NfcTech
       log.info("\tsignalSampleRate     {}", {decoder->sampleRate});
       log.info("\tpowerLevelThreshold  {}", {decoder->powerLevelThreshold});
       log.info("\tcorrelationThreshold {}", {minimumCorrelationThreshold});
-      log.info("\tmodulationThreshold  {} -> {}", {minimumModulationThreshold, maximumModulationThreshold});
+      log.info("\tmodulationThreshold  {} -> {}", {minimumModulationDeep, maximumModulationDeep});
 
       // clear last detected frame end
       lastFrameEnd = 0;
@@ -194,7 +194,7 @@ struct NfcF::Impl : NfcTech
          return false;
 
       // minimum correlation value for valid NFC-F symbols
-      float minimumCorrelation = decoder->signalStatus.signalAverg * minimumModulationThreshold;
+      float minimumCorrelationValue = decoder->signalStatus.signalAverg * minimumModulationDeep;
 
       // POLL frame ASK detector for 212Kbps and 424Kbps
       for (int rate = r212k; rate <= r424k; rate++)
@@ -260,7 +260,7 @@ struct NfcF::Impl : NfcTech
          }
 
          // detect modulation peak
-         if (correlatedSD >= minimumCorrelation)
+         if (correlatedSD >= minimumCorrelationValue)
          {
             // detect maximum correlation peak
             if (correlatedSD > modulation->correlatedPeakValue)
@@ -297,8 +297,8 @@ struct NfcF::Impl : NfcTech
          {
             // check for valid NFC-F modulated pulse
             if (modulation->correlatedPeakTime == 0 || // no modulation found
-                modulation->detectorPeakValue < minimumModulationThreshold || // insufficient modulation deep
-                modulation->detectorPeakValue > maximumModulationThreshold || // excessive modulation deep
+                modulation->detectorPeakValue < minimumModulationDeep || // insufficient modulation deep
+                modulation->detectorPeakValue > maximumModulationDeep || // excessive modulation deep
                 modulation->searchSyncValue < modulation->searchLastValue / 2) // pulse too low
             {
                // reset modulation to continue search
@@ -342,7 +342,7 @@ struct NfcF::Impl : NfcTech
             continue;
 
          // set signal threshold for modulation detector
-         modulation->signalValueThreshold = minimumCorrelation;
+         modulation->signalValueThreshold = minimumCorrelationValue;
 
          // setup symbol info
          symbolStatus.start = modulation->symbolStartTime;
@@ -1180,10 +1180,10 @@ NfcF::~NfcF()
 void NfcF::setModulationThreshold(float min, float max)
 {
    if (!std::isnan(min))
-      self->minimumModulationThreshold = min;
+      self->minimumModulationDeep = min;
 
    if (!std::isnan(max))
-      self->maximumModulationThreshold = max;
+      self->maximumModulationDeep = max;
 }
 
 void NfcF::setCorrelationThreshold(float value)
