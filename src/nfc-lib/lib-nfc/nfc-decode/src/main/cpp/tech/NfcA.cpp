@@ -80,7 +80,7 @@ struct NfcA::Impl : NfcTech
    ModulationStatus modulationStatus[4] {0,};
 
    // minimum modulation threshold to detect valid signal for NFC-A (default 95%)
-   float minimumModulationDeep = 0.95f;
+   float minimumModulationDeep = 0.90f;
 
    // minimum modulation threshold to detect valid signal for NFC-A (default 100%)
    float maximumModulationDeep = 1.00f;

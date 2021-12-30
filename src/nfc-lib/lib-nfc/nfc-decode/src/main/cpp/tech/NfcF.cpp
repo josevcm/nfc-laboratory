@@ -69,7 +69,7 @@ struct NfcF::Impl : NfcTech
    float minimumModulationDeep = 0.10f;
 
    // minimum modulation threshold to detect valid signal for NFC-F (default 75%)
-   float maximumModulationDeep = 0.75f;
+   float maximumModulationDeep = 0.90f;
 
    // minimum correlation threshold to detect valid NFC-V pulse (default 50%)
    float minimumCorrelationThreshold = 0.50f;

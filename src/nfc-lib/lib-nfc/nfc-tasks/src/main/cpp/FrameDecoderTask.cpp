@@ -165,11 +165,11 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             if (nfca.contains("enabled"))
                decoder->setEnableNfcA(nfca["enabled"]);
 
-            if (nfca.contains("minimumModulationThreshold"))
-               min = nfca["minimumModulationThreshold"];
+            if (nfca.contains("minimumModulationDeep"))
+               min = nfca["minimumModulationDeep"];
 
-            if (nfca.contains("maximumModulationThreshold"))
-               max = nfca["maximumModulationThreshold"];
+            if (nfca.contains("maximumModulationDeep"))
+               max = nfca["maximumModulationDeep"];
 
             decoder->setModulationThresholdNfcA(min, max);
          }
@@ -185,11 +185,11 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             if (nfcb.contains("enabled"))
                decoder->setEnableNfcB(nfcb["enabled"]);
 
-            if (nfcb.contains("minimumModulationThreshold"))
-               min = nfcb["minimumModulationThreshold"];
+            if (nfcb.contains("minimumModulationDeep"))
+               min = nfcb["minimumModulationDeep"];
 
-            if (nfcb.contains("maximumModulationThreshold"))
-               max = nfcb["maximumModulationThreshold"];
+            if (nfcb.contains("maximumModulationDeep"))
+               max = nfcb["maximumModulationDeep"];
 
             decoder->setModulationThresholdNfcB(min, max);
          }
@@ -205,11 +205,11 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             if (nfcf.contains("enabled"))
                decoder->setEnableNfcF(nfcf["enabled"]);
 
-            if (nfcf.contains("minimumModulationThreshold"))
-               min = nfcf["minimumModulationThreshold"];
+            if (nfcf.contains("minimumModulationDeep"))
+               min = nfcf["minimumModulationDeep"];
 
-            if (nfcf.contains("maximumModulationThreshold"))
-               max = nfcf["maximumModulationThreshold"];
+            if (nfcf.contains("maximumModulationDeep"))
+               max = nfcf["maximumModulationDeep"];
 
             decoder->setModulationThresholdNfcF(min, max);
          }
@@ -225,11 +225,11 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             if (nfcv.contains("enabled"))
                decoder->setEnableNfcV(nfcv["enabled"]);
 
-            if (nfcv.contains("minimumModulationThreshold"))
-               min = nfcv["minimumModulationThreshold"];
+            if (nfcv.contains("minimumModulationDeep"))
+               min = nfcv["minimumModulationDeep"];
 
-            if (nfcv.contains("maximumModulationThreshold"))
-               max = nfcv["maximumModulationThreshold"];
+            if (nfcv.contains("maximumModulationDeep"))
+               max = nfcv["maximumModulationDeep"];
 
             decoder->setModulationThresholdNfcV(min, max);
          }
