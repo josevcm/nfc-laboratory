@@ -342,7 +342,7 @@ struct NfcF::Impl : NfcTech
             continue;
 
          // set signal threshold for modulation detector
-         modulation->signalValueThreshold = minimumCorrelationValue;
+         modulation->searchValueThreshold = minimumCorrelationValue;
 
          // setup symbol info
          symbolStatus.start = modulation->symbolStartTime;
@@ -620,7 +620,7 @@ struct NfcF::Impl : NfcTech
             continue;
 
          // detect maximum symbol correlation
-         if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlatedPeakValue)
+         if (correlatedSD > modulation->searchValueThreshold && correlatedSD > modulation->correlatedPeakValue)
          {
             modulation->correlatedPeakValue = correlatedSD;
             modulation->correlatedPeakTime = decoder->signalClock;
@@ -746,7 +746,7 @@ struct NfcF::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->signalValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * 10;
+            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * 10;
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -775,7 +775,7 @@ struct NfcF::Impl : NfcTech
          }
 
          // detect maximum correlation peak
-         if (correlatedSD > modulation->signalValueThreshold)
+         if (correlatedSD > modulation->searchValueThreshold)
          {
             if (correlatedSD > modulation->correlatedPeakValue)
             {
@@ -917,7 +917,7 @@ struct NfcF::Impl : NfcTech
             continue;
 
          // detect maximum symbol correlation
-         if (correlatedSD > modulation->signalValueThreshold && correlatedSD > modulation->correlatedPeakValue)
+         if (correlatedSD > modulation->searchValueThreshold && correlatedSD > modulation->correlatedPeakValue)
          {
             modulation->correlatedPeakValue = correlatedSD;
             modulation->correlatedPeakTime = decoder->signalClock;

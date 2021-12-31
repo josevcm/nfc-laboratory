@@ -34,10 +34,10 @@
 
 #include <nfc/Nfc.h>
 
-#define DEBUG_SIGNAL
+//#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNELS 4
+#define DEBUG_CHANNELS 5
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 //#define DEBUG_SIGNAL_AVERG_CHANNEL 2
 //#define DEBUG_SIGNAL_STDEV_CHANNEL 2
@@ -247,8 +247,10 @@ struct ModulationStatus
    unsigned int searchEndTime;      // sample end of symbol search window
    unsigned int searchSyncTime;     // sample at next synchronization
    unsigned int searchPulseWidth;   // detected signal pulse width
-   float searchLastPhase;           // auxiliary signal phase
-   float searchLastValue;           // auxiliary signal value
+   float searchValueThreshold;      // signal value threshold
+   float searchPhaseThreshold;      // signal phase threshold
+   float searchLastPhase;           // auxiliary signal for last symbol phase
+   float searchLastValue;           // auxiliary signal for value symbol
    float searchSyncValue;           // auxiliary signal value at synchronization point
 
    // symbol parameters
@@ -259,8 +261,6 @@ struct ModulationStatus
    float symbolAverage;
 
    // signal thresholds
-   float signalValueThreshold;   // signal value threshold
-   float signalPhaseThreshold;   // signal phase threshold
 
    // integrator processor
    float filterIntegrate;

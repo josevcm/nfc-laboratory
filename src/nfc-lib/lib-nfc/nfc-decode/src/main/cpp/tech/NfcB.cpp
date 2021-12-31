@@ -746,10 +746,10 @@ struct NfcB::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->signalValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->signalValueThreshold);
+         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->searchValueThreshold);
 #endif
 
          // search for Start Of Frame pattern (SoF)
@@ -758,7 +758,7 @@ struct NfcB::Impl : NfcTech
             case SOF_BEGIN:
 
                // detect first zero-cross
-               if (modulation->phaseIntegrate > modulation->signalValueThreshold)
+               if (modulation->phaseIntegrate > modulation->searchValueThreshold)
                {
 #ifdef DEBUG_BPSK_PHASE_CHANNEL
                   decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
@@ -891,7 +891,7 @@ struct NfcB::Impl : NfcTech
                modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
                modulation->searchLastPhase = modulation->phaseIntegrate;
 
-               modulation->signalPhaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
+               modulation->searchPhaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
 
                // reset modulation to continue search
                modulation->searchModeState = SOF_BEGIN;
@@ -971,11 +971,11 @@ struct NfcB::Impl : NfcTech
          modulation->searchLastPhase = modulation->phaseIntegrate;
 
          // no modulation detected, generate End Of Frame
-         if (std::abs(modulation->phaseIntegrate) < std::abs(modulation->signalPhaseThreshold))
+         if (std::abs(modulation->phaseIntegrate) < std::abs(modulation->searchPhaseThreshold))
             return PatternType::PatternO;
 
          // symbol change, invert pattern and value
-         if (modulation->phaseIntegrate < -modulation->signalPhaseThreshold)
+         if (modulation->phaseIntegrate < -modulation->searchPhaseThreshold)
          {
             symbolStatus.value = !symbolStatus.value;
             symbolStatus.pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
