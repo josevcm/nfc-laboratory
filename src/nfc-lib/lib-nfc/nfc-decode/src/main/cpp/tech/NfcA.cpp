@@ -25,14 +25,12 @@
 #include <cmath>
 #include <chrono>
 #include <functional>
+#include <cstring>
 
 #include <tech/NfcA.h>
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_ASK_CORR_CHANNEL 1
-#define DEBUG_ASK_SYNC_CHANNEL 1
-#define DEBUG_BPSK_PHASE_CHANNEL 1
-#define DEBUG_BPSK_SYNC_CHANNEL 1
+#define DEBUG_CHANNEL 1
 #endif
 
 namespace nfc {
@@ -164,9 +162,9 @@ struct NfcA::Impl : NfcTech
          bitrate->offsetDelay4Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
          bitrate->offsetDelay8Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period8SymbolSamples;
 
-         // exponential symbol average
-         bitrate->symbolAverageW0 = float(1 - 5.0 / bitrate->period1SymbolSamples);
-         bitrate->symbolAverageW1 = float(1 - bitrate->symbolAverageW0);
+//         // exponential symbol average
+//         bitrate->symbolAverageW0 = float(1 - 5.0 / bitrate->period1SymbolSamples);
+//         bitrate->symbolAverageW1 = float(1 - bitrate->symbolAverageW0);
 
          log.info("{} kpbs parameters:", {round(bitrate->symbolsPerSecond / 1E3)});
          log.info("\tsymbolsPerSecond     {}", {bitrate->symbolsPerSecond});
@@ -237,8 +235,8 @@ struct NfcA::Impl : NfcTech
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
+         float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[delay2Index & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
 
          // integrate signal data over 1/2 symbol
@@ -249,13 +247,25 @@ struct NfcA::Impl : NfcTech
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factors
-         float correlatedS1 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3]) / float(bitrate->period4SymbolSamples);
+         float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
+         float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
+         float correlatedSD = (correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-         // compute symbol average
-         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
+#endif
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS1);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedSD);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == modulation->searchSyncTime)
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // detect modulation deep and pulse width
@@ -275,36 +285,63 @@ struct NfcA::Impl : NfcTech
                modulation->detectorPeakValue = signalDeep;
                modulation->detectorPeakTime = decoder->signalClock;
             }
-
-            // detect pulse width
-            modulation->searchPulseWidth++;
          }
 
-         // detect modulation peak
-         if (correlatedS1 >= minimumCorrelationValue)
+         // detect modulation peaks
+         if (std::fabs(correlatedSD) >= minimumCorrelationValue)
          {
-            // detect maximum correlation point
-            if (correlatedS1 > modulation->correlatedPeakValue)
+            if (!modulation->symbolStartTime)
             {
-               modulation->correlatedPeakValue = correlatedS1;
-               modulation->correlatedPeakTime = decoder->signalClock;
-               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               // detect maximum correlation point
+               if (correlatedSD < modulation->correlatedPeakValue)
+               {
+                  modulation->correlatedPeakValue = correlatedSD;
+                  modulation->correlatedPeakTime = decoder->signalClock;
+                  modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               }
+            }
+            else
+            {
+               // detect maximum correlation point
+               if (correlatedSD > modulation->correlatedPeakValue)
+               {
+                  modulation->correlatedPeakValue = correlatedSD;
+                  modulation->correlatedPeakTime = decoder->signalClock;
+               }
             }
          }
 
          // wait until search finished and consume all pulse to measure wide
-         if (modulation->searchEndTime == 0 || decoder->signalClock < modulation->searchEndTime || correlatedS1 > 0)
+         if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         // NFC-A / NFC-V pulse wide discriminator
-         int maximumPulseWidth = bitrate->period4SymbolSamples + bitrate->period8SymbolSamples;
+         if (!modulation->symbolStartTime)
+         {
+            modulation->searchSyncTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
+            modulation->searchEndTime = modulation->searchEndTime + bitrate->period2SymbolSamples;
+            modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
+            modulation->correlatedPeakTime = 0;
+            modulation->correlatedPeakValue = 0;
+            continue;
+         }
+
+         // pulse end time
+         modulation->symbolEndTime = modulation->correlatedPeakTime;
+         modulation->searchPulseWidth = modulation->symbolEndTime - modulation->symbolStartTime;
+
+         // NFC-A pulse wide discriminator
+         int minimumPulseWidth = bitrate->period1SymbolSamples - bitrate->period8SymbolSamples;
+         int maximumPulseWidth = bitrate->period1SymbolSamples + bitrate->period8SymbolSamples;
 
          // check for valid NFC-A modulated pulse
          if (modulation->correlatedPeakTime == 0 || // no modulation found
              modulation->detectorPeakValue < minimumModulationDeep || // insufficient modulation deep
-             modulation->searchPulseWidth > maximumPulseWidth) // pulse too wide, possible NFC-V modulation
+             modulation->searchPulseWidth < minimumPulseWidth || // pulse too short
+             modulation->searchPulseWidth > maximumPulseWidth) // pulse too wide
          {
             // reset modulation to continue search
+            modulation->symbolStartTime = 0;
+            modulation->symbolEndTime = 0;
             modulation->searchSyncTime = 0;
             modulation->searchStartTime = 0;
             modulation->searchEndTime = 0;
@@ -316,24 +353,15 @@ struct NfcA::Impl : NfcTech
             continue;
          }
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
-#endif
-
-         // sets symbol start and end time
-         modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
-         modulation->symbolEndTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
-         modulation->symbolCorr0 = 0;
-         modulation->symbolCorr1 = 0;
-
          // prepare next search window from synchronization point
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
          modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
          modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
+         modulation->searchValueThreshold = decoder->signalStatus.signalAverg * minimumModulationDeep;
          modulation->correlatedPeakTime = 0;
          modulation->correlatedPeakValue = 0;
-
-         modulation->searchValueThreshold = decoder->signalStatus.signalAverg * minimumModulationDeep;
+         modulation->symbolCorr0 = 0;
+         modulation->symbolCorr1 = 0;
 
          // setup frame info
          frameStatus.frameType = PollFrame;
@@ -440,6 +468,7 @@ struct NfcA::Impl : NfcTech
                decoder->modulation->searchStartTime = 0;
                decoder->modulation->searchEndTime = 0;
                decoder->modulation->searchPulseWidth = 0;
+               decoder->modulation->searchValueThreshold = 1;
 
                // clear stream status
                streamStatus = {0,};
@@ -627,7 +656,7 @@ struct NfcA::Impl : NfcTech
             // detect first pattern
             pattern = decodeListenFrameStartBpsk(buffer);
 
-            // Pattern-M found, mark frame start time
+            // Pattern-S found, mark frame start time
             if (pattern == PatternType::PatternS)
             {
                frameStatus.frameStart = symbolStatus.start;
@@ -726,6 +755,9 @@ struct NfcA::Impl : NfcTech
                   // frame bytes has odd parity
                   streamStatus.flags |= !checkParity(streamStatus.data, streamStatus.parity) ? ParityError : 0;
 
+                  if (streamStatus.flags & ParityError)
+                     log.info("");
+
                   // initialize next value from current symbol
                   streamStatus.data = symbolStatus.value;
 
@@ -765,8 +797,8 @@ struct NfcA::Impl : NfcTech
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float currentData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float delayedData = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
+         float currentData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
+         float delayedData = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[delay2Index & (BUFFER_SIZE - 1)];
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += currentData; // add new value
@@ -780,16 +812,21 @@ struct NfcA::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-         // compute symbol average
-         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + currentData * bitrate->symbolAverageW1;
-
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->correlationData[filterPoint1] / float(bitrate->period2SymbolSamples));
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0 / float(bitrate->period4SymbolSamples));
+#endif
+
+#ifdef DEBUG_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // wait until correlation search start
@@ -888,17 +925,16 @@ struct NfcA::Impl : NfcTech
          ++delay2Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
-
-         // compute symbol average (signal offset)
-         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
-
-         // remove DC offset from signal value
-         signalData -= modulation->symbolAverage;
+         float signalMdev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // store signal square in filter buffer
-         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#endif
 
          // wait until frame guard time is reached
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
@@ -919,15 +955,23 @@ struct NfcA::Impl : NfcTech
          // compute correlation results for each symbol and distance
          float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
-         float correlatedSD = std::fabs(correlatedS0 - correlatedS1);
+         float correlatedSD = (correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-         // wait until frame guard time is reached
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedSD);
+#endif
+
+         // using signal st.dev as lower level threshold
+         if (modulation->searchValueThreshold > signalMdev)
+            modulation->searchValueThreshold = signalMdev;
+
+         // wait until frame guard time is reached to start response search
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
          // using signal st.dev as lower level threshold
-         if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+//         if (decoder->signalClock == frameStatus.guardEnd)
+//            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -937,56 +981,88 @@ struct NfcA::Impl : NfcTech
          if (signalDeep > minimumModulationDeep)
             return PatternType::NoPattern;
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, modulation->searchValueThreshold);
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == modulation->searchSyncTime)
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
 #endif
 
-         // detect maximum correlation peaks
-         if (correlatedSD > modulation->searchValueThreshold)
-         {
-#ifdef DEBUG_ASK_CORR_CHANNEL
-            decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
-            // max correlation peak detector
-            if (correlatedSD > modulation->correlatedPeakValue)
+
+         // detect modulation peaks
+         if (std::fabs(correlatedSD) >= modulation->searchValueThreshold)
+         {
+            if (!modulation->symbolStartTime)
             {
-               modulation->correlatedPeakValue = correlatedSD;
-               modulation->correlatedPeakTime = decoder->signalClock;
-               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-               modulation->searchPulseWidth++;
+               // detect maximum correlation point
+               if (correlatedSD > modulation->correlatedPeakValue)
+               {
+                  modulation->correlatedPeakValue = correlatedSD;
+                  modulation->correlatedPeakTime = decoder->signalClock;
+                  modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               }
+            }
+            else
+            {
+               // detect maximum correlation point
+               if (correlatedSD < modulation->correlatedPeakValue)
+               {
+                  modulation->correlatedPeakValue = correlatedSD;
+                  modulation->correlatedPeakTime = decoder->signalClock;
+               }
             }
          }
 
-         // wait until search finished
+         // wait until search finished and consume all pulse to measure wide
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         // check for valid NFC-A modulated pulse
-         if (modulation->searchPulseWidth <= bitrate->period8SymbolSamples)
+         if (!modulation->symbolStartTime)
          {
-            // reset modulation to continue search
-            modulation->searchStartTime = 0;
-            modulation->searchEndTime = 0;
-            modulation->searchPulseWidth = 0;
+            modulation->searchSyncTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
+            modulation->searchEndTime = modulation->searchEndTime + bitrate->period2SymbolSamples;
+            modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
             modulation->correlatedPeakTime = 0;
             modulation->correlatedPeakValue = 0;
             continue;
          }
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
-#endif
+         // pulse end time
+         modulation->symbolEndTime = modulation->correlatedPeakTime;
+         modulation->searchPulseWidth = modulation->symbolEndTime - modulation->symbolStartTime;
 
-         // symbol search finished, now process timings
-         modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
-         modulation->symbolEndTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
+         // NFC-A pulse wide discriminator
+         int minimumPulseWidth = bitrate->period1SymbolSamples - bitrate->period8SymbolSamples;
+         int maximumPulseWidth = bitrate->period1SymbolSamples + bitrate->period8SymbolSamples;
 
-         // set search parameters for next symbol
+         // check for valid NFC-A modulated pulse
+         if (modulation->correlatedPeakTime == 0 || // no modulation found
+             modulation->searchPulseWidth < minimumPulseWidth || // pulse too short
+             modulation->searchPulseWidth > maximumPulseWidth) // pulse too wide
+         {
+            // reset modulation to continue search
+            modulation->symbolStartTime = 0;
+            modulation->symbolEndTime = 0;
+            modulation->searchSyncTime = 0;
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->searchPulseWidth = 0;
+            modulation->correlatedPeakTime = 0;
+            modulation->correlatedPeakValue = 0;
+            modulation->detectorPeakTime = 0;
+            modulation->detectorPeakValue = 0;
+            continue;
+         }
+
+         // prepare next search window from synchronization point
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
          modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
          modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
          modulation->correlatedPeakTime = 0;
          modulation->correlatedPeakValue = 0;
+         modulation->symbolCorr0 = 0;
+         modulation->symbolCorr1 = 0;
 
          // setup symbol info
          symbolStatus.value = 1;
@@ -1024,15 +1100,10 @@ struct NfcA::Impl : NfcTech
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-
-         // compute symbol average (signal offset)
-         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
-
-         signalData -= modulation->symbolAverage;
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
 
          // store signal in filter buffer removing DC and rectified
-         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
 
          // integrate symbol (moving average)
          modulation->filterIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
@@ -1044,15 +1115,23 @@ struct NfcA::Impl : NfcTech
          // compute correlation results for each symbol and distance
          float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
-         float correlatedSD = std::fabs(correlatedS0 - correlatedS1);
+         float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0 / float(bitrate->period4SymbolSamples));
+#endif
+
+#ifdef DEBUG_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // wait until correlation search start
@@ -1141,38 +1220,41 @@ struct NfcA::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[delay1Index & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
-
-         // compute symbol average
-         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
+         float signalMdev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
-         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage) * 10;
-
-         // store signal phase in filter buffer
-         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = phase;
-
-         // integrate response from PICC after guard time (TR0)
-         if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
-            continue;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
 
          // compute phase integration
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
-         // integrate response from PICC after guard time (TR0)
-         if (decoder->signalClock < frameStatus.guardEnd)
-            continue;
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#endif
 
-#ifdef DEBUG_BPSK_PHASE_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, modulation->phaseIntegrate);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // using signal st.dev as lower level threshold
-         if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+         if (modulation->searchValueThreshold > signalMdev)
+            modulation->searchValueThreshold = signalMdev;
+
+         // wait until frame guard time (TR0)
+         if (decoder->signalClock < frameStatus.guardEnd)
+            continue;
+
+//         // using signal st.dev as lower level threshold
+//         if (decoder->signalClock == frameStatus.guardEnd)
+//            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock >= frameStatus.waitingEnd)
@@ -1185,37 +1267,42 @@ struct NfcA::Impl : NfcTech
          // detect first zero-cross
          if (modulation->phaseIntegrate > modulation->searchValueThreshold)
          {
-            modulation->correlatedPeakTime = decoder->signalClock;
+            if (!modulation->symbolStartTime)
+               modulation->symbolStartTime = decoder->signalClock;
+
             modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
-            modulation->searchPulseWidth++;
          }
 
-         // wait until correlation search finish
+            // detect preamble is received, 32 subcarrier clocks (4 ETU)
+         if (!modulation->symbolEndTime && (modulation->phaseIntegrate < 0 || decoder->signalClock == modulation->searchEndTime))
+         {
+            int preambleSyncWidth = decoder->signalClock - modulation->symbolStartTime;
+
+            if (preambleSyncWidth < decoder->signalParams.elementaryTimeUnit * 3 || // preamble too short
+                preambleSyncWidth > decoder->signalParams.elementaryTimeUnit * 4) // preamble too long
+            {
+               modulation->symbolStartTime = 0;
+               modulation->symbolEndTime = 0;
+               modulation->searchEndTime = 0;
+               continue;
+            }
+
+            // set symbol end time
+            modulation->symbolEndTime = modulation->searchEndTime + bitrate->period2SymbolSamples;
+         }
+
+         // wait until correlation search finish or detect zero cross
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         if (modulation->searchPulseWidth < frameStatus.tr1MinimumTime)
-         {
-            modulation->correlatedPeakTime = 0;
-            modulation->searchEndTime = 0;
-            modulation->searchPulseWidth = 0;
-            continue;
-         }
-
-#ifdef DEBUG_BPSK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.75);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, 0.75);
 #endif
-         // set symbol window
-         modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples - 500 * decoder->signalParams.sampleTimeUnit;
-         modulation->symbolEndTime = modulation->correlatedPeakTime + bitrate->period1SymbolSamples;
 
          // set next synchronization point
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
          modulation->searchLastPhase = modulation->phaseIntegrate;
-         modulation->searchPulseWidth = 0;
-
-         modulation->searchPhaseThreshold = std::fabs(modulation->phaseIntegrate / 3);
-         modulation->correlatedPeakValue = 0;
+         modulation->searchPhaseThreshold = std::fabs(modulation->phaseIntegrate) / 2;
 
          // set symbol info
          symbolStatus.value = 0;
@@ -1249,24 +1336,27 @@ struct NfcA::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)];
-
-         // compute symbol average
-         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
+         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[delay1Index & (BUFFER_SIZE - 1)];
 
          // multiply 1 symbol delayed signal with incoming signal
-         float phase = (signalData - modulation->symbolAverage) * (delay1Data - modulation->symbolAverage);
-
-         // store signal phase in filter buffer
-         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = phase * 10;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
 
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
-#ifdef DEBUG_BPSK_PHASE_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_PHASE_CHANNEL, modulation->phaseIntegrate);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, modulation->phaseIntegrate);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#endif
+
          // edge detector for re-synchronization
          if ((modulation->phaseIntegrate > 0 && modulation->searchLastPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->searchLastPhase > 0))
          {
@@ -1278,8 +1368,8 @@ struct NfcA::Impl : NfcTech
          if (decoder->signalClock != modulation->searchSyncTime)
             continue;
 
-#ifdef DEBUG_BPSK_SYNC_CHANNEL
-         decoder->debug->set(DEBUG_BPSK_SYNC_CHANNEL, 0.50f);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
 #endif
 
          // set symbol timings
@@ -1299,6 +1389,11 @@ struct NfcA::Impl : NfcTech
          {
             symbolStatus.value = !symbolStatus.value;
             symbolStatus.pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
+         }
+            // update threshold for next symbol
+         else
+         {
+            modulation->searchPhaseThreshold = modulation->phaseIntegrate / 2;
          }
 
          // setup symbol info
@@ -1320,9 +1415,16 @@ struct NfcA::Impl : NfcTech
       // reset frame search status
       if (decoder->modulation)
       {
+         decoder->modulation->symbolStartTime = 0;
          decoder->modulation->symbolEndTime = 0;
+         decoder->modulation->searchSyncTime = 0;
+         decoder->modulation->searchStartTime = 0;
          decoder->modulation->searchEndTime = 0;
+         decoder->modulation->searchPulseWidth = 0;
+         decoder->modulation->correlatedPeakTime = 0;
          decoder->modulation->correlatedPeakValue = 0;
+         decoder->modulation->detectorPeakTime = 0;
+         decoder->modulation->detectorPeakValue = 0;
       }
 
       // reset frame start time
@@ -1334,21 +1436,10 @@ struct NfcA::Impl : NfcTech
     */
    inline void resetModulation()
    {
-      // reset modulation detection for all rates
+      // reset modulation status for all rates
       for (int rate = r106k; rate <= r424k; rate++)
       {
-         modulationStatus[rate].searchSyncTime = 0;
-         modulationStatus[rate].searchStartTime = 0;
-         modulationStatus[rate].searchEndTime = 0;
-         modulationStatus[rate].searchPulseWidth = 0;
-         modulationStatus[rate].searchLastPhase = NAN;
-         modulationStatus[rate].correlatedPeakTime = 0;
-         modulationStatus[rate].correlatedPeakValue = 0;
-         modulationStatus[rate].detectorPeakTime = 0;
-         modulationStatus[rate].detectorPeakValue = 0;
-         modulationStatus[rate].symbolStartTime = 0;
-         modulationStatus[rate].symbolEndTime = 0;
-         modulationStatus[rate].symbolAverage = 0;
+         modulationStatus[rate] = {0,};
       }
 
       // clear stream status

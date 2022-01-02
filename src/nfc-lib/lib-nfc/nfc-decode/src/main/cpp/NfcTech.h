@@ -34,13 +34,13 @@
 
 #include <nfc/Nfc.h>
 
-//#define DEBUG_SIGNAL
+#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNELS 5
+#define DEBUG_CHANNELS 6
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-//#define DEBUG_SIGNAL_AVERG_CHANNEL 2
-//#define DEBUG_SIGNAL_STDEV_CHANNEL 2
+#define DEBUG_SIGNAL_AVERG_CHANNEL 4
+#define DEBUG_SIGNAL_STDEV_CHANNEL 5
 //#define DEBUG_SIGNAL_EDGE_CHANNEL 3
 //#define DEBUG_SIGNAL_DEEP_CHANNEL 3
 #endif
@@ -118,6 +118,11 @@ struct SignalDebug
       buffer.flip();
       recorder->write(buffer);
    }
+
+   inline void close()
+   {
+      recorder->close();
+   }
 };
 
 /*
@@ -153,7 +158,7 @@ struct SignalParams
    double sampleTimeUnit;
 
    // maximum silence
-   int silenceThreshold;
+   int elementaryTimeUnit;
 };
 
 /*
@@ -203,7 +208,6 @@ struct PulseParams
 struct SignalStatus
 {
    // signal parameters
-   float signalValue; // instantaneous signal value
    float signalAverg; // signal exponential average
    float signalStDev; // signal exponential st deviation
 
@@ -231,9 +235,6 @@ struct SignalStatus
 
    // silence end (modulation detected)
    unsigned int carrierOn;
-
-   // pulse width for envelope detector
-   unsigned int pulseFilter;
 };
 
 /*
@@ -386,6 +387,9 @@ struct DecoderStatus
    // signal master clock
    unsigned int signalClock = 0;
 
+   // signal pulse filter
+   unsigned int pulseFilter = 0;
+
    // minimum signal level
    float powerLevelThreshold = 0.01f;
 
@@ -398,42 +402,39 @@ struct DecoderStatus
       if (buffer.available() == 0 || buffer.type() != sdr::SignalType::SAMPLE_REAL)
          return false;
 
-      // read next sample data
-      buffer.get(signalStatus.signalValue);
-
-      // update signal clock
+      // update signal clock and pulse filter
       ++signalClock;
+      ++pulseFilter;
 
-      // update signal envelope if value increase
-      if (signalStatus.signalValue > signalStatus.signalAverg * 0.95)
+      float signalValue;
+
+      buffer.get(signalValue);
+
+      float signalStDev = std::fabs(signalValue - signalStatus.signalAverg);
+
+      float signalDiff = signalStDev / signalStatus.signalAverg;
+
+      // signal average envelope detector
+      if (signalDiff < 0.05f || pulseFilter > signalParams.elementaryTimeUnit)
       {
          // reset silence counter
-         signalStatus.pulseFilter = 0;
+         pulseFilter = 0;
 
          // compute signal average
-         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
-
-         // compute signal st deviation
-         signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
+         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalValue * signalParams.signalAvergW1;
       }
-         // only decrease envelope if for long fall periods
-      else if (++signalStatus.pulseFilter > signalParams.silenceThreshold)
-      {
-         // compute signal average
-         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
 
-         // compute signal st deviation
-         signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
-      }
+      // compute signal st deviation
+      signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + signalStDev * signalParams.signalStDevW1;
 
       // fast average edge detector
-      signalStatus.signalEdge0 = signalStatus.signalEdge0 * signalParams.signalEdge0W0 + signalStatus.signalValue * signalParams.signalEdge0W1;
+      signalStatus.signalEdge0 = signalStatus.signalEdge0 * signalParams.signalEdge0W0 + signalValue * signalParams.signalEdge0W1;
 
       // slow average edge detector
-      signalStatus.signalEdge1 = signalStatus.signalEdge1 * signalParams.signalEdge1W0 + signalStatus.signalValue * signalParams.signalEdge1W1;
+      signalStatus.signalEdge1 = signalStatus.signalEdge1 * signalParams.signalEdge1W0 + signalValue * signalParams.signalEdge1W1;
 
       // store next signal value in sample buffer
-      signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
+      signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalValue;
 
       // store next signal average in sample buffer
       signalStatus.signalAvrg[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalAverg;
@@ -445,14 +446,14 @@ struct DecoderStatus
       signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalEdge0 - signalStatus.signalEdge1);
 
       // store next edge value in sample buffer
-      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalStatus.signalValue, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
+      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalValue, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
 
 #ifdef DEBUG_SIGNAL
       debug->block(signalClock);
 #endif
 
 #ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalStatus.signalValue);
+      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalValue);
 #endif
 
 #ifdef DEBUG_SIGNAL_AVERG_CHANNEL

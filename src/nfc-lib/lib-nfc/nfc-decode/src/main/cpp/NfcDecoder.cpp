@@ -178,15 +178,15 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       // calculate sample time unit, (equivalent to 1/fc in ISO/IEC 14443-3 specifications)
       decoder.signalParams.sampleTimeUnit = double(decoder.sampleRate) / double(NFC_FC);
 
-      // maximum silence duration
-      decoder.signalParams.silenceThreshold = decoder.signalParams.sampleTimeUnit * 2048;
+      // base elementary time unit
+      decoder.signalParams.elementaryTimeUnit = decoder.signalParams.sampleTimeUnit * 128;
 
       // initialize exponential average factors for power value
-      decoder.signalParams.signalAvergW0 = float(1 - 1E5 / decoder.sampleRate);
+      decoder.signalParams.signalAvergW0 = float(1 - 5E5 / decoder.sampleRate);
       decoder.signalParams.signalAvergW1 = float(1 - decoder.signalParams.signalAvergW0);
 
       // initialize exponential average factors for signal variance
-      decoder.signalParams.signalStDevW0 = float(1 - 1E5 / decoder.sampleRate);
+      decoder.signalParams.signalStDevW0 = float(1 - 5E5 / decoder.sampleRate);
       decoder.signalParams.signalStDevW1 = float(1 - decoder.signalParams.signalStDevW0);
 
       // initialize exponential slow average factors for edge detector
