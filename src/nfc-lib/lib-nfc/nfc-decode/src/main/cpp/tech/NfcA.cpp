@@ -23,9 +23,7 @@
 */
 
 #include <cmath>
-#include <chrono>
 #include <functional>
-#include <cstring>
 
 #include <tech/NfcA.h>
 
@@ -161,10 +159,6 @@ struct NfcA::Impl : NfcTech
          bitrate->offsetDelay2Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period2SymbolSamples;
          bitrate->offsetDelay4Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
          bitrate->offsetDelay8Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period8SymbolSamples;
-
-//         // exponential symbol average
-//         bitrate->symbolAverageW0 = float(1 - 5.0 / bitrate->period1SymbolSamples);
-//         bitrate->symbolAverageW1 = float(1 - bitrate->symbolAverageW0);
 
          log.info("{} kpbs parameters:", {round(bitrate->symbolsPerSecond / 1E3)});
          log.info("\tsymbolsPerSecond     {}", {bitrate->symbolsPerSecond});
@@ -330,8 +324,8 @@ struct NfcA::Impl : NfcTech
          modulation->searchPulseWidth = modulation->symbolEndTime - modulation->symbolStartTime;
 
          // NFC-A pulse wide discriminator
-         int minimumPulseWidth = bitrate->period1SymbolSamples - bitrate->period8SymbolSamples;
-         int maximumPulseWidth = bitrate->period1SymbolSamples + bitrate->period8SymbolSamples;
+         int minimumPulseWidth = bitrate->period1SymbolSamples - bitrate->period4SymbolSamples;
+         int maximumPulseWidth = bitrate->period1SymbolSamples + bitrate->period4SymbolSamples;
 
          // check for valid NFC-A modulated pulse
          if (modulation->correlatedPeakTime == 0 || // no modulation found
@@ -952,17 +946,13 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_CHANNEL + 1, correlatedSD);
 #endif
 
-         // using signal st.dev as lower level threshold
+         // using minimum signal st.dev as lower level threshold
          if (modulation->searchValueThreshold > signalMdev)
             modulation->searchValueThreshold = signalMdev;
 
          // wait until frame guard time is reached to start response search
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
-
-         // using signal st.dev as lower level threshold
-//         if (decoder->signalClock == frameStatus.guardEnd)
-//            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -1235,7 +1225,7 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
-         // using signal st.dev as lower level threshold
+         // using minimum signal st.dev as lower level threshold
          if (modulation->searchValueThreshold > signalMdev)
             modulation->searchValueThreshold = signalMdev;
 
@@ -1347,7 +1337,7 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
-         // edge detector for re-synchronization, only one time for each symbol to avoid transitions!
+         // zero-cross detector for re-synchronization, only one time for each symbol to avoid oscillations!
          if (!modulation->detectorPeakTime)
          {
             if ((modulation->phaseIntegrate > 0 && modulation->searchLastPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->searchLastPhase > 0))
@@ -1604,7 +1594,7 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.isPollFrame())
       {
-         if (frame[0] == CommandType::NFCA_HLTA && frame.limit() == 4)
+         if (frame[0] == CommandType::NFCA_HLTA && frame.limit() == 4 && !frame.hasCrcError())
          {
             frame.setFramePhase(FramePhase::SelectionFrame);
             frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
