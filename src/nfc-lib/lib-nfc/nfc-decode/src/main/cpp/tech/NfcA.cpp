@@ -749,19 +749,10 @@ struct NfcA::Impl : NfcTech
                   // store full byte in stream buffer and check parity
                else
                {
-                  // store byte in stream buffer
+                  // store byte in stream buffer and check parity
                   streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
-
-                  // frame bytes has odd parity
                   streamStatus.flags |= !checkParity(streamStatus.data, streamStatus.parity) ? ParityError : 0;
-
-                  if (streamStatus.flags & ParityError)
-                     log.info("");
-
-                  // initialize next value from current symbol
                   streamStatus.data = symbolStatus.value;
-
-                  // reset bit counter
                   streamStatus.bits = 0;
                }
 
@@ -1252,10 +1243,6 @@ struct NfcA::Impl : NfcTech
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-//         // using signal st.dev as lower level threshold
-//         if (decoder->signalClock == frameStatus.guardEnd)
-//            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
-
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock >= frameStatus.waitingEnd)
             return PatternType::NoPattern;
@@ -1273,7 +1260,7 @@ struct NfcA::Impl : NfcTech
             modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
          }
 
-            // detect preamble is received, 32 subcarrier clocks (4 ETU)
+         // detect preamble is received, 32 subcarrier clocks (4 ETU)
          if (!modulation->symbolEndTime && (modulation->phaseIntegrate < 0 || decoder->signalClock == modulation->searchEndTime))
          {
             int preambleSyncWidth = decoder->signalClock - modulation->symbolStartTime;
@@ -1302,7 +1289,10 @@ struct NfcA::Impl : NfcTech
          // set next synchronization point
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period2SymbolSamples;
          modulation->searchLastPhase = modulation->phaseIntegrate;
-         modulation->searchPhaseThreshold = std::fabs(modulation->phaseIntegrate) / 2;
+         modulation->searchPhaseThreshold = std::fabs(modulation->phaseIntegrate) / 3;
+
+         // clear edge transition detector
+         modulation->detectorPeakTime = 0;
 
          // set symbol info
          symbolStatus.value = 0;
@@ -1357,11 +1347,15 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
-         // edge detector for re-synchronization
-         if ((modulation->phaseIntegrate > 0 && modulation->searchLastPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->searchLastPhase > 0))
+         // edge detector for re-synchronization, only one time for each symbol to avoid transitions!
+         if (!modulation->detectorPeakTime)
          {
-            modulation->searchSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
-            modulation->searchLastPhase = modulation->phaseIntegrate;
+            if ((modulation->phaseIntegrate > 0 && modulation->searchLastPhase < 0) || (modulation->phaseIntegrate < 0 && modulation->searchLastPhase > 0))
+            {
+               modulation->detectorPeakTime = decoder->signalClock;
+               modulation->searchSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
+               modulation->searchLastPhase = modulation->phaseIntegrate;
+            }
          }
 
          // wait until synchronization point is reached
@@ -1380,6 +1374,9 @@ struct NfcA::Impl : NfcTech
          modulation->searchSyncTime = modulation->searchSyncTime + bitrate->period1SymbolSamples;
          modulation->searchLastPhase = modulation->phaseIntegrate;
 
+         // clear edge transition detector
+         modulation->detectorPeakTime = 0;
+
          // no modulation detected, generate End Of Frame
          if (std::abs(modulation->phaseIntegrate) < std::abs(modulation->searchPhaseThreshold))
             return PatternType::PatternO;
@@ -1393,7 +1390,7 @@ struct NfcA::Impl : NfcTech
             // update threshold for next symbol
          else
          {
-            modulation->searchPhaseThreshold = modulation->phaseIntegrate / 2;
+            modulation->searchPhaseThreshold = modulation->phaseIntegrate / 3;
          }
 
          // setup symbol info
