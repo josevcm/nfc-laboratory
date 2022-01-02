@@ -146,7 +146,7 @@ float NfcDecoder::powerLevelThreshold() const
    return impl->decoder.powerLevelThreshold;
 }
 
-float NfcDecoder::signalStrength() const
+[[maybe_unused]] float NfcDecoder::signalStrength() const
 {
    return impl->decoder.signalStatus.signalAverg;
 }
@@ -182,11 +182,11 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.elementaryTimeUnit = decoder.signalParams.sampleTimeUnit * 128;
 
       // initialize exponential average factors for power value
-      decoder.signalParams.signalAvergW0 = float(1 - 5E5 / decoder.sampleRate);
+      decoder.signalParams.signalAvergW0 = float(1 - 1E5 / decoder.sampleRate);
       decoder.signalParams.signalAvergW1 = float(1 - decoder.signalParams.signalAvergW0);
 
       // initialize exponential average factors for signal variance
-      decoder.signalParams.signalStDevW0 = float(1 - 5E5 / decoder.sampleRate);
+      decoder.signalParams.signalStDevW0 = float(1 - 1E5 / decoder.sampleRate);
       decoder.signalParams.signalStDevW1 = float(1 - decoder.signalParams.signalStDevW0);
 
       // initialize exponential slow average factors for edge detector

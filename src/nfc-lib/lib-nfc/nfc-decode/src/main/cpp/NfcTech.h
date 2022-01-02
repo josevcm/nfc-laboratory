@@ -34,7 +34,7 @@
 
 #include <nfc/Nfc.h>
 
-//#define DEBUG_SIGNAL
+#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 6
@@ -414,8 +414,10 @@ struct DecoderStatus
 
       float signalDiff = signalStDev / signalStatus.signalAverg;
 
+      // TODO: calcular de forma mas precisa la envolvente para la media
+
       // signal average envelope detector
-      if (signalDiff < 0.05f || pulseFilter > signalParams.elementaryTimeUnit)
+      if (signalDiff < 0.05f || pulseFilter > signalParams.elementaryTimeUnit * 10)
       {
          // reset silence counter
          pulseFilter = 0;
