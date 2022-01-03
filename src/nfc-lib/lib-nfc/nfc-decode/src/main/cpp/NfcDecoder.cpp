@@ -181,13 +181,16 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       // base elementary time unit
       decoder.signalParams.elementaryTimeUnit = decoder.signalParams.sampleTimeUnit * 128;
 
+      // initialize DC removal IIR filter scale factor
+      decoder.signalParams.signalIIRdcA = float(0.9);
+
       // initialize exponential average factors for power value
       decoder.signalParams.signalAvergW0 = float(1 - 1E5 / decoder.sampleRate);
       decoder.signalParams.signalAvergW1 = float(1 - decoder.signalParams.signalAvergW0);
 
       // initialize exponential average factors for signal variance
-      decoder.signalParams.signalStDevW0 = float(1 - 1E5 / decoder.sampleRate);
-      decoder.signalParams.signalStDevW1 = float(1 - decoder.signalParams.signalStDevW0);
+      decoder.signalParams.signalNoiseW0 = float(1 - 5E5 / decoder.sampleRate);
+      decoder.signalParams.signalNoiseW1 = float(1 - decoder.signalParams.signalNoiseW0);
 
       // initialize exponential slow average factors for edge detector
       decoder.signalParams.signalEdge0W0 = float(1 - 4E6 / decoder.sampleRate);

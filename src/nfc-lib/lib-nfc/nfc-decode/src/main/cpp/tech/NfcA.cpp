@@ -28,7 +28,7 @@
 #include <tech/NfcA.h>
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNEL 1
+#define DEBUG_CHANNEL DEBUG_NFC_CHANNEL
 #endif
 
 namespace nfc {
@@ -228,14 +228,9 @@ struct NfcA::Impl : NfcTech
          unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
-         // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
-         float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[delay2Index & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
-
          // integrate signal data over 1/2 symbol
-         modulation->filterIntegrate += signalData; // add new value
-         modulation->filterIntegrate -= delay2Data; // remove delayed value
+         modulation->filterIntegrate += decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         modulation->filterIntegrate -= decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
 
          // store integrated signal in correlation buffer
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
@@ -261,6 +256,9 @@ struct NfcA::Impl : NfcTech
 #ifdef DEBUG_CHANNEL
          decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
+
+         // get signal deep
+         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
 
          // detect modulation deep and pulse width
          if (signalDeep > minimumModulationDeep)
@@ -781,13 +779,9 @@ struct NfcA::Impl : NfcTech
          unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
-         // get signal samples
-         float currentData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
-         float delayedData = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[delay2Index & (BUFFER_SIZE - 1)];
-
          // integrate signal data over 1/2 symbol
-         modulation->filterIntegrate += currentData; // add new value
-         modulation->filterIntegrate -= delayedData; // remove delayed value
+         modulation->filterIntegrate += decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         modulation->filterIntegrate -= decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
 
          // store integrated signal in correlation buffer
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
@@ -798,7 +792,7 @@ struct NfcA::Impl : NfcTech
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->correlationData[filterPoint1] / float(bitrate->period2SymbolSamples));
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
 #endif
 
 #ifdef DEBUG_CHANNEL
@@ -910,9 +904,8 @@ struct NfcA::Impl : NfcTech
          ++delay2Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
-         float signalMdev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // store signal square in filter buffer
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
@@ -946,13 +939,13 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_CHANNEL + 1, correlatedSD);
 #endif
 
-         // using minimum signal st.dev as lower level threshold
-         if (modulation->searchValueThreshold > signalMdev)
-            modulation->searchValueThreshold = signalMdev;
-
          // wait until frame guard time is reached to start response search
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
+
+         // using minimum signal st.dev as lower level threshold
+         if (decoder->signalClock == frameStatus.guardEnd)
+            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -1081,7 +1074,7 @@ struct NfcA::Impl : NfcTech
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
 
          // store signal in filter buffer removing DC and rectified
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
@@ -1201,10 +1194,9 @@ struct NfcA::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalIIRv[delay1Index & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
-         float signalMdev = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
@@ -1225,13 +1217,13 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
-         // using minimum signal st.dev as lower level threshold
-         if (modulation->searchValueThreshold > signalMdev)
-            modulation->searchValueThreshold = signalMdev;
-
          // wait until frame guard time (TR0)
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
+
+         // using minimum signal st.dev as lower level threshold
+         if (decoder->signalClock == frameStatus.guardEnd)
+            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock >= frameStatus.waitingEnd)
@@ -1316,8 +1308,8 @@ struct NfcA::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalData[delay1Index & (BUFFER_SIZE - 1)] - decoder->signalStatus.signalAvrg[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalIIRv[delay1Index & (BUFFER_SIZE - 1)];
 
          // multiply 1 symbol delayed signal with incoming signal
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;

@@ -39,10 +39,11 @@
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 6
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-#define DEBUG_SIGNAL_AVERG_CHANNEL 4
-#define DEBUG_SIGNAL_STDEV_CHANNEL 5
-//#define DEBUG_SIGNAL_EDGE_CHANNEL 3
-//#define DEBUG_SIGNAL_DEEP_CHANNEL 3
+#define DEBUG_SIGNAL_AVERG_CHANNEL 1
+#define DEBUG_SIGNAL_IIRDC_CHANNEL 2
+#define DEBUG_SIGNAL_NOISE_CHANNEL 3
+//#define DEBUG_SIGNAL_DEEP_CHANNEL 4
+#define DEBUG_NFC_CHANNEL 4
 #endif
 
 namespace nfc {
@@ -140,13 +141,16 @@ struct PulseSlot
  */
 struct SignalParams
 {
+   // factors for IIR DC removal filter
+   float signalIIRdcA;
+
    // factors for exponential signal power
    float signalAvergW0;
    float signalAvergW1;
 
    // factors for exponential signal variance
-   float signalStDevW0;
-   float signalStDevW1;
+   float signalNoiseW0;
+   float signalNoiseW1;
 
    // factors for exponential edge detector
    float signalEdge0W0;
@@ -208,8 +212,9 @@ struct PulseParams
 struct SignalStatus
 {
    // signal parameters
-   float signalAverg; // signal exponential average
-   float signalStDev; // signal exponential st deviation
+   float signalAverg; // signal average
+   float signalNoise; // signal st deviation
+   float signalIIRf; // signal IIR filter (n-1 sample)
 
    // exponential average for edge detector
    float signalEdge0;
@@ -217,6 +222,9 @@ struct SignalStatus
 
    // signal data buffer
    float signalData[BUFFER_SIZE];
+
+   // signal data buffer (DC removed)
+   float signalIIRv[BUFFER_SIZE];
 
    // signal edge detect buffer
    float signalEdge[BUFFER_SIZE];
@@ -406,64 +414,74 @@ struct DecoderStatus
       ++signalClock;
       ++pulseFilter;
 
-      float signalValue;
+      float signalData;
 
-      buffer.get(signalValue);
+      buffer.get(signalData);
 
-      float signalStDev = std::fabs(signalValue - signalStatus.signalAverg);
+      float signalDiff = std::abs(signalData - signalStatus.signalAverg) / signalStatus.signalAverg;
 
-      float signalDiff = signalStDev / signalStatus.signalAverg;
-
-      // TODO: calcular de forma mas precisa la envolvente para la media
-
-      // signal average envelope detector
+//       signal average envelope detector
       if (signalDiff < 0.05f || pulseFilter > signalParams.elementaryTimeUnit * 10)
       {
          // reset silence counter
          pulseFilter = 0;
 
          // compute signal average
-         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalValue * signalParams.signalAvergW1;
+         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalData * signalParams.signalAvergW1;
       }
 
+      // IIR DC removal filter
+      float signalIIRf = signalData + signalStatus.signalIIRf * signalParams.signalIIRdcA;
+      float signalIIRv = signalIIRf - signalStatus.signalIIRf;
+
       // compute signal st deviation
-      signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + signalStDev * signalParams.signalStDevW1;
+      signalStatus.signalNoise = signalStatus.signalNoise * signalParams.signalNoiseW0 + std::abs(signalIIRv) * signalParams.signalNoiseW1;
 
       // fast average edge detector
-      signalStatus.signalEdge0 = signalStatus.signalEdge0 * signalParams.signalEdge0W0 + signalValue * signalParams.signalEdge0W1;
+      signalStatus.signalEdge0 = signalStatus.signalEdge0 * signalParams.signalEdge0W0 + signalData * signalParams.signalEdge0W1;
 
       // slow average edge detector
-      signalStatus.signalEdge1 = signalStatus.signalEdge1 * signalParams.signalEdge1W0 + signalValue * signalParams.signalEdge1W1;
+      signalStatus.signalEdge1 = signalStatus.signalEdge1 * signalParams.signalEdge1W0 + signalData * signalParams.signalEdge1W1;
 
       // store next signal value in sample buffer
-      signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalValue;
+      signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalData;
 
       // store next signal average in sample buffer
       signalStatus.signalAvrg[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalAverg;
 
+      // store next signal average in sample buffer
+      signalStatus.signalIIRv[signalClock & (BUFFER_SIZE - 1)] = signalIIRv;
+
       // store next signal value in sample buffer
-      signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalStDev;
+      signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalNoise;
 
       // store next edge value in sample buffer
       signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalEdge0 - signalStatus.signalEdge1);
 
       // store next edge value in sample buffer
-      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalValue, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
+      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalData, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
+
+      // update IIR filter component
+      signalStatus.signalIIRf = signalIIRf;
 
 #ifdef DEBUG_SIGNAL
       debug->block(signalClock);
 #endif
 
 #ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalValue);
+      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalData);
 #endif
 
 #ifdef DEBUG_SIGNAL_AVERG_CHANNEL
       debug->set(DEBUG_SIGNAL_AVERG_CHANNEL, signalStatus.signalAverg);
 #endif
 
-#ifdef DEBUG_SIGNAL_STDEV_CHANNEL
-      debug->set(DEBUG_SIGNAL_STDEV_CHANNEL, signalStatus.signalStDev);
+#ifdef DEBUG_SIGNAL_IIRDC_CHANNEL
+      debug->set(DEBUG_SIGNAL_IIRDC_CHANNEL, signalIIRv);
+#endif
+
+#ifdef DEBUG_SIGNAL_NOISE_CHANNEL
+      debug->set(DEBUG_SIGNAL_NOISE_CHANNEL, signalStatus.signalNoise);
 #endif
 
 #ifdef DEBUG_SIGNAL_EDGE_CHANNEL
