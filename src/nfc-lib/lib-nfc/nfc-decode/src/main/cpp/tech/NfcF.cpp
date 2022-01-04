@@ -1103,7 +1103,7 @@ struct NfcF::Impl : NfcTech
             protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCF_RGT_DEF);
 
             // The REQ-F Response must start between this range
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN; // ATQ-B response guard
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCF_TR0_MIN; // ATQ-B response guard
             frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCF_FWT_ATQC; // ATQ-C response timeout
 
             // clear chained flags

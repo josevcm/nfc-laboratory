@@ -370,9 +370,9 @@ struct ProtocolStatus
    // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
    unsigned int requestGuardTime;
 
-   // Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation
-   unsigned int tr1MinimumTime;
-   unsigned int tr1MaximumTime;
+//   // Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation
+//   unsigned int tr1MinimumTime;
+//   unsigned int tr1MaximumTime;
 };
 
 struct DecoderStatus

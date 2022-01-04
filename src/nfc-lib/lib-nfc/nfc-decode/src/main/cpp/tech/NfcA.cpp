@@ -181,24 +181,24 @@ struct NfcA::Impl : NfcTech
       protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
       protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
       protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
-      protocolStatus.tr1MinimumTime = int(decoder->signalParams.sampleTimeUnit * 250);
-      protocolStatus.tr1MaximumTime = int(decoder->signalParams.sampleTimeUnit * 500);
+//      protocolStatus.tr1MinimumTime = int(decoder->signalParams.sampleTimeUnit * 250);
+//      protocolStatus.tr1MaximumTime = int(decoder->signalParams.sampleTimeUnit * 500);
 
       // initialize frame parameters to default protocol parameters
       frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
       frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
       frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
       frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
-      frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
-      frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
+//      frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
+//      frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
 
       log.info("Startup parameters");
       log.info("\tmaxFrameSize {} bytes", {protocolStatus.maxFrameSize});
       log.info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / decoder->sampleRate});
       log.info("\tframeWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / decoder->sampleRate});
       log.info("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / decoder->sampleRate});
-      log.info("\ttr1MinimumTime {} samples ({} us)", {protocolStatus.tr1MinimumTime, 1000000.0 * protocolStatus.tr1MinimumTime / decoder->sampleRate});
-      log.info("\ttr1MaximumTime {} samples ({} us)", {protocolStatus.tr1MaximumTime, 1000000.0 * protocolStatus.tr1MaximumTime / decoder->sampleRate});
+//      log.info("\ttr1MinimumTime {} samples ({} us)", {protocolStatus.tr1MinimumTime, 1000000.0 * protocolStatus.tr1MinimumTime / decoder->sampleRate});
+//      log.info("\ttr1MaximumTime {} samples ({} us)", {protocolStatus.tr1MaximumTime, 1000000.0 * protocolStatus.tr1MaximumTime / decoder->sampleRate});
    }
 
    /*
@@ -1194,10 +1194,10 @@ struct NfcA::Impl : NfcTech
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
-      unsigned int futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock);
       unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
       unsigned int delay1Index = (bitrate->offsetDelay1Index + decoder->signalClock);
       unsigned int delay4Index = (bitrate->offsetDelay4Index + decoder->signalClock);
+      unsigned int futureIndex = (bitrate->offsetFutureIndex + decoder->signalClock);
 
       while (decoder->nextSample(buffer))
       {
@@ -1258,10 +1258,10 @@ struct NfcA::Impl : NfcTech
          // detect preamble is received, 32 subcarrier clocks (4 ETU)
          if (!modulation->symbolEndTime && (modulation->phaseIntegrate < 0 || decoder->signalClock == modulation->searchEndTime))
          {
-            int preambleSyncWidth = decoder->signalClock - modulation->symbolStartTime;
+            int preambleSyncLength = decoder->signalClock - modulation->symbolStartTime;
 
-            if (preambleSyncWidth < decoder->signalParams.elementaryTimeUnit * 3 || // preamble too short
-                preambleSyncWidth > decoder->signalParams.elementaryTimeUnit * 4) // preamble too long
+            if (preambleSyncLength < decoder->signalParams.elementaryTimeUnit * 3 || // preamble too short
+                preambleSyncLength > decoder->signalParams.elementaryTimeUnit * 4) // preamble too long
             {
                modulation->symbolStartTime = 0;
                modulation->symbolEndTime = 0;
@@ -1327,6 +1327,7 @@ struct NfcA::Impl : NfcTech
          // multiply 1 symbol delayed signal with incoming signal
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
 
+         // integrate
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
@@ -1466,8 +1467,8 @@ struct NfcA::Impl : NfcTech
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
          frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
-         frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
-         frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
+//         frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
+//         frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
       }
 
       do
@@ -1570,7 +1571,7 @@ struct NfcA::Impl : NfcTech
             protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
 
             // The REQ-A Response must start exactly at 128 * n, n=9, decoder search between n=7 and n=18
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN; // ATQ-A response guard
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCA_TR0_MIN; // ATQ-A response guard
             frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCA_FWT_ATQA; // ATQ-A response timeout
 
             // clear chained flags
@@ -1641,7 +1642,7 @@ struct NfcA::Impl : NfcTech
             frameStatus.lastCommand = frame[0];
 
             // The selection commands has same timings as REQ-A
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFC_TR0_MIN;
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCA_TR0_MIN;
             frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCA_FWT_ATQA;
 
             return true;
