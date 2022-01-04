@@ -41,8 +41,8 @@
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 #define DEBUG_SIGNAL_AVERG_CHANNEL 1
 #define DEBUG_SIGNAL_IIRDC_CHANNEL 2
-#define DEBUG_SIGNAL_NOISE_CHANNEL 3
-//#define DEBUG_SIGNAL_DEEP_CHANNEL 4
+//#define DEBUG_SIGNAL_NOISE_CHANNEL 3
+#define DEBUG_SIGNAL_DEEP_CHANNEL 3
 #define DEBUG_NFC_CHANNEL 4
 #endif
 
@@ -152,12 +152,6 @@ struct SignalParams
    float signalNoiseW0;
    float signalNoiseW1;
 
-   // factors for exponential edge detector
-   float signalEdge0W0;
-   float signalEdge0W1;
-   float signalEdge1W0;
-   float signalEdge1W1;
-
    // 1/FC
    double sampleTimeUnit;
 
@@ -216,18 +210,11 @@ struct SignalStatus
    float signalNoise; // signal st deviation
    float signalIIRf; // signal IIR filter (n-1 sample)
 
-   // exponential average for edge detector
-   float signalEdge0;
-   float signalEdge1;
-
    // signal data buffer
    float signalData[BUFFER_SIZE];
 
    // signal data buffer (DC removed)
    float signalIIRv[BUFFER_SIZE];
-
-   // signal edge detect buffer
-   float signalEdge[BUFFER_SIZE];
 
    // signal modulation deep buffer
    float signalDeep[BUFFER_SIZE];
@@ -269,7 +256,7 @@ struct ModulationStatus
    float symbolCorrD;
    float symbolCorr0;
    float symbolCorr1;
-   float symbolAverage;
+//   float symbolAverage;
 
    // signal thresholds
 
@@ -344,35 +331,6 @@ struct FrameStatus
 
    // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
    unsigned int requestGuardTime;
-
-   // Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation
-   unsigned int tr1MinimumTime;
-   unsigned int tr1MaximumTime;
-};
-
-/*
- * status for protocol
- */
-struct ProtocolStatus
-{
-   // The FSD defines the maximum size of a frame the PCD is able to receive
-   unsigned int maxFrameSize;
-
-   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
-   unsigned int frameGuardTime;
-
-   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
-   unsigned int frameWaitingTime;
-
-   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
-   unsigned int startUpGuardTime;
-
-   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
-   unsigned int requestGuardTime;
-
-//   // Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation
-//   unsigned int tr1MinimumTime;
-//   unsigned int tr1MaximumTime;
 };
 
 struct DecoderStatus
@@ -423,13 +381,13 @@ struct DecoderStatus
 
       float signalDiff = std::abs(signalData - signalStatus.signalAverg) / signalStatus.signalAverg;
 
-//       signal average envelope detector
+      // signal average envelope detector
       if (signalDiff < 0.05f || pulseFilter > signalParams.elementaryTimeUnit * 10)
       {
          // reset silence counter
          pulseFilter = 0;
 
-         // compute signal average
+         // compute slow signal average
          signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalData * signalParams.signalAvergW1;
       }
 
@@ -440,26 +398,17 @@ struct DecoderStatus
       // compute signal st deviation
       signalStatus.signalNoise = signalStatus.signalNoise * signalParams.signalNoiseW0 + std::abs(signalIIRv) * signalParams.signalNoiseW1;
 
-      // fast average edge detector
-      signalStatus.signalEdge0 = signalStatus.signalEdge0 * signalParams.signalEdge0W0 + signalData * signalParams.signalEdge0W1;
-
-      // slow average edge detector
-      signalStatus.signalEdge1 = signalStatus.signalEdge1 * signalParams.signalEdge1W0 + signalData * signalParams.signalEdge1W1;
-
       // store next signal value in sample buffer
       signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalData;
 
       // store next signal average in sample buffer
-      signalStatus.signalAvrg[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalAverg;
+      signalStatus.signalIIRv[signalClock & (BUFFER_SIZE - 1)] = signalIIRv;
 
       // store next signal average in sample buffer
-      signalStatus.signalIIRv[signalClock & (BUFFER_SIZE - 1)] = signalIIRv;
+      signalStatus.signalAvrg[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalAverg;
 
       // store next signal value in sample buffer
       signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalNoise;
-
-      // store next edge value in sample buffer
-      signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalEdge0 - signalStatus.signalEdge1);
 
       // store next edge value in sample buffer
       signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalData, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
@@ -485,10 +434,6 @@ struct DecoderStatus
 
 #ifdef DEBUG_SIGNAL_NOISE_CHANNEL
       debug->set(DEBUG_SIGNAL_NOISE_CHANNEL, signalStatus.signalNoise);
-#endif
-
-#ifdef DEBUG_SIGNAL_EDGE_CHANNEL
-      debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)]);
 #endif
 
 #ifdef DEBUG_SIGNAL_DEEP_CHANNEL

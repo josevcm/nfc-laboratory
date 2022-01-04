@@ -49,6 +49,27 @@ enum PatternType
    PatternO = 11
 };
 
+/*
+ * status for protocol
+ */
+struct ProtocolStatus
+{
+   // The FSD defines the maximum size of a frame the PCD is able to receive
+   unsigned int maxFrameSize;
+
+   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
+   unsigned int frameGuardTime;
+
+   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
+   unsigned int frameWaitingTime;
+
+   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
+   unsigned int startUpGuardTime;
+
+   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
+   unsigned int requestGuardTime;
+};
+
 struct NfcA::Impl : NfcTech
 {
    rt::Logger log {"NfcA"};
@@ -943,7 +964,7 @@ struct NfcA::Impl : NfcTech
          float correlatedSD = (correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
 #ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedSD);
+         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0);
 #endif
 
          // wait until frame guard time is reached to start response search
@@ -1103,7 +1124,7 @@ struct NfcA::Impl : NfcTech
 #endif
 
 #ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0 / float(bitrate->period4SymbolSamples));
+         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0);
 #endif
 
 #ifdef DEBUG_CHANNEL
@@ -1234,9 +1255,9 @@ struct NfcA::Impl : NfcTech
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // using minimum signal st.dev as lower level threshold
+         // using minimum signal st.dev as lower level threshold scaled to 1/4 symbol to compensate integration
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * bitrate->period4SymbolSamples;
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock >= frameStatus.waitingEnd)

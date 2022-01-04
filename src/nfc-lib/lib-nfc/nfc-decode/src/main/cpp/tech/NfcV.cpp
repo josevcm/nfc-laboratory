@@ -25,8 +25,7 @@
 #include <tech/NfcV.h>
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_ASK_CORR_CHANNEL 1
-#define DEBUG_ASK_SYNC_CHANNEL 1
+#define DEBUG_CHANNEL DEBUG_NFC_CHANNEL
 #endif
 
 namespace nfc {
@@ -41,6 +40,27 @@ enum PatternType
    Pattern8 = 5, // pulse pattern for 8 bit code
    PatternS = 6, // frame start / end pattern
    PatternE = 7, // frame error pattern
+};
+
+/*
+ * status for protocol
+ */
+struct ProtocolStatus
+{
+   // The FSD defines the maximum size of a frame the PCD is able to receive
+   unsigned int maxFrameSize;
+
+   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
+   unsigned int frameGuardTime;
+
+   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
+   unsigned int frameWaitingTime;
+
+   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
+   unsigned int startUpGuardTime;
+
+   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
+   unsigned int requestGuardTime;
 };
 
 struct NfcV::Impl : NfcTech
@@ -232,9 +252,6 @@ struct NfcV::Impl : NfcTech
       float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
       float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
       float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
-
-      // compute symbol average
-      modulation->symbolAverage = (modulation->symbolAverage * bitrate->symbolAverageW0) + (signalData * bitrate->symbolAverageW1);
 
       // integrate signal data over 1/2 symbol
       modulation->filterIntegrate += signalData; // add new value
@@ -769,17 +786,15 @@ struct NfcV::Impl : NfcTech
          ++delay1Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
 
-         // compute symbol average (signal offset)
-         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
-
-         // remove DC offset from signal value
-         signalData -= modulation->symbolAverage;
-
          // store signal square in filter buffer
-         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#endif
 
          // start correlation after frameGuardTime
          if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period0SymbolSamples))
@@ -799,17 +814,18 @@ struct NfcV::Impl : NfcTech
          // compute correlation results for each symbol and distance
          float correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1];
 
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0);
+#endif
+
          // start correlation after frameGuardTime
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * 10;
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedS0);
-#endif
          // poll frame modulation detected while waiting for response
          if (signalDeep > minimumModulationDeep)
             return PatternType::NoPattern;
@@ -848,9 +864,10 @@ struct NfcV::Impl : NfcTech
                continue;
             }
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
+#ifdef DEBUG_CHANNEL
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
 #endif
+
             // sets SOF symbol frame start (also frame start)
             modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period1SymbolSamples;
 
@@ -878,9 +895,10 @@ struct NfcV::Impl : NfcTech
             if (decoder->signalClock != modulation->searchEndTime)
                continue;
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
+#ifdef DEBUG_CHANNEL
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
 #endif
+
             if (!modulation->correlatedPeakTime)
             {
                // if no edge is found, we restart SOF search
@@ -924,8 +942,6 @@ struct NfcV::Impl : NfcTech
     */
    inline int decodeListenFrameSymbolAsk(sdr::SignalBuffer &buffer)
    {
-//      int pattern = PatternType::Invalid;
-
       BitrateParams *bitrate = decoder->bitrate;
       ModulationStatus *modulation = decoder->modulation;
 
@@ -943,16 +959,10 @@ struct NfcV::Impl : NfcTech
          unsigned int filterPoint2 = (signalIndex + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-
-         // compute symbol average (signal offset)
-         modulation->symbolAverage = modulation->symbolAverage * bitrate->symbolAverageW0 + signalData * bitrate->symbolAverageW1;
-
-         // remove DC offset from signal value
-         signalData -= modulation->symbolAverage;
+         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
 
          // store signal square in filter buffer
-         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData;
+         modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
 
          // integrate symbol (moving average)
          modulation->filterIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
@@ -965,14 +975,23 @@ struct NfcV::Impl : NfcTech
          float correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1];
          float correlatedSD = std::fabs(correlatedS0);
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0);
 #endif
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == modulation->searchSyncTime)
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#endif
+
          // wait until search window start
          if (decoder->signalClock < modulation->searchStartTime)
             continue;
@@ -1031,16 +1050,7 @@ struct NfcV::Impl : NfcTech
       symbolStatus = {0,};
 
       // clear modulation status
-      modulationStatus.searchModeState = 0;
-      modulationStatus.searchStartTime = 0;
-      modulationStatus.searchEndTime = 0;
-      modulationStatus.symbolStartTime = 0;
-      modulationStatus.symbolEndTime = 0;
-      modulationStatus.symbolAverage = 0;
-      modulationStatus.correlatedPeakTime = 0;
-      modulationStatus.correlatedPeakValue = 0;
-      modulationStatus.detectorPeakTime = 0;
-      modulationStatus.detectorPeakValue = 0;
+      modulationStatus = {0,};
 
       // clear frame status
       frameStatus.frameType = 0;

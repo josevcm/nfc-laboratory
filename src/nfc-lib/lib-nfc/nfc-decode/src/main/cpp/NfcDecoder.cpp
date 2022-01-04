@@ -192,14 +192,6 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.signalNoiseW0 = float(1 - 5E5 / decoder.sampleRate);
       decoder.signalParams.signalNoiseW1 = float(1 - decoder.signalParams.signalNoiseW0);
 
-      // initialize exponential slow average factors for edge detector
-      decoder.signalParams.signalEdge0W0 = float(1 - 4E6 / decoder.sampleRate);
-      decoder.signalParams.signalEdge0W1 = float(1 - decoder.signalParams.signalEdge0W0);
-
-      // initialize exponential fast average factors for edge detector
-      decoder.signalParams.signalEdge1W0 = float(1 - 3E6 / decoder.sampleRate);
-      decoder.signalParams.signalEdge1W1 = float(1 - decoder.signalParams.signalEdge1W0);
-
       // configure NFC-A decoder
       if (enabledTech & ENABLED_NFCA)
          nfca.configure(newSampleRate);
