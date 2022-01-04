@@ -824,7 +824,7 @@ struct NfcV::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * 10;
+            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * bitrate->period4SymbolSamples;
 
          // poll frame modulation detected while waiting for response
          if (signalDeep > minimumModulationDeep)
