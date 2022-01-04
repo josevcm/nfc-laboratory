@@ -263,8 +263,10 @@ struct ModulationStatus
    float searchSyncValue;           // auxiliary signal value at synchronization point
 
    // symbol parameters
-   unsigned int symbolStartTime;
-   unsigned int symbolEndTime;
+   unsigned int symbolStartTime;    // sample time for symbol start
+   unsigned int symbolEndTime;      // sample time for symbol end
+   unsigned int symbolRiseTime;     // sample time for last rise edge
+   float symbolCorrD;
    float symbolCorr0;
    float symbolCorr1;
    float symbolAverage;
@@ -296,9 +298,10 @@ struct SymbolStatus
 {
    unsigned int pattern; // symbol pattern
    unsigned int value; // symbol value (0 / 1)
-   unsigned long start;    // sample clocks for start of last decoded symbol
-   unsigned long end; // sample clocks for end of last decoded symbol
-   unsigned int length; // samples for next symbol synchronization
+   unsigned long start;  // sample clocks for start
+   unsigned long end; // sample clocks for end
+   unsigned long edge; // sample clocks for last rise edge
+   unsigned int length; // length of samples for symbol
    unsigned int rate; // symbol rate
 };
 
