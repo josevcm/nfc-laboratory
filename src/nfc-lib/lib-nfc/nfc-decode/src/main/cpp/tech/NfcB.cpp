@@ -247,7 +247,7 @@ struct NfcB::Impl : NfcTech
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.signalAverg < decoder->powerLevelThreshold)
+      if (decoder->signalAverage < decoder->powerLevelThreshold)
          return false;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
@@ -260,8 +260,8 @@ struct NfcB::Impl : NfcTech
          unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
 
          // get signal samples
-         float signalEdge = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
+         float signalEdge = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
 #ifdef DEBUG_CHANNEL
          decoder->debug->set(DEBUG_CHANNEL, signalEdge * 10);
@@ -283,7 +283,7 @@ struct NfcB::Impl : NfcTech
          if (!modulation->symbolStartTime)
          {
             // first modulation must be over minimum modulation deep
-            modulation->searchValueThreshold = decoder->signalStatus.signalAverg * minimumModulationDeep;
+            modulation->searchValueThreshold = decoder->signalAverage * minimumModulationDeep;
 
             // detect edge at maximum peak
             if (signalEdge < -modulation->searchValueThreshold && modulation->detectorPeakValue > signalEdge)
@@ -676,8 +676,8 @@ struct NfcB::Impl : NfcTech
          ++signalIndex;
 
          // get signal samples
-         float signalEdge = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
+         float signalEdge = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
 #ifdef DEBUG_CHANNEL
          decoder->debug->set(DEBUG_CHANNEL, signalEdge * 10);
@@ -766,9 +766,9 @@ struct NfcB::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalFilter[delay1Index & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float delay1Data = decoder->sample[delay1Index & (BUFFER_SIZE - 1)].filtered;
+         float signalDeep = decoder->sample[futureIndex & (BUFFER_SIZE - 1)].deep;
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
@@ -796,7 +796,7 @@ struct NfcB::Impl : NfcTech
 
          // using signal st.dev as lower level threshold scaled to 1/8 symbol to compensate integration
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMean[signalIndex & (BUFFER_SIZE - 1)];
+            modulation->searchValueThreshold = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].variance;
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -963,8 +963,8 @@ struct NfcB::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalFilter[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float delay1Data = decoder->sample[delay1Index & (BUFFER_SIZE - 1)].filtered;
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;

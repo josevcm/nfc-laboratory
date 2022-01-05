@@ -211,11 +211,11 @@ struct NfcF::Impl : NfcTech
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.signalAverg < decoder->powerLevelThreshold)
+      if (decoder->signalAverage < decoder->powerLevelThreshold)
          return false;
 
       // minimum correlation value for valid NFC-F symbols
-      float minimumCorrelationValue = decoder->signalStatus.signalAverg * minimumModulationDeep;
+      float minimumCorrelationValue = decoder->signalAverage * minimumModulationDeep;
 
       // POLL frame ASK detector for 212Kbps and 424Kbps
       for (int rate = r212k; rate <= r424k; rate++)
@@ -233,9 +233,9 @@ struct NfcF::Impl : NfcTech
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].value;
+         float delay2Data = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].value;
+         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += signalData; // add new value
@@ -612,8 +612,8 @@ struct NfcF::Impl : NfcTech
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float currentData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float delayedData = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
+         float currentData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].value;
+         float delayedData = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].value;
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += currentData; // add new value
@@ -722,8 +722,8 @@ struct NfcF::Impl : NfcTech
          ++delay2Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].value;
+         float delay2Data = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].value;
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += signalData; // add new value
@@ -747,7 +747,7 @@ struct NfcF::Impl : NfcTech
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
          // get signal deep
-         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
+         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
 #ifdef DEBUG_ASK_CORR_CHANNEL
          decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
@@ -764,7 +764,7 @@ struct NfcF::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMean[signalIndex & (BUFFER_SIZE - 1)] * 10;
+            modulation->searchValueThreshold = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].variance * 10;
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -901,8 +901,8 @@ struct NfcF::Impl : NfcTech
          ++delay2Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
-         float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].value;
+         float delay2Data = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].value;
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += signalData; // add new value
