@@ -24,6 +24,7 @@
 
 #include <rt/Logger.h>
 #include <rt/BlockingQueue.h>
+#include <rt/Throughput.h>
 
 #include <nfc/NfcDecoder.h>
 #include <nfc/FrameDecoderTask.h>
@@ -48,6 +49,9 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
    // signal stream queue buffer
    rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
+
+   // throughput meter
+   rt::Throughput taskThroughput;
 
    // decoder
    std::shared_ptr<nfc::NfcDecoder> decoder;
