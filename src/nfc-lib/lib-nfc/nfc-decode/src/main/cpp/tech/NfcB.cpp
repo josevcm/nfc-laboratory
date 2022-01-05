@@ -260,8 +260,8 @@ struct NfcB::Impl : NfcTech
          unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
 
          // get signal samples
-         float signalEdge = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
+         float signalEdge = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float signalDeep = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].deep;
 
 #ifdef DEBUG_CHANNEL
          decoder->debug->set(DEBUG_CHANNEL, signalEdge * 10);
@@ -676,8 +676,8 @@ struct NfcB::Impl : NfcTech
          ++signalIndex;
 
          // get signal samples
-         float signalEdge = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
+         float signalEdge = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float signalDeep = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].deep;
 
 #ifdef DEBUG_CHANNEL
          decoder->debug->set(DEBUG_CHANNEL, signalEdge * 10);
@@ -766,9 +766,9 @@ struct NfcB::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalFilter[delay1Index & (BUFFER_SIZE - 1)];
-         float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float delay1Data = decoder->signalStatus.signalInfo[delay1Index & (BUFFER_SIZE - 1)].filtered;
+         float signalDeep = decoder->signalStatus.signalInfo[futureIndex & (BUFFER_SIZE - 1)].deep;
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
@@ -796,7 +796,7 @@ struct NfcB::Impl : NfcTech
 
          // using signal st.dev as lower level threshold scaled to 1/8 symbol to compensate integration
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMean[signalIndex & (BUFFER_SIZE - 1)];
+            modulation->searchValueThreshold = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].variance;
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -963,8 +963,8 @@ struct NfcB::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalFilter[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float delay1Data = decoder->signalStatus.signalInfo[delay1Index & (BUFFER_SIZE - 1)].filtered;
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
