@@ -59,6 +59,9 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    // last status sent
    std::chrono::time_point<std::chrono::steady_clock> lastStatus;
 
+   // last Throughput statistics
+   std::chrono::time_point<std::chrono::steady_clock> lastThroughput;
+
    Impl() : AbstractTask("FrameDecoderTask", "decoder"), status(FrameDecoderTask::Halt), decoder(new nfc::NfcDecoder())
    {
       // access to signal subject stream
@@ -250,16 +253,27 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    {
       if (auto buffer = signalQueue.get())
       {
-         for (const auto &frame : decoder->nextFrames(buffer.value()))
+         taskThroughput.begin();
+
+         for (const auto &frame: decoder->nextFrames(buffer.value()))
          {
             frameStream->next(frame);
          }
+
+         taskThroughput.update(buffer->elements());
 
          if (!buffer->isValid())
          {
             log.info("decoder EOF buffer received, finish!");
 
             updateDecoderStatus(FrameDecoderTask::Halt);
+         }
+
+         if ((std::chrono::steady_clock::now() - lastThroughput) > std::chrono::milliseconds(1000))
+         {
+            log.info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
+
+            lastThroughput = std::chrono::steady_clock::now();
          }
       }
    }
