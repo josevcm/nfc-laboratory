@@ -243,14 +243,14 @@ struct NfcV::Impl : NfcTech
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalStatus.signalAverg < decoder->powerLevelThreshold)
+      if (decoder->signalAverage < decoder->powerLevelThreshold)
          return false;
 
       BitrateParams *bitrate = &bitrateParams;
       ModulationStatus *modulation = &modulationStatus;
 
       // minimum correlation value for start detecting NFC-V symbols
-      float minimumCorrelationValue = decoder->signalStatus.signalAverg * minimumCorrelationThreshold;
+      float minimumCorrelationValue = decoder->signalAverage * minimumCorrelationThreshold;
 
       // compute signal pointers
       unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
@@ -261,9 +261,9 @@ struct NfcV::Impl : NfcTech
       unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
 
       // get signal samples
-      float signalData = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].value;
-      float delay2Data = decoder->signalStatus.signalInfo[delay2Index & (BUFFER_SIZE - 1)].value;
-      float signalDeep = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].deep;
+      float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].value;
+      float delay2Data = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].value;
+      float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
       // integrate signal data over 1/2 symbol
       modulation->filterIntegrate += signalData; // add new value
@@ -673,8 +673,8 @@ struct NfcV::Impl : NfcTech
          unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float currentData = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].value;
-         float delayedData = decoder->signalStatus.signalInfo[delay2Index & (BUFFER_SIZE - 1)].value;
+         float currentData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].value;
+         float delayedData = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].value;
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += currentData; // add new value
@@ -798,8 +798,8 @@ struct NfcV::Impl : NfcTech
          ++delay1Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].filtered;
-         float signalDeep = decoder->signalStatus.signalInfo[futureIndex & (BUFFER_SIZE - 1)].deep;
+         float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float signalDeep = decoder->sample[futureIndex & (BUFFER_SIZE - 1)].deep;
 
          // store signal square in filter buffer
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
@@ -832,7 +832,7 @@ struct NfcV::Impl : NfcTech
 
          // using signal mean at guard end as lower level threshold, scaled by integration factor
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].variance * bitrate->period8SymbolSamples;
+            modulation->searchValueThreshold = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].variance * bitrate->period8SymbolSamples;
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock >= frameStatus.waitingEnd)
@@ -992,7 +992,7 @@ struct NfcV::Impl : NfcTech
          unsigned int filterPoint2 = (signalIndex + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalInfo[signalIndex & (BUFFER_SIZE - 1)].filtered;
+         float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filtered;
 
          // store signal square in filter buffer
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
