@@ -201,6 +201,17 @@ struct PulseParams
 };
 
 /*
+ * sample parameters
+ */
+struct TimeSample
+{
+   float value; // sample raw value
+   float filtered; // IIR-DC filtered value
+   float variance; // standard deviation at sample time
+   float deep; // modulation deep at sample time
+};
+
+/*
  * global decoder signal status
  */
 struct SignalStatus
@@ -211,16 +222,7 @@ struct SignalStatus
    float signalIIRf; // signal IIR filter (n-1 sample)
 
    // signal data buffer
-   float signalData[BUFFER_SIZE];
-
-   // signal data buffer (DC removed)
-   float signalFilter[BUFFER_SIZE];
-
-   // signal modulation deep buffer
-   float signalDeep[BUFFER_SIZE];
-
-   // signal mean deviation buffer
-   float signalMean[BUFFER_SIZE];
+   TimeSample signalInfo[BUFFER_SIZE];
 
    // silence start (no modulation detected)
    unsigned int carrierOff;
@@ -391,21 +393,15 @@ struct DecoderStatus
       // IIR DC removal filter
       float signalIIRf = signalData + signalStatus.signalIIRf * signalParams.signalIIRdcA;
       float signalIIRv = signalIIRf - signalStatus.signalIIRf;
+      float signalDeep = (signalStatus.signalAverg - std::clamp(signalData, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
 
       // compute signal st deviation
       signalStatus.signalNoise = signalStatus.signalNoise * signalParams.signalNoiseW0 + std::abs(signalIIRv) * signalParams.signalNoiseW1;
 
-      // store next signal value in sample buffer
-      signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalData;
-
-      // store next signal average in sample buffer
-      signalStatus.signalFilter[signalClock & (BUFFER_SIZE - 1)] = signalIIRv;
-
-      // store next signal value in sample buffer
-      signalStatus.signalMean[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalNoise;
-
-      // store next edge value in sample buffer
-      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalData, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
+      signalStatus.signalInfo[signalClock & (BUFFER_SIZE - 1)].value = signalData;
+      signalStatus.signalInfo[signalClock & (BUFFER_SIZE - 1)].filtered = signalIIRv;
+      signalStatus.signalInfo[signalClock & (BUFFER_SIZE - 1)].variance = signalStatus.signalNoise;
+      signalStatus.signalInfo[signalClock & (BUFFER_SIZE - 1)].deep = signalDeep;
 
       // update IIR filter component
       signalStatus.signalIIRf = signalIIRf;
