@@ -24,10 +24,6 @@
 
 #include <tech/NfcB.h>
 
-#ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNEL DEBUG_NFC_CHANNEL
-#endif
-
 #define LISTEN_MODE_TR1 0
 #define LISTEN_MODE_SOS_S1 1
 #define LISTEN_MODE_SOS_S2 2
@@ -259,8 +255,8 @@ struct NfcB::Impl : NfcTech
          float signalEdge = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filtered;
          float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL, signalEdge * 10);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL, signalEdge * 10);
 #endif
          // reset modulation if exceed limits
          if (signalDeep > maximumModulationDeep)
@@ -403,8 +399,8 @@ struct NfcB::Impl : NfcTech
             break;
          }
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL, 0.75f);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL, 0.75f);
 #endif
 
          // update SOF symbol end time
@@ -675,8 +671,8 @@ struct NfcB::Impl : NfcTech
          float signalEdge = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filtered;
          float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL, signalEdge * 10);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL, signalEdge * 10);
 #endif
 
          // edge re-synchronization window
@@ -697,8 +693,8 @@ struct NfcB::Impl : NfcTech
          if (decoder->signalClock != modulation->searchSyncTime)
             continue;
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL, 0.50f);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL, 0.50f);
 #endif
 
          // set symbol timings
@@ -773,17 +769,17 @@ struct NfcB::Impl : NfcTech
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, modulation->phaseIntegrate);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->phaseIntegrate);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == frameStatus.waitingEnd)
-            decoder->debug->set(DEBUG_CHANNEL + 1, -0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, -0.75f);
 #endif
 
          // wait until frame guard time (TR0)
@@ -802,14 +798,14 @@ struct NfcB::Impl : NfcTech
          if (signalDeep > maximumModulationDeep)
             return PatternType::NoPattern;
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock < (frameStatus.guardEnd + 10))
-            decoder->debug->set(DEBUG_CHANNEL + 1, modulation->searchValueThreshold);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->searchValueThreshold);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == frameStatus.guardEnd)
-            decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.50f);
 #endif
 
          // wait util search start
@@ -848,8 +844,8 @@ struct NfcB::Impl : NfcTech
                   continue;
                }
 
-#ifdef DEBUG_CHANNEL
-               decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+#ifdef DEBUG_NFC_CHANNEL
+               decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
 #endif
                // set symbol end time
                modulation->symbolEndTime = decoder->signalClock;
@@ -878,8 +874,8 @@ struct NfcB::Impl : NfcTech
                   continue;
                }
 
-#ifdef DEBUG_CHANNEL
-               decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+#ifdef DEBUG_NFC_CHANNEL
+               decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
 #endif
 
                // update symbol end time
@@ -909,8 +905,8 @@ struct NfcB::Impl : NfcTech
                   continue;
                }
 
-#ifdef DEBUG_CHANNEL
-               decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+#ifdef DEBUG_NFC_CHANNEL
+               decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
 #endif
                // update symbol end time
                modulation->symbolEndTime = decoder->signalClock;
@@ -969,16 +965,16 @@ struct NfcB::Impl : NfcTech
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, modulation->phaseIntegrate);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->phaseIntegrate);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // zero-cross detector for re-synchronization, only one time for each symbol to avoid oscillations!
@@ -996,8 +992,8 @@ struct NfcB::Impl : NfcTech
          if (decoder->signalClock != modulation->searchSyncTime)
             continue;
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.50f);
 #endif
 
          // no modulation detected, generate End Of Frame

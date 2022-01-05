@@ -24,11 +24,6 @@
 
 #include <tech/NfcF.h>
 
-#ifdef DEBUG_SIGNAL
-#define DEBUG_ASK_CORR_CHANNEL 1
-#define DEBUG_ASK_SYNC_CHANNEL 1
-#endif
-
 namespace nfc {
 
 enum PatternType
@@ -245,13 +240,13 @@ struct NfcF::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedSD);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.75f);
 #endif
 
          // wait until search start
@@ -623,13 +618,13 @@ struct NfcF::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedSD);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.50f);
 #endif
 
          // wait until correlation search start
@@ -745,13 +740,13 @@ struct NfcF::Impl : NfcTech
          // get signal deep
          float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedS0);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.75f);
 #endif
 
          // wait until frame guard time is reached
@@ -917,13 +912,13 @@ struct NfcF::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_ASK_CORR_CHANNEL
-         decoder->debug->set(DEBUG_ASK_CORR_CHANNEL, correlatedSD);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedS0);
 #endif
 
-#ifdef DEBUG_ASK_SYNC_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_ASK_SYNC_CHANNEL, 0.50f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.50f);
 #endif
 
          // wait until correlation search start
@@ -1116,7 +1111,7 @@ struct NfcF::Impl : NfcTech
             protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCF_RGT_DEF);
 
             // The REQ-F Response must start between this range
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCF_TR0_MIN; // ATQ-B response guard
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCF_FGT_DEF; // ATQ-C response guard
             frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCF_FWT_ATQC; // ATQ-C response timeout
 
             // clear chained flags

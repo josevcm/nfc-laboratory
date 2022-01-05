@@ -118,11 +118,8 @@ constexpr int NFCB_TR1_MIN_TABLE[] = {0, 64 * 16, 16 * 16, 0};
  * NFC-F parameters
  */
 
-// NFC-F Guard time between the end of a PCD transmission and the start of the PICC subcarrier generation in 1/FC units
-constexpr int NFCF_TR0_MIN = 1024;
-
 // NFC-F Default Request Guard Time
-constexpr int NFCF_FGT_DEF = NFCF_TR0_MIN;
+constexpr int NFCF_FGT_DEF = 1024;
 
 // NFC-F Default Frame Waiting Time
 constexpr int NFCF_FWT_DEF = 256 * 16 * (1 << 4);
@@ -134,7 +131,7 @@ constexpr int NFCF_SFGT_DEF = 4096;
 constexpr int NFCF_RGT_DEF = 7000;
 
 // NFC-F Frame Waiting Time for ATQC response
-constexpr int NFCF_FWT_ATQC = 512 * 64 + 4 * 256 * 64;
+constexpr int NFCF_FWT_ATQC = 512 * 64 + 1 * 256 * 64; // timeout at first slot!
 
 /*
  * NFC-V parameters
