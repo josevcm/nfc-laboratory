@@ -79,7 +79,9 @@ struct QtApplication::Impl
 
          if (file.exists())
          {
-            QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReadFile, "file", file.fileName()));
+            QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReadFile, {
+                  {"fileName", file.fileName()}
+            }));
          }
       }
    }

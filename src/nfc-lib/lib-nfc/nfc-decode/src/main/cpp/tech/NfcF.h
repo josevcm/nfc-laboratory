@@ -44,11 +44,18 @@ struct NfcF
 
    Impl *self;
 
+   enum CommandType
+   {
+      NFCB_REQC = 0x00,
+   };
+
    explicit NfcF(DecoderStatus *decoder);
 
    ~NfcF();
 
    void setModulationThreshold(float min, float max);
+
+   void setCorrelationThreshold(float value);
 
    void configure(long sampleRate);
 

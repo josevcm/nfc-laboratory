@@ -312,41 +312,41 @@ struct QtDecoder::Impl
       if (event->contains("nfca/enabled"))
          nfca["enabled"] = event->getBoolean("nfca/enabled");
 
-      if (event->contains("nfca/minimumModulationThreshold"))
-         nfca["minimumModulationThreshold"] = event->getFloat("nfca/minimumModulationThreshold");
+      if (event->contains("nfca/minimumModulationDeep"))
+         nfca["minimumModulationDeep"] = event->getFloat("nfca/minimumModulationDeep");
 
-      if (event->contains("nfca/maximumModulationThreshold"))
-         nfca["maximumModulationThreshold"] = event->getFloat("nfca/maximumModulationThreshold");
+      if (event->contains("nfca/maximumModulationDeep"))
+         nfca["maximumModulationDeep"] = event->getFloat("nfca/maximumModulationDeep");
 
       // NFC-B parameters
       if (event->contains("nfcb/enabled"))
          nfcb["enabled"] = event->getBoolean("nfcb/enabled");
 
-      if (event->contains("nfcb/minimumModulationThreshold"))
-         nfcb["minimumModulationThreshold"] = event->getFloat("nfcb/minimumModulationThreshold");
+      if (event->contains("nfcb/minimumModulationDeep"))
+         nfcb["minimumModulationDeep"] = event->getFloat("nfcb/minimumModulationDeep");
 
-      if (event->contains("nfcb/maximumModulationThreshold"))
-         nfcb["maximumModulationThreshold"] = event->getFloat("nfcb/maximumModulationThreshold");
+      if (event->contains("nfcb/maximumModulationDeep"))
+         nfcb["maximumModulationDeep"] = event->getFloat("nfcb/maximumModulationDeep");
 
       // NFC-F parameters
       if (event->contains("nfcf/enabled"))
          nfcf["enabled"] = event->getBoolean("nfcf/enabled");
 
-      if (event->contains("nfcf/minimumModulationThreshold"))
-         nfcf["minimumModulationThreshold"] = event->getFloat("nfcf/minimumModulationThreshold");
+      if (event->contains("nfcf/minimumModulationDeep"))
+         nfcf["minimumModulationDeep"] = event->getFloat("nfcf/minimumModulationDeep");
 
-      if (event->contains("nfcf/maximumModulationThreshold"))
-         nfcf["maximumModulationThreshold"] = event->getFloat("nfcf/maximumModulationThreshold");
+      if (event->contains("nfcf/maximumModulationDeep"))
+         nfcf["maximumModulationDeep"] = event->getFloat("nfcf/maximumModulationDeep");
 
       // NFC-V parameters
       if (event->contains("nfcv/enabled"))
          nfcv["enabled"] = event->getBoolean("nfcv/enabled");
 
-      if (event->contains("nfcv/minimumModulationThreshold"))
-         nfcv["minimumModulationThreshold"] = event->getFloat("nfcv/minimumModulationThreshold");
+      if (event->contains("nfcv/minimumModulationDeep"))
+         nfcv["minimumModulationDeep"] = event->getFloat("nfcv/minimumModulationDeep");
 
-      if (event->contains("nfcv/maximumModulationThreshold"))
-         nfcv["maximumModulationThreshold"] = event->getFloat("nfcv/maximumModulationThreshold");
+      if (event->contains("nfcv/maximumModulationDeep"))
+         nfcv["maximumModulationDeep"] = event->getFloat("nfcv/maximumModulationDeep");
 
       if (!nfca.isEmpty())
          json["nfca"] = nfca;

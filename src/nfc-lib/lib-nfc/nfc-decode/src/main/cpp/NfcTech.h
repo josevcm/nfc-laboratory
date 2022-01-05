@@ -26,8 +26,10 @@
 #define NFC_NFCTECH_H
 
 #include <cmath>
+#include <algorithm>
 
 #include <sdr/SignalType.h>
+#include <sdr/SignalBuffer.h>
 #include <sdr/RecordDevice.h>
 
 #include <nfc/Nfc.h>
@@ -35,18 +37,19 @@
 //#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNELS 4
+#define DEBUG_CHANNELS 6
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-//#define DEBUG_SIGNAL_AVERG_CHANNEL 2
-//#define DEBUG_SIGNAL_STDEV_CHANNEL 2
-//#define DEBUG_SIGNAL_EDGE_CHANNEL 3
-//#define DEBUG_SIGNAL_DEEP_CHANNEL 3
+#define DEBUG_SIGNAL_DEEP_CHANNEL 1
+#define DEBUG_SIGNAL_IIRF_CHANNEL 2
+#define DEBUG_SIGNAL_NOISE_CHANNEL 3
+//#define DEBUG_SIGNAL_AVERG_CHANNEL 4
+#define DEBUG_NFC_CHANNEL 4
 #endif
 
 namespace nfc {
 
 // Buffer length for signal integration, must be power of 2^n
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 1024
 
 /*
  * Signal debugger
@@ -116,6 +119,11 @@ struct SignalDebug
       buffer.flip();
       recorder->write(buffer);
    }
+
+   inline void close()
+   {
+      recorder->close();
+   }
 };
 
 /*
@@ -133,25 +141,22 @@ struct PulseSlot
  */
 struct SignalParams
 {
+   // factors for IIR DC removal filter
+   float signalIIRdcA;
+
    // factors for exponential signal power
    float signalAvergW0;
    float signalAvergW1;
 
    // factors for exponential signal variance
-   float signalStDevW0;
-   float signalStDevW1;
-
-   // factors for exponential edge detector
-   float signalEdge0W0;
-   float signalEdge0W1;
-   float signalEdge1W0;
-   float signalEdge1W1;
+   float signalNoiseW0;
+   float signalNoiseW1;
 
    // 1/FC
    double sampleTimeUnit;
 
    // maximum silence
-   int silenceThreshold;
+   int elementaryTimeUnit;
 };
 
 /*
@@ -201,37 +206,27 @@ struct PulseParams
 struct SignalStatus
 {
    // signal parameters
-   float signalValue; // instantaneous signal value
-   float signalAverg; // signal exponential average
-   float signalStDev; // signal exponential st deviation
-
-   // exponential average for edge detector
-   float signalEdge0;
-   float signalEdge1;
+   float signalAverg; // signal average
+   float signalNoise; // signal st deviation
+   float signalIIRf; // signal IIR filter (n-1 sample)
 
    // signal data buffer
    float signalData[BUFFER_SIZE];
 
-   // signal edge detect buffer
-   float signalEdge[BUFFER_SIZE];
+   // signal data buffer (DC removed)
+   float signalFilter[BUFFER_SIZE];
 
    // signal modulation deep buffer
    float signalDeep[BUFFER_SIZE];
 
-   // signal average buffer
-   float signalAvrg[BUFFER_SIZE];
-
    // signal mean deviation buffer
-   float signalMdev[BUFFER_SIZE];
+   float signalMean[BUFFER_SIZE];
 
    // silence start (no modulation detected)
    unsigned int carrierOff;
 
    // silence end (modulation detected)
    unsigned int carrierOn;
-
-   // pulse width for envelope detector
-   unsigned int pulseFilter;
 };
 
 /*
@@ -240,33 +235,40 @@ struct SignalStatus
 struct ModulationStatus
 {
    // symbol search status
-   unsigned int searchStage;        // search stage control
+   unsigned int searchModeState;    // search mode / state control
    unsigned int searchStartTime;    // sample start of symbol search window
    unsigned int searchEndTime;      // sample end of symbol search window
-   unsigned int searchPeakTime;     // sample time for maximum correlation peak
+   unsigned int searchSyncTime;     // sample at next synchronization
    unsigned int searchPulseWidth;   // detected signal pulse width
-   float searchThreshold;           // signal threshold
+   float searchValueThreshold;      // signal value threshold
+   float searchPhaseThreshold;      // signal phase threshold
+   float searchLastPhase;           // auxiliary signal for last symbol phase
+   float searchLastValue;           // auxiliary signal for value symbol
+   float searchSyncValue;           // auxiliary signal value at synchronization point
 
    // symbol parameters
-   unsigned int symbolStartTime;
-   unsigned int symbolEndTime;
-   unsigned int symbolSyncTime;
+   unsigned int symbolStartTime;    // sample time for symbol start
+   unsigned int symbolEndTime;      // sample time for symbol end
+   unsigned int symbolRiseTime;     // sample time for last rise edge
+   float symbolCorrD;
    float symbolCorr0;
    float symbolCorr1;
-   float symbolPhase;
-   float symbolAverage;
+//   float symbolAverage;
+
+   // signal thresholds
 
    // integrator processor
    float filterIntegrate;
    float detectIntegrate;
    float phaseIntegrate;
-   float phaseThreshold;
 
-   // correlation values
-   float correlationPeek;
+   // auxiliary detector peak values
+   float correlatedPeakValue;
+   float detectorPeakValue;
 
-   // edge detector values
-   float detectorPeek;
+   // auxiliary detector peak times
+   unsigned int correlatedPeakTime;     // sample time for maximum correlation peak
+   unsigned int detectorPeakTime;     // sample time for maximum detector peak
 
    // data buffers
    float integrationData[BUFFER_SIZE];
@@ -280,9 +282,10 @@ struct SymbolStatus
 {
    unsigned int pattern; // symbol pattern
    unsigned int value; // symbol value (0 / 1)
-   unsigned long start;    // sample clocks for start of last decoded symbol
-   unsigned long end; // sample clocks for end of last decoded symbol
-   unsigned int length; // samples for next symbol synchronization
+   unsigned long start;  // sample clocks for start
+   unsigned long end; // sample clocks for end
+   unsigned long edge; // sample clocks for last rise edge
+   unsigned int length; // length of samples for symbol
    unsigned int rate; // symbol rate
 };
 
@@ -327,27 +330,6 @@ struct FrameStatus
    unsigned int requestGuardTime;
 };
 
-/*
- * status for protocol
- */
-struct ProtocolStatus
-{
-   // The FSD defines the maximum size of a frame the PCD is able to receive
-   unsigned int maxFrameSize;
-
-   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
-   unsigned int frameGuardTime;
-
-   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
-   unsigned int frameWaitingTime;
-
-   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
-   unsigned int startUpGuardTime;
-
-   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
-   unsigned int requestGuardTime;
-};
-
 struct DecoderStatus
 {
    // signal parameters
@@ -371,8 +353,11 @@ struct DecoderStatus
    // signal master clock
    unsigned int signalClock = 0;
 
+   // signal pulse filter
+   unsigned int pulseFilter = 0;
+
    // minimum signal level
-   float powerLevelThreshold = 0.010f;
+   float powerLevelThreshold = 0.01f;
 
    // signal debugger
    std::shared_ptr<SignalDebug> debug;
@@ -383,81 +368,79 @@ struct DecoderStatus
       if (buffer.available() == 0 || buffer.type() != sdr::SignalType::SAMPLE_REAL)
          return false;
 
-      // read next sample data
-      buffer.get(signalStatus.signalValue);
-
-      // update signal clock
+      // update signal clock and pulse filter
       ++signalClock;
+      ++pulseFilter;
 
-      // update signal envelope if value increase
-      if (signalStatus.signalValue > signalStatus.signalAverg * 0.95)
+      float signalData;
+
+      buffer.get(signalData);
+
+      float signalDiff = std::abs(signalData - signalStatus.signalAverg) / signalStatus.signalAverg;
+
+      // signal average envelope detector
+      if (signalDiff < 0.05f || pulseFilter > signalParams.elementaryTimeUnit * 10)
       {
          // reset silence counter
-         signalStatus.pulseFilter = 0;
+         pulseFilter = 0;
 
-         // compute signal average
-         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
-
-         // compute signal st deviation
-         signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
-      }
-         // only decrease envelope if for long fall periods
-      else if (++signalStatus.pulseFilter > signalParams.silenceThreshold)
-      {
-         // compute signal average
-         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalStatus.signalValue * signalParams.signalAvergW1;
-
-         // compute signal st deviation
-         signalStatus.signalStDev = signalStatus.signalStDev * signalParams.signalStDevW0 + std::abs(signalStatus.signalValue - signalStatus.signalAverg) * signalParams.signalStDevW1;
+         // compute slow signal average
+         signalStatus.signalAverg = signalStatus.signalAverg * signalParams.signalAvergW0 + signalData * signalParams.signalAvergW1;
       }
 
-      // fast average edge detector
-      signalStatus.signalEdge0 = signalStatus.signalEdge0 * signalParams.signalEdge0W0 + signalStatus.signalValue * signalParams.signalEdge0W1;
+      // IIR DC removal filter
+      float signalIIRf = signalData + signalStatus.signalIIRf * signalParams.signalIIRdcA;
+      float signalIIRv = signalIIRf - signalStatus.signalIIRf;
 
-      // slow average edge detector
-      signalStatus.signalEdge1 = signalStatus.signalEdge1 * signalParams.signalEdge1W0 + signalStatus.signalValue * signalParams.signalEdge1W1;
+      // compute signal st deviation
+      signalStatus.signalNoise = signalStatus.signalNoise * signalParams.signalNoiseW0 + std::abs(signalIIRv) * signalParams.signalNoiseW1;
 
       // store next signal value in sample buffer
-      signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalValue;
+      signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalData;
 
       // store next signal average in sample buffer
-      signalStatus.signalAvrg[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalAverg;
+      signalStatus.signalFilter[signalClock & (BUFFER_SIZE - 1)] = signalIIRv;
 
       // store next signal value in sample buffer
-      signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalStDev;
+      signalStatus.signalMean[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalNoise;
 
       // store next edge value in sample buffer
-      signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalEdge0 - signalStatus.signalEdge1);
+      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalData, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
 
-      // store next edge value in sample buffer
-      signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - signalStatus.signalValue) / signalStatus.signalAverg;
+      // update IIR filter component
+      signalStatus.signalIIRf = signalIIRf;
 
 #ifdef DEBUG_SIGNAL
       debug->block(signalClock);
 #endif
 
 #ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalStatus.signalValue);
+      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, signalData);
 #endif
 
 #ifdef DEBUG_SIGNAL_AVERG_CHANNEL
       debug->set(DEBUG_SIGNAL_AVERG_CHANNEL, signalStatus.signalAverg);
 #endif
 
-#ifdef DEBUG_SIGNAL_STDEV_CHANNEL
-      debug->set(DEBUG_SIGNAL_STDEV_CHANNEL, signalStatus.signalStDev);
+#ifdef DEBUG_SIGNAL_IIRF_CHANNEL
+      debug->set(DEBUG_SIGNAL_IIRF_CHANNEL, signalIIRv);
 #endif
 
-#ifdef DEBUG_SIGNAL_EDGE_CHANNEL
-      debug->set(DEBUG_SIGNAL_EDGE_CHANNEL, signalStatus.signalEdge[signalClock & (BUFFER_SIZE - 1)]);
+#ifdef DEBUG_SIGNAL_NOISE_CHANNEL
+      debug->set(DEBUG_SIGNAL_NOISE_CHANNEL, signalStatus.signalNoise);
 #endif
 
 #ifdef DEBUG_SIGNAL_DEEP_CHANNEL
-      debug->set(DEBUG_SIGNAL_DEEP_CHANNEL, signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] / 10.0);
+      debug->set(DEBUG_SIGNAL_DEEP_CHANNEL, signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)]);
 #endif
 
       return true;
    }
+};
+
+struct NfcTech
+{
+   unsigned short crc16(NfcFrame &frame, int from, int to, unsigned short init, bool refin);
 };
 
 }

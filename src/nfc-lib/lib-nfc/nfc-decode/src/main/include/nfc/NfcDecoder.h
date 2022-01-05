@@ -67,7 +67,7 @@ class NfcDecoder
 
       float powerLevelThreshold() const;
 
-      float signalStrength() const;
+      [[maybe_unused]] float signalStrength() const;
 
    private:
 

@@ -34,12 +34,6 @@ constexpr float NFC_FS = NFC_FC / 16;
 // Elementary time unit
 constexpr float NFC_ETU = 128 / NFC_FC;
 
-// Guard time between the end of a PCD transmission and the start of the PICC subcarrier generation in 1/FC units
-constexpr int NFC_TR0_MIN = 64 * 16;
-
-// Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation in 1/FC units
-constexpr int NFC_TR1_MIN = 80 * 16;
-
 // Activation frame waiting time, in 1/FS units
 constexpr int NFC_FWT_ACTIVATION = 71680;
 
@@ -56,8 +50,8 @@ constexpr int NFC_FWT_TABLE[] = {4096, 8192, 16384, 32768, 65536, 131072, 262144
  * NFC-A parameters
  */
 
-// NFC-A Default Request Guard Time
-constexpr int NFCA_FGT_DEF = NFC_TR0_MIN;
+// NFC-A Default guard time between the end of a PCD transmission and the start of the PICC subcarrier generation in 1/FC units
+constexpr int NFCA_FGT_DEF = 1024;
 
 // NFC-A Default Frame Waiting Time
 constexpr int NFCA_FWT_DEF = 256 * 16 * (1 << 4);
@@ -68,15 +62,36 @@ constexpr int NFCA_SFGT_DEF = 256 * 16 * (1 << 0);
 // NFC-A Default Request Guard Time
 constexpr int NFCA_RGT_DEF = 7000;
 
-// NFC-A Frame Waiting Time for ATQA response
+// NFC-A Maximum frame Waiting Time for ATQA response
 constexpr int NFCA_FWT_ATQA = 128 * 18;
 
 /*
  * NFC-B parameters
  */
 
+// NFC-B Guard time between the end of a PCD transmission and the start of the PICC subcarrier generation in 1/FC units
+constexpr int NFCB_TR0_MIN = 1024;
+
+// NFC-B Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation in 1/FC units
+constexpr int NFCB_TR1_MIN = 1280;
+
+// NFC-B Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation in 1/FC units
+constexpr int NFCB_TR1_MAX = 3200;
+
+// NFC-B Start of Sequence first modulation
+constexpr int NFCB_TLISTEN_S1_MIN = 1272;
+
+// NFC-B Start of Sequence first modulation
+constexpr int NFCB_TLISTEN_S1_MAX = 1416;
+
+// NFC-B Start of Sequence first modulation
+constexpr int NFCB_TLISTEN_S2_MIN = 248;
+
+// NFC-B Start of Sequence first modulation
+constexpr int NFCB_TLISTEN_S2_MAX = 392;
+
 // NFC-B Default Request Guard Time
-constexpr int NFCB_FGT_DEF = NFC_TR0_MIN;
+constexpr int NFCB_FGT_DEF = NFCB_TR0_MIN;
 
 // NFC-B Default Frame Waiting Time
 constexpr int NFCB_FWT_DEF = 256 * 16 * (1 << 4);
@@ -90,21 +105,52 @@ constexpr int NFCB_RGT_DEF = 7000;
 // NFC-B Frame Waiting Time for ATQB response
 constexpr int NFCB_FWT_ATQB = 7680;
 
-// Number of Slots
+// NFC-B Number of Slots
 constexpr int NFCB_SLOT_TABLE[] = {1, 2, 4, 8, 16, 0, 0, 0};
 
-// TR0min, in 1/FC units
+// NFC-B TR0min, in 1/FC units
 constexpr int NFCB_TR0_MIN_TABLE[] = {0, 48 * 16, 16 * 16, 0};
 
-// TR1min, in 1/FC units
+// NFC-B TR1min, in 1/FC units
 constexpr int NFCB_TR1_MIN_TABLE[] = {0, 64 * 16, 16 * 16, 0};
+
+/*
+ * NFC-F parameters
+ */
+
+// NFC-F Guard time between the end of a PCD transmission and the start of the PICC subcarrier generation in 1/FC units
+constexpr int NFCF_TR0_MIN = 1024;
+
+// NFC-F Default Request Guard Time
+constexpr int NFCF_FGT_DEF = NFCF_TR0_MIN;
+
+// NFC-F Default Frame Waiting Time
+constexpr int NFCF_FWT_DEF = 256 * 16 * (1 << 4);
+
+// NFC-F Default Start-up Frame Guard Time
+constexpr int NFCF_SFGT_DEF = 4096;
+
+// NFC-F Default Request Guard Time, defined as the minimum time between the start bits of two consecutive REQC commands.
+constexpr int NFCF_RGT_DEF = 7000;
+
+// NFC-F Frame Waiting Time for ATQC response
+constexpr int NFCF_FWT_ATQC = 512 * 64 + 4 * 256 * 64;
 
 /*
  * NFC-V parameters
  */
 
+// NFC-V Guard time between the end of a PCD transmission and the start of the PICC subcarrier generation in 1/FC units
+constexpr int NFCV_TR0_MIN = 1024;
+
 // NFC-V Default Request Guard Time
-constexpr int NFCV_FGT_DEF = NFC_TR0_MIN;
+constexpr int NFCV_FGT_DEF = NFCV_TR0_MIN;
+
+// NFC-V Default Request Guard Time
+constexpr int NFCV_TLISTEN_S1 = 768;
+
+// NFC-V Default Request Guard Time
+constexpr int NFCV_TLISTEN_S2 = 256;
 
 // NFC-V Default Frame Waiting Time
 constexpr int NFCV_FWT_DEF = 256 * 16 * (1 << 4);

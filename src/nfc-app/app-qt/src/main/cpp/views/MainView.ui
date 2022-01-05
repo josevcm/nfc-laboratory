@@ -728,6 +728,82 @@
     <string>Filter</string>
    </property>
   </action>
+  <action name="actionNfcA">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>NfcA</string>
+   </property>
+   <property name="toolTip">
+    <string>NfcA</string>
+   </property>
+   <property name="font">
+    <font>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="actionNfcB">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>NfcB</string>
+   </property>
+   <property name="toolTip">
+    <string>NfcB</string>
+   </property>
+   <property name="font">
+    <font>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="actionNfcF">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>NfcF</string>
+   </property>
+   <property name="toolTip">
+    <string>NfcF</string>
+   </property>
+   <property name="font">
+    <font>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
+  <action name="actionNfcV">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>NfcV</string>
+   </property>
+   <property name="toolTip">
+    <string>NfcV</string>
+   </property>
+   <property name="font">
+    <font>
+     <bold>true</bold>
+    </font>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
