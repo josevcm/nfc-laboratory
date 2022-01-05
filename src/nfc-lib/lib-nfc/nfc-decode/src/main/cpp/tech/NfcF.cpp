@@ -168,10 +168,6 @@ struct NfcF::Impl : NfcTech
          bitrate->offsetDelay4Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
          bitrate->offsetDelay8Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period8SymbolSamples;
 
-         // exponential symbol average
-         bitrate->symbolAverageW0 = float(1 - 5.0 / bitrate->period1SymbolSamples);
-         bitrate->symbolAverageW1 = float(1 - bitrate->symbolAverageW0);
-
          log.info("{} kpbs parameters:", {round(bitrate->symbolsPerSecond / 1E3)});
          log.info("\tsymbolsPerSecond     {}", {bitrate->symbolsPerSecond});
          log.info("\tperiod1SymbolSamples {} ({} us)", {bitrate->period1SymbolSamples, 1E6 * bitrate->period1SymbolSamples / decoder->sampleRate});
