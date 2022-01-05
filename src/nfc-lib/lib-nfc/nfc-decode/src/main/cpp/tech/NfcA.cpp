@@ -202,24 +202,18 @@ struct NfcA::Impl : NfcTech
       protocolStatus.frameGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
       protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
       protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
-//      protocolStatus.tr1MinimumTime = int(decoder->signalParams.sampleTimeUnit * 250);
-//      protocolStatus.tr1MaximumTime = int(decoder->signalParams.sampleTimeUnit * 500);
 
       // initialize frame parameters to default protocol parameters
       frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
       frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
       frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
       frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
-//      frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
-//      frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
 
       log.info("Startup parameters");
       log.info("\tmaxFrameSize {} bytes", {protocolStatus.maxFrameSize});
       log.info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / decoder->sampleRate});
       log.info("\tframeWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / decoder->sampleRate});
       log.info("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / decoder->sampleRate});
-//      log.info("\ttr1MinimumTime {} samples ({} us)", {protocolStatus.tr1MinimumTime, 1000000.0 * protocolStatus.tr1MinimumTime / decoder->sampleRate});
-//      log.info("\ttr1MaximumTime {} samples ({} us)", {protocolStatus.tr1MaximumTime, 1000000.0 * protocolStatus.tr1MaximumTime / decoder->sampleRate});
    }
 
    /*
@@ -932,7 +926,7 @@ struct NfcA::Impl : NfcTech
          ++delay2Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
 
          // store signal square in filter buffer
@@ -967,13 +961,37 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0);
 #endif
 
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock < (frameStatus.guardEnd + 10))
+            decoder->debug->set(DEBUG_CHANNEL + 1, modulation->searchValueThreshold);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == frameStatus.guardEnd)
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == modulation->searchSyncTime)
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == frameStatus.waitingEnd)
+            decoder->debug->set(DEBUG_CHANNEL + 1, -0.75f);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#endif
+
          // wait until frame guard time is reached to start response search
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
          // using minimum signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)];
+            modulation->searchValueThreshold = decoder->signalStatus.signalMean[signalIndex & (BUFFER_SIZE - 1)];
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
@@ -982,15 +1000,6 @@ struct NfcA::Impl : NfcTech
          // poll frame modulation detected while waiting for response
          if (signalDeep > minimumModulationDeep)
             return PatternType::NoPattern;
-
-#ifdef DEBUG_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
-#endif
-
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
-#endif
 
          // detect modulation peaks
          if (std::fabs(correlatedSD) >= modulation->searchValueThreshold)
@@ -1102,7 +1111,7 @@ struct NfcA::Impl : NfcTech
          unsigned int filterPoint3 = (signalIndex + bitrate->period1SymbolSamples - 1) % bitrate->period1SymbolSamples;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
 
          // store signal in filter buffer removing DC and rectified
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
@@ -1150,6 +1159,7 @@ struct NfcA::Impl : NfcTech
          // capture symbol correlation values at synchronization point
          if (decoder->signalClock == modulation->searchSyncTime)
          {
+            modulation->symbolCorrD = correlatedSD;
             modulation->symbolCorr0 = correlatedS0;
             modulation->symbolCorr1 = correlatedS1;
          }
@@ -1158,10 +1168,11 @@ struct NfcA::Impl : NfcTech
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         if (modulation->correlatedPeakValue > modulation->searchValueThreshold)
+         if (modulation->symbolCorrD > modulation->searchValueThreshold)
          {
             modulation->symbolStartTime = modulation->symbolEndTime;
             modulation->symbolEndTime = modulation->correlatedPeakTime;
+            modulation->searchValueThreshold = modulation->correlatedPeakValue / 3;
 
             if (modulation->symbolCorr0 > modulation->symbolCorr1)
             {
@@ -1228,27 +1239,42 @@ struct NfcA::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalIIRv[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalFilter[delay1Index & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
+
+#ifdef DEBUG_CHANNEL
+         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#endif
+
+         // wait until frame guard time is reached
+         if (decoder->signalClock < (frameStatus.guardEnd - bitrate->period1SymbolSamples))
+            continue;
 
          // compute phase integration
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
 #ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
-#endif
-
-#ifdef DEBUG_CHANNEL
          decoder->debug->set(DEBUG_CHANNEL + 1, modulation->phaseIntegrate);
 #endif
 
 #ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+         if (decoder->signalClock < (frameStatus.guardEnd + 10))
+            decoder->debug->set(DEBUG_CHANNEL + 1, modulation->searchValueThreshold);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == frameStatus.guardEnd)
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == frameStatus.waitingEnd)
+            decoder->debug->set(DEBUG_CHANNEL + 1, -0.75f);
 #endif
 
          // wait until frame guard time (TR0)
@@ -1257,10 +1283,10 @@ struct NfcA::Impl : NfcTech
 
          // using minimum signal st.dev as lower level threshold scaled to 1/4 symbol to compensate integration
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * bitrate->period4SymbolSamples;
+            modulation->searchValueThreshold = decoder->signalStatus.signalMean[signalIndex & (BUFFER_SIZE - 1)] * bitrate->period4SymbolSamples;
 
          // check if frame waiting time exceeded without detect modulation
-         if (decoder->signalClock >= frameStatus.waitingEnd)
+         if (decoder->signalClock > frameStatus.waitingEnd)
             return PatternType::NoPattern;
 
          // check if poll frame modulation is detected while waiting for response
@@ -1342,8 +1368,8 @@ struct NfcA::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalIIRv[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalFilter[delay1Index & (BUFFER_SIZE - 1)];
 
          // multiply 1 symbol delayed signal with incoming signal
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
@@ -1404,15 +1430,15 @@ struct NfcA::Impl : NfcTech
             symbolStatus.value = !symbolStatus.value;
             symbolStatus.pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
          }
-            // update threshold for next symbol
          else
          {
+            // update threshold for next symbol
             modulation->searchPhaseThreshold = modulation->phaseIntegrate / 3;
          }
 
          // setup symbol info
-         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
          return symbolStatus.pattern;
@@ -1488,8 +1514,6 @@ struct NfcA::Impl : NfcTech
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
          frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
-//         frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
-//         frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
       }
 
       do
@@ -1592,7 +1616,7 @@ struct NfcA::Impl : NfcTech
             protocolStatus.requestGuardTime = int(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
 
             // The REQ-A Response must start exactly at 128 * n, n=9, decoder search between n=7 and n=18
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCA_TR0_MIN; // ATQ-A response guard
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF; // ATQ-A response guard
             frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCA_FWT_ATQA; // ATQ-A response timeout
 
             // clear chained flags
@@ -1663,7 +1687,7 @@ struct NfcA::Impl : NfcTech
             frameStatus.lastCommand = frame[0];
 
             // The selection commands has same timings as REQ-A
-            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCA_TR0_MIN;
+            frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF;
             frameStatus.frameWaitingTime = decoder->signalParams.sampleTimeUnit * NFCA_FWT_ATQA;
 
             return true;

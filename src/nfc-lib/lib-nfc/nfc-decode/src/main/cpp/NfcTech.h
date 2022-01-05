@@ -39,10 +39,10 @@
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 6
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
-#define DEBUG_SIGNAL_AVERG_CHANNEL 1
-#define DEBUG_SIGNAL_IIRDC_CHANNEL 2
-//#define DEBUG_SIGNAL_NOISE_CHANNEL 3
-#define DEBUG_SIGNAL_DEEP_CHANNEL 3
+#define DEBUG_SIGNAL_DEEP_CHANNEL 1
+#define DEBUG_SIGNAL_IIRF_CHANNEL 2
+#define DEBUG_SIGNAL_NOISE_CHANNEL 3
+//#define DEBUG_SIGNAL_AVERG_CHANNEL 4
 #define DEBUG_NFC_CHANNEL 4
 #endif
 
@@ -214,16 +214,13 @@ struct SignalStatus
    float signalData[BUFFER_SIZE];
 
    // signal data buffer (DC removed)
-   float signalIIRv[BUFFER_SIZE];
+   float signalFilter[BUFFER_SIZE];
 
    // signal modulation deep buffer
    float signalDeep[BUFFER_SIZE];
 
-   // signal average buffer
-   float signalAvrg[BUFFER_SIZE];
-
    // signal mean deviation buffer
-   float signalMdev[BUFFER_SIZE];
+   float signalMean[BUFFER_SIZE];
 
    // silence start (no modulation detected)
    unsigned int carrierOff;
@@ -402,13 +399,10 @@ struct DecoderStatus
       signalStatus.signalData[signalClock & (BUFFER_SIZE - 1)] = signalData;
 
       // store next signal average in sample buffer
-      signalStatus.signalIIRv[signalClock & (BUFFER_SIZE - 1)] = signalIIRv;
-
-      // store next signal average in sample buffer
-      signalStatus.signalAvrg[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalAverg;
+      signalStatus.signalFilter[signalClock & (BUFFER_SIZE - 1)] = signalIIRv;
 
       // store next signal value in sample buffer
-      signalStatus.signalMdev[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalNoise;
+      signalStatus.signalMean[signalClock & (BUFFER_SIZE - 1)] = signalStatus.signalNoise;
 
       // store next edge value in sample buffer
       signalStatus.signalDeep[signalClock & (BUFFER_SIZE - 1)] = (signalStatus.signalAverg - std::clamp(signalData, 0.0f, signalStatus.signalAverg)) / signalStatus.signalAverg;
@@ -428,8 +422,8 @@ struct DecoderStatus
       debug->set(DEBUG_SIGNAL_AVERG_CHANNEL, signalStatus.signalAverg);
 #endif
 
-#ifdef DEBUG_SIGNAL_IIRDC_CHANNEL
-      debug->set(DEBUG_SIGNAL_IIRDC_CHANNEL, signalIIRv);
+#ifdef DEBUG_SIGNAL_IIRF_CHANNEL
+      debug->set(DEBUG_SIGNAL_IIRF_CHANNEL, signalIIRv);
 #endif
 
 #ifdef DEBUG_SIGNAL_NOISE_CHANNEL

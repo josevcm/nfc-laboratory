@@ -50,11 +50,8 @@ constexpr int NFC_FWT_TABLE[] = {4096, 8192, 16384, 32768, 65536, 131072, 262144
  * NFC-A parameters
  */
 
-// Guard time between the end of a PCD transmission and the start of the PICC subcarrier generation in 1/FC units
-constexpr int NFCA_TR0_MIN = 1024;
-
-// NFC-A Default Request Guard Time
-constexpr int NFCA_FGT_DEF = NFCA_TR0_MIN;
+// NFC-A Default guard time between the end of a PCD transmission and the start of the PICC subcarrier generation in 1/FC units
+constexpr int NFCA_FGT_DEF = 1024;
 
 // NFC-A Default Frame Waiting Time
 constexpr int NFCA_FWT_DEF = 256 * 16 * (1 << 4);
@@ -65,7 +62,7 @@ constexpr int NFCA_SFGT_DEF = 256 * 16 * (1 << 0);
 // NFC-A Default Request Guard Time
 constexpr int NFCA_RGT_DEF = 7000;
 
-// NFC-A Frame Waiting Time for ATQA response
+// NFC-A Maximum frame Waiting Time for ATQA response
 constexpr int NFCA_FWT_ATQA = 128 * 18;
 
 /*
@@ -148,6 +145,12 @@ constexpr int NFCV_TR0_MIN = 1024;
 
 // NFC-V Default Request Guard Time
 constexpr int NFCV_FGT_DEF = NFCV_TR0_MIN;
+
+// NFC-V Default Request Guard Time
+constexpr int NFCV_TLISTEN_S1 = 768;
+
+// NFC-V Default Request Guard Time
+constexpr int NFCV_TLISTEN_S2 = 256;
 
 // NFC-V Default Frame Waiting Time
 constexpr int NFCV_FWT_DEF = 256 * 16 * (1 << 4);

@@ -721,9 +721,6 @@ struct NfcF::Impl : NfcTech
          ++signalIndex;
          ++delay2Index;
 
-         if (decoder->signalClock == 1180000)
-            log.info("");
-
          // get signal samples
          float signalData = decoder->signalStatus.signalData[signalIndex & (BUFFER_SIZE - 1)];
          float delay2Data = decoder->signalStatus.signalData[delay2Index & (BUFFER_SIZE - 1)];
@@ -767,7 +764,7 @@ struct NfcF::Impl : NfcTech
 
          // using signal st.dev as lower level threshold
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * 10;
+            modulation->searchValueThreshold = decoder->signalStatus.signalMean[signalIndex & (BUFFER_SIZE - 1)] * 10;
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)

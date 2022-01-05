@@ -227,16 +227,18 @@ struct NfcB::Impl : NfcTech
       frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
       frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
       frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
-//      frameStatus.tr1MinimumTime = protocolStatus.tr1MinimumTime;
-//      frameStatus.tr1MaximumTime = protocolStatus.tr1MaximumTime;
 
       log.info("Startup parameters");
       log.info("\tmaxFrameSize {} bytes", {protocolStatus.maxFrameSize});
       log.info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / decoder->sampleRate});
       log.info("\tframeWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / decoder->sampleRate});
       log.info("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / decoder->sampleRate});
-//      log.info("\ttr1MinimumTime {} samples ({} us)", {protocolStatus.tr1MinimumTime, 1000000.0 * protocolStatus.tr1MinimumTime / decoder->sampleRate});
-//      log.info("\ttr1MaximumTime {} samples ({} us)", {protocolStatus.tr1MaximumTime, 1000000.0 * protocolStatus.tr1MaximumTime / decoder->sampleRate});
+      log.info("\ttr1MinimumTime {} samples ({} us)", {protocolStatus.tr1MinimumTime, 1000000.0 * protocolStatus.tr1MinimumTime / decoder->sampleRate});
+      log.info("\ttr1MaximumTime {} samples ({} us)", {protocolStatus.tr1MaximumTime, 1000000.0 * protocolStatus.tr1MaximumTime / decoder->sampleRate});
+      log.info("\tlistenS1MinimumTime {} samples ({} us)", {protocolStatus.listenS1MinimumTime, 1000000.0 * protocolStatus.listenS1MinimumTime / decoder->sampleRate});
+      log.info("\tlistenS1MaximumTime {} samples ({} us)", {protocolStatus.listenS1MaximumTime, 1000000.0 * protocolStatus.listenS1MaximumTime / decoder->sampleRate});
+      log.info("\tlistenS2MinimumTime {} samples ({} us)", {protocolStatus.listenS2MinimumTime, 1000000.0 * protocolStatus.listenS2MinimumTime / decoder->sampleRate});
+      log.info("\tlistenS2MaximumTime {} samples ({} us)", {protocolStatus.listenS2MaximumTime, 1000000.0 * protocolStatus.listenS2MaximumTime / decoder->sampleRate});
    }
 
    /*
@@ -258,7 +260,7 @@ struct NfcB::Impl : NfcTech
          unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
 
          // get signal samples
-         float signalEdge = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
+         float signalEdge = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_CHANNEL
@@ -600,7 +602,8 @@ struct NfcB::Impl : NfcTech
                // frames must contain at least one full byte
                if (streamStatus.bytes > 0)
                {
-                  frameStatus.frameEnd = symbolStatus.end;
+                  // set frame end, we add 352 units to compensate EOS (no detected completely)
+                  frameStatus.frameEnd = symbolStatus.end + int(decoder->signalParams.sampleTimeUnit * 352);
 
                   // build response frame
                   NfcFrame response = NfcFrame(TechType::NfcB, FrameType::ListenFrame);
@@ -673,7 +676,7 @@ struct NfcB::Impl : NfcTech
          ++signalIndex;
 
          // get signal samples
-         float signalEdge = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
+         float signalEdge = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[signalIndex & (BUFFER_SIZE - 1)];
 
 #ifdef DEBUG_CHANNEL
@@ -763,8 +766,8 @@ struct NfcB::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalIIRv[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalFilter[delay1Index & (BUFFER_SIZE - 1)];
          float signalDeep = decoder->signalStatus.signalDeep[futureIndex & (BUFFER_SIZE - 1)];
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
@@ -783,24 +786,39 @@ struct NfcB::Impl : NfcTech
 #endif
 
 #ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+         if (decoder->signalClock == frameStatus.waitingEnd)
+            decoder->debug->set(DEBUG_CHANNEL + 1, -0.75f);
 #endif
 
          // wait until frame guard time (TR0)
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // using minimum signal st.dev as lower level threshold scaled to 1/4 symbol to compensate integration
+         // using signal st.dev as lower level threshold scaled to 1/8 symbol to compensate integration
          if (decoder->signalClock == frameStatus.guardEnd)
-            modulation->searchValueThreshold = decoder->signalStatus.signalMdev[signalIndex & (BUFFER_SIZE - 1)] * bitrate->period4SymbolSamples;
+            modulation->searchValueThreshold = decoder->signalStatus.signalMean[signalIndex & (BUFFER_SIZE - 1)];
 
          // check if frame waiting time exceeded without detect modulation
-         if (decoder->signalClock >= frameStatus.waitingEnd)
+         if (decoder->signalClock > frameStatus.waitingEnd)
             return PatternType::NoPattern;
 
          // check if poll frame modulation is detected while waiting for response
          if (signalDeep > maximumModulationDeep)
             return PatternType::NoPattern;
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock < (frameStatus.guardEnd + 10))
+            decoder->debug->set(DEBUG_CHANNEL + 1, modulation->searchValueThreshold);
+#endif
+
+#ifdef DEBUG_CHANNEL
+         if (decoder->signalClock == frameStatus.guardEnd)
+            decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+#endif
+
+         // wait util search start
+         if (decoder->signalClock < modulation->searchStartTime)
+            continue;
 
          // search on positive phase
          if (modulation->phaseIntegrate > modulation->searchValueThreshold)
@@ -812,7 +830,7 @@ struct NfcB::Impl : NfcTech
          }
 
          // wait util phase changes or search completed
-         if (decoder->signalClock != modulation->searchEndTime || modulation->phaseIntegrate > 0)
+         if (decoder->signalClock != modulation->searchEndTime && modulation->phaseIntegrate > 0)
             continue;
 
          // search for Start Of Frame pattern (SoF)
@@ -842,6 +860,7 @@ struct NfcB::Impl : NfcTech
 
                // continue searching T-LISTEN S1
                modulation->searchModeState = LISTEN_MODE_SOS_S1;
+               modulation->searchStartTime = decoder->signalClock + bitrate->period1SymbolSamples + bitrate->period4SymbolSamples;
                modulation->searchEndTime = 0;
 
                continue;
@@ -872,6 +891,7 @@ struct NfcB::Impl : NfcTech
 
                // now search T-LISTEN S2
                modulation->searchModeState = LISTEN_MODE_SOS_S2;
+               modulation->searchStartTime = decoder->signalClock + bitrate->period1SymbolSamples + bitrate->period4SymbolSamples;
                modulation->searchEndTime = 0;
 
                continue;
@@ -897,20 +917,22 @@ struct NfcB::Impl : NfcTech
                decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
 #endif
                // update symbol end time
-               modulation->symbolEndTime = decoder->signalClock - bitrate->period4SymbolSamples;
+               modulation->symbolEndTime = decoder->signalClock;
 
                // set next synchronization point
-               modulation->searchSyncTime = decoder->signalClock + 1; // clock is already in sync point!
+               modulation->searchSyncTime = decoder->signalClock + bitrate->period2SymbolSamples;
                modulation->searchLastPhase = modulation->phaseIntegrate;
                modulation->searchPhaseThreshold = modulation->detectorPeakValue / 3;
+               modulation->searchStartTime = 0;
+               modulation->searchEndTime = 0;
 
                // clear phase peak detector
                modulation->detectorPeakValue = 0;
 
                // set reference symbol info
                symbolStatus.value = 1;
-               symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-               symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+               symbolStatus.start = modulation->symbolStartTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
+               symbolStatus.end = modulation->symbolEndTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
                symbolStatus.length = symbolStatus.end - symbolStatus.start;
                symbolStatus.pattern = PatternType::PatternS;
 
@@ -941,8 +963,8 @@ struct NfcB::Impl : NfcTech
          ++delay4Index;
 
          // get signal samples
-         float signalData = decoder->signalStatus.signalIIRv[signalIndex & (BUFFER_SIZE - 1)];
-         float delay1Data = decoder->signalStatus.signalIIRv[delay1Index & (BUFFER_SIZE - 1)];
+         float signalData = decoder->signalStatus.signalFilter[signalIndex & (BUFFER_SIZE - 1)];
+         float delay1Data = decoder->signalStatus.signalFilter[delay1Index & (BUFFER_SIZE - 1)];
 
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
@@ -1010,8 +1032,8 @@ struct NfcB::Impl : NfcTech
          }
 
          // setup symbol info
-         symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
-         symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
+         symbolStatus.start = modulation->symbolStartTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
+         symbolStatus.end = modulation->symbolEndTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
          return symbolStatus.pattern;

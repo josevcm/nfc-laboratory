@@ -189,7 +189,7 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.signalAvergW1 = float(1 - decoder.signalParams.signalAvergW0);
 
       // initialize exponential average factors for signal variance
-      decoder.signalParams.signalNoiseW0 = float(1 - 5E5 / decoder.sampleRate);
+      decoder.signalParams.signalNoiseW0 = float(1 - 2E5 / decoder.sampleRate);
       decoder.signalParams.signalNoiseW1 = float(1 - decoder.signalParams.signalNoiseW0);
 
       // configure NFC-A decoder
