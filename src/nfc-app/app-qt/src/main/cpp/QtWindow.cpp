@@ -204,39 +204,6 @@ struct QtWindow::Impl
 
    void systemStartup(SystemStartupEvent *event)
    {
-      // configure decoder parameters on startup
-      auto *decoderConfigEvent = new DecoderControlEvent(DecoderControlEvent::DecoderConfig);
-
-      for (QString &group: settings.childGroups())
-      {
-         if (group.startsWith("decoder"))
-         {
-            settings.beginGroup(group);
-
-            int sep = group.indexOf(".");
-
-            for (QString &key: settings.childKeys())
-            {
-               if (sep > 0)
-               {
-                  QString nfc = group.mid(sep + 1);
-
-                  if (key.toLower().contains("enabled"))
-                     decoderConfigEvent->setBoolean(nfc + "/" + key, settings.value(key).toBool());
-                  else
-                     decoderConfigEvent->setFloat(nfc + "/" + key, settings.value(key).toFloat());
-               }
-               else
-               {
-                  decoderConfigEvent->setFloat(key, settings.value(key).toFloat());
-               }
-            }
-
-            settings.endGroup();
-         }
-      }
-
-      QtApplication::post(decoderConfigEvent);
    }
 
    void systemShutdown(SystemShutdownEvent *event)
@@ -603,6 +570,34 @@ struct QtWindow::Impl
       setFilterEnabled(!filterEnabled);
    }
 
+   void toggleNfcA()
+   {
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
+            {"nfca/enabled", ui->actionNfcA->isChecked()}
+      }));
+   }
+
+   void toggleNfcB()
+   {
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
+            {"nfcb/enabled", ui->actionNfcA->isChecked()}
+      }));
+   }
+
+   void toggleNfcF()
+   {
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
+            {"nfcf/enabled", ui->actionNfcA->isChecked()}
+      }));
+   }
+
+   void toggleNfcV()
+   {
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
+            {"nfcv/enabled", ui->actionNfcA->isChecked()}
+      }));
+   }
+
    void clearView()
    {
       clearModel();
@@ -917,6 +912,26 @@ void QtWindow::toggleFollow()
 void QtWindow::toggleFilter()
 {
    impl->toggleFilter();
+}
+
+void QtWindow::toggleNfcA()
+{
+   impl->toggleNfcA();
+}
+
+void QtWindow::toggleNfcB()
+{
+   impl->toggleNfcB();
+}
+
+void QtWindow::toggleNfcF()
+{
+   impl->toggleNfcF();
+}
+
+void QtWindow::toggleNfcV()
+{
+   impl->toggleNfcV();
 }
 
 void QtWindow::changeGainMode(int index)

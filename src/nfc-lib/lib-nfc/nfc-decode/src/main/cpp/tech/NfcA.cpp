@@ -27,10 +27,6 @@
 
 #include <tech/NfcA.h>
 
-#ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNEL DEBUG_NFC_CHANNEL
-#endif
-
 namespace nfc {
 
 enum PatternType
@@ -254,21 +250,21 @@ struct NfcA::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = (correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedSD);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, correlatedSD);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // get signal deep
@@ -805,21 +801,21 @@ struct NfcA::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0 / float(bitrate->period4SymbolSamples));
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, correlatedS0 / float(bitrate->period4SymbolSamples));
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.50f);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // wait until correlation search start
@@ -932,8 +928,8 @@ struct NfcA::Impl : NfcTech
          // store signal square in filter buffer
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * signalData * 10;
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
 
          // wait until frame guard time is reached
@@ -957,32 +953,32 @@ struct NfcA::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = (correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, correlatedS0);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock < (frameStatus.guardEnd + 10))
-            decoder->debug->set(DEBUG_CHANNEL + 1, modulation->searchValueThreshold);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->searchValueThreshold);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == frameStatus.guardEnd)
-            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == frameStatus.waitingEnd)
-            decoder->debug->set(DEBUG_CHANNEL + 1, -0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, -0.75f);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // wait until frame guard time is reached to start response search
@@ -1128,21 +1124,21 @@ struct NfcA::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, correlatedS0);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, correlatedS0);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.50f);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // wait until correlation search start
@@ -1246,8 +1242,8 @@ struct NfcA::Impl : NfcTech
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
 
          // wait until frame guard time is reached
@@ -1258,23 +1254,23 @@ struct NfcA::Impl : NfcTech
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, modulation->phaseIntegrate);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->phaseIntegrate);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock < (frameStatus.guardEnd + 10))
-            decoder->debug->set(DEBUG_CHANNEL + 1, modulation->searchValueThreshold);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->searchValueThreshold);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == frameStatus.guardEnd)
-            decoder->debug->set(DEBUG_CHANNEL + 1, 0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
 #endif
 
-#ifdef DEBUG_CHANNEL
+#ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock == frameStatus.waitingEnd)
-            decoder->debug->set(DEBUG_CHANNEL + 1, -0.75f);
+            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, -0.75f);
 #endif
 
          // wait until frame guard time (TR0)
@@ -1324,8 +1320,8 @@ struct NfcA::Impl : NfcTech
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, 0.75);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75);
 #endif
 
          // set next synchronization point
@@ -1378,16 +1374,16 @@ struct NfcA::Impl : NfcTech
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
          modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, modulation->phaseIntegrate);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->phaseIntegrate);
 #endif
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 2, modulation->searchValueThreshold);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
          // zero-cross detector for re-synchronization, only one time for each symbol to avoid oscillations!
@@ -1405,8 +1401,8 @@ struct NfcA::Impl : NfcTech
          if (decoder->signalClock != modulation->searchSyncTime)
             continue;
 
-#ifdef DEBUG_CHANNEL
-         decoder->debug->set(DEBUG_CHANNEL + 1, 0.50f);
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.50f);
 #endif
 
          // no modulation detected, generate End Of Frame

@@ -152,6 +152,42 @@ struct QtDecoder::Impl
       });
 
       taskReceiverQuery();
+
+      /*
+       * read decoder parameters on startup
+       */
+      auto *decoderConfigEvent = new DecoderControlEvent(DecoderControlEvent::DecoderConfig);
+
+      for (QString &group: settings.childGroups())
+      {
+         if (group.startsWith("decoder"))
+         {
+            settings.beginGroup(group);
+
+            int sep = group.indexOf(".");
+
+            for (QString &key: settings.childKeys())
+            {
+               if (sep > 0)
+               {
+                  QString nfc = group.mid(sep + 1);
+
+                  if (key.toLower().contains("enabled"))
+                     decoderConfigEvent->setBoolean(nfc + "/" + key, settings.value(key).toBool());
+                  else
+                     decoderConfigEvent->setFloat(nfc + "/" + key, settings.value(key).toFloat());
+               }
+               else
+               {
+                  decoderConfigEvent->setFloat(key, settings.value(key).toFloat());
+               }
+            }
+
+            settings.endGroup();
+         }
+      }
+
+      QtApplication::post(decoderConfigEvent);
    }
 
    void systemShutdown(SystemShutdownEvent *event)

@@ -61,6 +61,14 @@ class QtWindow : public QMainWindow
 
       void toggleFilter();
 
+      void toggleNfcA();
+
+      void toggleNfcB();
+
+      void toggleNfcF();
+
+      void toggleNfcV();
+
       void changeGainMode(int index);
 
       void changeGainValue(int value);

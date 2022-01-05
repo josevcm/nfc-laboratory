@@ -213,7 +213,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="label">
+         <widget class="QLabel" name="iconLabel">
           <property name="text">
            <string/>
           </property>
@@ -250,7 +250,7 @@
           </property>
           <property name="font">
            <font>
-            <family>Courier New</family>
+            <family>Courier</family>
             <pointsize>10</pointsize>
            </font>
           </property>
@@ -329,7 +329,7 @@
         </font>
        </property>
        <property name="currentIndex">
-        <number>3</number>
+        <number>0</number>
        </property>
        <property name="tabBarAutoHide">
         <bool>true</bool>
@@ -358,7 +358,7 @@
           <widget class="QTreeView" name="parserView">
            <property name="font">
             <font>
-             <family>Courier New</family>
+             <family>Courier</family>
              <pointsize>10</pointsize>
             </font>
            </property>
@@ -613,24 +613,34 @@
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
+   <property name="movable">
+    <bool>false</bool>
+   </property>
    <property name="orientation">
-    <enum>Qt::Vertical</enum>
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <property name="floatable">
+    <bool>false</bool>
    </property>
    <attribute name="toolBarArea">
-    <enum>LeftToolBarArea</enum>
+    <enum>TopToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionFollow"/>
-   <addaction name="actionFilter"/>
-   <addaction name="separator"/>
    <addaction name="actionOpen"/>
    <addaction name="actionStore"/>
    <addaction name="actionClear"/>
    <addaction name="separator"/>
+   <addaction name="actionFollow"/>
+   <addaction name="actionFilter"/>
+   <addaction name="separator"/>
    <addaction name="actionSetup"/>
    <addaction name="separator"/>
+   <addaction name="actionNfcA"/>
+   <addaction name="actionNfcB"/>
+   <addaction name="actionNfcF"/>
+   <addaction name="actionNfcV"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen">
@@ -743,7 +753,8 @@
    </property>
    <property name="font">
     <font>
-     <bold>true</bold>
+     <family>Verdana</family>
+     <bold>false</bold>
     </font>
    </property>
   </action>
@@ -762,7 +773,8 @@
    </property>
    <property name="font">
     <font>
-     <bold>true</bold>
+     <family>Verdana</family>
+     <bold>false</bold>
     </font>
    </property>
   </action>
@@ -781,7 +793,8 @@
    </property>
    <property name="font">
     <font>
-     <bold>true</bold>
+     <family>Verdana</family>
+     <bold>false</bold>
     </font>
    </property>
   </action>
@@ -800,7 +813,8 @@
    </property>
    <property name="font">
     <font>
-     <bold>true</bold>
+     <family>Verdana</family>
+     <bold>false</bold>
     </font>
    </property>
   </action>
@@ -828,100 +842,64 @@
  </resources>
  <connections>
   <connection>
+   <sender>actionFollow</sender>
+   <signal>triggered()</signal>
+   <receiver>MainView</receiver>
+   <slot>toggleFollow()</slot>
+  </connection>
+  <connection>
    <sender>actionOpen</sender>
    <signal>triggered()</signal>
    <receiver>MainView</receiver>
    <slot>openFile()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>386</x>
-     <y>261</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionSetup</sender>
-   <signal>triggered()</signal>
-   <receiver>MainView</receiver>
-   <slot>openSettings()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>319</x>
-     <y>193</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
    <sender>actionStore</sender>
    <signal>triggered()</signal>
    <receiver>MainView</receiver>
    <slot>saveFile()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>319</x>
-     <y>193</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
    <sender>actionClear</sender>
    <signal>triggered()</signal>
    <receiver>MainView</receiver>
    <slot>clearView()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>319</x>
-     <y>193</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
    <sender>actionFilter</sender>
    <signal>triggered()</signal>
    <receiver>MainView</receiver>
    <slot>toggleFilter()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>319</x>
-     <y>193</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
-   <sender>actionFollow</sender>
+   <sender>actionSetup</sender>
    <signal>triggered()</signal>
    <receiver>MainView</receiver>
-   <slot>toggleFollow()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>319</x>
-     <y>193</y>
-    </hint>
-   </hints>
+   <slot>openSettings()</slot>
+  </connection>
+  <connection>
+   <sender>actionNfcA</sender>
+   <signal>triggered()</signal>
+   <receiver>MainView</receiver>
+   <slot>toggleNfcA()</slot>
+  </connection>
+  <connection>
+   <sender>actionNfcB</sender>
+   <signal>triggered()</signal>
+   <receiver>MainView</receiver>
+   <slot>toggleNfcB()</slot>
+  </connection>
+  <connection>
+   <sender>actionNfcF</sender>
+   <signal>triggered()</signal>
+   <receiver>MainView</receiver>
+   <slot>toggleNfcF()</slot>
+  </connection>
+  <connection>
+   <sender>actionNfcV</sender>
+   <signal>triggered()</signal>
+   <receiver>MainView</receiver>
+   <slot>toggleNfcV()</slot>
   </connection>
   <connection>
    <sender>listenButton</sender>
@@ -1035,6 +1013,10 @@
   <slot>toggleListen()</slot>
   <slot>toggleRecord()</slot>
   <slot>toggleStop()</slot>
+  <slot>toggleNfcA()</slot>
+  <slot>toggleNfcB()</slot>
+  <slot>toggleNfcF()</slot>
+  <slot>toggleNfcV()</slot>
   <slot>toggleTunerAgc(bool)</slot>
   <slot>toggleMixerAgc(bool)</slot>
  </slots>
