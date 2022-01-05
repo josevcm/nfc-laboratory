@@ -166,9 +166,6 @@ struct BitrateParams
    int rateType;
    int techType;
 
-   float symbolAverageW0;
-   float symbolAverageW1;
-
    // symbol parameters
    unsigned int symbolsPerSecond;
    unsigned int period0SymbolSamples;
@@ -211,26 +208,6 @@ struct TimeSample
 };
 
 /*
- * global decoder signal status
- */
-struct SignalStatus
-{
-   // signal parameters
-   float signalAverg; // signal average
-   float signalNoise; // signal st deviation
-   float signalIIRf; // signal IIR filter (n-1 sample)
-
-   // signal data buffer
-   TimeSample signalInfo[BUFFER_SIZE];
-
-   // silence start (no modulation detected)
-   unsigned int carrierOff;
-
-   // silence end (modulation detected)
-   unsigned int carrierOn;
-};
-
-/*
  * modulation status (one for each symbol rate)
  */
 struct ModulationStatus
@@ -254,9 +231,6 @@ struct ModulationStatus
    float symbolCorrD;
    float symbolCorr0;
    float symbolCorr1;
-//   float symbolAverage;
-
-   // signal thresholds
 
    // integrator processor
    float filterIntegrate;
