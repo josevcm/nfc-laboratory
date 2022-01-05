@@ -148,7 +148,7 @@ float NfcDecoder::powerLevelThreshold() const
 
 [[maybe_unused]] float NfcDecoder::signalStrength() const
 {
-   return impl->decoder.signalStatus.signalAverg;
+   return impl->decoder.signalAverage;
 }
 
 NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder), nfcf(&decoder), nfcv(&decoder)
@@ -162,9 +162,6 @@ void NfcDecoder::Impl::configure(long newSampleRate)
 {
    // clear signal parameters
    decoder.signalParams = {0,};
-
-   // clear signal processing status
-   decoder.signalStatus = {0,};
 
    // set decoder samplerate
    decoder.sampleRate = newSampleRate;
@@ -309,27 +306,27 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
       // if sample buffer is not valid only process remain carrier detector
    else
    {
-      if (decoder.signalStatus.carrierOff)
+      if (decoder.carrierOff)
       {
          NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
 
          silence.setFramePhase(FramePhase::CarrierFrame);
-         silence.setSampleStart(decoder.signalStatus.carrierOff);
+         silence.setSampleStart(decoder.carrierOff);
          silence.setSampleEnd(decoder.signalClock);
-         silence.setTimeStart(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+         silence.setTimeStart(double(decoder.carrierOff) / double(decoder.sampleRate));
          silence.setTimeEnd(double(decoder.signalClock) / double(decoder.sampleRate));
 
          frames.push_back(silence);
       }
 
-      else if (decoder.signalStatus.carrierOn)
+      else if (decoder.carrierOn)
       {
          NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
 
          carrier.setFramePhase(FramePhase::CarrierFrame);
-         carrier.setSampleStart(decoder.signalStatus.carrierOn);
+         carrier.setSampleStart(decoder.carrierOn);
          carrier.setSampleEnd(decoder.signalClock);
-         carrier.setTimeStart(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+         carrier.setTimeStart(double(decoder.carrierOn) / double(decoder.sampleRate));
          carrier.setTimeEnd(double(decoder.signalClock) / double(decoder.sampleRate));
 
          frames.push_back(carrier);
@@ -347,50 +344,50 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
     */
 
    // carrier present if signal average is over power Level Threshold
-   if (decoder.signalStatus.signalAverg > decoder.powerLevelThreshold)
+   if (decoder.signalAverage > decoder.powerLevelThreshold)
    {
-      if (!decoder.signalStatus.carrierOn)
+      if (!decoder.carrierOn)
       {
-         decoder.signalStatus.carrierOn = decoder.signalClock;
+         decoder.carrierOn = decoder.signalClock;
 
-         if (decoder.signalStatus.carrierOff)
+         if (decoder.carrierOff)
          {
             NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
 
             silence.setFramePhase(FramePhase::CarrierFrame);
-            silence.setSampleStart(decoder.signalStatus.carrierOff);
-            silence.setSampleEnd(decoder.signalStatus.carrierOn);
-            silence.setTimeStart(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
-            silence.setTimeEnd(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+            silence.setSampleStart(decoder.carrierOff);
+            silence.setSampleEnd(decoder.carrierOn);
+            silence.setTimeStart(double(decoder.carrierOff) / double(decoder.sampleRate));
+            silence.setTimeEnd(double(decoder.carrierOn) / double(decoder.sampleRate));
 
             frames.push_back(silence);
          }
 
-         decoder.signalStatus.carrierOff = 0;
+         decoder.carrierOff = 0;
       }
    }
 
       // carrier not present if signal average is below power Level Threshold
-   else if (decoder.signalStatus.signalAverg < decoder.powerLevelThreshold)
+   else if (decoder.signalAverage < decoder.powerLevelThreshold)
    {
-      if (!decoder.signalStatus.carrierOff)
+      if (!decoder.carrierOff)
       {
-         decoder.signalStatus.carrierOff = decoder.signalClock;
+         decoder.carrierOff = decoder.signalClock;
 
-         if (decoder.signalStatus.carrierOn)
+         if (decoder.carrierOn)
          {
             NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
 
             carrier.setFramePhase(FramePhase::CarrierFrame);
-            carrier.setSampleStart(decoder.signalStatus.carrierOn);
-            carrier.setSampleEnd(decoder.signalStatus.carrierOff);
-            carrier.setTimeStart(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
-            carrier.setTimeEnd(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+            carrier.setSampleStart(decoder.carrierOn);
+            carrier.setSampleEnd(decoder.carrierOff);
+            carrier.setTimeStart(double(decoder.carrierOn) / double(decoder.sampleRate));
+            carrier.setTimeEnd(double(decoder.carrierOff) / double(decoder.sampleRate));
 
             frames.push_back(carrier);
          }
 
-         decoder.signalStatus.carrierOn = 0;
+         decoder.carrierOn = 0;
       }
    }
 }
@@ -402,50 +399,50 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
 //    */
 //
 //   // carrier present if signal average is over power Level Threshold
-//   if (decoder.signalStatus.signalAverage > decoder.powerLevelThreshold)
+//   if (decoder.signalAverage > decoder.powerLevelThreshold)
 //   {
-//      if (!decoder.signalStatus.carrierOn)
+//      if (!decoder.carrierOn)
 //      {
-//         decoder.signalStatus.carrierOn = decoder.signalClock;
+//         decoder.carrierOn = decoder.signalClock;
 //
-//         if (decoder.signalStatus.carrierOff)
+//         if (decoder.carrierOff)
 //         {
 //            NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
 //
 //            silence.setFramePhase(FramePhase::CarrierFrame);
-//            silence.setSampleStart(decoder.signalStatus.carrierOff);
-//            silence.setSampleEnd(decoder.signalStatus.carrierOn);
-//            silence.setTimeStart(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
-//            silence.setTimeEnd(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
+//            silence.setSampleStart(decoder.carrierOff);
+//            silence.setSampleEnd(decoder.carrierOn);
+//            silence.setTimeStart(double(decoder.carrierOff) / double(decoder.sampleRate));
+//            silence.setTimeEnd(double(decoder.carrierOn) / double(decoder.sampleRate));
 //
 //            frames.push_back(silence);
 //         }
 //
-//         decoder.signalStatus.carrierOff = 0;
+//         decoder.carrierOff = 0;
 //      }
 //   }
 //
 //      // carrier not present if signal average is below power Level Threshold
-//   else if (decoder.signalStatus.signalAverage < decoder.powerLevelThreshold)
+//   else if (decoder.signalAverage < decoder.powerLevelThreshold)
 //   {
-//      if (!decoder.signalStatus.carrierOff)
+//      if (!decoder.carrierOff)
 //      {
-//         decoder.signalStatus.carrierOff = decoder.signalClock;
+//         decoder.carrierOff = decoder.signalClock;
 //
-//         if (decoder.signalStatus.carrierOn)
+//         if (decoder.carrierOn)
 //         {
 //            NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
 //
 //            carrier.setFramePhase(FramePhase::CarrierFrame);
-//            carrier.setSampleStart(decoder.signalStatus.carrierOn);
-//            carrier.setSampleEnd(decoder.signalStatus.carrierOff);
-//            carrier.setTimeStart(double(decoder.signalStatus.carrierOn) / double(decoder.sampleRate));
-//            carrier.setTimeEnd(double(decoder.signalStatus.carrierOff) / double(decoder.sampleRate));
+//            carrier.setSampleStart(decoder.carrierOn);
+//            carrier.setSampleEnd(decoder.carrierOff);
+//            carrier.setTimeStart(double(decoder.carrierOn) / double(decoder.sampleRate));
+//            carrier.setTimeEnd(double(decoder.carrierOff) / double(decoder.sampleRate));
 //
 //            frames.push_back(carrier);
 //         }
 //
-//         decoder.signalStatus.carrierOn = 0;
+//         decoder.carrierOn = 0;
 //      }
 //   }
 //}

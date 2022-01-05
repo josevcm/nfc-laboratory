@@ -125,7 +125,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       /*
       * process device refresh
       */
-      if ((std::chrono::steady_clock::now() - lastSearch) > std::chrono::milliseconds(1000))
+      if ((std::chrono::steady_clock::now() - lastSearch) > std::chrono::milliseconds(5000))
       {
          refresh();
 
