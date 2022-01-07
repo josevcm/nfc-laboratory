@@ -44,7 +44,8 @@ class FrameDecoderTask : public rt::Worker
       enum Status
       {
          Halt,
-         Listen
+         Listen,
+         Config
       };
 
    private:

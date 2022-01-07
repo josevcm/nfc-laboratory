@@ -52,6 +52,8 @@ class DecoderStatusEvent : public QEvent
 
       QString status() const;
 
+      const QJsonObject &content() const;
+
       static DecoderStatusEvent *create();
 
       static DecoderStatusEvent *create(const QJsonObject &data);

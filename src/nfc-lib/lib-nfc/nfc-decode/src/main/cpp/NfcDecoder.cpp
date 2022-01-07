@@ -79,12 +79,22 @@ std::list<NfcFrame> NfcDecoder::nextFrames(sdr::SignalBuffer samples)
    return impl->nextFrames(samples);
 }
 
+bool NfcDecoder::isNfcAEnabled() const
+{
+   return impl->enabledTech & Impl::ENABLED_NFCA;
+}
+
 void NfcDecoder::setEnableNfcA(bool enabled)
 {
    if (enabled)
       impl->enabledTech |= Impl::ENABLED_NFCA;
    else
       impl->enabledTech &= ~Impl::ENABLED_NFCA;
+}
+
+bool NfcDecoder::isNfcBEnabled() const
+{
+   return impl->enabledTech & Impl::ENABLED_NFCB;
 }
 
 void NfcDecoder::setEnableNfcB(bool enabled)
@@ -95,12 +105,22 @@ void NfcDecoder::setEnableNfcB(bool enabled)
       impl->enabledTech &= ~Impl::ENABLED_NFCB;
 }
 
+bool NfcDecoder::isNfcFEnabled() const
+{
+   return impl->enabledTech & Impl::ENABLED_NFCF;
+}
+
 void NfcDecoder::setEnableNfcF(bool enabled)
 {
    if (enabled)
       impl->enabledTech |= Impl::ENABLED_NFCF;
    else
       impl->enabledTech &= ~Impl::ENABLED_NFCF;
+}
+
+bool NfcDecoder::isNfcVEnabled() const
+{
+   return impl->enabledTech & Impl::ENABLED_NFCV;
 }
 
 void NfcDecoder::setEnableNfcV(bool enabled)
@@ -190,28 +210,16 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.signalNoiseW1 = float(1 - decoder.signalParams.signalNoiseW0);
 
       // configure NFC-A decoder
-      if (enabledTech & ENABLED_NFCA)
-         nfca.configure(newSampleRate);
-      else
-         log.info("NFC-A decoder is disabled");
+      nfca.configure(newSampleRate);
 
       // configure NFC-B decoder
-      if (enabledTech & ENABLED_NFCB)
-         nfcb.configure(newSampleRate);
-      else
-         log.info("NFC-B decoder is disabled");
+      nfcb.configure(newSampleRate);
 
       // configure NFC-F decoder
-      if (enabledTech & ENABLED_NFCF)
-         nfcf.configure(newSampleRate);
-      else
-         log.info("NFC-F decoder is disabled");
+      nfcf.configure(newSampleRate);
 
       // configure NFC-V decoder
-      if (enabledTech & ENABLED_NFCV)
-         nfcv.configure(newSampleRate);
-      else
-         log.info("NFC-V decoder is disabled");
+      nfcv.configure(newSampleRate);
 
 #ifdef DEBUG_SIGNAL
       log.warn("SIGNAL DEBUGGER ENABLED!, highly affected performance!");

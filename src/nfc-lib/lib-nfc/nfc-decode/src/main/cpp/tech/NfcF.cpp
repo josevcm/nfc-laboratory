@@ -1112,7 +1112,7 @@ struct NfcF::Impl : NfcTech
    {
       if (frame.isPollFrame())
       {
-         if (frame[0] == CommandType::NFCB_REQC)
+         if (frame[1] == CommandType::NFCB_REQC)
          {
             frameStatus.lastCommand = frame[1];
 
@@ -1145,19 +1145,12 @@ struct NfcF::Impl : NfcTech
       {
          if (frameStatus.lastCommand == CommandType::NFCB_REQC)
          {
-//            int fdsi = (frame[10] >> 4) & 0x0f;
-//            int fwi = (frame[11] >> 4) & 0x0f;
-//
-//            // This commands update protocol parameters
-//            protocolStatus.maxFrameSize = NFC_FDS_TABLE[fdsi];
-//            protocolStatus.frameWaitingTime = int(decoder->signalParams.sampleTimeUnit * NFC_FWT_TABLE[fwi]);
-
             frame.setFramePhase(FramePhase::SelectionFrame);
             frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
-            log.info("ATQC protocol timing parameters");
-            log.info("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
-            log.info("  frameWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1E6 * protocolStatus.frameWaitingTime / decoder->sampleRate});
+//            log.info("ATQC protocol timing parameters");
+//            log.info("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
+//            log.info("  frameWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1E6 * protocolStatus.frameWaitingTime / decoder->sampleRate});
 
             return true;
          }
