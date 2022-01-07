@@ -230,7 +230,7 @@ struct NfcF::Impl : NfcTech
          // get signal samples
          float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].value;
          float delay2Data = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].value;
-         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
+//         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += signalData; // add new value
@@ -265,8 +265,13 @@ struct NfcF::Impl : NfcTech
                modulation->correlatedPeakValue = correlatedSD;
                modulation->correlatedPeakTime = decoder->signalClock;
 
+               // for first symbol using a moving window and set initial sync values
                if (!modulation->searchSyncTime)
+               {
+                  modulation->searchSyncValue = correlatedSD; // correlation value at peak
+                  modulation->searchCorr0Value = correlatedS0; // symbol correlation reference for first pulse
                   modulation->searchEndTime = decoder->signalClock + bitrate->period8SymbolSamples;
+               }
             }
          }
 
@@ -284,10 +289,6 @@ struct NfcF::Impl : NfcTech
          // first at least 94 pulses for NFC-F preamble
          if (modulation->searchPulseWidth++ < 94)
          {
-            // only for first pulse...
-            if (!modulation->searchSyncTime)
-               modulation->searchSyncValue = modulation->correlatedPeakValue;
-
             // check for valid pulse
             if (modulation->correlatedPeakTime == 0 || // no modulation found
                 //                      modulation->detectorPeakValue < minimumModulationDeep || // insufficient modulation deep
@@ -332,8 +333,8 @@ struct NfcF::Impl : NfcTech
             continue;
          }
 
-         // compensate reverse polarity symbol start
-         if (modulation->searchLastPhase < 0)
+         // detect polarity and compensate frame length
+         if ((modulation->searchLastPhase < 0 && modulation->searchCorr0Value < 0) || (modulation->searchLastPhase > 0 && modulation->searchCorr0Value > 0))
             modulation->symbolStartTime -= bitrate->period2SymbolSamples;
 
          // now check preamble length with +-1/4 symbol tolerance
@@ -428,7 +429,7 @@ struct NfcF::Impl : NfcTech
          if (frameEnd || truncateError)
          {
             // a valid frame must contain at least one byte of data
-            if (streamStatus.bytes > 0)
+            if (streamStatus.bytes > 2)
             {
                // set last symbol timing
                frameStatus.frameEnd = symbolStatus.end;
@@ -444,8 +445,12 @@ struct NfcF::Impl : NfcTech
                if (truncateError)
                   request.setFrameFlags(FrameFlags::Truncated);
 
+               // check synchronization bytes, must be 0xB24D
+               if (streamStatus.buffer[0] != 0xB2 || streamStatus.buffer[1] != 0x4D)
+                  request.setFrameFlags(FrameFlags::SyncError);
+
                // add bytes to frame and flip to prepare read
-               request.put(streamStatus.buffer, streamStatus.bytes).flip();
+               request.put(streamStatus.buffer + 2, streamStatus.bytes - 2).flip();
 
                // clear modulation status for next frame search
                decoder->modulation->searchModeState = 0;
@@ -557,8 +562,12 @@ struct NfcF::Impl : NfcTech
                   if (truncateError)
                      response.setFrameFlags(FrameFlags::Truncated);
 
+                  // check synchronization bytes, must be 0xB24D
+                  if (streamStatus.buffer[0] != 0xB2 || streamStatus.buffer[1] != 0x4D)
+                     response.setFrameFlags(FrameFlags::SyncError);
+
                   // add bytes to frame and flip to prepare read
-                  response.put(streamStatus.buffer, streamStatus.bytes).flip();
+                  response.put(streamStatus.buffer + 2, streamStatus.bytes - 2).flip();
 
                   // process frame
                   process(response);
@@ -656,8 +665,8 @@ struct NfcF::Impl : NfcTech
          // capture symbol correlation values at synchronization point
          if (decoder->signalClock == modulation->searchSyncTime)
          {
-            modulation->symbolCorr0 = correlatedS0;
-            modulation->symbolCorr1 = correlatedS1;
+            modulation->searchCorr0Value = correlatedS0;
+            modulation->searchCorr1Value = correlatedS1;
          }
 
          // wait until correlation search finish
@@ -686,8 +695,8 @@ struct NfcF::Impl : NfcTech
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
          // detect Pattern type
-         if ((modulation->searchModeState == SEARCH_MODE_OBSERVED && modulation->symbolCorr0 > modulation->symbolCorr1) ||
-             (modulation->searchModeState == SEARCH_MODE_REVERSED && modulation->symbolCorr0 < modulation->symbolCorr1))
+         if ((modulation->searchModeState == SEARCH_MODE_OBSERVED && modulation->searchCorr0Value > modulation->searchCorr1Value) ||
+             (modulation->searchModeState == SEARCH_MODE_REVERSED && modulation->searchCorr0Value < modulation->searchCorr1Value))
          {
             symbolStatus.value = 0;
             symbolStatus.pattern = PatternType::PatternL;
@@ -746,7 +755,7 @@ struct NfcF::Impl : NfcTech
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
          // get signal deep
-         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
+//         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
 #ifdef DEBUG_NFC_CHANNEL
          decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
@@ -781,8 +790,13 @@ struct NfcF::Impl : NfcTech
                modulation->correlatedPeakValue = correlatedSD;
                modulation->correlatedPeakTime = decoder->signalClock;
 
+               // for first symbol using a moving window and set initial sync values
                if (!modulation->searchSyncTime)
+               {
+                  modulation->searchSyncValue = correlatedSD; // correlation value at peak
+                  modulation->searchCorr0Value = correlatedS0; // symbol correlation reference for first pulse
                   modulation->searchEndTime = decoder->signalClock + bitrate->period8SymbolSamples;
+               }
             }
          }
 
@@ -800,10 +814,6 @@ struct NfcF::Impl : NfcTech
          // first at least 94 pulses for NFC-F preamble
          if (modulation->searchPulseWidth++ < 94)
          {
-            // only for first pulse...
-            if (!modulation->searchSyncTime)
-               modulation->searchSyncValue = modulation->correlatedPeakValue;
-
             // check for valid pulse
             if (modulation->correlatedPeakTime == 0 || // no modulation found
                 //                      modulation->detectorPeakValue < minimumModulationDeep || // insufficient modulation deep
@@ -848,8 +858,8 @@ struct NfcF::Impl : NfcTech
             continue;
          }
 
-         // compensate reverse polarity symbol start
-         if (modulation->searchLastPhase < 0)
+         // detect polarity and compensate frame length
+         if ((modulation->searchLastPhase < 0 && modulation->searchCorr0Value < 0) || (modulation->searchLastPhase > 0 && modulation->searchCorr0Value > 0))
             modulation->symbolStartTime -= bitrate->period2SymbolSamples;
 
          // now check preamble length with +-1/4 symbol tolerance
@@ -957,8 +967,8 @@ struct NfcF::Impl : NfcTech
          // capture symbol correlation values at synchronization point
          if (decoder->signalClock == modulation->searchSyncTime)
          {
-            modulation->symbolCorr0 = correlatedS0;
-            modulation->symbolCorr1 = correlatedS1;
+            modulation->searchCorr0Value = correlatedS0;
+            modulation->searchCorr1Value = correlatedS1;
          }
 
          // wait until correlation search finish
@@ -986,8 +996,8 @@ struct NfcF::Impl : NfcTech
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
 
-         if ((modulation->searchModeState == SEARCH_MODE_OBSERVED && modulation->symbolCorr0 > modulation->symbolCorr1) ||
-             (modulation->searchModeState == SEARCH_MODE_REVERSED && modulation->symbolCorr0 < modulation->symbolCorr1))
+         if ((modulation->searchModeState == SEARCH_MODE_OBSERVED && modulation->searchCorr0Value > modulation->searchCorr1Value) ||
+             (modulation->searchModeState == SEARCH_MODE_REVERSED && modulation->searchCorr0Value < modulation->searchCorr1Value))
          {
             symbolStatus.value = 0;
             symbolStatus.pattern = PatternType::PatternL;
@@ -1012,18 +1022,7 @@ struct NfcF::Impl : NfcTech
       // reset modulation detection for all rates
       for (int rate = r212k; rate <= r424k; rate++)
       {
-         modulationStatus[rate].searchModeState = 0;
-         modulationStatus[rate].searchStartTime = 0;
-         modulationStatus[rate].searchEndTime = 0;
-         modulationStatus[rate].searchSyncTime = 0;
-         modulationStatus[rate].searchSyncValue = 0;
-         modulationStatus[rate].searchLastValue = 0;
-         modulationStatus[rate].searchPulseWidth = 0;
-         modulationStatus[rate].correlatedPeakValue = 0;
-         modulationStatus[rate].symbolStartTime = 0;
-         modulationStatus[rate].symbolEndTime = 0;
-         modulationStatus[rate].symbolCorr0 = 0;
-         modulationStatus[rate].symbolCorr1 = 0;
+         modulationStatus[rate] = {0,};
       }
 
       // clear stream status
@@ -1113,12 +1112,12 @@ struct NfcF::Impl : NfcTech
    {
       if (frame.isPollFrame())
       {
-         if (frame[3] == CommandType::NFCB_REQC)
+         if (frame[0] == CommandType::NFCB_REQC)
          {
-            frameStatus.lastCommand = frame[3];
+            frameStatus.lastCommand = frame[1];
 
             // read number TSN in the Polling Request
-            int tsn = frame[7];
+            int tsn = frame[5];
 
             // This commands starts or wakeup card communication, so reset the protocol parameters to the default values
             protocolStatus.maxFrameSize = 256;
@@ -1136,7 +1135,7 @@ struct NfcF::Impl : NfcTech
 
             // set frame flags
             frame.setFramePhase(FramePhase::SelectionFrame);
-//            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
 
             return true;
          }
@@ -1183,10 +1182,10 @@ struct NfcF::Impl : NfcTech
    {
       int size = frame.limit();
 
-      if (size < 3)
+      if (size < 2)
          return false;
 
-      unsigned short crc = crc16(frame, 2, size - 2, 0x0000, false);
+      unsigned short crc = crc16(frame, 0, size - 2, 0x0000, false);
       unsigned short res = (((unsigned int) frame[size - 2] & 0xff) << 8) | (unsigned int) frame[size - 1] & 0xff;
 
       return res == crc;

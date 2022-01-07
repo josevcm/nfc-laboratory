@@ -77,6 +77,8 @@ class NfcFrame : public rt::ByteBuffer
 
       bool hasCrcError() const;
 
+      bool hasSyncError() const;
+
       unsigned int techType() const;
 
       void setTechType(unsigned int tech);

@@ -53,7 +53,8 @@ class ProtocolFrame : public QObject
          FieldInfo = 0x0008,
          Encrypted = 0x0080,
          ParityError = 0x0100,
-         CrcError = 0x0200
+         CrcError = 0x0200,
+         SyncError = 0x0200
       };
 
       enum Fields
@@ -130,6 +131,8 @@ class ProtocolFrame : public QObject
       bool hasParityError() const;
 
       bool hasCrcError() const;
+
+      bool hasSyncError() const;
 
    private:
 

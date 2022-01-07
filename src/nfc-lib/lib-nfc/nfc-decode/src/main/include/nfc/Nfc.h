@@ -191,10 +191,11 @@ enum FrameType
 enum FrameFlags
 {
    ShortFrame = 0x01,
-   Encrypted = 0x08,
-   ParityError = 0x20,
-   CrcError = 0x40,
-   Truncated = 0x80
+   Encrypted = 0x02,
+   Truncated = 0x08,
+   ParityError = 0x10,
+   CrcError = 0x20,
+   SyncError = 0x40
 };
 
 enum FramePhase

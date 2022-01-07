@@ -34,7 +34,7 @@
 
 #include <nfc/Nfc.h>
 
-#define DEBUG_SIGNAL
+//#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 6
@@ -227,14 +227,14 @@ struct ModulationStatus
    float searchLastPhase;           // auxiliary signal for last symbol phase
    float searchLastValue;           // auxiliary signal for value symbol
    float searchSyncValue;           // auxiliary signal value at synchronization point
+   float searchCorrDValue;          // auxiliary value for last correlation difference
+   float searchCorr0Value;          // auxiliary value for last correlation 0
+   float searchCorr1Value;          // auxiliary value for last correlation 1
 
    // symbol parameters
    unsigned int symbolStartTime;    // sample time for symbol start
    unsigned int symbolEndTime;      // sample time for symbol end
    unsigned int symbolRiseTime;     // sample time for last rise edge
-   float symbolCorrD;
-   float symbolCorr0;
-   float symbolCorr1;
 
    // integrator processor
    float filterIntegrate;

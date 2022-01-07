@@ -936,14 +936,14 @@ struct NfcV::Impl : NfcTech
 
                // if found, set SOF symbol end and next sync point
                modulation->symbolEndTime = modulation->correlatedPeakTime;
-               modulation->symbolCorr0 = 0;
-               modulation->symbolCorr1 = 0;
 
                // next search window timing
                modulation->searchSyncTime = modulation->symbolEndTime + decoder->bitrate->period0SymbolSamples;
                modulation->searchStartTime = modulation->searchSyncTime - decoder->bitrate->period4SymbolSamples;
                modulation->searchEndTime = modulation->searchSyncTime + decoder->bitrate->period4SymbolSamples;
                modulation->searchPulseWidth = 0;
+               modulation->searchCorr0Value = 0;
+               modulation->searchCorr1Value = 0;
                modulation->correlatedPeakTime = 0;
                modulation->correlatedPeakValue = 0;
 
@@ -1024,9 +1024,9 @@ struct NfcV::Impl : NfcTech
          // detect max correlation peak
          if (correlatedSD > modulation->searchValueThreshold && correlatedSD > modulation->correlatedPeakValue)
          {
+            modulation->searchCorr0Value = correlatedS0;
+            modulation->searchCorr1Value = -correlatedS0;
             modulation->correlatedPeakValue = correlatedSD;
-            modulation->symbolCorr0 = correlatedS0;
-            modulation->symbolCorr1 = -correlatedS0;
             modulation->symbolEndTime = decoder->signalClock;
          }
 
@@ -1051,7 +1051,7 @@ struct NfcV::Impl : NfcTech
          modulation->correlatedPeakValue = 0;
 
          // setup symbol info
-         symbolStatus.value = modulation->symbolCorr0 > modulation->symbolCorr1 ? 0 : 1;
+         symbolStatus.value = modulation->searchCorr0Value > modulation->searchCorr1Value ? 0 : 1;
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;

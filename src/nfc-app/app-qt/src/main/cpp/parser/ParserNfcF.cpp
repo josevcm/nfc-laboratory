@@ -79,16 +79,25 @@ ProtocolFrame *ParserNfcF::parseResponseREQC(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcF::parseRequestGeneric(const nfc::NfcFrame &frame)
 {
-   int cmd = frame[2]; // frame command
+   int cmd = frame[1]; // frame command
+   int flags = 0;
 
-   ProtocolFrame *root = buildFrameInfo(QString("CMD %1").arg(cmd, 2, 16, QChar('0')), frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
+   flags |= frame.hasSyncError() ? ProtocolFrame::Flags::SyncError : 0;
+
+   ProtocolFrame *root = buildFrameInfo(QString("CMD %1").arg(cmd, 2, 16, QChar('0')), frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
 
    return root;
 }
 
 ProtocolFrame *ParserNfcF::parseResponseGeneric(const nfc::NfcFrame &frame)
 {
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   int flags = 0;
+
+   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
+   flags |= frame.hasSyncError() ? ProtocolFrame::Flags::SyncError : 0;
+
+   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
 
    return root;
 }

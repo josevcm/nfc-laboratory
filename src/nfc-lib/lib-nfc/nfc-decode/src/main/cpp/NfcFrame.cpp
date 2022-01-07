@@ -147,6 +147,11 @@ bool NfcFrame::hasCrcError() const
    return impl->frameFlags & FrameFlags::CrcError;
 }
 
+bool NfcFrame::hasSyncError() const
+{
+   return impl->frameFlags & FrameFlags::SyncError;
+}
+
 unsigned int NfcFrame::techType() const
 {
    return impl->techType;
