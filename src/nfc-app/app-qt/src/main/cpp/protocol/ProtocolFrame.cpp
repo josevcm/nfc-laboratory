@@ -205,3 +205,7 @@ bool ProtocolFrame::hasCrcError() const
    return impl->flags & Flags::CrcError;
 }
 
+bool ProtocolFrame::hasSyncError() const
+{
+   return impl->flags & Flags::SyncError;
+}

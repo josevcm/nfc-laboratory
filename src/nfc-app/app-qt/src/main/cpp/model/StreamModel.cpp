@@ -212,7 +212,7 @@ struct StreamModel::Impl
             }
             else if (frame->isNfcF())
             {
-               int command = (*frame)[3];
+               int command = (*frame)[1];
 
                if (NfcFCmd.contains(command))
                   return NfcFCmd[command];
@@ -255,6 +255,9 @@ struct StreamModel::Impl
 
          if (frame->hasParityError())
             text.append("[EPAR]");
+
+         if (frame->hasSyncError())
+            text.append("[ESYNC]");
       }
 
       return text.trimmed();

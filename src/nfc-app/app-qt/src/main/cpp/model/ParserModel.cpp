@@ -153,6 +153,9 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
                if (frame->hasParityError())
                   flags += " [EPAR]";
 
+               if (frame->hasSyncError())
+                  flags += " [ESYNC]";
+
                return impl->padding(frame->childDeep(), impl->toString(info.toByteArray()) + flags);
             }
 

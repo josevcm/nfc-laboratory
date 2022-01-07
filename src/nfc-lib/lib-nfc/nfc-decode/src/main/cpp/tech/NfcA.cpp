@@ -360,10 +360,10 @@ struct NfcA::Impl : NfcTech
          modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
          modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
          modulation->searchValueThreshold = modulation->correlatedPeakValue / 2;
+         modulation->searchCorr0Value = 0;
+         modulation->searchCorr1Value = 0;
          modulation->correlatedPeakTime = 0;
          modulation->correlatedPeakValue = 0;
-         modulation->symbolCorr0 = 0;
-         modulation->symbolCorr1 = 0;
 
          // setup frame info
          frameStatus.frameType = PollFrame;
@@ -832,9 +832,9 @@ struct NfcA::Impl : NfcTech
          // capture symbol correlation values at synchronization point
          if (decoder->signalClock == modulation->searchSyncTime)
          {
-            modulation->symbolCorrD = correlatedSD;
-            modulation->symbolCorr0 = correlatedS0;
-            modulation->symbolCorr1 = correlatedS1;
+            modulation->searchCorrDValue = correlatedSD;
+            modulation->searchCorr0Value = correlatedS0;
+            modulation->searchCorr1Value = correlatedS1;
          }
 
          // wait until correlation search finish
@@ -842,7 +842,7 @@ struct NfcA::Impl : NfcTech
             continue;
 
          // detect Pattern-Y when no modulation occurs (below search detection threshold)
-         if (modulation->symbolCorrD < modulation->searchValueThreshold)
+         if (modulation->searchCorrDValue < modulation->searchValueThreshold)
          {
             // estimate symbol timings from synchronization point (peak detection not valid due lack of modulation)
             modulation->symbolStartTime = modulation->symbolEndTime;
@@ -855,7 +855,7 @@ struct NfcA::Impl : NfcTech
          }
 
             // detect Pattern-Z
-         else if (modulation->symbolCorr0 > modulation->symbolCorr1)
+         else if (modulation->searchCorr0Value > modulation->searchCorr1Value)
          {
             // re-sync symbol end from correlate peak detector
             modulation->symbolStartTime = modulation->symbolEndTime;
@@ -884,13 +884,11 @@ struct NfcA::Impl : NfcTech
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
          modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
          modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
+         modulation->searchCorrDValue = 0;
+         modulation->searchCorr0Value = 0;
+         modulation->searchCorr1Value = 0;
          modulation->correlatedPeakTime = 0;
          modulation->correlatedPeakValue = 0;
-
-         // sets symbol start parameters and next synchronization point
-         modulation->symbolCorrD = 0;
-         modulation->symbolCorr0 = 0;
-         modulation->symbolCorr1 = 0;
 
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
@@ -1066,10 +1064,10 @@ struct NfcA::Impl : NfcTech
          modulation->searchSyncTime = modulation->symbolEndTime + bitrate->period1SymbolSamples;
          modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
          modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
+         modulation->searchCorr0Value = 0;
+         modulation->searchCorr1Value = 0;
          modulation->correlatedPeakTime = 0;
          modulation->correlatedPeakValue = 0;
-         modulation->symbolCorr0 = 0;
-         modulation->symbolCorr1 = 0;
 
          // setup symbol info
          symbolStatus.value = 1;
@@ -1155,22 +1153,22 @@ struct NfcA::Impl : NfcTech
          // capture symbol correlation values at synchronization point
          if (decoder->signalClock == modulation->searchSyncTime)
          {
-            modulation->symbolCorrD = correlatedSD;
-            modulation->symbolCorr0 = correlatedS0;
-            modulation->symbolCorr1 = correlatedS1;
+            modulation->searchCorrDValue = correlatedSD;
+            modulation->searchCorr0Value = correlatedS0;
+            modulation->searchCorr1Value = correlatedS1;
          }
 
          // wait until correlation search finish
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
-         if (modulation->symbolCorrD > modulation->searchValueThreshold)
+         if (modulation->searchCorrDValue > modulation->searchValueThreshold)
          {
             modulation->symbolStartTime = modulation->symbolEndTime;
             modulation->symbolEndTime = modulation->correlatedPeakTime;
             modulation->searchValueThreshold = modulation->correlatedPeakValue / 3;
 
-            if (modulation->symbolCorr0 > modulation->symbolCorr1)
+            if (modulation->searchCorr0Value > modulation->searchCorr1Value)
             {
                modulation->symbolRiseTime = modulation->searchSyncTime;
 
