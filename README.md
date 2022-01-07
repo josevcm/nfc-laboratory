@@ -14,23 +14,59 @@ accessible through Google, I will describe as simply as possible the method that
 Currently, detection and decoding for NFC-A (ISO14443A), NFC-B (ISO14443B), NFC-V (ISO15693) and preliminary NFC-F (Felica) 
 modulation has been implemented.
 
-## Signal processing
+## How it works?
 
-The first step is receive the 13.56MHz signal and demodulate to get the baseband ASK stream, for this purpose any SDR
-device capable of tuning this frequency can be used, i have the fantastic and cheap AirSpy Mini capable of tuning from
-24Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
+### Basic notions of the signals to be analyzed
+
+Normal NFC cards work on the 13.56 Mhz frequency, therefore the first step is receive this signal and demodulate to get 
+the baseband ASK stream. For this purpose any SDR device capable of tuning this frequency can be used, i have the 
+fantastic and cheap AirSpy Mini capable of tuning from 24Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
 
 However, it is not possible to tune 13.56Mhz with this receiver, instead I use the second harmonic at 27.12Mhz or third
 at 40.68Mhz with good results.
 
-Let's see a capture of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its
-response:
+The received signal will be composed of the I and Q components as in the following image.
+
+![IQ](doc/nfc-baseband-iq.png?raw=true "IQ signal capture")
+
+From these components the real magnitude is calculated using the classic formula sqrt (I ^ 2 + Q ^ 2). Let's see a capture 
+of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its response:
 
 ![REQA](doc/nfc-baseband-reqa.png?raw=true "REQA signal capture")
 
-As can be seen, it is a signal modulated in 100% ASK that corresponds to the REQA 26h command of the NFC specifications,
+As can be seen, it is a signal modulated in 100% ASK that corresponds to the NFC-A REQA 26h command of the NFC specifications,
 the response of the card uses something called load modulation that manifests as a series of pulses on the main signal
-after the command.
+after the command. This is the most basic modulation, but each of the NFC-A / B / F / V standards has its own characteristics.
+
+### NFC-A modulation
+
+The standard corresponds to the ISO14443A specifications which describe the way it is modulated as well as the applicable timings.
+
+Reader frames are encoded using 100% ASK using modified miller encoding.
+
+![NFCA ASK](doc/nfca-ask-miller.png)
+
+For the responses from the card when the speed is 106Kbps, 10% ASK is used through a sub-carrier.
+
+![NFCA OOK](doc/nfca-ask-ook.png)
+
+For higher speeds, 212 kbps, 424 kbps and 848 kbps, binary phase change modulation, BPSK, is used.
+
+![NFCA BPSK](doc/nfca-bpsk.png)
+
+### NFC-B modulation
+
+The standard corresponds to the ISO14443B specifications which describe the way it is modulated as well as the applicable timings.
+
+### NFC-F modulation
+
+The standard corresponds to the ISO18092 and JIS.X.6319 specifications which describe the way it is modulated as well as the applicable timings.
+
+### NFC-V modulation
+
+The standard corresponds to the ISO15693 specifications which describe the way it is modulated as well as the applicable timings.
+
+## Signal processing
 
 ### Demodulation
 
