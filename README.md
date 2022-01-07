@@ -58,9 +58,21 @@ For higher speeds, 212 kbps, 424 kbps and 848 kbps, binary phase change modulati
 
 The standard corresponds to the ISO14443B specifications which describe the way it is modulated as well as the applicable timings.
 
+Reader frames are encoded in 10% ASK using NRZ-L encoding.
+
+![NFCB ASK](doc/nfcb-ask-nrz.png)
+
+For the responses from the card are encoded with binary phase change modulation, BPSK, using NRZ-L encoding.
+
+![NFCB ASK](doc/nfcb-bpsk.png)
+
 ### NFC-F modulation
 
 The standard corresponds to the ISO18092 and JIS.X.6319 specifications which describe the way it is modulated as well as the applicable timings.
+
+Supports speeds from 212 kbps to 848 kbps, both reader and card frames are encoded using either observed or inverted manchester.
+
+![NFCF Manchester](doc/nfcf-manchester.png)
 
 ### NFC-V modulation
 
