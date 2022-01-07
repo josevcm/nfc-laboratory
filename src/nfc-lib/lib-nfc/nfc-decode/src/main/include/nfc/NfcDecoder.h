@@ -45,11 +45,19 @@ class NfcDecoder
 
       std::list<NfcFrame> nextFrames(sdr::SignalBuffer samples);
 
+      bool isNfcAEnabled() const;
+
       void setEnableNfcA(bool enabled);
+
+      bool isNfcBEnabled() const;
 
       void setEnableNfcB(bool enabled);
 
+      bool isNfcFEnabled() const;
+
       void setEnableNfcF(bool enabled);
+
+      bool isNfcVEnabled() const;
 
       void setEnableNfcV(bool enabled);
 
@@ -64,6 +72,7 @@ class NfcDecoder
       void setModulationThresholdNfcF(float min, float max);
 
       void setModulationThresholdNfcV(float min, float max);
+
 
       float powerLevelThreshold() const;
 

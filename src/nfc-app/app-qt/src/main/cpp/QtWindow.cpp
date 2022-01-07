@@ -219,6 +219,42 @@ struct QtWindow::Impl
             ui->framesView->refresh();
             ui->signalView->refresh();
          }
+
+         QJsonObject data = event->content();
+
+         qInfo() << "config" << data;
+
+         if (data.contains("nfca"))
+         {
+            QJsonObject nfca = data["nfca"].toObject();
+
+            if (ui->actionNfcA->isChecked() ^ nfca["enabled"].toBool())
+               ui->actionNfcA->setChecked(nfca["enabled"].toBool());
+         }
+
+         if (data.contains("nfcb"))
+         {
+            QJsonObject nfcb = data["nfcb"].toObject();
+
+            if (ui->actionNfcA->isChecked() ^ nfcb["enabled"].toBool())
+               ui->actionNfcB->setChecked(nfcb["enabled"].toBool());
+         }
+
+         if (data.contains("nfcf"))
+         {
+            QJsonObject nfcf = data["nfcf"].toObject();
+
+            if (ui->actionNfcA->isChecked() ^ nfcf["enabled"].toBool())
+               ui->actionNfcF->setChecked(nfcf["enabled"].toBool());
+         }
+
+         if (data.contains("nfcv"))
+         {
+            QJsonObject nfcv = data["nfcv"].toObject();
+
+            if (ui->actionNfcA->isChecked() ^ nfcv["enabled"].toBool())
+               ui->actionNfcV->setChecked(nfcv["enabled"].toBool());
+         }
       }
    }
 
@@ -518,6 +554,42 @@ struct QtWindow::Impl
       ui->actionFilter->setChecked(filterEnabled);
    }
 
+   void setNfcAEnabled(bool value) const
+   {
+      ui->actionNfcA->setChecked(value);
+
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
+            {"nfca/enabled", ui->actionNfcA->isChecked()}
+      }));
+   }
+
+   void setNfcBEnabled(bool value) const
+   {
+      ui->actionNfcB->setChecked(value);
+
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
+            {"nfcb/enabled", ui->actionNfcB->isChecked()}
+      }));
+   }
+
+   void setNfcFEnabled(bool value) const
+   {
+      ui->actionNfcF->setChecked(value);
+
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
+            {"nfcf/enabled", ui->actionNfcF->isChecked()}
+      }));
+   }
+
+   void setNfcVEnabled(bool value) const
+   {
+      ui->actionNfcV->setChecked(value);
+
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
+            {"nfcv/enabled", ui->actionNfcV->isChecked()}
+      }));
+   }
+
    void trackGainValue(int index)
    {
       int value = deviceGainList[index];
@@ -562,40 +634,32 @@ struct QtWindow::Impl
 
    void toggleFollow()
    {
-      setFollowEnabled(!followEnabled);
+      setFollowEnabled(ui->actionFollow->isChecked());
    }
 
    void toggleFilter()
    {
-      setFilterEnabled(!filterEnabled);
+      setFilterEnabled(ui->actionFilter->isChecked());
    }
 
    void toggleNfcA()
    {
-      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
-            {"nfca/enabled", ui->actionNfcA->isChecked()}
-      }));
+      setNfcAEnabled(ui->actionNfcA->isChecked());
    }
 
    void toggleNfcB()
    {
-      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
-            {"nfcb/enabled", ui->actionNfcA->isChecked()}
-      }));
+      setNfcBEnabled(ui->actionNfcB->isChecked());
    }
 
    void toggleNfcF()
    {
-      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
-            {"nfcf/enabled", ui->actionNfcA->isChecked()}
-      }));
+      setNfcFEnabled(ui->actionNfcF->isChecked());
    }
 
    void toggleNfcV()
    {
-      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::DecoderConfig, {
-            {"nfcv/enabled", ui->actionNfcA->isChecked()}
-      }));
+      setNfcVEnabled(ui->actionNfcV->isChecked());
    }
 
    void clearView()

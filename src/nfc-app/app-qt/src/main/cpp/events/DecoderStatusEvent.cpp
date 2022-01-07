@@ -52,6 +52,11 @@ QString DecoderStatusEvent::status() const
    return data["status"].toString();
 }
 
+const QJsonObject &DecoderStatusEvent::content() const
+{
+   return data;
+}
+
 DecoderStatusEvent *DecoderStatusEvent::create()
 {
    return new DecoderStatusEvent();
