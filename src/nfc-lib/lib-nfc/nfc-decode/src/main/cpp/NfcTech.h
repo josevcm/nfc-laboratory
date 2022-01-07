@@ -183,6 +183,10 @@ struct BitrateParams
    unsigned int offsetDelay2Index;
    unsigned int offsetDelay4Index;
    unsigned int offsetDelay8Index;
+
+   // protocol specific parameters
+   unsigned int preamble1Samples;
+   unsigned int preamble2Samples;
 };
 
 /*
