@@ -130,8 +130,11 @@ constexpr int NFCF_SFGT_DEF = 4096;
 // NFC-F Default Request Guard Time, defined as the minimum time between the start bits of two consecutive REQC commands.
 constexpr int NFCF_RGT_DEF = 7000;
 
-// NFC-F Frame Waiting Time for ATQC response
-constexpr int NFCF_FWT_ATQC = 512 * 64 + 1 * 256 * 64; // timeout at first slot!
+// NFC-F Frame Delay Time for ATQC response, between the end of the Request Frame and the first Time Slot
+constexpr int NFCF_FDT_ATQC = 512 * 64;
+
+// NFC-F Time Slot Unit for ATQC
+constexpr int NFCF_TSU_ATQC = 256 * 64;
 
 /*
  * NFC-V parameters
