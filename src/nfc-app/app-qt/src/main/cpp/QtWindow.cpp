@@ -228,32 +228,28 @@ struct QtWindow::Impl
          {
             QJsonObject nfca = data["nfca"].toObject();
 
-            if (ui->actionNfcA->isChecked() ^ nfca["enabled"].toBool())
-               ui->actionNfcA->setChecked(nfca["enabled"].toBool());
+            ui->actionNfcA->setChecked(nfca["enabled"].toBool());
          }
 
          if (data.contains("nfcb"))
          {
             QJsonObject nfcb = data["nfcb"].toObject();
 
-            if (ui->actionNfcA->isChecked() ^ nfcb["enabled"].toBool())
-               ui->actionNfcB->setChecked(nfcb["enabled"].toBool());
+            ui->actionNfcB->setChecked(nfcb["enabled"].toBool());
          }
 
          if (data.contains("nfcf"))
          {
             QJsonObject nfcf = data["nfcf"].toObject();
 
-            if (ui->actionNfcA->isChecked() ^ nfcf["enabled"].toBool())
-               ui->actionNfcF->setChecked(nfcf["enabled"].toBool());
+            ui->actionNfcF->setChecked(nfcf["enabled"].toBool());
          }
 
          if (data.contains("nfcv"))
          {
             QJsonObject nfcv = data["nfcv"].toObject();
 
-            if (ui->actionNfcA->isChecked() ^ nfcv["enabled"].toBool())
-               ui->actionNfcV->setChecked(nfcv["enabled"].toBool());
+            ui->actionNfcV->setChecked(nfcv["enabled"].toBool());
          }
       }
    }
