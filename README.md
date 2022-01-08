@@ -106,9 +106,24 @@ Now we are going to see how to decode this.
 Before starting to decode each of these modulations, it is necessary to start with a series of basic signals that will 
 help us in the rest of the process.
 
+The concepts that I am going to explain next are very well described on Sam Koblenski's page (https://sam-koblenski.blogspot.com/2015/08/everyday-dsp-for-programmers-basic.html) which 
+I recommend you read to fully understand all the processes related to the analysis that we are going to carry out.
+
 Remember that the sample received from the SDR receiver is made up of the I / Q values, therefore the first step is to obtain the real signal.
 
-![x(t) magnitude](doc/process-magnitude.png)
+Once we have the real signal, it is necessary to eliminate the continuous component (DC) that will greatly facilitate the 
+subsequent analysis process. For this we will use a simple IIR filter.
+
+To calculate the modulation depth we need to know the envelope of the signal as if it were not modulated by the pulses or sub-carrier, 
+for this we will use a simple slow exponential average.
+
+Finally we will obtain the standard deviation or variance of the signal that will help us to calculate the appropriate detection thresholds 
+based on the background noise.
+
+![Signal processing](doc/signal-pre-process.png)
+
+As you can see, all those mathematics that are learned in high school have their application ...
+
 
 ### Demodulation
 
