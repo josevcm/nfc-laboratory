@@ -289,27 +289,27 @@ struct NfcA::Impl : NfcTech
             }
          }
 
-         // detect modulation peaks
-         if (std::fabs(correlatedSD) >= minimumCorrelationValue)
+         // wait until correlation search start
+         if (decoder->signalClock < modulation->searchStartTime)
+            continue;
+
+         if (!modulation->symbolStartTime)
          {
-            if (!modulation->symbolStartTime)
+            // detect minimum correlation point
+            if (correlatedSD < modulation->correlatedPeakValue && correlatedSD < -minimumCorrelationValue)
             {
-               // detect maximum correlation point
-               if (correlatedSD < modulation->correlatedPeakValue)
-               {
-                  modulation->correlatedPeakValue = correlatedSD;
-                  modulation->correlatedPeakTime = decoder->signalClock;
-                  modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
-               }
+               modulation->correlatedPeakValue = correlatedSD;
+               modulation->correlatedPeakTime = decoder->signalClock;
+               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
             }
-            else
+         }
+         else
+         {
+            // detect maximum correlation point
+            if (correlatedSD > modulation->correlatedPeakValue && correlatedSD > modulation->searchValueThreshold)
             {
-               // detect maximum correlation point
-               if (correlatedSD > modulation->correlatedPeakValue)
-               {
-                  modulation->correlatedPeakValue = correlatedSD;
-                  modulation->correlatedPeakTime = decoder->signalClock;
-               }
+               modulation->correlatedPeakValue = correlatedSD;
+               modulation->correlatedPeakTime = decoder->signalClock;
             }
          }
 
@@ -320,10 +320,13 @@ struct NfcA::Impl : NfcTech
          if (!modulation->symbolStartTime)
          {
             modulation->searchSyncTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
-            modulation->searchEndTime = modulation->searchEndTime + bitrate->period2SymbolSamples;
+            modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
+            modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
+            modulation->searchValueThreshold = std::abs(modulation->correlatedPeakValue * 0.5);
             modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
             modulation->correlatedPeakTime = 0;
             modulation->correlatedPeakValue = 0;
+
             continue;
          }
 
@@ -460,20 +463,28 @@ struct NfcA::Impl : NfcTech
                // add to frame list
                frames.push_back(request);
 
-               // clear modulation status for next frame search
-               decoder->modulation->symbolStartTime = 0;
-               decoder->modulation->symbolEndTime = 0;
-               decoder->modulation->filterIntegrate = 0;
-               decoder->modulation->detectIntegrate = 0;
-               decoder->modulation->phaseIntegrate = 0;
-               decoder->modulation->searchSyncTime = 0;
-               decoder->modulation->searchStartTime = 0;
-               decoder->modulation->searchEndTime = 0;
-               decoder->modulation->searchPulseWidth = 0;
-               decoder->modulation->searchValueThreshold = 1;
-
                // clear stream status
                streamStatus = {0,};
+
+               // clear modulation status for receiving card response
+               if (decoder->modulation)
+               {
+                  decoder->modulation->symbolStartTime = 0;
+                  decoder->modulation->symbolEndTime = 0;
+                  decoder->modulation->filterIntegrate = 0;
+                  decoder->modulation->detectIntegrate = 0;
+                  decoder->modulation->phaseIntegrate = 0;
+                  decoder->modulation->searchModeState = 0;
+                  decoder->modulation->searchSyncTime = 0;
+                  decoder->modulation->searchStartTime = 0;
+                  decoder->modulation->searchEndTime = 0;
+                  decoder->modulation->searchPulseWidth = 0;
+                  decoder->modulation->searchLastValue = 0;
+                  decoder->modulation->searchLastPhase = 0;
+                  decoder->modulation->searchValueThreshold = 0;
+                  decoder->modulation->searchPhaseThreshold = 0;
+                  decoder->modulation->correlatedPeakValue = 0;
+               }
 
                // return request frame data
                return true;

@@ -241,7 +241,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             decoder->setModulationThresholdNfcV(min, max);
          }
 
-         updateDecoderStatus(FrameDecoderTask::Config);
+         updateDecoderStatus(status, true);
 
          command.resolve();
       }
@@ -280,7 +280,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       }
    }
 
-   void updateDecoderStatus(int value)
+   void updateDecoderStatus(int value, bool config = false)
    {
       status = value;
 
@@ -289,7 +289,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
                       {"queueSize", signalQueue.size()}
                 });
 
-      if (value == FrameDecoderTask::Config)
+      if (config)
       {
          data["nfca"] = {
                {"enabled", decoder->isNfcAEnabled()}

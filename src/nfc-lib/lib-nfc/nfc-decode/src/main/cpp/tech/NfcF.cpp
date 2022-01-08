@@ -461,17 +461,25 @@ struct NfcF::Impl : NfcTech
                // clear stream status
                streamStatus = {0,};
 
-               // clear modulation status for next frame search
-               decoder->modulation->searchModeState = 0;
-               decoder->modulation->symbolStartTime = 0;
-               decoder->modulation->symbolEndTime = 0;
-               decoder->modulation->searchSyncTime = 0;
-               decoder->modulation->searchStartTime = 0;
-               decoder->modulation->searchEndTime = 0;
-               decoder->modulation->searchSyncValue = 0;
-               decoder->modulation->searchLastValue = 0;
-               decoder->modulation->correlatedPeakValue = 0;
-               decoder->modulation->searchPulseWidth = 0;
+               // clear modulation status for receiving card response
+               if (decoder->modulation)
+               {
+                  decoder->modulation->symbolStartTime = 0;
+                  decoder->modulation->symbolEndTime = 0;
+                  decoder->modulation->filterIntegrate = 0;
+                  decoder->modulation->detectIntegrate = 0;
+                  decoder->modulation->phaseIntegrate = 0;
+                  decoder->modulation->searchModeState = 0;
+                  decoder->modulation->searchSyncTime = 0;
+                  decoder->modulation->searchStartTime = 0;
+                  decoder->modulation->searchEndTime = 0;
+                  decoder->modulation->searchPulseWidth = 0;
+                  decoder->modulation->searchLastValue = 0;
+                  decoder->modulation->searchLastPhase = 0;
+                  decoder->modulation->searchValueThreshold = 0;
+                  decoder->modulation->searchPhaseThreshold = 0;
+                  decoder->modulation->correlatedPeakValue = 0;
+               }
 
                return true;
             }
