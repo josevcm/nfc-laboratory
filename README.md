@@ -8,7 +8,7 @@ with contacless cards up to 424Kpbs.
 By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the
 reader.
 
-Currently, detection and decoding is implemented:
+Currently, detection and decoding is implemented for:
 
 - NFC-A (ISO14443A): 106kbps ASK modulation, 212kbps and 4124kbps with ASK / BPSK modulation.
 - NFC-B (ISO14443B): 106kbps, 212kbps and 4124kbps with ASK / BPSK modulation.
