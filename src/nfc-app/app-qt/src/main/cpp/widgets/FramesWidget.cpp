@@ -383,8 +383,12 @@ struct FramesWidget::Impl
       if (newRange.upper > maximumRange || newRange.upper < minimumRange)
          fixRange.upper = maximumRange > -INT32_MAX ? maximumRange : 1;
 
-      if (fixRange != newRange)
+      if (newRange != fixRange)
+      {
+         plot->xAxis->blockSignals(true);
          plot->xAxis->setRange(fixRange);
+         plot->xAxis->blockSignals(false);
+      }
    }
 };
 
