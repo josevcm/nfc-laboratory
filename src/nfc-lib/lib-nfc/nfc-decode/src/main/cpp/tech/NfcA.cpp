@@ -454,6 +454,12 @@ struct NfcA::Impl : NfcTech
                // add bytes to frame and flip to prepare read
                request.put(streamStatus.buffer, streamStatus.bytes).flip();
 
+               // process frame
+               process(request);
+
+               // add to frame list
+               frames.push_back(request);
+
                // clear modulation status for next frame search
                decoder->modulation->symbolStartTime = 0;
                decoder->modulation->symbolEndTime = 0;
@@ -468,12 +474,6 @@ struct NfcA::Impl : NfcTech
 
                // clear stream status
                streamStatus = {0,};
-
-               // process frame
-               process(request);
-
-               // add to frame list
-               frames.push_back(request);
 
                // return request frame data
                return true;

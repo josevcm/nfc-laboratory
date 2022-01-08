@@ -428,7 +428,7 @@ struct NfcF::Impl : NfcTech
          // detect end of frame
          if (frameEnd || truncateError)
          {
-            // a valid frame must contain at least one byte of data
+            // a valid frame must contain at least two bytes of data
             if (streamStatus.bytes > 2)
             {
                // set last symbol timing
@@ -452,6 +452,15 @@ struct NfcF::Impl : NfcTech
                // add bytes to frame and flip to prepare read
                request.put(streamStatus.buffer + 2, streamStatus.bytes - 2).flip();
 
+               // process frame
+               process(request);
+
+               // add to frame list
+               frames.push_back(request);
+
+               // clear stream status
+               streamStatus = {0,};
+
                // clear modulation status for next frame search
                decoder->modulation->searchModeState = 0;
                decoder->modulation->symbolStartTime = 0;
@@ -463,15 +472,6 @@ struct NfcF::Impl : NfcTech
                decoder->modulation->searchLastValue = 0;
                decoder->modulation->correlatedPeakValue = 0;
                decoder->modulation->searchPulseWidth = 0;
-
-               // clear stream status
-               streamStatus = {0,};
-
-               // process frame
-               process(request);
-
-               // add to frame list
-               frames.push_back(request);
 
                return true;
             }
@@ -545,7 +545,7 @@ struct NfcF::Impl : NfcTech
             if (frameEnd || truncateError)
             {
                // a valid frame must contain at least one byte of data
-               if (streamStatus.bytes > 0)
+               if (streamStatus.bytes > 2)
                {
                   // set last symbol timing
                   frameStatus.frameEnd = symbolStatus.end;
