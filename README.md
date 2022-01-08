@@ -46,11 +46,11 @@ Reader frames are encoded using 100% ASK using modified miller encoding.
 
 ![NFCA ASK](doc/nfca-ask-miller.png)
 
-For the responses from the card when the speed is 106Kbps, 10% ASK is used through a sub-carrier.
+When the speed is 106 Kbps card responses are encoded using manchester scheme using OOK load modulation with subcarrier at 848 KHz.
 
 ![NFCA OOK](doc/nfca-ask-ook.png)
 
-For higher speeds, 212 kbps, 424 kbps and 848 kbps, binary phase change modulation, BPSK, is used.
+For higher speeds, 212 kbps, 424 kbps and 848 kbps it uses a NRZ-L with binary phase change modulation, BPSK, over same subcarrier.
 
 ![NFCA BPSK](doc/nfca-bpsk.png)
 
@@ -62,7 +62,7 @@ Reader frames are encoded in 10% ASK using NRZ-L encoding.
 
 ![NFCB ASK](doc/nfcb-ask-nrz.png)
 
-For the responses from the card are encoded with binary phase change modulation, BPSK, using NRZ-L encoding.
+Responses from the card are encoded with binary phase change modulation, BPSK, using NRZ-L encoding.
 
 ![NFCB ASK](doc/nfcb-bpsk.png)
 
@@ -72,13 +72,43 @@ The standard corresponds to the ISO18092 and JIS.X.6319 specifications which des
 
 Supports speeds from 212 kbps to 848 kbps, both reader and card frames are encoded using either observed or inverted manchester.
 
-![NFCF Manchester](doc/nfcf-manchester.png)
+![NFCF Manchester](doc/nfcf-manchester.png) 
+
+Observed manchester modulation.
+
+![NFCF OBSERVE](doc/nfcf-observe.png)
+
+Reversed manchester modulation.
+
+![NFCF REVERSE](doc/nfcf-reverse.png)
 
 ### NFC-V modulation
 
 The standard corresponds to the ISO15693 specifications which describe the way it is modulated as well as the applicable timings.
 
+The coding is based on pulse position modulation (PPM) where the information is encoded by modifying the time when the pulse is 
+located within each time slot.
+
+There are two modes, 1 of 4 and 1 of 256, where each symbol encodes 2 and 8 bits respectively, this is the example for the first one.
+
+![NFCV PPM 2 bit](doc/nfcv-ppm2.png)
+
+Card responses are encoded with manchester OOK with 848 subcarrier as of NFC-A. 
+
+Depending on the code used, the possible speeds are 26Kbps and 53Kbps, however these cards can be read from greater distances.
+
 ## Signal processing
+
+Now we are going to see how to decode this.
+
+### First step, prepare base signals
+
+Before starting to decode each of these modulations, it is necessary to start with a series of basic signals that will 
+help us in the rest of the process.
+
+Remember that the sample received from the SDR receiver is made up of the I / Q values, therefore the first step is to obtain the real signal.
+
+![x(t) magnitude](doc/process-magnitude.png)
 
 ### Demodulation
 
