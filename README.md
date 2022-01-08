@@ -122,15 +122,25 @@ based on the background noise.
 
 ![Signal processing](doc/signal-pre-process.png)
 
+An example of each component, x(t), w(t), v(t) and a(t).
+
+![Signal processing](signal-pre-process-example.png)
+
 As you can see, all those mathematics that are learned in high school have their application ...
 
+### Next, identify the type of modulation needed
 
-### Demodulation
+As we have seen in the description, the NFC-A / B / F / V standards will use different modulations but all are based on 
+two basic techniques, amplitude modulation and phase modulation.
 
-Due to the digital nature of the signal I used a technique called symbol correlation which is equivalent to carrying out
-the convolution of the signal with the shape of each symbol to be detected. Without going into details, the NFC-A
-modulation is based on 6 patterns: Y, X and Z for reader commands and E, D, F for card responses (see NFC specifications
-for complete description).
+For the encoding of each symbol they use Miller, Manchester or NRZ-L. The first two can be detected by correlation 
+techniques and for NRZ-L it is enough to detect the level of the signal at each point of synchronization, let's see it in detail.
+
+### Demodulation of ASK miller and manchester signals 
+
+For ASK modulated signals I used a technique called symbol correlation which is equivalent to carrying out
+the convolution of the signal with the shape of each symbol to be detected. For example, the NFC-A
+modulation is based on 6 patterns: Y, X and Z as seem previously.
 
 Demodulation is performed by calculating the correlation for these patterns and detecting when the maximum approximation
 to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the
@@ -138,7 +148,15 @@ others. Last value is function SD represent the absolute difference between S0 a
 
 ![CORRELATION](doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
 
-The response of the card is much weaker but enough to allow its detection using the same technique for patterns E, D, F,
+When the speed is 106 kbps, the response can be extracted by applying the same technique, only this time we will use a 
+variation to improve the reception quality. 
+
+Before applying the correlation we multiply the signal w (t) by itself obtaining a measure of the power to later integrate 
+the result over 1/4 of the period in such a way that we will obtain a fairly clear ASK signal to be able to apply the correlation .
+
+![NFC ASK decoder](doc/nfc-demodulator-ask-response.png)
+
+card is much weaker but enough to allow its detection using the same technique for patterns E, D, F,
 here it is shown in better scale.
 
 ![CORRELATION](doc/nfc-response-log.png?raw=true "Decoder response correlation")
