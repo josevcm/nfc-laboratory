@@ -8,246 +8,32 @@ with contacless cards up to 424Kpbs.
 By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the
 reader.
 
-I do not have as an objective to explain the NFC norms or modulation techniques, there is a multitude of documentation
-accessible through Google, I will describe as simply as possible the method that i have used to implement this software.
+Currently, detection and decoding is implemented:
 
-Currently, detection and decoding for NFC-A (ISO14443A), NFC-B (ISO14443B), NFC-V (ISO15693) and preliminary NFC-F (Felica) 
-modulation has been implemented.
+- NFC-A (ISO14443A): 106kbps ASK modulation, 212kbps and 4124kbps with ASK / BPSK modulation.
+- NFC-B (ISO14443B): 106kbps, 212kbps and 4124kbps with ASK / BPSK modulation.
+- NFC-V (ISO15693): 26kbps and 53kbps, 1 of 4 code and 1 of 256 code PPM modulation. 
+- NFC-F (Felica): Preliminary, 212kbps and 424kbps, manchester modulation.
 
-## How it works?
-
-### Basic notions of the signals to be analyzed
-
-Normal NFC cards work on the 13.56 Mhz frequency, therefore the first step is receive this signal and demodulate to get 
-the baseband ASK stream. For this purpose any SDR device capable of tuning this frequency can be used, i have the 
-fantastic and cheap AirSpy Mini capable of tuning from 24Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
-
-However, it is not possible to tune 13.56Mhz with this receiver, instead I use the second harmonic at 27.12Mhz or third
-at 40.68Mhz with good results.
-
-The received signal will be composed of the I and Q components as in the following image.
-
-![IQ](doc/nfc-baseband-iq.png?raw=true "IQ signal capture")
-
-From these components the real magnitude is calculated using the classic formula sqrt (I ^ 2 + Q ^ 2). Let's see a capture 
-of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its response:
-
-![REQA](doc/nfc-baseband-reqa.png?raw=true "REQA signal capture")
-
-As can be seen, it is a signal modulated in 100% ASK that corresponds to the NFC-A REQA 26h command of the NFC specifications,
-the response of the card uses something called load modulation that manifests as a series of pulses on the main signal
-after the command. This is the most basic modulation, but each of the NFC-A / B / F / V standards has its own characteristics.
-
-### NFC-A modulation
-
-The standard corresponds to the ISO14443A specifications which describe the way it is modulated as well as the applicable timings.
-
-Reader frames are encoded using 100% ASK using modified miller encoding.
-
-![NFCA ASK](doc/nfca-ask-miller.png)
-
-When the speed is 106 Kbps card responses are encoded using manchester scheme using OOK load modulation with subcarrier at 848 KHz.
-
-![NFCA OOK](doc/nfca-ask-ook.png)
-
-For higher speeds, 212 kbps, 424 kbps and 848 kbps it uses a NRZ-L with binary phase change modulation, BPSK, over same subcarrier.
-
-![NFCA BPSK](doc/nfca-bpsk.png)
-
-### NFC-B modulation
-
-The standard corresponds to the ISO14443B specifications which describe the way it is modulated as well as the applicable timings.
-
-Reader frames are encoded in 10% ASK using NRZ-L encoding.
-
-![NFCB ASK](doc/nfcb-ask-nrz.png)
-
-Responses from the card are encoded with binary phase change modulation, BPSK, using NRZ-L encoding.
-
-![NFCB ASK](doc/nfcb-bpsk.png)
-
-### NFC-F modulation
-
-The standard corresponds to the ISO18092 and JIS.X.6319 specifications which describe the way it is modulated as well as the applicable timings.
-
-Supports speeds from 212 kbps to 848 kbps, both reader and card frames are encoded using either observed or inverted manchester.
-
-![NFCF Manchester](doc/nfcf-manchester.png) 
-
-Observed manchester modulation.
-
-![NFCF OBSERVE](doc/nfcf-observe.png)
-
-Reversed manchester modulation.
-
-![NFCF REVERSE](doc/nfcf-reverse.png)
-
-### NFC-V modulation
-
-The standard corresponds to the ISO15693 specifications which describe the way it is modulated as well as the applicable timings.
-
-The coding is based on pulse position modulation (PPM) where the information is encoded by modifying the time when the pulse is 
-located within each time slot.
-
-There are two modes, 1 of 4 and 1 of 256, where each symbol encodes 2 and 8 bits respectively, this is the example for the first one.
-
-![NFCV PPM 2 bit](doc/nfcv-ppm2.png)
-
-Card responses are encoded with manchester OOK with 848 subcarrier as of NFC-A. 
-
-Depending on the code used, the possible speeds are 26Kbps and 53Kbps, however these cards can be read from greater distances.
-
-## Signal processing
-
-Now we are going to see how to decode this.
-
-### First step, prepare base signals
-
-Before starting to decode each of these modulations, it is necessary to start with a series of basic signals that will 
-help us in the rest of the process.
-
-The concepts that I am going to explain next are very well described on Sam Koblenski's page (https://sam-koblenski.blogspot.com/2015/08/everyday-dsp-for-programmers-basic.html) which 
-I recommend you read to fully understand all the processes related to the analysis that we are going to carry out.
-
-Remember that the sample received from the SDR receiver is made up of the I / Q values, therefore the first step is to obtain the real signal.
-
-Once we have the real signal, it is necessary to eliminate the continuous component (DC) that will greatly facilitate the 
-subsequent analysis process. For this we will use a simple IIR filter.
-
-To calculate the modulation depth we need to know the envelope of the signal as if it were not modulated by the pulses or sub-carrier, 
-for this we will use a simple slow exponential average.
-
-Finally we will obtain the standard deviation or variance of the signal that will help us to calculate the appropriate detection thresholds 
-based on the background noise.
-
-![Signal processing](doc/signal-pre-process.png)
-
-An example of each component, x(t), w(t), v(t) and a(t).
-
-![Signal processing](signal-pre-process-example.png)
-
-As you can see, all those mathematics that are learned in high school have their application ...
-
-### Next, identify the type of modulation needed
-
-As we have seen in the description, the NFC-A / B / F / V standards will use different modulations but all are based on 
-two basic techniques, amplitude modulation and phase modulation.
-
-For the encoding of each symbol they use Miller, Manchester or NRZ-L. The first two can be detected by correlation 
-techniques and for NRZ-L it is enough to detect the level of the signal at each point of synchronization, let's see it 
-in detail.
-
-### Basic notions of signal correlation
-
-The correlation operation is a measure of how much one signal resembles another that serves as a reference. It is used
-intensively in digital signal analysis. With analog signals, the correlation of each sample x(t) requires N multiplications, therefore a symbol needs N^2
-multiplications, being a costly process.
-
-But since the reference signal is digital, it only has two possible values 0 or 1, which greatly simplifies the
-calculation by eliminating all the multiplications ,allowing the correlation to be carried out by process a simple
-moving average.
-
-![SYMBOLS S0 S1](doc/nfc-decoder-symbols.png  "Basic Symbols")
-
-These would be the two basic symbols that we need to carry out the correlation, if you study a little the operations
-that need to be carried out you will see that they are reduced to calculating the mean over the duration of the symbol
-and then obtaining the difference between the critical points, t = 0, t = N / 2 and t = N as seen in next diagram.
-
-![SYMBOLS Correlation](doc/nfc-symbol-correlation.png  "Correlation Process")
-
-We will widely use this operation to extract the information within the NFC signals
-
-### Demodulation of ASK miller and manchester signals 
-
-For ASK modulated signals, it is enough to carry out the correlation described above on the baseband signal x(t). Below 
-is the correlation functions for the two basic symbols S0, S1 used to calculate all the others. Last value is function 
-SD and represent the absolute difference between S0 and S1 necessary to detect the timmings.
-
-![CORRELATION](doc/nfc-decoder-log.png?raw=true "Decoder request correlation")
-
-When the speed is 106 kbps, the answer can be extracted by applying the same technique, but instead of using the signal 
-x(t) we will do it with w(t) multiplying it by itself obtaining a measure of the power that we will then integrate 
-over 1/4 of the symbol period, in such a way that we will obtain a fairly clear ASK signal to be able to apply the 
-correlation described above, this is the diagram of the process.
-
-![NFC ASK request](doc/nfc-demodulator-ask-request.png "Decoder response correlation")
-
-Card is much weaker but enough to allow its detection using the same technique for patterns E, D, F,
-here it is shown in better scale the process described. From top to bottom the signals are: x(t), w(t), w(t)^2 and y(t).
-
-![NFC ASK response](doc/nfc-demodulator-response.png "Decoder response correlation")
-
-### Demodulation of BPSK signals
-
-For BPSK demodulation a reference signal is required to detect the phase changes (carrier recovery), since that is
-complex I have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to
-determine the value of symbols through the changes produced between then.
-
-It is very important that the signal does not contain a DC shift, therefore the signal w(t) obtained previously 
-is taken as input to the process.
-
-![BPSK1](doc/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
-
-Below you can see the signal modulated in BPSK for a response frame at 424Kbps, followed by the demodulation y(t) and
-integration process over a quarter of a symbol r(t).
-
-![BPSK2](doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
-
-Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat
-more complex since timing and synchronization must be considered but with this signal is straightforward detect symbol 
-values.
-
-### Symbol detection
-
-From the correlation process we obtain a flow of symbols where it is already possible to apply the specific decoding 
-defined in each of the standards, NFC-A / B / F / V. Each symbol correlation is evaluated in the appropriate instants 
-according to the synchronization. 
-
-The correlation process begins with the calculation of the S0 and S1 values that represent the basic symbols
-subsequently used to discriminate between the NFC patterns X, Y, Z, E, D and F, as shown below.
-
-![DEC1](doc/nfc-demodulator-correlation.png?raw=true "Symbols S0 and S1 correlation")
-
-This results in a flow of patterns X, Y, Z, E, D, F that are subsequently interpreted by a state machine in accordance
-with the specifications of ISO 14443-3 to obtain a byte stream that can be easily processed.
-
-![DEC2](doc/nfc-demodulator-pattern-process.png?raw=true "Pattern and frame detection")
-
-### Bitrate discrimination
-
-So, we have seen how demodulation is performed, but how does this apply when there are different speeds? Well, since we
-do not know in advance the transmission speed it is necessary to apply the same process for all possible speeds through
-a bank of correlators. Really only is necessary to do it for the first symbol of each frame, once the bitrate is known
-the rest are decoded using that speed.
-
-![DEC3](doc/nfc-demodulator-speed-detector.png?raw=true "Bitrate discrimination")
-
-
-### Signal quality analysis
-
-This version includes a spectrum analyzer to show the power and quality of the received signal.
-
-## Application example
-
-An example of the result can be seen below.
+## Application screenshots
 
 Signal spectrum view.
 
-![APP](doc/nfc-lab-capture1.png?raw=true "Application example")
+![APP](doc/img/nfc-lab-screenshot1.png?raw=true "Signal spectrum view")
 
 Signal wave view.
 
-![APP](doc/nfc-lab-capture2.png?raw=true "Application example")
+![APP](doc/img/nfc-lab-screenshot2.png?raw=true "Signal wave view")
 
 Signal frame and protocol time measurement.
 
-![APP](doc/nfc-lab-capture3.png?raw=true "Protocol timing example")
+![APP](doc/img/nfc-lab-screenshot3.png?raw=true "Protocol timing example")
 
 Protocol detail view.
 
-![APP](doc/nfc-lab-capture4.png?raw=true "Protocol detail example")
+![APP](doc/img/nfc-lab-screenshot4.png?raw=true "Protocol detail example")
 
-Inside the "doc" folder you can find a [video](doc/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
+Inside the "doc" folder you can find a [video](doc/mp4/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
 
 ## SDR Receivers tested
 
@@ -262,15 +48,15 @@ works with others.
 
 Receivers tested:
 
-![Devices](doc/nfc-lab-devices1.png?raw=true "Devices")
+![Devices](doc/img/nfc-lab-devices1.png?raw=true "Devices")
 
 Nooelec RTL-SDR with HydraNFC calibration coil:
 
-![Devices](doc/nfc-lab-devices2.png?raw=true "Devices")
+![Devices](doc/img/nfc-lab-devices2.png?raw=true "Devices")
 
 AirSpy with custom antenna and ARC122U reader:
 
-![Devices](doc/nfc-lab-devices3.png?raw=true "Devices")
+![Devices](doc/img/nfc-lab-devices3.png?raw=true "Devices")
 
 ### Upconverters
 
@@ -294,7 +80,7 @@ This project has two main components and is based on Qt5 and MinGW-W64:
 
 And can be build with mingw-g64
 
-### Prerequisites:
+### Prerequisites
 
 - Qt5 framework 5.x for Windows, see https://www.qt.io/offline-installers
 - A recent mingw-w64 for windows, see https://www.mingw-w64.org/downloads
@@ -453,7 +239,7 @@ This is my favorite IDE and that I use for all projects.
 
 Install all prerequisites, and register MinGW toolchain in `File->Settings->Build, Execution, Deployment->Toolchains`
 
-![Build Settings](doc/clion-toolchain-settings.png)
+![Build Settings](doc/img/clion-toolchain-settings.png?raw=true "Clion toolchain settings")
 
 Next download project from GITHUB and create new CMake project from source, then build release and debug verions.
 
@@ -474,11 +260,210 @@ licenses, please check if you are interested in this work.
 - QCustomPlot at `src/nfc-app/app-qt/src/main/cpp/support` see https://www.qcustomplot.com/
 - QDarkStyleSheet at `src/nfc-app/app-qt/src/main/assets/theme` see https://github.com/ColinDuquesnoy/QDarkStyleSheet
 
-## Next steps, work in Android?
-
-I have been able to migrate this SW to Android (very simplified) by connecting an SDR
-receiver and sniff NFC frames in real-time, interesting thing to investigate, maybe start a new project with this...
-
 ## Releases
 
 Precompiled installer for x86 64 bit can be found in repository
+
+# How it works?
+
+## Basic notions of the signals to be analyzed
+
+Normal NFC cards work on the 13.56 Mhz frequency, therefore the first step is receive this signal and demodulate to get
+the baseband ASK stream. For this purpose any SDR device capable of tuning this frequency can be used, i have the
+fantastic and cheap AirSpy Mini capable of tuning from 24Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
+
+However, it is not possible to tune 13.56Mhz with this receiver, instead I use the second harmonic at 27.12Mhz or third
+at 40.68Mhz with good results.
+
+The received signal will be composed of the I and Q components as in the following image.
+
+![IQ](doc/img/nfc-baseband-iq.png?raw=true "IQ signal capture")
+
+From these components the real magnitude is calculated using the classic formula sqrt (I ^ 2 + Q ^ 2). Let's see a capture
+of the signal received in baseband (after I/Q to magnitude transform) for the REQA command and its response:
+
+![REQA](doc/img/nfc-baseband-reqa.png?raw=true "REQA signal capture")
+
+As can be seen, it is a signal modulated in 100% ASK that corresponds to the NFC-A REQA 26h command of the NFC specifications,
+the response of the card uses something called load modulation that manifests as a series of pulses on the main signal
+after the command. This is the most basic modulation, but each of the NFC-A / B / F / V standards has its own characteristics.
+
+### NFC-A modulation
+
+The standard corresponds to the ISO14443A specifications which describe the way it is modulated as well as the applicable timings.
+
+Reader frames are encoded using 100% ASK using modified miller encoding.
+
+![NFCA ASK](doc/img/nfca-ask-miller.png?raw=true "NFC-A ASK reader frame signal")
+
+When the speed is 106 Kbps card responses are encoded using manchester scheme using OOK load modulation with subcarrier at 848 KHz.
+
+![NFCA OOK](doc/img/nfca-ask-ook.png?raw=true "NFC-A OOK card response signal")
+
+For higher speeds, 212 kbps, 424 kbps and 848 kbps it uses a NRZ-L with binary phase change modulation, BPSK, over same subcarrier.
+
+![NFCA BPSK](doc/img/nfca-bpsk.png?raw=true "NFC-A BPSK card response signal")
+
+### NFC-B modulation
+
+The standard corresponds to the ISO14443B specifications which describe the way it is modulated as well as the applicable timings.
+
+Reader frames are encoded in 10% ASK using NRZ-L encoding.
+
+![NFCB ASK](doc/img/nfcb-ask-nrz.png?raw=true "NFC-B ASK reader frame signal")
+
+Responses from the card are encoded with binary phase change modulation, BPSK, using NRZ-L encoding.
+
+![NFCB ASK](doc/img/nfcb-bpsk.png?raw=true "NFC-B BPSK card response signal")
+
+### NFC-F modulation
+
+The standard corresponds to the ISO18092 and JIS.X.6319 specifications which describe the way it is modulated as well as the applicable timings.
+
+Supports speeds from 212 kbps to 848 kbps, both reader and card frames are encoded using either observed or inverted manchester.
+
+![NFCF Manchester](doc/img/nfcf-manchester.png?raw=true "NFC-F manchester reader frame signal")
+
+Observed manchester modulation.
+
+![NFCF OBSERVE](doc/img/nfcf-observe.png?raw=true "NFC-F manchester observed modulation")
+
+Reversed manchester modulation.
+
+![NFCF REVERSE](doc/img/nfcf-reverse.png?raw=true "NFC-B manchester reversed modulation")
+
+### NFC-V modulation
+
+The standard corresponds to the ISO15693 specifications which describe the way it is modulated as well as the applicable timings.
+
+The coding is based on pulse position modulation (PPM) where the information is encoded by modifying the time when the pulse is
+located within each time slot.
+
+There are two modes, 1 of 4 and 1 of 256, where each symbol encodes 2 and 8 bits respectively, this is the example for the first one.
+
+![NFCV PPM 2 bit](doc/img/nfcv-ppm2.png?raw=true "NFC-V PPM reader modulation")
+
+Card responses are encoded with manchester OOK with 848 subcarrier as of NFC-A.
+
+Depending on the code used, the possible speeds are 26Kbps and 53Kbps, however these cards can be read from greater distances.
+
+## Signal processing
+
+Now we are going to see how to decode this.
+
+### First step, prepare base signals
+
+Before starting to decode each of these modulations, it is necessary to start with a series of basic signals that will
+help us in the rest of the process.
+
+The concepts that I am going to explain next are very well described on Sam Koblenski's page (https://sam-koblenski.blogspot.com/2015/08/everyday-dsp-for-programmers-basic.html) which
+I recommend you read to fully understand all the processes related to the analysis that we are going to carry out.
+
+Remember that the sample received from the SDR receiver is made up of the I / Q values, therefore the first step is to obtain the real signal.
+
+Once we have the real signal, it is necessary to eliminate the continuous component (DC) that will greatly facilitate the
+subsequent analysis process. For this we will use a simple IIR filter.
+
+To calculate the modulation depth we need to know the envelope of the signal as if it were not modulated by the pulses or sub-carrier,
+for this we will use a simple slow exponential average.
+
+Finally we will obtain the standard deviation or variance of the signal that will help us to calculate the appropriate detection thresholds
+based on the background noise.
+
+![Signal processing](doc/img/signal-pre-process.png?raw=true "Signal pre-processing")
+
+An example of each component, x(t), w(t), v(t) and a(t).
+
+![Signal processing](doc/img/signal-pre-process-example.png?raw=true "Signal pre-processing")
+
+### Next, identify the type of modulation needed
+
+As we have seen in the description, the NFC-A / B / F / V standards will use different modulations but all are based on
+two basic techniques, amplitude modulation and phase modulation.
+
+For the encoding of each symbol they use Miller, Manchester or NRZ-L. The first two can be detected by correlation
+techniques and for NRZ-L it is enough to detect the level of the signal at each point of synchronization, let's see it
+in detail.
+
+### Basic notions of signal correlation
+
+The correlation operation is a measure of how much one signal resembles another that serves as a reference. It is used
+intensively in digital signal analysis. With analog signals, the correlation of each sample x(t) requires N multiplications, therefore a symbol needs N^2
+multiplications, being a costly process.
+
+But since the reference signal is digital, it only has two possible values 0 or 1, which greatly simplifies the
+calculation by eliminating all the multiplications, allowing the correlation to be carried out by process a simple
+moving average.
+
+![SYMBOLS S0 S1](doc/img/nfc-decoder-symbols.png?raw=true  "Basic Symbols")
+
+These would be the two basic symbols that we need to carry out the correlation, if you study a little the operations
+that need to be carried out you will see that they are reduced to calculating the mean over the duration of the symbol
+and then obtaining the difference between the critical points, t = 0, t = N / 2 and t = N as seen in next diagram.
+
+![SYMBOLS Correlation](doc/img/nfc-symbol-correlation.png?raw=true  "Correlation Process")
+
+We will widely use this operation to extract the information within the NFC signals
+
+### Demodulation of ASK miller and manchester signals
+
+For ASK modulated signals, it is enough to carry out the correlation described above on the baseband signal x(t). Below
+is the correlation functions for the two basic symbols S0, S1 used to calculate all the others. Last value is function
+SD and represent the absolute difference between S0 and S1 necessary to detect the timmings.
+
+![CORRELATION](doc/img/nfc-decoder-example.png?raw=true "Decoder request correlation")
+
+When the speed is 106 kbps, the answer can be extracted by applying the same technique, but instead of using the signal
+x(t) we will do it with w(t) multiplying it by itself obtaining a measure of the power that we will then integrate
+over 1/4 of the symbol period, in such a way that we will obtain a fairly clear ASK signal to be able to apply the
+correlation described above, this is the diagram of the process.
+
+![NFC ASK request](doc/img/nfc-demodulator-ask-request.png?raw=true "Decoder response correlation")
+
+Card is much weaker but enough to allow its detection using the same technique for patterns E, D, F,
+here it is shown in better scale the process described. From top to bottom the signals are: x(t), w(t), w(t)^2 and y(t).
+
+![NFC ASK response](doc/img/nfc-demodulator-response.png?raw=true "Decoder response correlation")
+
+### Demodulation of BPSK signals
+
+For BPSK demodulation a reference signal is required to detect the phase changes (carrier recovery), since that is
+complex I have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to
+determine the value of symbols through the changes produced between then.
+
+It is very important that the signal does not contain a DC shift, therefore the signal w(t) obtained previously
+is taken as input to the process.
+
+![BPSK1](doc/img/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
+
+Below you can see the signal modulated in BPSK for a response frame at 424Kbps, followed by the demodulation y(t) and
+integration process over a quarter of a symbol r(t).
+
+![BPSK2](doc/img/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
+
+Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat
+more complex since timing and synchronization must be considered but with this signal is straightforward detect symbol
+values.
+
+### Symbol detection
+
+From the correlation process we obtain a flow of symbols where it is already possible to apply the specific decoding
+defined in each of the standards, NFC-A / B / F / V. Each symbol correlation is evaluated in the appropriate instants
+according to the synchronization.
+
+The correlation process begins with the calculation of the S0 and S1 values that represent the basic symbols
+subsequently used to discriminate between the NFC patterns X, Y, Z, E, D, F, M, N etc. that are subsequently interpreted 
+by a state machine in accordance with the specifications of ISO ISO14443A, ISO14443B, ISO15693 and Felica to obtain a 
+byte stream that can be easily processed.
+
+![DEC2](doc/img/nfc-demodulator-pattern-process.png?raw=true "Pattern and frame detection")
+
+### Bitrate discrimination
+
+So, we have seen how demodulation is performed, but how does this apply when there are different speeds? Well, since we
+do not know in advance the transmission speed it is necessary to apply the same process for all possible speeds through
+a bank of correlators. Really only is necessary to do it for the first symbol of each frame, once the bitrate is known
+the rest are decoded using that speed.
+
+![DEC3](doc/img/nfc-demodulator-speed-detector.png?raw=true "Bitrate discrimination")
+
