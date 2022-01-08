@@ -134,38 +134,74 @@ As we have seen in the description, the NFC-A / B / F / V standards will use dif
 two basic techniques, amplitude modulation and phase modulation.
 
 For the encoding of each symbol they use Miller, Manchester or NRZ-L. The first two can be detected by correlation 
-techniques and for NRZ-L it is enough to detect the level of the signal at each point of synchronization, let's see it in detail.
+techniques and for NRZ-L it is enough to detect the level of the signal at each point of synchronization, let's see it 
+in detail.
+
+### Basic notions of signal correlation
+
+The correlation operation is a measure of how much one signal resembles another that serves as a reference. It is used
+intensively in digital signal analysis. With analog signals, the correlation of each sample x(t) requires N multiplications, therefore a symbol needs N^2
+multiplications, being a costly process.
+
+But since the reference signal is digital, it only has two possible values 0 or 1, which greatly simplifies the
+calculation by eliminating all the multiplications ,allowing the correlation to be carried out by process a simple
+moving average.
+
+![SYMBOLS S0 S1](doc/nfc-decoder-symbols.png  "Basic Symbols")
+
+These would be the two basic symbols that we need to carry out the correlation, if you study a little the operations
+that need to be carried out you will see that they are reduced to calculating the mean over the duration of the symbol
+and then obtaining the difference between the critical points, t = 0, t = N / 2 and t = N as seen in next diagram.
+
+![SYMBOLS Correlation](doc/nfc-symbol-correlation.png  "Correlation Process")
+
+We will widely use this operation to extract the information within the NFC signals
 
 ### Demodulation of ASK miller and manchester signals 
 
-For ASK modulated signals I used a technique called symbol correlation which is equivalent to carrying out
-the convolution of the signal with the shape of each symbol to be detected. For example, the NFC-A
-modulation is based on 6 patterns: Y, X and Z as seem previously.
+For ASK modulated signals, it is enough to carry out the correlation described above on the baseband signal x(t). Below 
+is the correlation functions for the two basic symbols S0, S1 used to calculate all the others. Last value is function 
+SD and represent the absolute difference between S0 and S1 necessary to detect the timmings.
 
-Demodulation is performed by calculating the correlation for these patterns and detecting when the maximum approximation
-to each of them occurs. Below is the correlation functions for the two basic symbols S0, S1 used to calculate all the
-others. Last value is function SD represent the absolute difference between S0 and S1 necessary to detect the timmings.
+![CORRELATION](doc/nfc-decoder-log.png?raw=true "Decoder request correlation")
 
-![CORRELATION](doc/nfc-decoder-log.png?raw=true "Decoder symbol correlation")
+When the speed is 106 kbps, the answer can be extracted by applying the same technique, but instead of using the signal 
+x(t) we will do it with w(t) multiplying it by itself obtaining a measure of the power that we will then integrate 
+over 1/4 of the symbol period, in such a way that we will obtain a fairly clear ASK signal to be able to apply the 
+correlation described above, this is the diagram of the process.
 
-When the speed is 106 kbps, the response can be extracted by applying the same technique, only this time we will use a 
-variation to improve the reception quality. 
+![NFC ASK request](doc/nfc-demodulator-ask-request.png "Decoder response correlation")
 
-Before applying the correlation we multiply the signal w (t) by itself obtaining a measure of the power to later integrate 
-the result over 1/4 of the period in such a way that we will obtain a fairly clear ASK signal to be able to apply the correlation .
+Card is much weaker but enough to allow its detection using the same technique for patterns E, D, F,
+here it is shown in better scale the process described. From top to bottom the signals are: x(t), w(t), w(t)^2 and y(t).
 
-![NFC ASK decoder](doc/nfc-demodulator-ask-response.png)
+![NFC ASK response](doc/nfc-demodulator-response.png "Decoder response correlation")
 
-card is much weaker but enough to allow its detection using the same technique for patterns E, D, F,
-here it is shown in better scale.
+### Demodulation of BPSK signals
 
-![CORRELATION](doc/nfc-response-log.png?raw=true "Decoder response correlation")
+For BPSK demodulation a reference signal is required to detect the phase changes (carrier recovery), since that is
+complex I have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to
+determine the value of symbols through the changes produced between then.
+
+It is very important that the signal does not contain a DC shift, therefore the signal w(t) obtained previously 
+is taken as input to the process.
+
+![BPSK1](doc/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
+
+Below you can see the signal modulated in BPSK for a response frame at 424Kbps, followed by the demodulation y(t) and
+integration process over a quarter of a symbol r(t).
+
+![BPSK2](doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
+
+Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat
+more complex since timing and synchronization must be considered but with this signal is straightforward detect symbol 
+values.
 
 ### Symbol detection
 
-For the detection of each symbol the value of each correlation is evaluated in the appropriate instants according to the
-synchronization. The number of samples per symbol is defined as N and must be calculated before starting the process
-knowing the sampling frequency (fc) and symbol duration.
+From the correlation process we obtain a flow of symbols where it is already possible to apply the specific decoding 
+defined in each of the standards, NFC-A / B / F / V. Each symbol correlation is evaluated in the appropriate instants 
+according to the synchronization. 
 
 The correlation process begins with the calculation of the S0 and S1 values that represent the basic symbols
 subsequently used to discriminate between the NFC patterns X, Y, Z, E, D and F, as shown below.
@@ -186,24 +222,6 @@ the rest are decoded using that speed.
 
 ![DEC3](doc/nfc-demodulator-speed-detector.png?raw=true "Bitrate discrimination")
 
-### BPSK modulation
-
-ASK modulation is relatively simple and easy to implement, however the specification ISO 14443 defines the use of BPSK
-for card responses when the speed is 212Kbps or higher.
-
-For BPSK demodulation a reference signal is required to detect the phase changes (carrier recovery), since that is
-complex i have chosen to implement it by multiplying each symbol by the preceding one, so that it is possible to
-determine the value of symbols through the changes produced between then.
-
-![BPSK1](doc/nfc-demodulator-bpsk-process.png?raw=true "414Kbps BPSK demodulation process")
-
-Below you can see the signal modulated in BPSK for a response frame at 424Kbps, followed by the demodulation y(t) and
-integration process over a quarter of a symbol r(t).
-
-![BPSK2](doc/nfc-demodulator-bpsk-detector.png?raw=true "414Kbps BPSK response demodulation")
-
-Finally, by checking if the result is positive or negative, the value of each symbol can be determined. It is somewhat
-more complex since timing and synchronization must be considered.
 
 ### Signal quality analysis
 
