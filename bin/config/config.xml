@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Installer>
-    <Name>NFC Laboratory 2.6.0 - josevcm@gmail.com</Name>
-    <Version>2.6.0</Version>
+    <Name>NFC Laboratory 2.6.2 - josevcm@gmail.com</Name>
+    <Version>2.6.2</Version>
     <Title>NFC Laboratory Installer</Title>
     <Publisher>Jose Vicente Campos Martinez</Publisher>
     <StartMenuDir>NFC Laboratory</StartMenuDir>
