@@ -43,6 +43,8 @@ class NfcDecoder
 
       NfcDecoder();
 
+      void cleanup();
+
       std::list<NfcFrame> nextFrames(sdr::SignalBuffer samples);
 
       bool isNfcAEnabled() const;
@@ -61,7 +63,11 @@ class NfcDecoder
 
       void setEnableNfcV(bool enabled);
 
+      long sampleRate() const;
+
       void setSampleRate(long sampleRate);
+
+      float powerLevelThreshold() const;
 
       void setPowerLevelThreshold(float value);
 
@@ -72,11 +78,6 @@ class NfcDecoder
       void setModulationThresholdNfcF(float min, float max);
 
       void setModulationThresholdNfcV(float min, float max);
-
-
-      float powerLevelThreshold() const;
-
-      [[maybe_unused]] float signalStrength() const;
 
    private:
 

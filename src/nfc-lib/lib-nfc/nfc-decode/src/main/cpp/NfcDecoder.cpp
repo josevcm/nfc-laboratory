@@ -63,6 +63,8 @@ struct NfcDecoder::Impl
 
    Impl();
 
+   inline void cleanup();
+
    inline void configure(long sampleRate);
 
    inline std::list<NfcFrame> nextFrames(sdr::SignalBuffer &samples);
@@ -72,6 +74,11 @@ struct NfcDecoder::Impl
 
 NfcDecoder::NfcDecoder() : impl(std::make_shared<Impl>())
 {
+}
+
+void NfcDecoder::cleanup()
+{
+   impl->cleanup();
 }
 
 std::list<NfcFrame> NfcDecoder::nextFrames(sdr::SignalBuffer samples)
@@ -131,6 +138,11 @@ void NfcDecoder::setEnableNfcV(bool enabled)
       impl->enabledTech &= ~Impl::ENABLED_NFCV;
 }
 
+long NfcDecoder::sampleRate() const
+{
+   return impl->decoder.sampleRate;
+}
+
 void NfcDecoder::setSampleRate(long sampleRate)
 {
    impl->configure(sampleRate);
@@ -164,11 +176,6 @@ void NfcDecoder::setModulationThresholdNfcV(float min, float max)
 float NfcDecoder::powerLevelThreshold() const
 {
    return impl->decoder.powerLevelThreshold;
-}
-
-[[maybe_unused]] float NfcDecoder::signalStrength() const
-{
-   return impl->decoder.signalAverage;
 }
 
 NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder), nfcf(&decoder), nfcv(&decoder)
@@ -232,6 +239,16 @@ void NfcDecoder::Impl::configure(long newSampleRate)
 
    // starts without modulation
    decoder.modulation = nullptr;
+}
+
+/**
+ * Restart decoder status
+ */
+void NfcDecoder::Impl::cleanup()
+{
+#ifdef DEBUG_SIGNAL
+   decoder.debug.reset();
+#endif
 }
 
 /**

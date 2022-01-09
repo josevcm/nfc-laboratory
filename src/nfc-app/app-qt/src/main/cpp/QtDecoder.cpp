@@ -120,6 +120,9 @@ struct QtDecoder::Impl
       signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.adp");
    }
 
+   /*
+    * system event executed after startup
+    */
    void systemStartup(SystemStartupEvent *event)
    {
       // subscribe to status events
@@ -151,11 +154,25 @@ struct QtDecoder::Impl
          bufferEvent(buffer);
       });
 
+      // enquire status of receiver task
       taskReceiverQuery();
 
-      /*
-       * read decoder parameters on startup
-       */
+      // restore decoder configuration from .ini file
+      readDecoderConfig();
+   }
+
+   /*
+    * system event executed before shutdown
+    */
+   void systemShutdown(SystemShutdownEvent *event)
+   {
+   }
+
+   /*
+    * read decoder parameters from settings file
+    */
+   void readDecoderConfig()
+   {
       auto *decoderConfigEvent = new DecoderControlEvent(DecoderControlEvent::DecoderConfig);
 
       for (QString &group: settings.childGroups())
@@ -190,10 +207,37 @@ struct QtDecoder::Impl
       QtApplication::post(decoderConfigEvent);
    }
 
-   void systemShutdown(SystemShutdownEvent *event)
+   /*
+    * save decoder parameters to settings file
+    */
+   void saveDecoderConfig(const QJsonObject &status)
    {
+      QStringList list = {"nfca", "nfcb", "nfcf", "nfcv"};
+
+      for (QString &name: list)
+      {
+         if (status.contains(name))
+         {
+            QJsonObject config = status[name].toObject();
+
+            settings.beginGroup("decoder." + name);
+
+            for (QString &entry: config.keys())
+            {
+               QVariant newValue = config.value(entry).toVariant();
+
+               if (settings.value(entry) != newValue)
+                  settings.setValue(entry, newValue);
+            }
+
+            settings.endGroup();
+         }
+      }
    }
 
+   /*
+    * process decoder control event
+    */
    void decoderControl(DecoderControlEvent *event)
    {
       switch (event->command())
@@ -236,6 +280,9 @@ struct QtDecoder::Impl
       }
    }
 
+   /*
+    * process decoder status event
+    */
    void decoderStatusChange(const rt::Event &event)
    {
       if (auto data = event.get<std::string>("data"))
@@ -243,9 +290,14 @@ struct QtDecoder::Impl
          QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
 
          QtApplication::post(DecoderStatusEvent::create(status));
+
+         saveDecoderConfig(status);
       }
    }
 
+   /*
+    * process recorder status event
+    */
    void recorderStatusChange(const rt::Event &event)
    {
       if (auto data = event.get<std::string>("data"))
@@ -256,6 +308,9 @@ struct QtDecoder::Impl
       }
    }
 
+   /*
+    * process receiver status event
+    */
    void receiverStatusChange(const rt::Event &event)
    {
       if (auto data = event.get<std::string>("data"))
@@ -266,6 +321,9 @@ struct QtDecoder::Impl
       }
    }
 
+   /*
+    * process storage status event
+    */
    void storageStatusChange(const rt::Event &event)
    {
       if (auto data = event.get<std::string>("data"))
@@ -276,17 +334,26 @@ struct QtDecoder::Impl
       }
    }
 
+   /*
+    * process new received frame
+    */
    void frameEvent(const nfc::NfcFrame &frame)
    {
       QtApplication::post(new StreamFrameEvent(frame), Qt::HighEventPriority);
    }
 
+   /*
+    * process new received buffer
+    */
    void bufferEvent(const sdr::SignalBuffer &buffer)
    {
 //      cache->append(buffer);
       QtApplication::post(new SignalBufferEvent(buffer), Qt::LowEventPriority);
    }
 
+   /*
+    * start decoder and receiver task
+    */
    void doReceiverDecode(DecoderControlEvent *event) const
    {
       // clear signal cache
@@ -302,6 +369,9 @@ struct QtDecoder::Impl
       });
    }
 
+   /*
+    * start decoder, receiver and write data to file
+    */
    void doReceiverRecord(DecoderControlEvent *event) const
    {
       QJsonObject json;
@@ -325,6 +395,9 @@ struct QtDecoder::Impl
       });
    }
 
+   /*
+    * stop all tasks to finish decoding
+    */
    void doStopDecode(DecoderControlEvent *event) const
    {
       // stop all taks
@@ -333,6 +406,9 @@ struct QtDecoder::Impl
       taskRecorderStop();
    }
 
+   /*
+    * reconfigure decoder parameters
+    */
    void doDecoderConfig(DecoderControlEvent *event) const
    {
       QJsonObject json;
@@ -399,6 +475,9 @@ struct QtDecoder::Impl
       taskDecoderConfig(json);
    }
 
+   /*
+    * reconfigure receiver parameters
+    */
    void doReceiverConfig(DecoderControlEvent *event) const
    {
       QJsonObject json;
@@ -424,6 +503,9 @@ struct QtDecoder::Impl
       taskReceiverConfig(json);
    }
 
+   /*
+    * read frames from file
+    */
    void doReadFile(DecoderControlEvent *event) const
    {
       QJsonObject json;
@@ -454,6 +536,9 @@ struct QtDecoder::Impl
       }
    }
 
+   /*
+    * write frames to file
+    */
    void doWriteFile(DecoderControlEvent *event) const
    {
       QString name = event->getString("file");
@@ -469,18 +554,24 @@ struct QtDecoder::Impl
    }
 
    /*
-    * Decoder Task control
+    * start decoder task
     */
    void taskDecoderStart(std::function<void()> onComplete = nullptr) const
    {
       decoderCommandStream->next({nfc::FrameDecoderTask::Start, std::move(onComplete)});
    }
 
+   /*
+    * stop decoder task
+    */
    void taskDecoderStop(std::function<void()> onComplete = nullptr) const
    {
       decoderCommandStream->next({nfc::FrameDecoderTask::Stop, std::move(onComplete)});
    }
 
+   /*
+    * configure decoder task
+    */
    void taskDecoderConfig(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
       QJsonDocument doc(data);
@@ -489,23 +580,32 @@ struct QtDecoder::Impl
    }
 
    /*
-    * Receiver Task control
+    * start receiver task
     */
    void taskReceiverStart(std::function<void()> onComplete = nullptr) const
    {
       receiverCommandStream->next({nfc::SignalReceiverTask::Start, std::move(onComplete)});
    }
 
+   /*
+    * stop receiver task
+    */
    void taskReceiverStop(std::function<void()> onComplete = nullptr) const
    {
       receiverCommandStream->next({nfc::SignalReceiverTask::Stop, std::move(onComplete)});
    }
 
+   /*
+    * enquire receiver status
+    */
    void taskReceiverQuery(std::function<void()> onComplete = nullptr) const
    {
       receiverCommandStream->next({nfc::SignalReceiverTask::Query, std::move(onComplete)});
    }
 
+   /*
+    * configure receiver task
+    */
    void taskReceiverConfig(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
       QJsonDocument doc(data);
@@ -514,7 +614,7 @@ struct QtDecoder::Impl
    }
 
    /*
-    * Recorder Task control
+    * start recorder task to read file
     */
    void taskRecorderRead(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
@@ -523,6 +623,9 @@ struct QtDecoder::Impl
       recorderCommandStream->next({nfc::SignalRecorderTask::Read, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
+   /*
+    * start recorder task to write file
+    */
    void taskRecorderWrite(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
       QJsonDocument doc(data);
@@ -530,13 +633,16 @@ struct QtDecoder::Impl
       recorderCommandStream->next({nfc::SignalRecorderTask::Write, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
+   /*
+    * stop recorder task
+    */
    void taskRecorderStop(std::function<void()> onComplete = nullptr) const
    {
       recorderCommandStream->next({nfc::SignalRecorderTask::Stop, std::move(onComplete)});
    }
 
    /*
-    * Storage Task control
+    * start storage task to read frames from file
     */
    void taskStorageRead(const QString &name, std::function<void()> onComplete = nullptr) const
    {
@@ -544,12 +650,18 @@ struct QtDecoder::Impl
       storageCommandStream->next({nfc::FrameStorageTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
+   /*
+    * start storage task for write frames to file
+    */
    void taskStorageWrite(const QString &name, std::function<void()> onComplete = nullptr) const
    {
       // write frame data to file
       storageCommandStream->next({nfc::FrameStorageTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
    }
 
+   /*
+    * clear storage task frames from internal buffer
+    */
    void taskStorageClear(std::function<void()> onComplete = nullptr) const
    {
       storageCommandStream->next({nfc::FrameStorageTask::Clear, std::move(onComplete)});

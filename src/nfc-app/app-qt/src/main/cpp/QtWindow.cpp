@@ -222,8 +222,6 @@ struct QtWindow::Impl
 
          QJsonObject data = event->content();
 
-         qInfo() << "config" << data;
-
          if (data.contains("nfca"))
          {
             QJsonObject nfca = data["nfca"].toObject();
@@ -541,6 +539,8 @@ struct QtWindow::Impl
       followEnabled = value;
 
       ui->actionFollow->setChecked(followEnabled);
+
+      settings.setValue("window/followEnabled", followEnabled);
    }
 
    void setFilterEnabled(bool value)
@@ -548,6 +548,8 @@ struct QtWindow::Impl
       filterEnabled = value;
 
       ui->actionFilter->setChecked(filterEnabled);
+
+      settings.setValue("window/filterEnabled", filterEnabled);
    }
 
    void setNfcAEnabled(bool value) const

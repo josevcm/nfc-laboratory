@@ -206,7 +206,7 @@ struct NfcF::Impl : NfcTech
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold)
+      if (decoder->signalAverage < decoder->powerLevelThreshold || decoder->signalClock < BUFFER_SIZE)
          return false;
 
       // minimum correlation value for valid NFC-F symbols

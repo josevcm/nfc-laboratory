@@ -34,7 +34,7 @@
 
 #include <nfc/Nfc.h>
 
-#define DEBUG_SIGNAL
+//#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 6
@@ -48,7 +48,7 @@
 namespace nfc {
 
 // Buffer length for signal integration, must be power of 2^n
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 1024
 
 /*
  * Signal debugger

@@ -239,7 +239,7 @@ struct NfcB::Impl : NfcTech
    inline bool detectModulation()
    {
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold)
+      if (decoder->signalAverage < decoder->powerLevelThreshold || decoder->signalClock < BUFFER_SIZE)
          return false;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps

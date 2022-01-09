@@ -268,6 +268,8 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
          {
             log.info("decoder EOF buffer received, finish!");
 
+            decoder->cleanup();
+
             updateDecoderStatus(FrameDecoderTask::Halt);
          }
 
