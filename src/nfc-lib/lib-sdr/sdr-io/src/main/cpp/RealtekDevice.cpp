@@ -291,6 +291,8 @@ struct RealtekDevice::Impl
 
       if (rtlsdrHandle)
       {
+         log.debug("rtlsdr_set_center_freq({})", {centerFreq});
+
          if ((rtlsdrResult = rtlsdr_set_center_freq(rtldev(rtlsdrHandle), centerFreq)) < 0)
             log.warn("failed rtlsdr_set_center_freq: [{}]", {rtlsdrResult});
 
@@ -306,6 +308,8 @@ struct RealtekDevice::Impl
 
       if (rtlsdrHandle)
       {
+         log.debug("rtlsdr_set_sample_rate({})", {sampleRate});
+
          if ((rtlsdrResult = rtlsdr_set_sample_rate(rtldev(rtlsdrHandle), sampleRate)) < 0)
             log.warn("failed rtlsdr_set_sample_rate: [{}]", {rtlsdrResult});
 
@@ -323,6 +327,8 @@ struct RealtekDevice::Impl
       {
          if (gainMode == RealtekDevice::Auto)
          {
+            log.debug("rtlsdr_set_tuner_gain_mode({})", {0});
+
             // set automatic gain
             if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtldev(rtlsdrHandle), 0)) < 0)
                log.warn("failed rtlsdr_set_tuner_gain_mode: [{}]", {rtlsdrResult});
@@ -331,6 +337,8 @@ struct RealtekDevice::Impl
          }
          else
          {
+            log.debug("rtlsdr_set_tuner_gain_mode({})", {1});
+
             // set manual gain
             if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtldev(rtlsdrHandle), 1)) < 0)
                log.warn("failed rtlsdr_set_tuner_gain: [{}]", {rtlsdrResult});
@@ -350,6 +358,8 @@ struct RealtekDevice::Impl
       {
          if (gainMode == RealtekDevice::Manual)
          {
+            log.debug("rtlsdr_set_tuner_gain({})", {gainValue});
+
             if ((rtlsdrResult = rtlsdr_set_tuner_gain(rtldev(rtlsdrHandle), gainValue)) < 0)
                log.warn("failed rtlsdr_set_tuner_gain: [{}]", {rtlsdrResult});
          }
@@ -369,6 +379,8 @@ struct RealtekDevice::Impl
 
       if (rtlsdrHandle)
       {
+         log.debug("rtlsdr_set_tuner_gain_mode({})", {!tunerAgc});
+
          if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtldev(rtlsdrHandle), !tunerAgc)) < 0)
             log.warn("failed rtlsdr_set_tuner_gain_mode: [{}]", {rtlsdrResult});
 
@@ -387,6 +399,8 @@ struct RealtekDevice::Impl
 
       if (rtlsdrHandle)
       {
+         log.debug("rtlsdr_set_tuner_gain_mode({})", {mixerAgc});
+
          if ((rtlsdrResult = rtlsdr_set_agc_mode(rtldev(rtlsdrHandle), mixerAgc)) < 0)
             log.warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
 
@@ -400,13 +414,15 @@ struct RealtekDevice::Impl
    {
       decimation = value;
 
-      if (rtlsdrHandle)
-      {
-         if ((rtlsdrResult = rtlsdr_set_agc_mode(rtldev(rtlsdrHandle), mixerAgc)) < 0)
-            log.warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
-
-         return rtlsdrResult;
-      }
+//      if (rtlsdrHandle)
+//      {
+//         log.debug("rtlsdr_set_agc_mode({})", {mixerAgc});
+//
+//         if ((rtlsdrResult = rtlsdr_set_agc_mode(rtldev(rtlsdrHandle), mixerAgc)) < 0)
+//            log.warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
+//
+//         return rtlsdrResult;
+//      }
 
       return -1;
    }
@@ -417,6 +433,8 @@ struct RealtekDevice::Impl
 
       if (rtlsdrHandle)
       {
+         log.debug("rtlsdr_set_testmode({})", {testMode});
+
          if ((rtlsdrResult = rtlsdr_set_testmode(rtldev(rtlsdrHandle), testMode)) < 0)
             log.warn("failed rtlsdr_set_testmode: [{}]", {rtlsdrResult});
 
