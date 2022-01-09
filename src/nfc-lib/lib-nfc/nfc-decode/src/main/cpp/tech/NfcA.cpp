@@ -221,8 +221,8 @@ struct NfcA::Impl : NfcTech
       if (decoder->signalAverage < decoder->powerLevelThreshold || decoder->signalClock < BUFFER_SIZE)
          return false;
 
-      // for NFC-A minimum correlation value is based on minimum modulation deep to filter-out higher bit-rates, only valid rate can reach the threshold
-      float minimumCorrelationValue = decoder->signalAverage * minimumModulationDeep;
+      // for NFC-A minimum correlation is required to filter-out higher bit-rates, only valid rate can reach the threshold
+      float minimumCorrelationValue = decoder->signalAverage;
 
       for (int rate = r106k; rate <= r424k; rate++)
       {
