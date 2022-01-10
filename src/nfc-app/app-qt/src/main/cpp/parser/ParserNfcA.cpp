@@ -126,7 +126,7 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcA::parseRequestREQA(const nfc::NfcFrame &frame)
 {
-   if (frame[0] != 0x26 || frame.size() != 1)
+   if (frame[0] != 0x26 || frame.limit() != 1)
       return nullptr;
 
    lastCommand = frame[0];
@@ -182,7 +182,7 @@ ProtocolFrame *ParserNfcA::parseResponseREQA(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcA::parseRequestWUPA(const nfc::NfcFrame &frame)
 {
-   if (frame[0] != 0x52)
+   if (frame[0] != 0x52 || frame.limit() != 1)
       return nullptr;
 
    lastCommand = frame[0];
@@ -302,7 +302,7 @@ ProtocolFrame *ParserNfcA::parseResponseSELn(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcA::parseRequestRATS(const nfc::NfcFrame &frame)
 {
-   if (frame[0] != 0xE0)
+   if (frame[0] != 0xE0 || frame.limit() != 4)
       return nullptr;
 
    lastCommand = frame[0];
@@ -444,7 +444,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcA::parseRequestHLTA(const nfc::NfcFrame &frame)
 {
-   if (frame[0] != 0x50)
+   if (frame[0] != 0x50 || frame.limit() != 4)
       return nullptr;
 
    lastCommand = frame[0];
@@ -475,7 +475,7 @@ ProtocolFrame *ParserNfcA::parseRequestPPSr(const nfc::NfcFrame &frame)
 {
    int pps = frame[0];
 
-   if ((pps & 0xF0) != 0xD0)
+   if ((pps & 0xF0) != 0xD0 || frame.limit() != 5)
       return nullptr;
 
    lastCommand = frame[0];
@@ -535,7 +535,7 @@ ProtocolFrame *ParserNfcA::parseResponsePPSr(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcA::parseRequestAUTH(const nfc::NfcFrame &frame)
 {
-   if (frame[0] != 0x60 && frame[0] != 0x61)
+   if ((frame[0] != 0x60 && frame[0] != 0x61) || frame.limit() != 4)
       return nullptr;
 
    lastCommand = frame[0];
