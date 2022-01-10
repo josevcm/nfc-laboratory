@@ -10,8 +10,8 @@ reader.
 
 Currently, detection and decoding is implemented for:
 
-- NFC-A (ISO14443A): 106kbps ASK modulation, 212kbps and 4124kbps with ASK / BPSK modulation.
-- NFC-B (ISO14443B): 106kbps, 212kbps and 4124kbps with ASK / BPSK modulation.
+- NFC-A (ISO14443A): 106kbps ASK modulation, 212kbps and 424kbps with ASK / BPSK modulation.
+- NFC-B (ISO14443B): 106kbps, 212kbps and 424kbps with ASK / BPSK modulation.
 - NFC-V (ISO15693): 26kbps and 53kbps, 1 of 4 code and 1 of 256 code PPM modulation. 
 - NFC-F (Felica): Preliminary, 212kbps and 424kbps, manchester modulation.
 
