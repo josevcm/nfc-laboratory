@@ -73,7 +73,7 @@ constexpr int NFCA_FWT_ATQA = 128 * 18;
 constexpr int NFCB_TR0_MIN = 1024;
 
 // NFC-B Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation in 1/FC units
-constexpr int NFCB_TR1_MIN = 1280;
+constexpr int NFCB_TR1_MIN = 1024;
 
 // NFC-B Synchronization time between the start of the PICC subcarrier generation and the start of the PICC subcarrier modulation in 1/FC units
 constexpr int NFCB_TR1_MAX = 3200;

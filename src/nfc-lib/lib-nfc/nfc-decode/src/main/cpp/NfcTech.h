@@ -34,15 +34,15 @@
 
 #include <nfc/Nfc.h>
 
-//#define DEBUG_SIGNAL
+#define DEBUG_SIGNAL
 
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 6
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 #define DEBUG_SIGNAL_FILTERED_CHANNEL 1
 #define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
-#define DEBUG_SIGNAL_AVERAGE_CHANNEL 3
-#define DEBUG_NFC_CHANNEL 4
+//#define DEBUG_SIGNAL_AVERAGE_CHANNEL 3
+#define DEBUG_NFC_CHANNEL 3
 #endif
 
 namespace nfc {
@@ -205,10 +205,10 @@ struct PulseParams
  */
 struct TimeSample
 {
-   float value; // sample raw value
-   float filtered; // IIR-DC filtered value
-   float variance; // standard deviation at sample time
-   float deep; // modulation deep at sample time
+   float samplingValue; // sample raw value
+   float filteredValue; // IIR-DC filtered value
+   float meanDeviation; // standard deviation at sample time
+   float modulateDepth; // modulation deep at sample time
 };
 
 /*
@@ -341,11 +341,14 @@ struct DecoderStatus
    // signal raw value
    float signalValue;
 
+   // signal DC removed value (IIR filter)
+   float signalFiltered;
+
    // signal exponential average value
    float signalAverage;
 
    // signal exponential variance value
-   float signalVariance;
+   float signalDeviation;
 
    // signal DC-removal IIR filter (n sample)
    float signalFilterN0;
@@ -390,16 +393,16 @@ struct DecoderStatus
       signalFilterN0 = signalValue + signalFilterN1 * signalParams.signalIIRdcA;
 
       // update signal value for IIR removal filter
-      float signalFiltered = signalFilterN0 - signalFilterN1;
+      signalFiltered = signalFilterN0 - signalFilterN1;
 
       // compute signal variance
-      signalVariance = signalVariance * signalParams.signalNoiseW0 + std::abs(signalFiltered) * signalParams.signalNoiseW1;
+      signalDeviation = signalDeviation * signalParams.signalNoiseW0 + std::abs(signalFiltered) * signalParams.signalNoiseW1;
 
       // store signal components in process buffer
-      sample[signalClock & (BUFFER_SIZE - 1)].value = signalValue;
-      sample[signalClock & (BUFFER_SIZE - 1)].filtered = signalFiltered;
-      sample[signalClock & (BUFFER_SIZE - 1)].variance = signalVariance;
-      sample[signalClock & (BUFFER_SIZE - 1)].deep = (signalAverage - std::clamp(signalValue, 0.0f, signalAverage)) / signalAverage;
+      sample[signalClock & (BUFFER_SIZE - 1)].samplingValue = signalValue;
+      sample[signalClock & (BUFFER_SIZE - 1)].filteredValue = signalFiltered;
+      sample[signalClock & (BUFFER_SIZE - 1)].meanDeviation = signalDeviation;
+      sample[signalClock & (BUFFER_SIZE - 1)].modulateDepth = (signalAverage - std::clamp(signalValue, 0.0f, signalAverage)) / signalAverage;
 
       // update IIR filter component
       signalFilterN1 = signalFilterN0;
@@ -409,15 +412,15 @@ struct DecoderStatus
 #endif
 
 #ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].value);
+      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].samplingValue);
 #endif
 
 #ifdef DEBUG_SIGNAL_FILTERED_CHANNEL
-      debug->set(DEBUG_SIGNAL_FILTERED_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].filtered);
+      debug->set(DEBUG_SIGNAL_FILTERED_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].filteredValue);
 #endif
 
 #ifdef DEBUG_SIGNAL_VARIANCE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VARIANCE_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].variance);
+      debug->set(DEBUG_SIGNAL_VARIANCE_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].meanDeviation);
 #endif
 
 #ifdef DEBUG_SIGNAL_DEEP_CHANNEL
