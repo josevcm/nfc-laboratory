@@ -208,13 +208,13 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       // initialize DC removal IIR filter scale factor
       decoder.signalParams.signalIIRdcA = float(0.9);
 
-      // initialize exponential average factors for power value
-      decoder.signalParams.signalAvergW0 = float(1 - 1E5 / decoder.sampleRate);
-      decoder.signalParams.signalAvergW1 = float(1 - decoder.signalParams.signalAvergW0);
+      // initialize exponential average factors for signal average
+      decoder.signalParams.signalMeanW0 = float(1 - 5E5 / decoder.sampleRate);
+      decoder.signalParams.signalMeanW1 = float(1 - decoder.signalParams.signalMeanW0);
 
-      // initialize exponential average factors for signal variance
-      decoder.signalParams.signalNoiseW0 = float(1 - 2E5 / decoder.sampleRate);
-      decoder.signalParams.signalNoiseW1 = float(1 - decoder.signalParams.signalNoiseW0);
+      // initialize exponential average factors for signal mean deviation
+      decoder.signalParams.signalMdevW0 = float(1 - 2E5 / decoder.sampleRate);
+      decoder.signalParams.signalMdevW1 = float(1 - decoder.signalParams.signalMdevW0);
 
       // configure NFC-A decoder
       nfca.configure(newSampleRate);

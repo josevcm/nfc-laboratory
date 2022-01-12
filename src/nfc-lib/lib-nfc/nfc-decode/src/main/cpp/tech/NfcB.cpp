@@ -782,21 +782,8 @@ struct NfcB::Impl : NfcTech
          // multiply 1 symbol delayed signal with incoming signal, (magic number 10 must be signal dependent, but i don't how...)
          modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)] = signalData * delay1Data * 10;
 
-         // compute phase integration
-         modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
-         modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
-
 #ifdef DEBUG_NFC_CHANNEL
          decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
-#endif
-
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->phaseIntegrate);
-#endif
-
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock < (frameStatus.guardEnd + 100))
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->searchValueThreshold);
 #endif
 
          // wait until frame guard time (TR0)
@@ -815,14 +802,22 @@ struct NfcB::Impl : NfcTech
          if (signalDeep > maximumModulationDeep)
             return PatternType::NoPattern;
 
+         // wait util search start
+         if (decoder->signalClock < modulation->searchStartTime)
+            continue;
+
+         // compute phase integration after guard end
+         modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
+         modulation->phaseIntegrate -= modulation->integrationData[delay4Index & (BUFFER_SIZE - 1)]; // remove delayed value
+
+#ifdef DEBUG_NFC_CHANNEL
+         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->phaseIntegrate);
+#endif
+
 #ifdef DEBUG_NFC_CHANNEL
          if (decoder->signalClock < (frameStatus.guardEnd + 100))
             decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->searchValueThreshold);
 #endif
-
-         // wait util search start
-         if (decoder->signalClock < modulation->searchStartTime)
-            continue;
 
          // search on positive phase
          if (modulation->phaseIntegrate > modulation->searchValueThreshold)

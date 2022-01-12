@@ -40,8 +40,8 @@
 #define DEBUG_CHANNELS 6
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 #define DEBUG_SIGNAL_FILTERED_CHANNEL 1
-#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
-//#define DEBUG_SIGNAL_AVERAGE_CHANNEL 3
+//#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
+#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
 #define DEBUG_NFC_CHANNEL 3
 #endif
 
@@ -144,12 +144,12 @@ struct SignalParams
    float signalIIRdcA;
 
    // factors for exponential signal power
-   float signalAvergW0;
-   float signalAvergW1;
+   float signalMeanW0;
+   float signalMeanW1;
 
    // factors for exponential signal variance
-   float signalNoiseW0;
-   float signalNoiseW1;
+   float signalMdevW0;
+   float signalMdevW1;
 
    // 1/FC
    double sampleTimeUnit;
@@ -386,7 +386,11 @@ struct DecoderStatus
          pulseFilter = 0;
 
          // compute slow signal average
-         signalAverage = signalAverage * signalParams.signalAvergW0 + signalValue * signalParams.signalAvergW1;
+         signalAverage = signalAverage * signalParams.signalMeanW0 + signalValue * signalParams.signalMeanW1;
+      }
+      else if (signalClock < signalParams.elementaryTimeUnit)
+      {
+         signalAverage = signalValue;
       }
 
       // process new IIR filter value
@@ -396,7 +400,7 @@ struct DecoderStatus
       signalFiltered = signalFilterN0 - signalFilterN1;
 
       // compute signal variance
-      signalDeviation = signalDeviation * signalParams.signalNoiseW0 + std::abs(signalFiltered) * signalParams.signalNoiseW1;
+      signalDeviation = signalDeviation * signalParams.signalMdevW0 + std::abs(signalFiltered) * signalParams.signalMdevW1;
 
       // store signal components in process buffer
       sample[signalClock & (BUFFER_SIZE - 1)].samplingValue = signalValue;
