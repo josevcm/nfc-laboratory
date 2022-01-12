@@ -108,7 +108,7 @@ struct NfcB::Impl : NfcTech
    // minimum modulation threshold to detect valid signal for NFC-B (default 75%)
    float maximumModulationDeep = 0.90f;
 
-   // minimum correlation threshold to detect valid NFC-V pulse (default 50%)
+   // minimum correlation threshold to detect valid NFC-B pulse (default 50%)
    float minimumCorrelationThreshold = 0.50f;
 
    // last detected frame end
@@ -240,8 +240,12 @@ struct NfcB::Impl : NfcTech
     */
    inline bool detectModulation()
    {
+      // wait until has enough data in buffer
+      if (decoder->signalClock < BUFFER_SIZE)
+         return false;
+
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold || decoder->signalClock < BUFFER_SIZE)
+      if (decoder->signalAverage < decoder->powerLevelThreshold)
          return false;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
@@ -1081,6 +1085,12 @@ struct NfcB::Impl : NfcTech
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
          frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
       }
+         // for response frames only set frame guard time before receive next poll frame
+      else
+      {
+         // initialize frame parameters to default protocol parameters
+         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+      }
 
       do
       {
@@ -1115,6 +1125,13 @@ struct NfcB::Impl : NfcTech
       }
       else
       {
+         // update frame timing parameters for receive next PCD frame
+         if (decoder->bitrate)
+         {
+            // poll frame guard time (PCD must not modulate within this period)
+            frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime + decoder->bitrate->symbolDelayDetect;
+         }
+
          // switch to modulation search
          frameStatus.frameType = 0;
 

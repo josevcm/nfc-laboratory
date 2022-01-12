@@ -236,8 +236,12 @@ struct NfcV::Impl : NfcTech
 
    inline bool detectModulation()
    {
+      // wait until has enough data in buffer
+      if (decoder->signalClock < BUFFER_SIZE)
+         return false;
+
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold || decoder->signalClock < BUFFER_SIZE)
+      if (decoder->signalAverage < decoder->powerLevelThreshold)
          return false;
 
       BitrateParams *bitrate = &bitrateParams;
@@ -1116,6 +1120,12 @@ struct NfcV::Impl : NfcTech
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
          frameStatus.frameWaitingTime = protocolStatus.frameWaitingTime;
       }
+         // for response frames only set frame guard time before receive next poll frame
+      else
+      {
+         // initialize frame parameters to default protocol parameters
+         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+      }
 
       do
       {
@@ -1150,6 +1160,13 @@ struct NfcV::Impl : NfcTech
       }
       else
       {
+         // update frame timing parameters for receive next PCD frame
+         if (decoder->bitrate)
+         {
+            // poll frame guard time (PCD must not modulate within this period)
+            frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime + decoder->bitrate->symbolDelayDetect;
+         }
+
          // switch to modulation search
          frameStatus.frameType = 0;
 

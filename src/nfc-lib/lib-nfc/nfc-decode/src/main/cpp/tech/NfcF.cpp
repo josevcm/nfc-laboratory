@@ -92,7 +92,7 @@ struct NfcF::Impl : NfcTech
    // minimum modulation threshold to detect valid signal for NFC-F (default 75%)
    float maximumModulationDeep = 0.90f;
 
-   // minimum correlation threshold to detect valid NFC-V pulse (default 50%)
+   // minimum correlation threshold to detect valid NFC-F pulse (default 10%)
    float minimumCorrelationThreshold = 0.50f;
 
    // last detected frame end
@@ -207,12 +207,16 @@ struct NfcF::Impl : NfcTech
 
    inline bool detectModulation()
    {
+      // wait until has enough data in buffer
+      if (decoder->signalClock < BUFFER_SIZE)
+         return false;
+
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold || decoder->signalClock < BUFFER_SIZE)
+      if (decoder->signalAverage < decoder->powerLevelThreshold)
          return false;
 
       // minimum correlation value for valid NFC-F symbols
-      float minimumCorrelationValue = decoder->signalAverage * minimumModulationDeep;
+      float minimumCorrelationValue = decoder->signalAverage * minimumCorrelationThreshold;
 
       // POLL frame ASK detector for 212Kbps and 424Kbps
       for (int rate = r212k; rate <= r424k; rate++)
@@ -1070,6 +1074,12 @@ struct NfcF::Impl : NfcTech
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
          frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
       }
+         // for response frames only set frame guard time before receive next poll frame
+      else
+      {
+         // initialize frame parameters to default protocol parameters
+         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+      }
 
       do
       {
@@ -1101,6 +1111,13 @@ struct NfcF::Impl : NfcTech
       }
       else
       {
+         // update frame timing parameters for receive next PCD frame
+         if (decoder->bitrate)
+         {
+            // poll frame guard time (PCD must not modulate within this period)
+            frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime + decoder->bitrate->symbolDelayDetect;
+         }
+
          // switch to modulation search
          frameStatus.frameType = 0;
 

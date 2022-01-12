@@ -40,8 +40,9 @@
 #define DEBUG_CHANNELS 6
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 #define DEBUG_SIGNAL_FILTERED_CHANNEL 1
-#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
+//#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
 //#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
+#define DEBUG_SIGNAL_DEEP_CHANNEL 2
 #define DEBUG_NFC_CHANNEL 3
 #endif
 
@@ -428,7 +429,7 @@ struct DecoderStatus
 #endif
 
 #ifdef DEBUG_SIGNAL_DEEP_CHANNEL
-      debug->set(DEBUG_SIGNAL_DEEP_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].deep);
+      debug->set(DEBUG_SIGNAL_DEEP_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].modulateDepth);
 #endif
 
 #ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL

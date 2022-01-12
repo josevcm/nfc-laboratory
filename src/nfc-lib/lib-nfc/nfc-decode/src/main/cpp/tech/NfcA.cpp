@@ -98,8 +98,8 @@ struct NfcA::Impl : NfcTech
    // minimum modulation threshold to detect valid signal for NFC-A (default 100%)
    float maximumModulationDeep = 1.00f;
 
-   // minimum correlation threshold to detect valid NFC-V pulse (default 50%)
-   float minimumCorrelationThreshold = 0.50f;
+   // minimum correlation threshold from signal average to detect valid NFC-A pulse (default 75%)
+   float minimumCorrelationThreshold = 0.75f;
 
    // last detected frame end
    unsigned int lastFrameEnd = 0;
@@ -166,7 +166,7 @@ struct NfcA::Impl : NfcTech
          bitrate->period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
          // delay guard for each symbol rate
-         bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
+         bitrate->symbolDelayDetect = 0; //rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
 
          // moving average offsets
          bitrate->offsetFutureIndex = BUFFER_SIZE;
@@ -218,14 +218,21 @@ struct NfcA::Impl : NfcTech
     */
    inline bool detectModulation()
    {
-      // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold || decoder->signalClock < BUFFER_SIZE)
+      // wait until has enough data in buffer
+      if (decoder->signalClock < BUFFER_SIZE)
          return false;
 
-      // for NFC-A minimum correlation is required to filter-out higher bit-rates, only valid rate can reach the threshold
-      float minimumCorrelationValue = decoder->signalAverage;
+      // ignore low power signals
+      if (decoder->signalAverage < decoder->powerLevelThreshold)
+         return false;
 
-      for (int rate = r106k; rate <= r424k; rate++)
+      if (decoder->signalClock == 199238)
+         log.info("");
+
+      // for NFC-A minimum correlation is required to filter-out higher bit-rates, only valid rate can reach the threshold
+      float minimumCorrelationValue = decoder->signalAverage * minimumCorrelationThreshold;
+
+      for (int rate = r212k; rate <= r212k; rate++)
       {
          BitrateParams *bitrate = bitrateParams + rate;
          ModulationStatus *modulation = modulationStatus + rate;
@@ -289,6 +296,7 @@ struct NfcA::Impl : NfcTech
             }
 
             // detect maximum modulation deep when first pulse rise
+            // TODO: Reset old modulation DEEP!!!
             if (correlatedSD < 0)
             {
                if (signalDeep > modulation->detectorPeakValue)
@@ -628,11 +636,11 @@ struct NfcA::Impl : NfcTech
                      // process frame
                      process(response);
 
-                     // reset modulation status
-                     resetModulation();
-
                      // add to frame list
                      frames.push_back(response);
+
+                     // reset modulation status
+                     resetModulation();
 
                      return true;
                   }
@@ -746,14 +754,14 @@ struct NfcA::Impl : NfcTech
                      // add bytes to frame and flip to prepare read
                      response.put(streamStatus.buffer, streamStatus.bytes).flip();
 
-                     // reset modulation status
-                     resetModulation();
-
                      // process frame
                      process(response);
 
                      // add to frame list
                      frames.push_back(response);
+
+                     // reset modulation status
+                     resetModulation();
 
                      return true;
                   }
@@ -1353,6 +1361,9 @@ struct NfcA::Impl : NfcTech
          ++delay1Index;
          ++delay4Index;
 
+         if (decoder->signalClock == 626243)
+            log.info("");
+
          // get signal samples
          float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filteredValue;
          float delay1Data = decoder->sample[delay1Index & (BUFFER_SIZE - 1)].filteredValue;
@@ -1501,6 +1512,12 @@ struct NfcA::Impl : NfcTech
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
          frameStatus.requestGuardTime = protocolStatus.requestGuardTime;
       }
+         // for response frames only set frame guard time before receive next poll frame
+      else
+      {
+         // initialize frame parameters to default protocol parameters
+         frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
+      }
 
       do
       {
@@ -1564,6 +1581,13 @@ struct NfcA::Impl : NfcTech
       }
       else
       {
+         // update frame timing parameters for receive next PCD frame
+         if (decoder->bitrate)
+         {
+            // poll frame guard time (PCD must not modulate within this period)
+            frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime + decoder->bitrate->symbolDelayDetect;
+         }
+
          // switch to modulation search
          frameStatus.frameType = 0;
 
