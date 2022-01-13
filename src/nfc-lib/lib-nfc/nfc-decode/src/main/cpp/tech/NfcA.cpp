@@ -166,7 +166,7 @@ struct NfcA::Impl : NfcTech
          bitrate->period8SymbolSamples = int(std::round(decoder->signalParams.sampleTimeUnit * (16 >> rate))); // and so on...
 
          // delay guard for each symbol rate
-         bitrate->symbolDelayDetect = 0; //rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
+         bitrate->symbolDelayDetect = rate > r106k ? bitrateParams[rate - 1].symbolDelayDetect + bitrateParams[rate - 1].period1SymbolSamples : 0;
 
          // moving average offsets
          bitrate->offsetFutureIndex = BUFFER_SIZE;
@@ -226,13 +226,10 @@ struct NfcA::Impl : NfcTech
       if (decoder->signalAverage < decoder->powerLevelThreshold)
          return false;
 
-      if (decoder->signalClock == 199238)
-         log.info("");
-
       // for NFC-A minimum correlation is required to filter-out higher bit-rates, only valid rate can reach the threshold
       float minimumCorrelationValue = decoder->signalAverage * minimumCorrelationThreshold;
 
-      for (int rate = r212k; rate <= r212k; rate++)
+      for (int rate = r106k; rate <= r424k; rate++)
       {
          BitrateParams *bitrate = bitrateParams + rate;
          ModulationStatus *modulation = modulationStatus + rate;
@@ -240,6 +237,7 @@ struct NfcA::Impl : NfcTech
          //  signal pointers
          unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
          unsigned int delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+         unsigned int delay8Index = (bitrate->offsetDelay8Index + decoder->signalClock);
 
          // correlation pointers
          unsigned int filterPoint1 = (signalIndex % bitrate->period1SymbolSamples);
@@ -276,7 +274,7 @@ struct NfcA::Impl : NfcTech
 #endif
 
          // get signal deep
-         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].modulateDepth;
+         float signalDeep = decoder->sample[delay8Index & (BUFFER_SIZE - 1)].modulateDepth;
 
          // wait until correlation search start
          if (decoder->signalClock < modulation->searchStartTime)
@@ -293,12 +291,7 @@ struct NfcA::Impl : NfcTech
                   modulation->correlatedPeakTime = decoder->signalClock;
                   modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
                }
-            }
 
-            // detect maximum modulation deep when first pulse rise
-            // TODO: Reset old modulation DEEP!!!
-            if (correlatedSD < 0)
-            {
                if (signalDeep > modulation->detectorPeakValue)
                {
                   modulation->detectorPeakValue = signalDeep;
@@ -1360,9 +1353,6 @@ struct NfcA::Impl : NfcTech
          ++signalIndex;
          ++delay1Index;
          ++delay4Index;
-
-         if (decoder->signalClock == 626243)
-            log.info("");
 
          // get signal samples
          float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filteredValue;

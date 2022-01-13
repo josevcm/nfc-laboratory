@@ -253,6 +253,7 @@ struct NfcV::Impl : NfcTech
       // compute signal pointers
       unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
       unsigned int delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
+      unsigned int delay8Index = (bitrate->offsetDelay8Index + decoder->signalClock);
 
       // correlation points
       unsigned int filterPoint1 = (signalIndex % bitrate->period1SymbolSamples);
@@ -261,7 +262,7 @@ struct NfcV::Impl : NfcTech
       // get signal samples
       float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].samplingValue;
       float delay2Data = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].samplingValue;
-      float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].modulateDepth;
+      float signalDeep = decoder->sample[delay8Index & (BUFFER_SIZE - 1)].modulateDepth;
 
       // integrate signal data over 1/2 symbol
       modulation->filterIntegrate += signalData; // add new value
@@ -300,12 +301,8 @@ struct NfcV::Impl : NfcTech
             modulation->correlatedPeakTime = decoder->signalClock;
             modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
          }
-      }
 
-      // max modulation deep detector
-      if (correlatedS0 > 0)
-      {
-         // maximum modulation deep
+         // detect maximum modulation deep
          if (signalDeep > modulation->detectorPeakValue)
          {
             modulation->detectorPeakValue = signalDeep;
