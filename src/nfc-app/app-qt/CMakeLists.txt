@@ -6,7 +6,7 @@ set(CMAKE_AUTORCC ON)
 
 set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 
-find_package(Qt5 COMPONENTS Core Widgets PrintSupport OpenGL REQUIRED)
+find_package(Qt5 COMPONENTS Core Widgets PrintSupport REQUIRED)
 
 add_executable(nfc-lab WIN32
 #add_executable(nfc-lab
@@ -48,8 +48,6 @@ add_executable(nfc-lab WIN32
         src/main/assets/icons/icons.qrc
         src/main/assets/theme/dark/style.qrc
         )
-
-#target_compile_options(nfc-lab PRIVATE "-fopt-info-vec-optimized")
 
 target_include_directories(nfc-lab PRIVATE ${PRIVATE_SOURCE_DIR})
 target_include_directories(nfc-lab PRIVATE ${AUTOGEN_BUILD_DIR}/include)
