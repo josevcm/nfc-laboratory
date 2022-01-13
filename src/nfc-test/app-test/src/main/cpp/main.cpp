@@ -22,7 +22,7 @@
 
 */
 
-#include <cmath>
+#include <filesystem>
 
 #include <rt/Logger.h>
 
@@ -35,10 +35,10 @@
 
 using namespace rt;
 
+Logger log {"main"};
+
 int startTest1(int argc, char *argv[])
 {
-   Logger log {"main"};
-
    log.info("***********************************************************************");
    log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
@@ -80,18 +80,75 @@ int startTest1(int argc, char *argv[])
    return 0;
 }
 
+int processPath(const std::filesystem::path &path)
+{
+   return 0;
+}
+
+int processFile(const std::filesystem::path &path)
+{
+   nfc::NfcDecoder decoder;
+
+   decoder.setEnableNfcA(true);
+   decoder.setEnableNfcB(true);
+   decoder.setEnableNfcF(true);
+   decoder.setEnableNfcV(true);
+
+   sdr::RecordDevice source(path.string());
+
+   if (source.open(sdr::RecordDevice::OpenMode::Read))
+   {
+      while (!source.isEof())
+      {
+         sdr::SignalBuffer samples(65536 * source.channelCount(), source.channelCount(), source.sampleRate(), 0, 0, sdr::SignalType::SAMPLE_REAL);
+
+         if (source.read(samples) > 0)
+         {
+            std::list<nfc::NfcFrame> frames = decoder.nextFrames(samples);
+
+            for (const nfc::NfcFrame &frame: frames)
+            {
+               if (frame.isPollFrame())
+               {
+                  log.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+               }
+               else if (frame.isListenFrame())
+               {
+                  log.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+               }
+            }
+         }
+      }
+   }
+
+   return 0;
+}
 
 int main(int argc, char *argv[])
 {
-   Logger log {"main"};
-
    log.info("***********************************************************************");
    log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
 
-   for (int i = 0; i < argc; i++)
-      log.info("\t{}", {argv[i]});
+   for (int i = 1; i < argc; i++)
+   {
+      std::filesystem::path path = argv[i];
 
-   return startTest1(argc, argv);
+      if (std::filesystem::is_directory(path))
+      {
+         log.info("processing path {}", {path.string()});
+
+         processPath(path);
+      }
+      else if (std::filesystem::is_regular_file(path))
+      {
+         log.info("processing file {}", {path.string()});
+
+         processFile(path);
+      }
+   }
+
+   return 0;
 }
+
 

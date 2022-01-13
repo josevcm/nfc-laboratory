@@ -26,6 +26,7 @@
 #define NFC_LAB_MAP_H
 
 #include <map>
+#include <optional>
 
 #include <rt/Variant.h>
 

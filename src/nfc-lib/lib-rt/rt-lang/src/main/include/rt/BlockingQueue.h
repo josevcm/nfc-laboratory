@@ -28,6 +28,7 @@
 #include <list>
 #include <mutex>
 #include <condition_variable>
+#include <optional>
 
 namespace rt {
 
@@ -56,14 +57,9 @@ class BlockingQueue
             return it.operator*();
          }
 
-         inline bool operator==(const Iterator &other)
-         {
-            return it.operator==(other.it);
-         }
-
          inline bool operator!=(const Iterator &other)
          {
-            return it.operator!=(other.it);
+            return it != other.it;
          }
 
          inline Iterator &operator++()

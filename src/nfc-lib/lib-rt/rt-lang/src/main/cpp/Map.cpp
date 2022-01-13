@@ -22,6 +22,8 @@
 
 */
 
+#include <optional>
+
 #include <rt/Map.h>
 #include <rt/Format.h>
 
