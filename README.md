@@ -51,7 +51,7 @@ defaultWidth=1280
 defaultHeight=760
 ```
 
-Stores the status of the sale and controls, nothing very interesting.
+Stores the status of the window and controls, nothing very interesting.
 
 ```
 [decoder]
