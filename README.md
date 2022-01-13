@@ -33,7 +33,109 @@ Protocol detail view.
 
 ![APP](doc/img/nfc-lab-screenshot4.png?raw=true "Protocol detail example")
 
-Inside the "doc" folder you can find a [video](doc/mp4/VID-20210912-WA0004.mp4?raw=true) with an example of how it works.
+## Recommended settings
+
+The configuration is found in the file `conf/nfc-lab.conf` and consists of the following sections:
+
+```
+[settings]
+device=airspy
+```
+It indicates which will be the SDR device to use in case of detecting several. If only one is connected, it does not apply.
+
+```
+[window]
+followEnabled=true
+filterEnabled=false
+defaultWidth=1280
+defaultHeight=760
+```
+
+Stores the status of the sale and controls, nothing very interesting.
+
+```
+[decoder]
+powerLevelThreshold=0.01
+```
+
+Minimum absolute signal strength to start decoding.
+
+```
+[decoder.nfca]
+enabled=true
+minimumModulationThreshold=0.90
+maximumModulationThreshold=1.00
+
+[decoder.nfcb]
+enabled=true
+minimumModulationThreshold=0.08
+maximumModulationThreshold=1.00
+
+[decoder.nfcf]
+enabled=true
+minimumModulationThreshold=0.08
+maximumModulationThreshold=1.00
+
+[decoder.nfcv]
+enabled=true
+minimumModulationThreshold=0.90
+maximumModulationThreshold=1.00
+```
+
+Each of the sections controls the parameters for the indicated technology. It allows activating or not its detection 
+and the minimum and maximum modulation depths to detect the signal. The values that appear here are recommended.
+
+```
+[device.airspy]
+gainMode=1
+gainValue=4
+tunerAgc=false
+mixerAgc=false
+centerFreq=40680000
+sampleRate=10000000
+```
+
+Configuration parameters for the Airspy receiver, the best performance is obtained by tuning in second harmonic 
+at 40.68Mhz.
+
+```
+[device.rtlsdr]
+gainMode=1
+gainValue=125
+tunerAgc=false
+mixerAgc=false
+centerFreq=40680000
+sampleRate=2400000
+```
+
+Configuration parameters for the RTL-SDR receiver, the best performance is obtained by tuning to the first harmonic 
+at 27.12Mhz. 
+
+Decoding with this device is quite limited due to its low sampling frequency and 8-bit resolution, 
+it will not offer the necessary quality, is supported only as a reference to experiment with it.
+
+```
+[keys.default]
+s00=000000000000, 000000000000
+s01=000000000000, 000000000000
+s02=000000000000, 000000000000
+s03=000000000000, 000000000000
+s04=000000000000, 000000000000
+s05=000000000000, 000000000000
+s06=000000000000, 000000000000
+s07=000000000000, 000000000000
+s08=000000000000, 000000000000
+s09=000000000000, 000000000000
+s10=000000000000, 000000000000
+s11=000000000000, 000000000000
+s12=000000000000, 000000000000
+s13=000000000000, 000000000000
+s14=000000000000, 000000000000
+s15=000000000000, 000000000000
+```
+
+At the moment these keys are not used, in the future their objective is to decrypt on the fly the communication with a 
+Mifare classic card.
 
 ## SDR Receivers tested
 
