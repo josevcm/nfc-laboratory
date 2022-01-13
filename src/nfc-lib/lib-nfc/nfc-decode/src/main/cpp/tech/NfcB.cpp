@@ -249,7 +249,7 @@ struct NfcB::Impl : NfcTech
          return false;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
-      for (int rate = r106k; rate <= r424k; rate++)
+      for (int rate = r106k; rate <= r212k; rate++)
       {
          BitrateParams *bitrate = bitrateParams + rate;
          ModulationStatus *modulation = modulationStatus + rate;
@@ -259,23 +259,22 @@ struct NfcB::Impl : NfcTech
 
          // get signal samples
          float signalEdge = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filteredValue;
-//         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].modulateDepth;
+         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].modulateDepth;
 
 #ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL, signalEdge * 10);
+         decoder->debug->set(DEBUG_NFC_CHANNEL, signalEdge);
 #endif
-//         // reset modulation if exceed limits
-//         if (signalDeep > maximumModulationDeep)
-//         {
-//            modulation->symbolStartTime = 0;
-//            modulation->symbolEndTime = 0;
-//            modulation->searchStartTime = 0;
-//            modulation->searchEndTime = 0;
-//            modulation->detectorPeakTime = 0;
-//            modulation->detectorPeakValue = 0;
-//
-//            return false;
-//         }
+
+         // recover status from previous partial search or maximum modulation depth
+         if (signalDeep > maximumModulationDeep || (modulation->detectorPeakTime && decoder->signalClock > modulation->detectorPeakTime + bitrate->period1SymbolSamples))
+         {
+            modulation->symbolStartTime = 0;
+            modulation->symbolEndTime = 0;
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->detectorPeakTime = 0;
+            modulation->detectorPeakValue = 0;
+         }
 
          // no modulation detected, search SoF begin
          if (!modulation->symbolStartTime)
@@ -284,7 +283,7 @@ struct NfcB::Impl : NfcTech
             modulation->searchValueThreshold = decoder->signalAverage * minimumModulationDeep;
 
             // detect edge at maximum peak
-            if (signalEdge < -modulation->searchValueThreshold && modulation->detectorPeakValue > signalEdge)
+            if (signalEdge < -modulation->searchValueThreshold && signalEdge < modulation->detectorPeakValue)
             {
                modulation->detectorPeakValue = signalEdge;
                modulation->detectorPeakTime = decoder->signalClock;
@@ -328,7 +327,7 @@ struct NfcB::Impl : NfcTech
             }
 
             // detect edge at maximum peak
-            if (signalEdge > modulation->searchValueThreshold && modulation->detectorPeakValue < signalEdge)
+            if (signalEdge > modulation->searchValueThreshold && signalEdge > modulation->detectorPeakValue)
             {
                modulation->detectorPeakValue = signalEdge;
                modulation->detectorPeakTime = decoder->signalClock;
@@ -478,8 +477,8 @@ struct NfcB::Impl : NfcTech
          // detect end of frame
          if (frameEnd || streamError || truncateError)
          {
-            // a valid frame must contain at least one byte of data
-            if (streamStatus.bytes > 0)
+            // a valid frame must contain at least 3 bytes byte of data
+            if (streamStatus.bytes > 2)
             {
                frameStatus.frameEnd = symbolStatus.end;
 

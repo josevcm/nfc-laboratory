@@ -273,8 +273,18 @@ struct NfcA::Impl : NfcTech
          decoder->debug->set(DEBUG_NFC_CHANNEL + 2, modulation->searchValueThreshold);
 #endif
 
-         // get signal deep
-         float signalDeep = decoder->sample[delay8Index & (BUFFER_SIZE - 1)].modulateDepth;
+         // recover status from previous partial search
+         if (modulation->correlatedPeakTime && decoder->signalClock > modulation->correlatedPeakTime + bitrate->period1SymbolSamples)
+         {
+            modulation->symbolStartTime = 0;
+            modulation->symbolEndTime = 0;
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->detectorPeakTime = 0;
+            modulation->detectorPeakValue = 0;
+            modulation->correlatedPeakTime = 0;
+            modulation->correlatedPeakValue = 0;
+         }
 
          // wait until correlation search start
          if (decoder->signalClock < modulation->searchStartTime)
@@ -282,6 +292,9 @@ struct NfcA::Impl : NfcTech
 
          if (!modulation->symbolStartTime)
          {
+            // get signal deep
+            float signalDeep = decoder->sample[delay8Index & (BUFFER_SIZE - 1)].modulateDepth;
+
             // detect minimum correlation point
             if (correlatedSD < -minimumCorrelationValue)
             {

@@ -287,6 +287,19 @@ struct NfcV::Impl : NfcTech
          decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
 #endif
 
+      // recover status from previous partial search
+      if (modulation->correlatedPeakTime && decoder->signalClock > modulation->correlatedPeakTime + bitrate->period0SymbolSamples)
+      {
+         modulation->symbolStartTime = 0;
+         modulation->symbolEndTime = 0;
+         modulation->searchStartTime = 0;
+         modulation->searchEndTime = 0;
+         modulation->detectorPeakTime = 0;
+         modulation->detectorPeakValue = 0;
+         modulation->correlatedPeakTime = 0;
+         modulation->correlatedPeakValue = 0;
+      }
+
       // wait until search start
       if (decoder->signalClock < modulation->searchStartTime)
          return false;

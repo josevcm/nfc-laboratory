@@ -236,7 +236,7 @@ struct NfcF::Impl : NfcTech
          // get signal samples
          float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].samplingValue;
          float delay2Data = decoder->sample[delay2Index & (BUFFER_SIZE - 1)].samplingValue;
-//         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
+         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].modulateDepth;
 
          // integrate signal data over 1/2 symbol
          modulation->filterIntegrate += signalData; // add new value
@@ -258,6 +258,19 @@ struct NfcF::Impl : NfcTech
          if (decoder->signalClock == modulation->searchSyncTime && modulation->searchPulseWidth % 8 == 0)
             decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.50f);
 #endif
+
+         // recover status from previous partial search or maximum modulation depth
+         if (signalDeep > maximumModulationDeep || (modulation->correlatedPeakTime && decoder->signalClock > modulation->correlatedPeakTime + bitrate->period1SymbolSamples))
+         {
+            modulation->symbolStartTime = 0;
+            modulation->symbolEndTime = 0;
+            modulation->searchStartTime = 0;
+            modulation->searchEndTime = 0;
+            modulation->detectorPeakTime = 0;
+            modulation->detectorPeakValue = 0;
+            modulation->correlatedPeakTime = 0;
+            modulation->correlatedPeakValue = 0;
+         }
 
          // wait until search start
          if (decoder->signalClock < modulation->searchStartTime)
