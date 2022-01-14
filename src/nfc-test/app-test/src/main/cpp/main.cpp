@@ -35,13 +35,13 @@
 
 using namespace rt;
 
-Logger log {"main"};
+Logger logger {"main"};
 
 int startTest1(int argc, char *argv[])
 {
-   log.info("***********************************************************************");
-   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
-   log.info("***********************************************************************");
+   logger.info("***********************************************************************");
+   logger.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   logger.info("***********************************************************************");
 
    nfc::NfcDecoder decoder;
 
@@ -66,11 +66,11 @@ int startTest1(int argc, char *argv[])
             {
                if (frame.isPollFrame())
                {
-                  log.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+                  logger.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
                }
                else if (frame.isListenFrame())
                {
-                  log.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+                  logger.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
                }
             }
          }
@@ -110,11 +110,11 @@ int processFile(const std::filesystem::path &path)
             {
                if (frame.isPollFrame())
                {
-                  log.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+                  logger.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
                }
                else if (frame.isListenFrame())
                {
-                  log.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
+                  logger.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
                }
             }
          }
@@ -126,9 +126,9 @@ int processFile(const std::filesystem::path &path)
 
 int main(int argc, char *argv[])
 {
-   log.info("***********************************************************************");
-   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
-   log.info("***********************************************************************");
+   logger.info("***********************************************************************");
+   logger.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   logger.info("***********************************************************************");
 
    for (int i = 1; i < argc; i++)
    {
@@ -136,13 +136,13 @@ int main(int argc, char *argv[])
 
       if (std::filesystem::is_directory(path))
       {
-         log.info("processing path {}", {path.string()});
+         logger.info("processing path {}", {path.string()});
 
          processPath(path);
       }
       else if (std::filesystem::is_regular_file(path))
       {
-         log.info("processing file {}", {path.string()});
+         logger.info("processing file {}", {path.string()});
 
          processFile(path);
       }
