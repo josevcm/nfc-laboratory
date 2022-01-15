@@ -532,7 +532,7 @@ struct QtDecoder::Impl
          taskStorageClear();
 
          // start XML file read
-         taskStorageRead(fileName);
+         taskStorageRead(json);
       }
    }
 
@@ -541,15 +541,19 @@ struct QtDecoder::Impl
     */
    void doWriteFile(DecoderControlEvent *event) const
    {
-      QString name = event->getString("file");
+      QJsonObject json;
 
-      if (name.endsWith(".wav"))
+      QString fileName = event->getString("fileName");
+
+      json["fileName"] = fileName;
+
+      if (fileName.endsWith(".wav"))
       {
       }
-      else if (name.endsWith(".xml") || name.endsWith(".json"))
+      else if (fileName.endsWith(".xml") || fileName.endsWith(".json"))
       {
          // start XML file write
-         taskStorageWrite(name);
+         taskStorageWrite(json);
       }
    }
 
@@ -644,19 +648,23 @@ struct QtDecoder::Impl
    /*
     * start storage task to read frames from file
     */
-   void taskStorageRead(const QString &name, std::function<void()> onComplete = nullptr) const
+   void taskStorageRead(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
+      QJsonDocument doc(data);
+
       // read frame data from file
-      storageCommandStream->next({nfc::FrameStorageTask::Read, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
+      storageCommandStream->next({nfc::FrameStorageTask::Read, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
     * start storage task for write frames to file
     */
-   void taskStorageWrite(const QString &name, std::function<void()> onComplete = nullptr) const
+   void taskStorageWrite(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
    {
+      QJsonDocument doc(data);
+
       // write frame data to file
-      storageCommandStream->next({nfc::FrameStorageTask::Write, std::move(onComplete), nullptr, {{"file", name.toStdString()}}});
+      storageCommandStream->next({nfc::FrameStorageTask::Write, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*

@@ -1,0 +1,124 @@
+{
+   "frames": [
+      {
+         "frameData": "26",
+         "frameFlags": 1,
+         "framePhase": 1,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 28463,
+         "sampleStart": 27661,
+         "techType": 1,
+         "timeEnd": 0.0028463,
+         "timeStart": 0.0027661
+      },
+      {
+         "frameData": "26",
+         "frameFlags": 1,
+         "framePhase": 1,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 84533,
+         "sampleStart": 83731,
+         "techType": 1,
+         "timeEnd": 0.0084533,
+         "timeStart": 0.0083731
+      },
+      {
+         "frameData": "05:00:00:71:FF",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 242587,
+         "sampleStart": 235782,
+         "techType": 2,
+         "timeEnd": 0.0242587,
+         "timeStart": 0.0235782
+      },
+      {
+         "frameData": "05:00:00:71:FF",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 307435,
+         "sampleStart": 300630,
+         "techType": 2,
+         "timeEnd": 0.0307435,
+         "timeStart": 0.030063
+      },
+      {
+         "frameData": "26",
+         "frameFlags": 1,
+         "framePhase": 1,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 452385,
+         "sampleStart": 451582,
+         "techType": 1,
+         "timeEnd": 0.0452385,
+         "timeStart": 0.0451582
+      },
+      {
+         "frameData": "26",
+         "frameFlags": 1,
+         "framePhase": 1,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 508171,
+         "sampleStart": 507368,
+         "techType": 1,
+         "timeEnd": 0.0508171,
+         "timeStart": 0.0507368
+      },
+      {
+         "frameData": "06:00:FF:FF:00:00:09:21",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 211875,
+         "frameType": 2,
+         "sampleEnd": 666415,
+         "sampleStart": 660373,
+         "techType": 3,
+         "timeEnd": 0.0666415,
+         "timeStart": 0.0660373
+      },
+      {
+         "frameData": "06:00:FF:FF:00:00:09:21",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 211875,
+         "frameType": 2,
+         "sampleEnd": 715075,
+         "sampleStart": 709033,
+         "techType": 3,
+         "timeEnd": 0.0715075,
+         "timeStart": 0.0709033
+      },
+      {
+         "frameData": "06:00:FF:FF:00:00:09:21",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 423750,
+         "frameType": 2,
+         "sampleEnd": 864807,
+         "sampleStart": 861786,
+         "techType": 3,
+         "timeEnd": 0.0864807,
+         "timeStart": 0.0861786
+      },
+      {
+         "frameData": "06:00:FF:FF:00:00:09:21",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 423750,
+         "frameType": 2,
+         "sampleEnd": 910447,
+         "sampleStart": 907425,
+         "techType": 3,
+         "timeEnd": 0.0910447,
+         "timeStart": 0.0907425
+      }
+   ]
+}

@@ -319,7 +319,7 @@ ProtocolFrame *ParserNfcA::parseRequestRATS(const nfc::NfcFrame &frame)
 
    if (ProtocolFrame *param = root->appendChild(buildFieldInfo("PARAM", QString("%1 [%2]").arg(par, 2, 16, QChar('0')).arg(par, 8, 2, QChar('0')))))
    {
-      param->appendChild(buildFieldInfo(QString("[%1....] FSD max frame size %2").arg(fsdi, 4, 2, QChar('0')).arg(NFC_FDS_TABLE[fsdi])));
+      param->appendChild(buildFieldInfo(QString("[%1....] FSD max frame size %2").arg(fsdi, 4, 2, QChar('0')).arg(nfc::NFC_FDS_TABLE[fsdi])));
       param->appendChild(buildFieldInfo(QString("[....%1] CDI logical channel %2").arg(cdi, 4, 2, QChar('0')).arg(cdi)));
    }
 
@@ -353,7 +353,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
 
          if (ProtocolFrame *t0f = ats->appendChild(buildFieldInfo("T0", QString("%1 [%2]").arg(t0, 2, 16, QChar('0')).arg(t0, 8, 2, QChar('0')))))
          {
-            t0f->appendChild(buildFieldInfo(QString("[....%1] max frame size %2").arg(fsci, 4, 2, QChar('0')).arg(NFC_FDS_TABLE[fsci])));
+            t0f->appendChild(buildFieldInfo(QString("[....%1] max frame size %2").arg(fsci, 4, 2, QChar('0')).arg(nfc::NFC_FDS_TABLE[fsci])));
 
             // TA is transmitted, if bit 4 is set to 1
             if (t0 & 0x10)
@@ -404,8 +404,8 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
                   int fwi = (tb >> 4) & 0x0f;
                   int sfgi = (tb & 0x0f);
 
-                  float fwt = NFC_FWT_TABLE[fwi] / NFC_FC;
-                  float sfgt = NFC_SFGT_TABLE[sfgi] / NFC_FC;
+                  float fwt = nfc::NFC_FWT_TABLE[fwi] / nfc::NFC_FC;
+                  float sfgt = nfc::NFC_SFGT_TABLE[sfgi] / nfc::NFC_FC;
 
                   tbf->appendChild(buildFieldInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(1E3 * fwt, 0, 'f', 2)));
                   tbf->appendChild(buildFieldInfo(QString("[....%1] start-up frame guard time SFGT = %2 ms").arg(sfgi, 4, 2, QChar('0')).arg(1E3 * sfgt, 0, 'f', 2)));

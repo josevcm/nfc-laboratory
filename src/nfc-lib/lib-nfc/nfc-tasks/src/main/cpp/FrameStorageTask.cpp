@@ -24,6 +24,7 @@
 
 #include <fstream>
 #include <iomanip>
+#include <filesystem>
 
 #include <rt/Logger.h>
 #include <rt/Format.h>
@@ -103,102 +104,141 @@ struct FrameStorageTask::Impl : FrameStorageTask, AbstractTask
 
    void readFile(rt::Event &command)
    {
-      if (auto file = command.get<std::string>("file"))
+      if (auto data = command.get<std::string>("data"))
       {
-         log.info("read frames from file {}", {file.value()});
+         auto config = json::parse(data.value());
 
-         json data;
+         log.info("read file command: {}", {config.dump()});
 
-         // create output file
-         std::ifstream input(file.value());
-
-         // read json file
-         input >> data;
-
-         if (data.contains("frames"))
+         if (config.contains("fileName"))
          {
-            // read frames from file
-            for (const auto &frame : data["frames"])
+            std::string file = config["fileName"];
+
+            log.info("read frames from file {}", {file});
+
+            json info;
+
+            if (std::filesystem::exists(file))
             {
-               nfc::NfcFrame nfcFrame;
+               // open file
+               std::ifstream input(file);
 
-               nfcFrame.setTechType(nfc::TechType::NfcA);
-               nfcFrame.setFrameType(frame["frameType"]);
-               nfcFrame.setFramePhase(frame["framePhase"]);
-               nfcFrame.setFrameFlags(frame["frameFlags"]);
-               nfcFrame.setFrameRate(frame["frameRate"]);
-               nfcFrame.setTimeStart(frame["timeStart"]);
-               nfcFrame.setTimeEnd(frame["timeEnd"]);
-               nfcFrame.setSampleStart(frame["sampleStart"]);
-               nfcFrame.setSampleEnd(frame["sampleEnd"]);
-
-               std::string frameData = frame["frameData"];
-
-               for (size_t index = 0, size = 0; index < frameData.length(); index += size + 1)
-               {
-                  nfcFrame.put(std::stoi(frameData.c_str() + index, &size, 16));
-               }
-
-               nfcFrame.flip();
-
-               storageStream->next(nfcFrame);
+               // read json
+               input >> info;
             }
-         }
 
-         command.resolve();
+            if (info.contains("frames"))
+            {
+               // read frames from file
+               for (const auto &frame: info["frames"])
+               {
+                  nfc::NfcFrame nfcFrame;
+
+                  nfcFrame.setTechType(frame["techType"]);
+                  nfcFrame.setFrameType(frame["frameType"]);
+                  nfcFrame.setFramePhase(frame["framePhase"]);
+                  nfcFrame.setFrameFlags(frame["frameFlags"]);
+                  nfcFrame.setFrameRate(frame["frameRate"]);
+                  nfcFrame.setTimeStart(frame["timeStart"]);
+                  nfcFrame.setTimeEnd(frame["timeEnd"]);
+                  nfcFrame.setSampleStart(frame["sampleStart"]);
+                  nfcFrame.setSampleEnd(frame["sampleEnd"]);
+
+                  std::string frameData = frame["frameData"];
+
+                  for (size_t index = 0, size = 0; index < frameData.length(); index += size + 1)
+                  {
+                     nfcFrame.put(std::stoi(frameData.c_str() + index, &size, 16));
+                  }
+
+                  nfcFrame.flip();
+
+                  storageStream->next(nfcFrame);
+               }
+            }
+
+            command.resolve();
+
+            return;
+         }
+         else
+         {
+            log.info("reading failed, no fileName");
+         }
       }
       else
       {
-         command.reject();
+         log.info("reading failed, invalid command data");
       }
+
+      command.reject();
    }
 
    void writeFile(rt::Event &command)
    {
-      if (auto file = command.get<std::string>("file"))
+      if (auto data = command.get<std::string>("data"))
       {
-         log.info("write frames to file {}", {file.value()});
+         auto config = json::parse(data.value());
 
-         json frames = json::array();
+         log.info("write file command: {}", {config.dump()});
 
-         for (const auto &frame : frameQueue)
+         if (config.contains("fileName"))
          {
-            if (frame.isPollFrame() || frame.isListenFrame())
+            std::string file = config["fileName"];
+
+            log.info("write frames to file {}", {file});
+
+            json frames = json::array();
+
+            for (const auto &frame: frameQueue)
             {
-               char buffer[4096];
+               if (frame.isPollFrame() || frame.isListenFrame())
+               {
+                  char buffer[4096];
 
-               frame.reduce<int>(0, [&buffer](int offset, unsigned char value) {
-                  return offset + snprintf(buffer + offset, sizeof(buffer) - offset, offset > 0 ? ":%02X" : "%02X", value);
-               });
+                  frame.reduce<int>(0, [&buffer](int offset, unsigned char value) {
+                     return offset + snprintf(buffer + offset, sizeof(buffer) - offset, offset > 0 ? ":%02X" : "%02X", value);
+                  });
 
-               frames.push_back({
-                                      {"sampleStart", frame.sampleStart()},
-                                      {"sampleEnd",   frame.sampleEnd()},
-                                      {"timeStart",   frame.timeStart()},
-                                      {"timeEnd",     frame.timeEnd()},
-                                      {"frameType",   frame.frameType()},
-                                      {"frameRate",   frame.frameRate()},
-                                      {"frameFlags",  frame.frameFlags()},
-                                      {"framePhase",  frame.framePhase()},
-                                      {"frameData",   buffer}
-                                });
+                  frames.push_back({
+                                         {"sampleStart", frame.sampleStart()},
+                                         {"sampleEnd",   frame.sampleEnd()},
+                                         {"timeStart",   frame.timeStart()},
+                                         {"timeEnd",     frame.timeEnd()},
+                                         {"techType",    frame.techType()},
+                                         {"frameType",   frame.frameType()},
+                                         {"frameRate",   frame.frameRate()},
+                                         {"frameFlags",  frame.frameFlags()},
+                                         {"framePhase",  frame.framePhase()},
+                                         {"frameData",   buffer}
+                                   });
+               }
             }
+
+            json info({{"frames", frames}});
+
+            // create output file
+            std::ofstream output(file);
+
+            // write prettified JSON to another file
+            output << std::setw(3) << info << std::endl;
+
+            // confirm command execution
+            command.resolve();
+
+            return;
          }
-
-         json data({{"frames", frames}});
-
-         // create output file
-         std::ofstream output(file.value());
-
-         // write prettified JSON to another file
-         output << std::setw(3) << data << std::endl;
-
-         command.resolve();
+         else
+         {
+            log.info("writing failed, no fileName");
+         }
       }
       else
       {
-         command.reject();
+         log.info("writing failed, invalid command data");
       }
+
+      command.reject();
    }
 
    void clearQueue(rt::Event &event)

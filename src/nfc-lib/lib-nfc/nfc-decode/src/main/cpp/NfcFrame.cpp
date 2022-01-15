@@ -77,6 +77,28 @@ NfcFrame &NfcFrame::operator=(const NfcFrame &other)
    return *this;
 }
 
+bool NfcFrame::operator==(const NfcFrame &other) const
+{
+   if (this == &other)
+      return true;
+
+   if (impl->techType != other.impl->techType ||
+       impl->frameType != other.impl->frameType ||
+       impl->frameFlags != other.impl->frameFlags ||
+       impl->framePhase != other.impl->framePhase ||
+       impl->frameRate != other.impl->frameRate ||
+       impl->sampleStart != other.impl->sampleStart ||
+       impl->sampleEnd != other.impl->sampleEnd)
+      return false;
+
+   return rt::ByteBuffer::operator==(other);
+}
+
+bool NfcFrame::operator!=(const NfcFrame &other) const
+{
+   return !operator==(other);
+}
+
 NfcFrame::operator bool() const
 {
    return Buffer::operator bool();

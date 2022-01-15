@@ -26,6 +26,7 @@
 #define LANG_BUFFER_H
 
 #include <atomic>
+#include <cstring>
 #include <memory>
 #include <functional>
 
@@ -114,15 +115,6 @@ class Buffer
             delete alloc;
       }
 
-      inline void reset()
-      {
-         if (alloc && alloc->detach() == 0)
-            delete alloc;
-
-         state = {0, 0, 0};
-         alloc = {nullptr};
-      }
-
       inline Buffer &operator=(const Buffer &other)
       {
          if (&other == this)
@@ -138,6 +130,34 @@ class Buffer
             alloc->attach();
 
          return *this;
+      }
+
+      inline bool operator==(const Buffer &other) const
+      {
+         if (this == &other)
+            return true;
+
+         if (state.limit != other.state.limit || state.position != other.state.position || state.capacity != other.state.capacity)
+            return false;
+
+         if (alloc == other.alloc)
+            return true;
+
+         return std::memcmp(alloc->data + state.position, other.alloc->data + state.position, state.limit) == 0;
+      }
+
+      inline bool operator!=(const Buffer &other) const
+      {
+         return !operator==(other);
+      }
+
+      inline void reset()
+      {
+         if (alloc && alloc->detach() == 0)
+            delete alloc;
+
+         state = {0, 0, 0};
+         alloc = {nullptr};
       }
 
       inline bool isValid() const

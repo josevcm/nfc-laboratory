@@ -1,0 +1,88 @@
+{
+   "frames": [
+      {
+         "frameData": "06:00:FF:FF:00:03:39:42",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 211875,
+         "frameType": 2,
+         "sampleEnd": 46024,
+         "sampleStart": 39982,
+         "techType": 3,
+         "timeEnd": 0.0046024,
+         "timeStart": 0.0039982
+      },
+      {
+         "frameData": "12:01:01:2E:4C:D8:A3:16:52:BA:00:F1:00:00:00:01:43:00:18:80",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 211875,
+         "frameType": 3,
+         "sampleEnd": 117187,
+         "sampleStart": 106579,
+         "techType": 3,
+         "timeEnd": 0.0117187,
+         "timeStart": 0.0106579
+      },
+      {
+         "frameData": "26:01:00:F6:0A",
+         "frameFlags": 0,
+         "framePhase": 2,
+         "frameRate": 26484,
+         "frameType": 2,
+         "sampleEnd": 199349,
+         "sampleStart": 183114,
+         "techType": 4,
+         "timeEnd": 0.0199349,
+         "timeStart": 0.0183114
+      },
+      {
+         "frameData": "06:00:FF:FF:00:0F:F8:CE",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 211875,
+         "frameType": 2,
+         "sampleEnd": 435667,
+         "sampleStart": 429625,
+         "techType": 3,
+         "timeEnd": 0.0435667,
+         "timeStart": 0.0429625
+      },
+      {
+         "frameData": "12:01:01:2E:4C:D8:A3:16:52:BA:00:F1:00:00:00:01:43:00:18:80",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 211875,
+         "frameType": 3,
+         "sampleEnd": 615541,
+         "sampleStart": 604968,
+         "techType": 3,
+         "timeEnd": 0.0615541,
+         "timeStart": 0.0604968
+      },
+      {
+         "frameData": "06:00:FF:FF:01:0F:CB:FF",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 211875,
+         "frameType": 2,
+         "sampleEnd": 718575,
+         "sampleStart": 712532,
+         "techType": 3,
+         "timeEnd": 0.0718575,
+         "timeStart": 0.0712532
+      },
+      {
+         "frameData": "14:01:01:2E:4C:D8:A3:16:52:BA:00:F1:00:00:00:01:43:00:88:B4:D3:96",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 211875,
+         "frameType": 3,
+         "sampleEnd": 754242,
+         "sampleStart": 742879,
+         "techType": 3,
+         "timeEnd": 0.0754242,
+         "timeStart": 0.0742879
+      }
+   ]
+}

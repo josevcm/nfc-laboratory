@@ -13,6 +13,7 @@ target_link_libraries(nfc-test
         nfc-decode
         sdr-io
         rt-lang
+        nlohmann
         mingw32
         psapi
         )

@@ -1,0 +1,100 @@
+{
+   "frames": [
+      {
+         "frameData": "E0:80:31:73",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 35217,
+         "sampleStart": 31678,
+         "techType": 1,
+         "timeEnd": 0.0035217,
+         "timeStart": 0.0031678
+      },
+      {
+         "frameData": "06:75:77:81:02:80:02:F0",
+         "frameFlags": 0,
+         "framePhase": 1,
+         "frameRate": 105938,
+         "frameType": 3,
+         "sampleEnd": 42919,
+         "sampleStart": 36076,
+         "techType": 1,
+         "timeEnd": 0.0042919,
+         "timeStart": 0.0036076
+      },
+      {
+         "frameData": "02:90:5A:00:00:03:AB:22:E5:00:EB:6B",
+         "frameFlags": 0,
+         "framePhase": 2,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 71839,
+         "sampleStart": 61498,
+         "techType": 1,
+         "timeEnd": 0.0071839,
+         "timeStart": 0.0061498
+      },
+      {
+         "frameData": "02:91:00:29:10",
+         "frameFlags": 0,
+         "framePhase": 2,
+         "frameRate": 105938,
+         "frameType": 3,
+         "sampleEnd": 91004,
+         "sampleStart": 86663,
+         "techType": 1,
+         "timeEnd": 0.0091004,
+         "timeStart": 0.0086663
+      },
+      {
+         "frameData": "03:90:6C:00:00:01:08:00:67:CE",
+         "frameFlags": 0,
+         "framePhase": 2,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 243728,
+         "sampleStart": 235097,
+         "techType": 1,
+         "timeEnd": 0.0243728,
+         "timeStart": 0.0235097
+      },
+      {
+         "frameData": "03:D4:17:00:00:91:00:3F:FE",
+         "frameFlags": 0,
+         "framePhase": 2,
+         "frameRate": 105938,
+         "frameType": 3,
+         "sampleEnd": 262137,
+         "sampleStart": 254397,
+         "techType": 1,
+         "timeEnd": 0.0262137,
+         "timeStart": 0.0254397
+      },
+      {
+         "frameData": "02:90:BD:00:00:07:01:00:00:00:80:00:00:00:1A:83",
+         "frameFlags": 0,
+         "framePhase": 2,
+         "frameRate": 105938,
+         "frameType": 2,
+         "sampleEnd": 426182,
+         "sampleStart": 412459,
+         "techType": 1,
+         "timeEnd": 0.0426182,
+         "timeStart": 0.0412459
+      },
+      {
+         "frameData": "02:04:3C:70:02:52:48:80:24:66:4D:FB:BB:A5:78:8D:00:00:45:67:10:10:20:11:00:70:29:D5:F7:1B:00:00:00:00:00:00:00:01:97:3E:07:D2:04:00:00:00:00:00:00:00:00:00:00:00:00:97:3E:00:00:00:91:AF:A7:98",
+         "frameFlags": 0,
+         "framePhase": 2,
+         "frameRate": 105938,
+         "frameType": 3,
+         "sampleEnd": 487735,
+         "sampleStart": 433269,
+         "techType": 1,
+         "timeEnd": 0.0487735,
+         "timeStart": 0.0433269
+      }
+   ]
+}

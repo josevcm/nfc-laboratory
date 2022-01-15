@@ -135,7 +135,7 @@ ProtocolFrame *ParserNfcB::parseRequestREQB(const nfc::NfcFrame &frame)
       else
          paramf->appendChild(buildFieldInfo("[....0...] REQB command"));
 
-      paramf->appendChild(buildFieldInfo(QString("[.....%1] number of slots: %2").arg(nslot, 3, 2, QChar('0')).arg(NFCB_SLOT_TABLE[nslot])));
+      paramf->appendChild(buildFieldInfo(QString("[.....%1] number of slots: %2").arg(nslot, 3, 2, QChar('0')).arg(nfc::NFCB_SLOT_TABLE[nslot])));
    }
 
    root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
@@ -154,8 +154,8 @@ ProtocolFrame *ParserNfcB::parseResponseREQB(const nfc::NfcFrame &frame)
    int fwi = (frame[11] >> 4) & 0x0f;
    int adc = (frame[11] >> 2) & 0x03;
    int fo = frame[11] & 0x3;
-   int fds = NFC_FDS_TABLE[fdsi];
-   float fwt = NFC_FWT_TABLE[fwi] / NFC_FC;
+   int fds = nfc::NFC_FDS_TABLE[fdsi];
+   float fwt = nfc::NFC_FWT_TABLE[fwi] / nfc::NFC_FC;
 
    int flags = frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
 
@@ -260,12 +260,12 @@ ProtocolFrame *ParserNfcB::parseRequestATTRIB(const nfc::NfcFrame &frame)
       int tr1min = (param1 >> 4) & 0x3;
 
       if (tr0min)
-         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, %2 us").arg(tr0min, 2, 2, QChar('0')).arg(1E3 * NFCB_TR0_MIN_TABLE[tr0min] / NFC_FC, 0, 'f', 2)));
+         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, %2 us").arg(tr0min, 2, 2, QChar('0')).arg(1E3 * nfc::NFCB_TR0_MIN_TABLE[tr0min] / nfc::NFC_FC, 0, 'f', 2)));
       else
          param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, DEFAULT").arg(tr0min, 2, 2, QChar('0'))));
 
       if (tr1min)
-         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(1E3 * NFCB_TR1_MIN_TABLE[tr1min] / NFC_FC, 0, 'f', 2)));
+         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(1E3 * nfc::NFCB_TR1_MIN_TABLE[tr1min] / nfc::NFC_FC, 0, 'f', 2)));
       else
          param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, DEFAULT").arg(tr1min, 2, 2, QChar('0'))));
 
@@ -283,7 +283,7 @@ ProtocolFrame *ParserNfcB::parseRequestATTRIB(const nfc::NfcFrame &frame)
    if (ProtocolFrame *param2f = root->appendChild(buildFieldInfo("PARAM2", QString("%1 [%2]").arg(param2, 2, 16, QChar('0')).arg(param2, 8, 2, QChar('0')))))
    {
       int fdsi = param2 & 0x0f;
-      int fds = NFC_FDS_TABLE[fdsi] / NFC_FC;
+      int fds = nfc::NFC_FDS_TABLE[fdsi] / nfc::NFC_FC;
 
       if ((param2 & 0xC0) == 0x00)
          param2f->appendChild(buildFieldInfo("[00......] selected 106 kbps PICC to PCD rate"));

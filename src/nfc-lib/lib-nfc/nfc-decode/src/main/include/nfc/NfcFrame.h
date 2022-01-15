@@ -49,6 +49,10 @@ class NfcFrame : public rt::ByteBuffer
 
       NfcFrame &operator=(const NfcFrame &other);
 
+      bool operator==(const NfcFrame &other) const;
+
+      bool operator!=(const NfcFrame &other) const;
+
       operator bool() const;
 
       bool isNfcA() const;

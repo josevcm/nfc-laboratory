@@ -25,6 +25,50 @@
 #ifndef NFC_NFC_H
 #define NFC_NFC_H
 
+namespace nfc {
+
+enum TechType
+{
+   None = 0,
+   NfcA = 1,
+   NfcB = 2,
+   NfcF = 3,
+   NfcV = 4
+};
+
+enum RateType
+{
+   r106k = 0,
+   r212k = 1,
+   r424k = 2,
+   r848k = 3
+};
+
+enum FrameType
+{
+   NoCarrier = 0,
+   EmptyFrame = 1,
+   PollFrame = 2,
+   ListenFrame = 3
+};
+
+enum FrameFlags
+{
+   ShortFrame = 0x01,
+   Encrypted = 0x02,
+   Truncated = 0x08,
+   ParityError = 0x10,
+   CrcError = 0x20,
+   SyncError = 0x40
+};
+
+enum FramePhase
+{
+   CarrierFrame = 0,
+   SelectionFrame = 1,
+   ApplicationFrame = 2
+};
+
 // Frequency of operating field (carrier frequency) in Hz
 constexpr float NFC_FC = 13.56E6;
 
@@ -160,50 +204,6 @@ constexpr int NFCV_SFGT_DEF = 4096;
 
 // NFC-V Default Request Guard Time, defined as the minimum time between the start bits of two consecutive REQV commands.
 constexpr int NFCV_RGT_DEF = 7000;
-
-namespace nfc {
-
-enum TechType
-{
-   None = 0,
-   NfcA = 1,
-   NfcB = 2,
-   NfcF = 3,
-   NfcV = 4
-};
-
-enum RateType
-{
-   r106k = 0,
-   r212k = 1,
-   r424k = 2,
-   r848k = 3
-};
-
-enum FrameType
-{
-   NoCarrier = 0,
-   EmptyFrame = 1,
-   PollFrame = 2,
-   ListenFrame = 3
-};
-
-enum FrameFlags
-{
-   ShortFrame = 0x01,
-   Encrypted = 0x02,
-   Truncated = 0x08,
-   ParityError = 0x10,
-   CrcError = 0x20,
-   SyncError = 0x40
-};
-
-enum FramePhase
-{
-   CarrierFrame = 0,
-   SelectionFrame = 1,
-   ApplicationFrame = 2
-};
 
 }
 
