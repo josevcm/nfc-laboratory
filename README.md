@@ -1,7 +1,7 @@
 # SDR nfc-laboratory v2.0
 
-NFC signal sniffer and protocol decoder using SDR receiver, capable of demodulate in real-time the comunication
-with contacless cards up to 424Kpbs.
+NFC signal sniffer and protocol decoder using SDR receiver, for demodulator and decoder NFC-A, NFC-B, NFC-F and NFC-V 
+signals in real-time up to 424 Kbps.
 
 ## Description
 
@@ -10,10 +10,10 @@ reader.
 
 Currently, detection and decoding is implemented for:
 
-- NFC-A (ISO14443A): 106kbps ASK modulation, 212kbps and 424kbps with ASK / BPSK modulation.
+- NFC-A (ISO14443A): 106kbps, 212kbps and 424kbps with ASK / BPSK modulation.
 - NFC-B (ISO14443B): 106kbps, 212kbps and 424kbps with ASK / BPSK modulation.
-- NFC-V (ISO15693): 26kbps and 53kbps, 1 of 4 code and 1 of 256 code PPM modulation. 
-- NFC-F (Felica): Preliminary, 212kbps and 424kbps, manchester modulation.
+- NFC-V (ISO15693): 26kbps and 53kbps, 1 of 4 code and 1 of 256 code PPM / BPSK modulation (pending FSK).
+- NFC-F (ISO18092): Preliminary support to 212kbps and 424kbps with manchester modulation.
 
 ## Application screenshots
 
@@ -35,7 +35,7 @@ Protocol detail view.
 
 ## Recommended settings
 
-The configuration is found in the file `conf/nfc-lab.conf` and consists of the following sections:
+The configuration file is found in `conf/nfc-lab.conf` and consists of the following sections:
 
 ```
 [settings]
@@ -58,7 +58,7 @@ Stores the status of the window and controls, nothing very interesting.
 powerLevelThreshold=0.01
 ```
 
-Minimum absolute signal strength to start decoding.
+Indicates the absolute minimum signal strength to start decoding, 0.5 is the maximum peak.
 
 ```
 [decoder.nfca]
@@ -83,7 +83,7 @@ maximumModulationThreshold=1.00
 ```
 
 Each of the sections controls the parameters for the indicated technology. It allows activating or not its detection 
-and the minimum and maximum modulation depths to detect the signal. The values that appear here are recommended.
+and the minimum and maximum modulation depths in percentage to detect the signal. The values that appear here are recommended.
 
 ```
 [device.airspy]
@@ -95,7 +95,7 @@ centerFreq=40680000
 sampleRate=10000000
 ```
 
-Configuration parameters for the Airspy receiver, the best performance is obtained by tuning in second harmonic 
+Configuration parameters for the Airspy receiver, the best performance is obtained by tuning in 3rd harmonic 
 at 40.68Mhz.
 
 ```
@@ -108,7 +108,7 @@ centerFreq=40680000
 sampleRate=2400000
 ```
 
-Configuration parameters for the RTL-SDR receiver, the best performance is obtained by tuning to the first harmonic 
+Configuration parameters for the RTL-SDR receiver, the best performance is obtained by tuning to the 2nd harmonic 
 at 27.12Mhz. 
 
 Decoding with this device is quite limited due to its low sampling frequency and 8-bit resolution, 
@@ -142,11 +142,12 @@ Mifare classic card.
 I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices, but surely it
 works with others.
 
-- AirSpy Mini or R2: Better results, tuning the third harmonic 40.68Mhz, with a sampling frequency of 10 Mbps, with these
-  parameters it is possible to capture the communication up to 424 Kbps.
+- AirSpy Mini or R2: Better results, tuning the third harmonic at 40.68Mhz, with a sampling frequency of 10 Mbps, 
+  with these parameters it is possible to capture the communication up to 424 Kbps.
 
-- RTL SDR: It works by tuning the second harmonic 27.12Mhz, due to the limitation in the maximum sampling frequency 
-  of 3Mbps and its 8 bits of precision only allows you to capture the commands up to 106Kbps and some responses in very clean signals.
+- RTL SDR: It works by tuning the second harmonic at 27.12Mhz, due to the limitation in the maximum sampling frequency 
+  of 3Mbps and its 8 bits of resolution only allows you to capture the commands up to 106Kbps and some responses in 
+  very clean signals.
 
 Receivers tested:
 
@@ -169,9 +170,51 @@ frequency of 13.56Mhz, although I have not tried this combination.
 
 The demodulator is designed to run in real time, so it requires a recent computer with a lot of processing capacity.
 
-During development, I have opted for a mixed approach where some optimizations are sacrificed in favor of maintaining clarity in the code and facilitating its monitoring and debugging.
+During development, I have opted for a mixed approach where some optimizations are sacrificed in favor of maintaining 
+clarity in the code and facilitating its monitoring and debugging.
 
-For this reason it is possible that certain parts can be improved in performance, but I have done it as a didactic exercise rather than a production application.
+For this reason it is possible that certain parts can be improved in performance, but I have done it as a didactic 
+exercise rather than a production application.
+
+## Input / Output file formats
+
+The application allows you to read and write files in two different formats:
+
+- WAV: Reading signals in standard WAV format with 1 or 2 channels is supported. In the first case, it should contain  
+  the sample of the signal in absolute real values. If 2 channels are used they should contain the sampling of 
+  the I / Q components.
+
+- JSON: The analyzed signal can be stored in a simple JSON text file or read back from one of them.
+
+## Testing files
+
+In the "wav" folder you can find a series of samples of different captures for the NFC-A, NFC-B, NFC-F and NFC-V 
+modulations with their corresponding analysis inside the "json" files.
+
+These files can be opened directly from the NFC-LAB application through the toolbar to see their analysis, but the 
+main objective is to pass the unit tests and check the correct operation of the decoder.
+
+To run the unit tests, the "nfc-test" artifact must be compiled and launched using the path to the "wav" folder 
+as an argument, for example:
+
+```
+nfc-test.exe ../wav/
+TEST FILE "test_NFC-A_106kbps_001.wav": PASS
+TEST FILE "test_NFC-A_106kbps_002.wav": PASS
+TEST FILE "test_NFC-A_106kbps_003.wav": PASS
+TEST FILE "test_NFC-A_106kbps_004.wav": PASS
+TEST FILE "test_NFC-A_212kbps_001.wav": PASS
+TEST FILE "test_NFC-A_424kbps_001.wav": PASS
+TEST FILE "test_NFC-A_424kbps_002.wav": PASS
+TEST FILE "test_NFC-B_106kbps_001.wav": PASS
+TEST FILE "test_NFC-B_106kbps_002.wav": PASS
+TEST FILE "test_NFC-F_212kbps_001.wav": PASS
+TEST FILE "test_NFC-F_212kbps_002.wav": PASS
+TEST FILE "test_NFC-V_26kbps_001.wav": PASS
+TEST FILE "test_NFC-V_26kbps_002.wav": PASS
+TEST FILE "test_POLL_ABF_001.wav": PASS
+TEST FILE "test_POLL_AB_001.wav": PASS
+```
 
 ## Build instructions
 
@@ -180,7 +223,7 @@ This project has two main components and is based on Qt5 and MinGW-W64:
 - /src/nfc-app: Application interface based on Qt Widgets
 - /src/nfc-lib: A core library without dependencies of Qt (for other uses)
 
-And can be build with mingw-g64
+And it can be compiled with mingw-g64, a minimum version is required to support C++17, recommended 9.0 or higher.
 
 ### Prerequisites
 
@@ -371,7 +414,7 @@ Precompiled installer for x86 64 bit can be found in repository
 ## Basic notions of the signals to be analyzed
 
 Normal NFC cards work on the 13.56 Mhz frequency, therefore the first step is receive this signal and demodulate to get
-the baseband ASK stream. For this purpose any SDR device capable of tuning this frequency can be used, i have the
+the baseband stream. For this purpose any SDR device capable of tuning this frequency can be used, i have the
 fantastic and cheap AirSpy Mini capable of tuning from 24Mhz to 1700Mhz. (https://airspy.com/airspy-mini/)
 
 However, it is not possible to tune 13.56Mhz with this receiver, instead I use the second harmonic at 27.12Mhz or third
@@ -386,29 +429,34 @@ of the signal received in baseband (after I/Q to magnitude transform) for the RE
 
 ![REQA](doc/img/nfc-baseband-reqa.png?raw=true "REQA signal capture")
 
-As can be seen, it is a signal modulated in 100% ASK that corresponds to the NFC-A REQA 26h command of the NFC specifications,
-the response of the card uses something called load modulation that manifests as a series of pulses on the main signal
-after the command. This is the most basic modulation, but each of the NFC-A / B / F / V standards has its own characteristics.
+As can be seen, it is a signal modulated in 100% ASK that corresponds to the NFC-A REQA 26h command of the NFC 
+specifications, the response of the card uses something called load modulation that manifests as a series of pulses on 
+the main signal after the command. This is the most basic modulation, but each of the NFC-A / B / F / V standards has 
+its own characteristics.
 
 ### NFC-A modulation
 
-The standard corresponds to the ISO14443A specifications which describe the way it is modulated as well as the applicable timings.
+The standard corresponds to the ISO14443A specifications which describe the way it is modulated as well as the 
+applicable timings.
 
-Reader frames are encoded using 100% ASK using modified miller encoding.
+Reader frames are encoded using 100% ASK with modified miller encoding.
 
 ![NFCA ASK](doc/img/nfca-ask-miller.png?raw=true "NFC-A ASK reader frame signal")
 
-When the speed is 106 Kbps card responses are encoded using manchester scheme using OOK load modulation with subcarrier at 848 KHz.
+When the speed is 106 Kbps card responses are encoded using manchester scheme with OOK load modulation over a 
+subcarrier at 848 KHz.
 
 ![NFCA OOK](doc/img/nfca-ask-ook.png?raw=true "NFC-A OOK card response signal")
 
-For higher speeds, 212 kbps, 424 kbps and 848 kbps it uses a NRZ-L with binary phase change modulation, BPSK, over same subcarrier.
+For higher speeds, 212 kbps, 424 kbps and 848 kbps it uses a NRZ-L with binary phase change modulation, BPSK, over 
+same subcarrier.
 
 ![NFCA BPSK](doc/img/nfca-bpsk.png?raw=true "NFC-A BPSK card response signal")
 
 ### NFC-B modulation
 
-The standard corresponds to the ISO14443B specifications which describe the way it is modulated as well as the applicable timings.
+The standard corresponds to the ISO14443B specifications which describe the way it is modulated as well as the 
+applicable timings.
 
 Reader frames are encoded in 10% ASK using NRZ-L encoding.
 
@@ -420,9 +468,11 @@ Responses from the card are encoded with binary phase change modulation, BPSK, u
 
 ### NFC-F modulation
 
-The standard corresponds to the ISO18092 and JIS.X.6319 specifications which describe the way it is modulated as well as the applicable timings.
+The standard corresponds to the ISO18092 and JIS.X.6319 specifications which describe the way it is modulated as well 
+as the applicable timings.
 
-Supports speeds from 212 kbps to 848 kbps, both reader and card frames are encoded using either observed or inverted manchester.
+Support speeds from 212 kbps to 848 kbps, both reader and card frames are encoded using either observed or reversed 
+manchester as see below.
 
 ![NFCF Manchester](doc/img/nfcf-manchester.png?raw=true "NFC-F manchester reader frame signal")
 
@@ -436,18 +486,21 @@ Reversed manchester modulation.
 
 ### NFC-V modulation
 
-The standard corresponds to the ISO15693 specifications which describe the way it is modulated as well as the applicable timings.
+The standard corresponds to the ISO15693 specifications which describe the way it is modulated as well as the 
+applicable timings.
 
-The coding is based on pulse position modulation (PPM) where the information is encoded by modifying the time when the pulse is
-located within each time slot.
+The coding is based on pulse position modulation (PPM) where the information is encoded by modifying the time when the 
+pulse is located within each time slot.
 
-There are two modes, 1 of 4 and 1 of 256, where each symbol encodes 2 and 8 bits respectively, this is the example for the first one.
+There are two modes, 1 of 4 and 1 of 256, where each symbol encodes 2 and 8 bits respectively, this is the example for 
+the first one.
 
 ![NFCV PPM 2 bit](doc/img/nfcv-ppm2.png?raw=true "NFC-V PPM reader modulation")
 
-Card responses are encoded with manchester OOK with 848 subcarrier as of NFC-A.
+Card responses are encoded using manchester OOK with 848 subcarrier as of NFC-A.
 
-Depending on the code used, the possible speeds are 26Kbps and 53Kbps, however these cards can be read from greater distances.
+Depending on the encoding, the possible speeds are 26Kbps and 53Kbps, however these cards can be read from greater 
+distances.
 
 ## Signal processing
 
@@ -458,16 +511,18 @@ Now we are going to see how to decode this.
 Before starting to decode each of these modulations, it is necessary to start with a series of basic signals that will
 help us in the rest of the process.
 
-The concepts that I am going to explain next are very well described on Sam Koblenski's page (https://sam-koblenski.blogspot.com/2015/08/everyday-dsp-for-programmers-basic.html) which
-I recommend you read to fully understand all the processes related to the analysis that we are going to carry out.
+The concepts that I am going to explain next are very well described on Sam Koblenski's page 
+(https://sam-koblenski.blogspot.com/2015/08/everyday-dsp-for-programmers-basic.html) which I recommend you read to 
+fully understand all the processes related to the analysis that we are going to carry out.
 
-Remember that the sample received from the SDR receiver is made up of the I / Q values, therefore the first step is to obtain the real signal.
+Remember that the sample received from the SDR receiver is made up of the I / Q values, therefore the first step is to 
+obtain the real signal.
 
-Once we have the real signal, it is necessary to eliminate the continuous component (DC) that will greatly facilitate the
-subsequent analysis process. For this we will use a simple IIR filter.
+Once we have the real signal, it is necessary to eliminate the continuous component (DC) that will greatly facilitate 
+the subsequent analysis process. For this we will use a simple IIR filter.
 
-To calculate the modulation depth we need to know the envelope of the signal as if it were not modulated by the pulses or sub-carrier,
-for this we will use a simple slow exponential average.
+To calculate the modulation depth we need to know the envelope of the signal as if it were not modulated by the pulses 
+or sub-carrier, for this we will use a simple slow exponential average.
 
 Finally we will obtain the standard deviation or variance of the signal that will help us to calculate the appropriate detection thresholds
 based on the background noise.
@@ -490,8 +545,8 @@ in detail.
 ### Basic notions of signal correlation
 
 The correlation operation is a measure of how much one signal resembles another that serves as a reference. It is used
-intensively in digital signal analysis. With analog signals, the correlation of each sample x(t) requires N multiplications, therefore a symbol needs N^2
-multiplications, being a costly process.
+intensively in digital signal analysis. With analog signals, the correlation of each sample x(t) requires N 
+multiplications, therefore a symbol needs N^2 multiplications, being a costly process.
 
 But since the reference signal is digital, it only has two possible values 0 or 1, which greatly simplifies the
 calculation by eliminating all the multiplications, allowing the correlation to be carried out by process a simple
