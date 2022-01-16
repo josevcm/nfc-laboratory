@@ -9,6 +9,7 @@ add_library(rt-lang STATIC
         src/main/cpp/Logger.cpp
         src/main/cpp/Worker.cpp
         src/main/cpp/Format.cpp
+        src/main/cpp/FileSystem.cpp
         )
 
 target_include_directories(rt-lang PUBLIC ${PUBLIC_INCLUDE_DIR})

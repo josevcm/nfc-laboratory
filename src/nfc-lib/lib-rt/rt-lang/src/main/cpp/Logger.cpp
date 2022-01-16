@@ -33,10 +33,10 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <filesystem>
 
 #include <rt/Logger.h>
 #include <rt/Format.h>
+#include <rt/FileSystem.h>
 #include <rt/BlockingQueue.h>
 
 //#define NULL_LOG
@@ -224,7 +224,7 @@ struct LogWriter
 
    void exec()
    {
-      std::filesystem::create_directories("log");
+      rt::FileSystem::createDir("log");
 
       // open log file
       stream.open("log/nfc-lab.log", std::ios::out | std::ios::app);

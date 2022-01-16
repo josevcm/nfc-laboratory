@@ -24,11 +24,10 @@
 
 #include <fstream>
 #include <iomanip>
-#include <filesystem>
 
 #include <rt/Logger.h>
-#include <rt/Format.h>
 #include <rt/BlockingQueue.h>
+#include <rt/FileSystem.h>
 
 #include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
@@ -118,7 +117,7 @@ struct FrameStorageTask::Impl : FrameStorageTask, AbstractTask
 
             json info;
 
-            if (std::filesystem::exists(file))
+            if (rt::FileSystem::exists(file))
             {
                // open file
                std::ifstream input(file);

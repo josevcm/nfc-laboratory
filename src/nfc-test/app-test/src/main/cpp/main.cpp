@@ -23,12 +23,12 @@
 */
 
 #include <iostream>
-#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <nlohmann/json.hpp>
 
 #include <rt/Logger.h>
+#include <rt/FileSystem.h>
 
 #include <sdr/SignalType.h>
 #include <sdr/RecordDevice.h>
@@ -44,9 +44,9 @@ Logger logger {"main"};
 /*
  * Read frames from JSON storage
  */
-bool readFrames(const std::filesystem::path &path, std::list<nfc::NfcFrame> &list)
+bool readFrames(const std::string &path, std::list<nfc::NfcFrame> &list)
 {
-   if (!std::filesystem::exists(path))
+   if (!rt::FileSystem::exists(path))
       return false;
 
    json data;
@@ -93,7 +93,7 @@ bool readFrames(const std::filesystem::path &path, std::list<nfc::NfcFrame> &lis
 /*
  * Write frames to JSON storage
  */
-bool writeFrames(const std::filesystem::path &path, std::list<nfc::NfcFrame> &list)
+bool writeFrames(const std::string &path, std::list<nfc::NfcFrame> &list)
 {
    json frames = json::array();
 
@@ -134,12 +134,12 @@ bool writeFrames(const std::filesystem::path &path, std::list<nfc::NfcFrame> &li
 /*
  * Read frames from WAV file
  */
-bool readSignal(const std::filesystem::path &path, std::list<nfc::NfcFrame> &list)
+bool readSignal(const std::string &path, std::list<nfc::NfcFrame> &list)
 {
-   if (!std::filesystem::exists(path))
+   if (!rt::FileSystem::exists(path))
       return false;
 
-   sdr::RecordDevice source(path.string());
+   sdr::RecordDevice source(path);
 
    if (!source.open(sdr::RecordDevice::OpenMode::Read))
       return false;
@@ -172,11 +172,19 @@ bool readSignal(const std::filesystem::path &path, std::list<nfc::NfcFrame> &lis
    return true;
 }
 
-int testFile(const std::filesystem::path &signal)
+int testFile(const std::string &signal)
 {
-   std::filesystem::path target = signal;
+   size_t pos1 = signal.find(".wav");
+   size_t pos2 = signal.rfind("/");
 
-   target.replace_extension(".json");
+   if (pos1 == std::string::npos)
+      return -1;
+
+   std::string target = signal.substr(0, pos1) + ".json";
+   std::string filename = signal;
+
+   if (pos2 != std::string::npos)
+      filename = signal.substr(pos2 + 1, pos1 - 4);
 
    std::list<nfc::NfcFrame> list1;
    std::list<nfc::NfcFrame> list2;
@@ -188,27 +196,27 @@ int testFile(const std::filesystem::path &signal)
       if (readFrames(target, list2))
       {
          // show result
-         std::cout << "TEST FILE " << signal.filename() << ": " << (list1 == list2 ? "PASS" : "FAIL") << std::endl;
+         std::cout << "TEST FILE " << filename << ": " << (list1 == list2 ? "PASS" : "FAIL") << std::endl;
       }
       else
       {
          // or create json file if not exists at first time
          writeFrames(target, list1);
 
-         std::cout << "TEST FILE " << signal.filename() << ": TEST UPDATED!" << std::endl;
+         std::cout << "TEST FILE " << filename << ": TEST UPDATED!" << std::endl;
       }
    }
 
    return 0;
 }
 
-int testPath(const std::filesystem::path &path)
+int testPath(const std::string &path)
 {
-   for (const auto &entry: std::filesystem::directory_iterator(path))
+   for (const auto &entry: rt::FileSystem::directoryList(path))
    {
-      if (entry.path().extension() == ".wav")
+      if (entry.name.find(".wav") != std::string::npos)
       {
-         testFile(entry.path());
+         testFile(entry.name);
       }
    }
 
@@ -223,17 +231,17 @@ int main(int argc, char *argv[])
 
    for (int i = 1; i < argc; i++)
    {
-      std::filesystem::path path {argv[i]};
+      std::string path {argv[i]};
 
-      if (std::filesystem::is_directory(path))
+      if (rt::FileSystem::isDirectory(path))
       {
-         logger.info("processing path {}", {path.string()});
+         logger.info("processing path {}", {path});
 
          testPath(path);
       }
-      else if (std::filesystem::is_regular_file(path))
+      else if (rt::FileSystem::isRegularFile(path))
       {
-         logger.info("processing file {}", {path.string()});
+         logger.info("processing file {}", {path});
 
          testFile(path);
       }
