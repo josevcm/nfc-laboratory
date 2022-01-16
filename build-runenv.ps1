@@ -22,6 +22,7 @@ if (Test-Path "$BuildReleasePath/nfc-lab.exe") {
     # Copy application external libraries
     Copy-Item -Force dll/usb-1.0.20/x86_64-w64-mingw32/bin/*.dll $BuildReleasePath
 
-    windeployqt.exe --release --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $BuildReleasePath/nfc-lab.exe
+    windeployqt.exe --debug --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $BuildReleasePath/nfc-lab.exe
+#     windeployqt.exe --release --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $BuildReleasePath/nfc-lab.exe
 }
 
