@@ -30,12 +30,10 @@
 #include <fstream>
 #include <cmath>
 #include <thread>
-#include <utility>
 #include <chrono>
 #include <cstring>
 #include <iostream>
-// this include do not work in mingw64!
-//#include <filesystem>
+#include <filesystem>
 
 #include <rt/Logger.h>
 #include <rt/Format.h>
@@ -226,7 +224,7 @@ struct LogWriter
 
    void exec()
    {
-//      std::filesystem::create_directories("log");
+      std::filesystem::create_directories("log");
 
       // open log file
       stream.open("log/nfc-lab.log", std::ios::out | std::ios::app);
@@ -278,6 +276,7 @@ struct Logger::Impl
    }
 };
 
+// loggers map
 static std::map<std::string, std::shared_ptr<Logger::Impl>> loggers;
 
 Logger::Logger(const std::string &name, int level)

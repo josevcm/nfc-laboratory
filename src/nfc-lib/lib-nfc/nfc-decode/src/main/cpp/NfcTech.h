@@ -34,8 +34,6 @@
 
 #include <nfc/Nfc.h>
 
-//#define DEBUG_SIGNAL
-
 #ifdef DEBUG_SIGNAL
 #define DEBUG_CHANNELS 6
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
