@@ -280,6 +280,7 @@ struct NfcA::Impl : NfcTech
             modulation->symbolEndTime = 0;
             modulation->searchStartTime = 0;
             modulation->searchEndTime = 0;
+            modulation->searchSyncTime = 0;
             modulation->detectorPeakTime = 0;
             modulation->detectorPeakValue = 0;
             modulation->correlatedPeakTime = 0;
@@ -314,11 +315,14 @@ struct NfcA::Impl : NfcTech
          }
          else
          {
-            // detect maximum correlation point
-            if (correlatedSD > modulation->correlatedPeakValue && correlatedSD > modulation->searchValueThreshold)
+            if (correlatedSD > minimumCorrelationValue)
             {
-               modulation->correlatedPeakValue = correlatedSD;
-               modulation->correlatedPeakTime = decoder->signalClock;
+               // detect maximum correlation point
+               if (correlatedSD > modulation->correlatedPeakValue)
+               {
+                  modulation->correlatedPeakValue = correlatedSD;
+                  modulation->correlatedPeakTime = decoder->signalClock;
+               }
             }
          }
 
@@ -348,7 +352,6 @@ struct NfcA::Impl : NfcTech
             modulation->searchSyncTime = modulation->correlatedPeakTime + bitrate->period2SymbolSamples;
             modulation->searchStartTime = modulation->searchSyncTime - bitrate->period8SymbolSamples;
             modulation->searchEndTime = modulation->searchSyncTime + bitrate->period8SymbolSamples;
-            modulation->searchValueThreshold = std::abs(modulation->correlatedPeakValue * 0.5);
             modulation->symbolStartTime = modulation->correlatedPeakTime - bitrate->period2SymbolSamples;
             modulation->correlatedPeakTime = 0;
             modulation->correlatedPeakValue = 0;

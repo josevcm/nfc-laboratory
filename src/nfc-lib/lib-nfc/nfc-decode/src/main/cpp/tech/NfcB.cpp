@@ -272,6 +272,7 @@ struct NfcB::Impl : NfcTech
             modulation->symbolEndTime = 0;
             modulation->searchStartTime = 0;
             modulation->searchEndTime = 0;
+            modulation->searchSyncTime = 0;
             modulation->detectorPeakTime = 0;
             modulation->detectorPeakValue = 0;
          }
