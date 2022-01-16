@@ -10,7 +10,7 @@ Copy-Item -Force -Recurse bin/packages $BuildPath
 
 # Copy application resources
 Copy-Item -Force -Recurse dat/conf   $BuildPath/packages/nfc-lab/data
-Copy-Item -Force -Recurse dat/fonts  $BuildPath/packages/nfc-lab/data
+# Copy-Item -Force -Recurse dat/fonts  $BuildPath/packages/nfc-lab/data
 
 # Copy application external libraries
 Copy-Item -Force dll/usb-1.0.20/x86_64-w64-mingw32/bin/*.dll $BuildPath/packages/nfc-lab/data/
