@@ -34,6 +34,7 @@
 #include "StreamModel.h"
 
 static QMap<int, QString> NfcACmd = {
+      {0x1A, "AUTH"}, // MIFARE Ultralight C authentication
       {0x1B, "PWD_AUTH"}, // MIFARE Ultralight EV1
       {0x26, "REQA"}, // ISO/IEC 14443
       {0x30, "READ"}, // MIFARE Ultralight EV1
@@ -172,43 +173,47 @@ struct StreamModel::Impl
             {
                int command = (*frame)[0];
 
-               if (NfcACmd.contains(command))
-                  return NfcACmd[command];
+               // Protocol Parameter Selection
+               if (command == 0x50 && frame->limit() == 4)
+                  return "HALT";
 
                // Protocol Parameter Selection
-               if ((command & 0xF0) == 0xD0)
+               if ((command & 0xF0) == 0xD0 && frame->limit() == 5)
                   return "PPS";
 
                // ISO-DEP protocol I-Block
-               if ((command & 0xE2) == 0x02)
+               if ((command & 0xE2) == 0x02 && frame->limit() > 4)
                   return "I-Block";
 
                // ISO-DEP protocol R-Block
-               if ((command & 0xE6) == 0xA2)
+               if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
                   return "R-Block";
 
                // ISO-DEP protocol S-Block
-               if ((command & 0xC7) == 0xC2)
+               if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
                   return "S-Block";
+
+               if (NfcACmd.contains(command))
+                  return NfcACmd[command];
             }
             else if (frame->isNfcB())
             {
                int command = (*frame)[0];
 
-               if (NfcBCmd.contains(command))
-                  return NfcBCmd[command];
-
                // ISO-DEP protocol I-Block
-               if ((command & 0xE2) == 0x02)
+               if ((command & 0xE2) == 0x02 && frame->limit() > 4)
                   return "I-Block";
 
                // ISO-DEP protocol R-Block
-               if ((command & 0xE6) == 0xA2)
+               if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
                   return "R-Block";
 
                // ISO-DEP protocol S-Block
-               if ((command & 0xC7) == 0xC2)
+               if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
                   return "S-Block";
+
+               if (NfcBCmd.contains(command))
+                  return NfcBCmd[command];
             }
             else if (frame->isNfcF())
             {
