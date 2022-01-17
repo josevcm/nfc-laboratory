@@ -192,7 +192,7 @@ QString ParserNfc::toString(const QByteArray &array)
 {
    QString text;
 
-   for (unsigned char value : array)
+   for (unsigned char value: array)
    {
       if (value >= 0x20 && value <= 0x7f)
          text.append(value);
@@ -260,7 +260,7 @@ ProtocolFrame *ParserNfcIsoDep::parse(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcIsoDep::parseRequestIBlock(const nfc::NfcFrame &frame)
 {
-   if ((frame[0] & 0xE2) != 0x02)
+   if ((frame[0] & 0xE2) != 0x02 || frame.limit() < 5)
       return nullptr;
 
    int pcb = frame[0], offset = 1;
@@ -354,7 +354,7 @@ ProtocolFrame *ParserNfcIsoDep::parseResponseIBlock(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcIsoDep::parseRequestRBlock(const nfc::NfcFrame &frame)
 {
-   if ((frame[0] & 0xE6) != 0xA2)
+   if ((frame[0] & 0xE6) != 0xA2 || frame.limit() != 3)
       return nullptr;
 
    int pcb = frame[0], offset = 1;
@@ -393,7 +393,7 @@ ProtocolFrame *ParserNfcIsoDep::parseResponseRBlock(const nfc::NfcFrame &frame)
 
 ProtocolFrame *ParserNfcIsoDep::parseRequestSBlock(const nfc::NfcFrame &frame)
 {
-   if ((frame[0] & 0xC7) != 0xC2)
+   if ((frame[0] & 0xC7) != 0xC2 || frame.limit() != 4)
       return nullptr;
 
    int pcb = frame[0], offset = 1;

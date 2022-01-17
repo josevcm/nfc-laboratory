@@ -1899,7 +1899,7 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.isPollFrame())
       {
-         if ((frame[0] & 0xE2) == CommandType::NFCA_IBLOCK)
+         if ((frame[0] & 0xE2) == CommandType::NFCA_IBLOCK && frame.limit() > 4)
          {
             frameStatus.lastCommand = frame[0] & 0xE2;
 
@@ -1931,7 +1931,7 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.isPollFrame())
       {
-         if ((frame[0] & 0xE6) == CommandType::NFCA_RBLOCK)
+         if ((frame[0] & 0xE6) == CommandType::NFCA_RBLOCK && frame.limit() == 3)
          {
             frameStatus.lastCommand = frame[0] & 0xE6;
 
@@ -1963,7 +1963,7 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.isPollFrame())
       {
-         if ((frame[0] & 0xC7) == CommandType::NFCA_SBLOCK)
+         if ((frame[0] & 0xC7) == CommandType::NFCA_SBLOCK && frame.limit() == 4)
          {
             frameStatus.lastCommand = frame[0] & 0xC7;
 
@@ -2004,8 +2004,8 @@ struct NfcA::Impl : NfcTech
    {
       int size = frame.limit();
 
-      if (size < 3)
-         return false;
+      if (size < 2)
+         return true;
 
       unsigned short crc = crc16(frame, 0, size - 2, 0x6363, true);
       unsigned short res = ((unsigned int) frame[size - 2] & 0xff) | ((unsigned int) frame[size - 1] & 0xff) << 8;
