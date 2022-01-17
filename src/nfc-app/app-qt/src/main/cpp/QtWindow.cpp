@@ -54,6 +54,7 @@
 #include <styles/ParserStyle.h>
 
 #include <views/ui_MainView.h>
+#include <views/ui_DataView.h>
 
 #include "QtApplication.h"
 
@@ -63,6 +64,9 @@
 
 struct QtWindow::Impl
 {
+   // application window
+   QMainWindow *window;
+
    // configuration
    QSettings &settings;
 
@@ -117,7 +121,7 @@ struct QtWindow::Impl
    // fft signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription frequencySubscription;
 
-   explicit Impl(QSettings &settings, QtMemory *cache) : settings(settings), cache(cache), ui(new Ui_MainView()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
+   explicit Impl(QMainWindow *window, QSettings &settings, QtMemory *cache) : window(window), settings(settings), cache(cache), ui(new Ui_MainView()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
    {
       // IQ signal subject stream
       signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
@@ -131,12 +135,12 @@ struct QtWindow::Impl
       });
    }
 
-   void setupUi(QtWindow *mainWindow)
+   void setupUi()
    {
-      ui->setupUi(mainWindow);
+      ui->setupUi(window);
 
       // update window caption
-      mainWindow->setWindowTitle(NFC_LAB_VENDOR_STRING);
+      window->setWindowTitle(NFC_LAB_VENDOR_STRING);
 
       // setup default controls status
       ui->gainMode->setEnabled(false);
@@ -171,6 +175,11 @@ struct QtWindow::Impl
 //      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
 //         streamScrollChanged();
 //      });
+
+      // connect cell double click signal
+      QObject::connect(ui->streamView, &QTableView::doubleClicked, [=](const QModelIndex &index) {
+         streamCellClicked(index);
+      });
 
       // connect selection signal from frame model
       QObject::connect(ui->streamView->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &selected, const QItemSelection &deselected) {
@@ -704,6 +713,17 @@ struct QtWindow::Impl
       }
    }
 
+   void streamCellClicked(const QModelIndex &index)
+   {
+      QPointer<QDialog> dialog = new QDialog(window);
+
+      QSharedPointer<Ui_DataView> ui(new Ui_DataView);
+
+      ui->setupUi(dialog);
+
+      dialog->show();
+   }
+
    void streamScrollChanged()
    {
       QModelIndex firstRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().topLeft());
@@ -888,9 +908,9 @@ struct QtWindow::Impl
    }
 };
 
-QtWindow::QtWindow(QSettings &settings, QtMemory *cache) : impl(new Impl(settings, cache))
+QtWindow::QtWindow(QSettings &settings, QtMemory *cache) : impl(new Impl(this, settings, cache))
 {
-   impl->setupUi(this);
+   impl->setupUi();
 
    // restore interface preferences
    impl->setFollowEnabled(settings.value("window/followEnabled", true).toBool());
