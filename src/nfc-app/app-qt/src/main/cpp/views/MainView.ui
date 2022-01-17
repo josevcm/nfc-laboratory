@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainView</class>
- <widget class="QMainWindow" name="MainView">
+ <widget class="QMainWindow" name="mainWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -9,9 +9,6 @@
     <width>1024</width>
     <height>723</height>
    </rect>
-  </property>
-  <property name="windowTitle">
-   <string>NFC laboratory - v2.6.6, Jose Vicente Campos Martinez - josevcm@gmail.com</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -844,158 +841,98 @@
   <connection>
    <sender>actionFollow</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleFollow()</slot>
   </connection>
   <connection>
    <sender>actionOpen</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>openFile()</slot>
   </connection>
   <connection>
    <sender>actionStore</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>saveFile()</slot>
   </connection>
   <connection>
    <sender>actionClear</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>clearView()</slot>
   </connection>
   <connection>
    <sender>actionFilter</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleFilter()</slot>
   </connection>
   <connection>
    <sender>actionSetup</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>openSettings()</slot>
   </connection>
   <connection>
    <sender>actionNfcA</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleNfcA()</slot>
   </connection>
   <connection>
    <sender>actionNfcB</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleNfcB()</slot>
   </connection>
   <connection>
    <sender>actionNfcF</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleNfcF()</slot>
   </connection>
   <connection>
    <sender>actionNfcV</sender>
    <signal>triggered()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleNfcV()</slot>
   </connection>
   <connection>
    <sender>listenButton</sender>
    <signal>clicked()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleListen()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>121</x>
-     <y>30</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
    <sender>recordButton</sender>
    <signal>clicked()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleRecord()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>121</x>
-     <y>30</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
    <sender>stopButton</sender>
    <signal>clicked()</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>toggleStop()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>268</x>
-     <y>30</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
    <sender>gainMode</sender>
    <signal>currentIndexChanged(int)</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>changeGainMode(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>916</x>
-     <y>380</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
    <sender>gainValue</sender>
    <signal>valueChanged(int)</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>changeGainValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>895</x>
-     <y>467</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>284</y>
-    </hint>
-   </hints>
   </connection>
   <connection>
    <sender>gainValue</sender>
    <signal>sliderMoved(int)</signal>
-   <receiver>MainView</receiver>
+   <receiver>mainWindow</receiver>
    <slot>trackGainValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>946</x>
-     <y>555</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>511</x>
-     <y>361</y>
-    </hint>
-   </hints>
   </connection>
  </connections>
  <slots>
