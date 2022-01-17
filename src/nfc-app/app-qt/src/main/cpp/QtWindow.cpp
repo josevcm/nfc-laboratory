@@ -57,6 +57,7 @@
 
 #include "QtApplication.h"
 
+#include "QtConfig.h"
 #include "QtMemory.h"
 #include "QtWindow.h"
 
@@ -133,6 +134,9 @@ struct QtWindow::Impl
    void setupUi(QtWindow *mainWindow)
    {
       ui->setupUi(mainWindow);
+
+      // update window caption
+      mainWindow->setWindowTitle(NFC_LAB_VENDOR_STRING);
 
       // setup default controls status
       ui->gainMode->setEnabled(false);
