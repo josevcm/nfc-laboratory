@@ -25,10 +25,10 @@
 #ifndef NFC_LAB_QHEXVIEW_H
 #define NFC_LAB_QHEXVIEW_H
 
-#include <QAbstractScrollArea>
+#include <QWidget>
 #include <QByteArray>
 
-class QHexView : public QAbstractScrollArea
+class QHexView : public QWidget
 {
    Q_OBJECT
 
