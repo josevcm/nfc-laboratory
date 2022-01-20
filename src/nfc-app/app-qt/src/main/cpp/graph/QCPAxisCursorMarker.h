@@ -27,7 +27,7 @@
 
 #include <QString>
 
-#include <support/QCustomPlot.h>
+#include <3party/customplot/QCustomPlot.h>
 
 class QCPAxisCursorMarker
 {

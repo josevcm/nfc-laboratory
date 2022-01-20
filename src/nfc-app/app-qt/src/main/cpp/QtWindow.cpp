@@ -715,13 +715,22 @@ struct QtWindow::Impl
 
    void streamCellClicked(const QModelIndex &index)
    {
-      QPointer<QDialog> dialog = new QDialog(window);
+      if (index.isValid())
+      {
+         nfc::NfcFrame *frame = streamModel->frame(index);
 
-      QSharedPointer<Ui_DataView> ui(new Ui_DataView);
+         QByteArray byteArray((const char *) frame->data(), (int) frame->limit());
 
-      ui->setupUi(dialog);
+         QPointer<QDialog> dialog = new QDialog(window);
 
-      dialog->show();
+         QSharedPointer<Ui_DataView> ui(new Ui_DataView);
+
+         ui->setupUi(dialog);
+
+         ui->hexView->setData(byteArray);
+
+         dialog->show();
+      }
    }
 
    void streamScrollChanged()
