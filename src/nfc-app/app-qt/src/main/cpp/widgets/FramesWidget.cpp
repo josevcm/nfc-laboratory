@@ -29,7 +29,7 @@
 #include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 
-#include <support/QCustomPlot.h>
+#include <3party/customplot/QCustomPlot.h>
 
 #include <graph/QCPAxisRangeMarker.h>
 #include <graph/QCPAxisCursorMarker.h>

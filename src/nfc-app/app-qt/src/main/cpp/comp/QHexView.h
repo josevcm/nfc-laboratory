@@ -22,30 +22,40 @@
 
 */
 
-#ifndef NFC_LAB_QCPGRAPHVALUEMARKER_H
-#define NFC_LAB_QCPGRAPHVALUEMARKER_H
+#ifndef NFC_LAB_QHEXVIEW_H
+#define NFC_LAB_QHEXVIEW_H
 
-#include <QColor>
-#include <QString>
+#include <QAbstractScrollArea>
+#include <QByteArray>
 
-#include <3party/customplot/QCustomPlot.h>
-
-class QCPGraphValueMarker
+class QHexView : public QAbstractScrollArea
 {
+   Q_OBJECT
+
+      struct Impl;
+
    public:
 
-      explicit QCPGraphValueMarker(QCPGraph *graph, const QColor &color);
+      explicit QHexView(QWidget *parent = nullptr);
 
-      ~QCPGraphValueMarker();
+      void clear();
 
-      void show(double key, const QString &text);
+      void setData(const QByteArray &data);
 
-      void hide();
+   protected:
+
+      void paintEvent(QPaintEvent *event);
+
+      void keyPressEvent(QKeyEvent *event);
+
+      void mouseMoveEvent(QMouseEvent *event);
+
+      void mousePressEvent(QMouseEvent *event);
 
    private:
 
-      QCPItemTracer *tracer = nullptr;
-      QCPItemText *label = nullptr;
+      QSharedPointer<Impl> impl;
+
 };
 
-#endif //NFC_LAB_QCPGRAPHVALUEMARKER_H
+#endif //NFC_LAB_QHEXVIEW_H

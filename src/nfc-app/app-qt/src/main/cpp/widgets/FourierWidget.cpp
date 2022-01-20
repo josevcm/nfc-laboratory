@@ -25,7 +25,7 @@
 #include <QMouseEvent>
 #include <QVBoxLayout>
 
-#include <support/QCustomPlot.h>
+#include <3party/customplot/QCustomPlot.h>
 
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>

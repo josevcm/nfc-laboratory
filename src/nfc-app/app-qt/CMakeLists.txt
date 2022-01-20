@@ -18,6 +18,7 @@ add_executable(nfc-lab WIN32
         src/main/cpp/QtDecoder.cpp
         src/main/cpp/QtMemory.cpp
         src/main/cpp/QtWindow.cpp
+        src/main/cpp/comp/QHexView.cpp
         src/main/cpp/events/DecoderControlEvent.cpp
         src/main/cpp/events/DecoderStatusEvent.cpp
         src/main/cpp/events/ReceiverStatusEvent.cpp
@@ -41,7 +42,6 @@ add_executable(nfc-lab WIN32
         src/main/cpp/parser/ParserNfcV.cpp
         src/main/cpp/protocol/ProtocolFrame.cpp
         src/main/cpp/protocol/ProtocolParser.cpp
-        src/main/cpp/support/QCustomPlot.cpp
         src/main/cpp/widgets/FramesWidget.cpp
         src/main/cpp/widgets/FourierWidget.cpp
         src/main/cpp/widgets/SignalWidget.cpp
@@ -49,7 +49,7 @@ add_executable(nfc-lab WIN32
         src/main/cpp/styles/ParserStyle.cpp
         src/main/assets/icons/icons.qrc
         src/main/assets/theme/dark/style.qrc
-        )
+        src/main/cpp/3party/customplot/QCustomPlot.cpp src/main/cpp/widgets/InspectWidget.cpp src/main/cpp/widgets/InspectWidget.h)
 
 target_include_directories(nfc-lab PRIVATE ${PRIVATE_SOURCE_DIR})
 target_include_directories(nfc-lab PRIVATE ${AUTOGEN_BUILD_DIR}/include)

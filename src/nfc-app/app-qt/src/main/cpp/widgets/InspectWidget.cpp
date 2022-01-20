@@ -22,30 +22,24 @@
 
 */
 
-#ifndef NFC_LAB_QCPGRAPHVALUEMARKER_H
-#define NFC_LAB_QCPGRAPHVALUEMARKER_H
+#include "InspectWidget.h"
 
-#include <QColor>
-#include <QString>
-
-#include <3party/customplot/QCustomPlot.h>
-
-class QCPGraphValueMarker
+struct InspectWidget::Impl
 {
-   public:
-
-      explicit QCPGraphValueMarker(QCPGraph *graph, const QColor &color);
-
-      ~QCPGraphValueMarker();
-
-      void show(double key, const QString &text);
-
-      void hide();
-
-   private:
-
-      QCPItemTracer *tracer = nullptr;
-      QCPItemText *label = nullptr;
+   QByteArray data;
 };
 
-#endif //NFC_LAB_QCPGRAPHVALUEMARKER_H
+InspectWidget::InspectWidget(QWidget *parent) : QWidget(parent), impl(new Impl)
+{
+}
+
+void InspectWidget::clear()
+{
+   impl->data.clear();
+}
+
+void InspectWidget::setData(const QByteArray &data)
+{
+   impl->data = data;
+}
+

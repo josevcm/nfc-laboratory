@@ -1,16 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>DataView</class>
- <widget class="QDialog" name="dataView">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>400</width>
-    <height>200</height>
-   </rect>
-  </property>
- </widget>
- <resources/>
- <connections/>
+    <class>DataView</class>
+    <widget class="QDialog" name="dataView">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>400</width>
+                <height>200</height>
+            </rect>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_22">
+            <property name="spacing">
+                <number>0</number>
+            </property>
+            <property name="leftMargin">
+                <number>0</number>
+            </property>
+            <property name="topMargin">
+                <number>0</number>
+            </property>
+            <property name="rightMargin">
+                <number>0</number>
+            </property>
+            <property name="bottomMargin">
+                <number>0</number>
+            </property>
+            <item>
+                <widget class="QHexView" name="hexView">
+                </widget>
+            </item>
+        </layout>
+    </widget>
+    <customwidgets>
+        <customwidget>
+            <class>QHexView</class>
+            <extends>QWidget</extends>
+            <header>comp/QHexView.h</header>
+        </customwidget>
+    </customwidgets>
+    <resources/>
+    <connections/>
 </ui>
