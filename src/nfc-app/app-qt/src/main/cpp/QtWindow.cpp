@@ -53,8 +53,9 @@
 #include <styles/StreamStyle.h>
 #include <styles/ParserStyle.h>
 
+#include <dialogs/InspectDialog.h>
+
 #include <views/ui_MainView.h>
-#include <views/ui_DataView.h>
 
 #include "QtApplication.h"
 
@@ -717,17 +718,9 @@ struct QtWindow::Impl
    {
       if (index.isValid())
       {
-         nfc::NfcFrame *frame = streamModel->frame(index);
+         QPointer<InspectDialog> dialog = new InspectDialog(window);
 
-         QByteArray byteArray((const char *) frame->data(), (int) frame->limit());
-
-         QPointer<QDialog> dialog = new QDialog(window);
-
-         QSharedPointer<Ui_DataView> ui(new Ui_DataView);
-
-         ui->setupUi(dialog);
-
-         ui->hexView->setData(byteArray);
+         dialog->addFrame(*streamModel->frame(index));
 
          dialog->show();
       }

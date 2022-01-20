@@ -29,6 +29,7 @@ add_executable(nfc-lab WIN32
         src/main/cpp/events/SignalBufferEvent.cpp
         src/main/cpp/events/SystemStartupEvent.cpp
         src/main/cpp/events/SystemShutdownEvent.cpp
+        src/main/cpp/dialogs/InspectDialog.cpp
         src/main/cpp/graph/QCPAxisTickerFrequency.cpp
         src/main/cpp/graph/QCPAxisRangeMarker.cpp
         src/main/cpp/graph/QCPAxisCursorMarker.cpp
@@ -49,7 +50,8 @@ add_executable(nfc-lab WIN32
         src/main/cpp/styles/ParserStyle.cpp
         src/main/assets/icons/icons.qrc
         src/main/assets/theme/dark/style.qrc
-        src/main/cpp/3party/customplot/QCustomPlot.cpp src/main/cpp/widgets/InspectWidget.cpp src/main/cpp/widgets/InspectWidget.h)
+        src/main/cpp/3party/customplot/QCustomPlot.cpp
+        )
 
 target_include_directories(nfc-lab PRIVATE ${PRIVATE_SOURCE_DIR})
 target_include_directories(nfc-lab PRIVATE ${AUTOGEN_BUILD_DIR}/include)
