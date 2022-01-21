@@ -80,24 +80,17 @@ ProtocolFrame *ParserNfcF::parseResponseREQC(const nfc::NfcFrame &frame)
 ProtocolFrame *ParserNfcF::parseRequestGeneric(const nfc::NfcFrame &frame)
 {
    int cmd = frame[1]; // frame command
-   int flags = 0;
 
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
-   flags |= frame.hasSyncError() ? ProtocolFrame::Flags::SyncError : 0;
+   QString name = QString("CMD %1").arg(cmd, 2, 16, QChar('0'));
 
-   ProtocolFrame *root = buildFrameInfo(QString("CMD %1").arg(cmd, 2, 16, QChar('0')), frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
+   ProtocolFrame *root = buildRootInfo(name, frame, 0);
 
    return root;
 }
 
 ProtocolFrame *ParserNfcF::parseResponseGeneric(const nfc::NfcFrame &frame)
 {
-   int flags = 0;
-
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
-   flags |= frame.hasSyncError() ? ProtocolFrame::Flags::SyncError : 0;
-
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    return root;
 }

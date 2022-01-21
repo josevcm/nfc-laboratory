@@ -90,55 +90,52 @@ ProtocolFrame *ParserNfcB::parseRequestREQB(const nfc::NfcFrame &frame)
 
    lastCommand = frame[0];
 
-   int flags = 0;
    int apf = frame[0];
    int afi = frame[1];
    int param = frame[2];
    int nslot = param & 0x07;
 
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
+   ProtocolFrame *root = buildRootInfo(param & 0x8 ? "WUPB" : "REQB", frame, ProtocolFrame::SenseFrame);
 
-   ProtocolFrame *root = buildFrameInfo(param & 0x8 ? "WUPB" : "REQB", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
-
-   if (ProtocolFrame *afif = root->appendChild(buildFieldInfo("AFI", QString("%1").arg(afi, 2, 16, QChar('0')))))
+   if (ProtocolFrame *afif = root->appendChild(buildChildInfo("AFI", QString("%1").arg(afi, 2, 16, QChar('0')))))
    {
       if (afi == 0x00)
-         afif->appendChild(buildFieldInfo("[00000000] All families and sub-families"));
+         afif->appendChild(buildChildInfo("[00000000] All families and sub-families"));
       else if ((afi & 0x0f) == 0x00)
-         afif->appendChild(buildFieldInfo(QString("[%10000] All sub-families of family %2").arg(afi >> 4, 4, 2, QChar('0')).arg(afi >> 4)));
+         afif->appendChild(buildChildInfo(QString("[%10000] All sub-families of family %2").arg(afi >> 4, 4, 2, QChar('0')).arg(afi >> 4)));
       else if ((afi & 0xf0) == 0x00)
-         afif->appendChild(buildFieldInfo(QString("[0000%1] Proprietary sub-family %2 only").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[0000%1] Proprietary sub-family %2 only").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else if ((afi & 0xf0) == 0x10)
-         afif->appendChild(buildFieldInfo(QString("[0001%1] Transport sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[0001%1] Transport sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else if ((afi & 0xf0) == 0x20)
-         afif->appendChild(buildFieldInfo(QString("[0010%1] Financial sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[0010%1] Financial sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else if ((afi & 0xf0) == 0x30)
-         afif->appendChild(buildFieldInfo(QString("[0011%1] Identification sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[0011%1] Identification sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else if ((afi & 0xf0) == 0x40)
-         afif->appendChild(buildFieldInfo(QString("[0100%1] Telecommunication sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[0100%1] Telecommunication sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else if ((afi & 0xf0) == 0x50)
-         afif->appendChild(buildFieldInfo(QString("[0101%1] Medical sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[0101%1] Medical sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else if ((afi & 0xf0) == 0x60)
-         afif->appendChild(buildFieldInfo(QString("[0110%1] Multimedia sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[0110%1] Multimedia sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else if ((afi & 0xf0) == 0x70)
-         afif->appendChild(buildFieldInfo(QString("[0111%1] Gaming sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[0111%1] Gaming sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else if ((afi & 0xf0) == 0x80)
-         afif->appendChild(buildFieldInfo(QString("[1000%1] Data Storage sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+         afif->appendChild(buildChildInfo(QString("[1000%1] Data Storage sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
       else
-         afif->appendChild(buildFieldInfo(QString("[%1] RFU %2").arg(afi, 8, 2, QChar('0')).arg(afi)));
+         afif->appendChild(buildChildInfo(QString("[%1] RFU %2").arg(afi, 8, 2, QChar('0')).arg(afi)));
    }
 
-   if (ProtocolFrame *paramf = root->appendChild(buildFieldInfo("PARAM", QString("%1").arg(afi, 2, 16, QChar('0')))))
+   if (ProtocolFrame *paramf = root->appendChild(buildChildInfo("PARAM", QString("%1").arg(afi, 2, 16, QChar('0')))))
    {
       if (param & 0x8)
-         paramf->appendChild(buildFieldInfo("[....1...] WUPB command"));
+         paramf->appendChild(buildChildInfo("[....1...] WUPB command"));
       else
-         paramf->appendChild(buildFieldInfo("[....0...] REQB command"));
+         paramf->appendChild(buildChildInfo("[....0...] REQB command"));
 
-      paramf->appendChild(buildFieldInfo(QString("[.....%1] number of slots: %2").arg(nslot, 3, 2, QChar('0')).arg(nfc::NFCB_SLOT_TABLE[nslot])));
+      paramf->appendChild(buildChildInfo(QString("[.....%1] number of slots: %2").arg(nslot, 3, 2, QChar('0')).arg(nfc::NFCB_SLOT_TABLE[nslot])));
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -157,80 +154,78 @@ ProtocolFrame *ParserNfcB::parseResponseREQB(const nfc::NfcFrame &frame)
    int fds = nfc::NFC_FDS_TABLE[fdsi];
    float fwt = nfc::NFC_FWT_TABLE[fwi] / nfc::NFC_FC;
 
-   int flags = frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
+   ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::SenseFrame);
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
+   root->appendChild(buildChildInfo("PUPI", toByteArray(frame, 1, 4)));
+   root->appendChild(buildChildInfo("APP", toByteArray(frame, 5, 4)));
 
-   root->appendChild(buildFieldInfo("PUPI", toByteArray(frame, 1, 4)));
-   root->appendChild(buildFieldInfo("APP", toByteArray(frame, 5, 4)));
-
-   if (ProtocolFrame *inff = root->appendChild(buildFieldInfo("PROTO", toByteArray(frame, 9, 3))))
+   if (ProtocolFrame *inff = root->appendChild(buildChildInfo("PROTO", toByteArray(frame, 9, 3))))
    {
       // protocol rate
-      if (ProtocolFrame *ratef = inff->appendChild(buildFieldInfo("RATE", QString("%1 [%2]").arg(frame[9], 2, 16, QChar('0')).arg(frame[9], 8, 2, QChar('0')))))
+      if (ProtocolFrame *ratef = inff->appendChild(buildChildInfo("RATE", QString("%1 [%2]").arg(frame[9], 2, 16, QChar('0')).arg(frame[9], 8, 2, QChar('0')))))
       {
          if (rate & 0x80)
-            ratef->appendChild(buildFieldInfo(QString("[1.......] only support same rate for both directions")));
+            ratef->appendChild(buildChildInfo(QString("[1.......] only support same rate for both directions")));
          else
-            ratef->appendChild(buildFieldInfo(QString("[0.......] supported different rates for each direction")));
+            ratef->appendChild(buildChildInfo(QString("[0.......] supported different rates for each direction")));
 
          if (rate & 0x40)
-            ratef->appendChild(buildFieldInfo(QString("[.1......] supported 848 kbps PICC to PCD")));
+            ratef->appendChild(buildChildInfo(QString("[.1......] supported 848 kbps PICC to PCD")));
 
          if (rate & 0x20)
-            ratef->appendChild(buildFieldInfo(QString("[..1.....] supported 424 kbps PICC to PCD")));
+            ratef->appendChild(buildChildInfo(QString("[..1.....] supported 424 kbps PICC to PCD")));
 
          if (rate & 0x10)
-            ratef->appendChild(buildFieldInfo(QString("[...1....] supported 212 kbps PICC to PCD")));
+            ratef->appendChild(buildChildInfo(QString("[...1....] supported 212 kbps PICC to PCD")));
 
          if (rate & 0x04)
-            ratef->appendChild(buildFieldInfo(QString("[.....1..] supported 848 kbps PCD to PICC")));
+            ratef->appendChild(buildChildInfo(QString("[.....1..] supported 848 kbps PCD to PICC")));
 
          if (rate & 0x02)
-            ratef->appendChild(buildFieldInfo(QString("[......1.] supported 424 kbps PCD to PICC")));
+            ratef->appendChild(buildChildInfo(QString("[......1.] supported 424 kbps PCD to PICC")));
 
          if (rate & 0x01)
-            ratef->appendChild(buildFieldInfo(QString("[.......1] supported 212 kbps PCD to PICC")));
+            ratef->appendChild(buildChildInfo(QString("[.......1] supported 212 kbps PCD to PICC")));
 
          if ((rate & 0x7f) == 0x00)
-            ratef->appendChild(buildFieldInfo(QString("[.0000000] only 106 kbps supported")));
+            ratef->appendChild(buildChildInfo(QString("[.0000000] only 106 kbps supported")));
       }
 
       // frame size
-      if (ProtocolFrame *protof = inff->appendChild(buildFieldInfo("FRAME", QString("%1 [%2]").arg(frame[10], 2, 16, QChar('0')).arg(frame[10], 8, 2, QChar('0')))))
+      if (ProtocolFrame *protof = inff->appendChild(buildChildInfo("FRAME", QString("%1 [%2]").arg(frame[10], 2, 16, QChar('0')).arg(frame[10], 8, 2, QChar('0')))))
       {
-         protof->appendChild(buildFieldInfo(QString("[%1....] maximum frame size, %2 bytes").arg(fdsi, 4, 2, QChar('0')).arg(fds)));
+         protof->appendChild(buildChildInfo(QString("[%1....] maximum frame size, %2 bytes").arg(fdsi, 4, 2, QChar('0')).arg(fds)));
 
          if (type == 0)
-            protof->appendChild(buildFieldInfo("[....0000] PICC not compliant with ISO/IEC 14443-4"));
+            protof->appendChild(buildChildInfo("[....0000] PICC not compliant with ISO/IEC 14443-4"));
          else if (type == 1)
-            protof->appendChild(buildFieldInfo("[....0001] PICC compliant with ISO/IEC 14443-4"));
+            protof->appendChild(buildChildInfo("[....0001] PICC compliant with ISO/IEC 14443-4"));
          else
-            protof->appendChild(buildFieldInfo(QString("[....%1] protocol type %2").arg(type, 4, 2, QChar('0')).arg(type)));
+            protof->appendChild(buildChildInfo(QString("[....%1] protocol type %2").arg(type, 4, 2, QChar('0')).arg(type)));
       }
 
       // other parameters
-      if (ProtocolFrame *otherf = inff->appendChild(buildFieldInfo("OTHER", QString("%1 [%2]").arg(frame[11], 2, 16, QChar('0')).arg(frame[11], 8, 2, QChar('0')))))
+      if (ProtocolFrame *otherf = inff->appendChild(buildChildInfo("OTHER", QString("%1 [%2]").arg(frame[11], 2, 16, QChar('0')).arg(frame[11], 8, 2, QChar('0')))))
       {
-         otherf->appendChild(buildFieldInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(1E3 * fwt, 0, 'f', 2)));
+         otherf->appendChild(buildChildInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(1E3 * fwt, 0, 'f', 2)));
 
          if (adc == 0)
-            otherf->appendChild(buildFieldInfo("[....00..] application is proprietary"));
+            otherf->appendChild(buildChildInfo("[....00..] application is proprietary"));
          else if (adc == 1)
-            otherf->appendChild(buildFieldInfo("[....01..] application is coded in APP field"));
+            otherf->appendChild(buildChildInfo("[....01..] application is coded in APP field"));
          else
-            otherf->appendChild(buildFieldInfo(QString("[....%1..] RFU").arg(adc, 2, 2, QChar('0'))));
+            otherf->appendChild(buildChildInfo(QString("[....%1..] RFU").arg(adc, 2, 2, QChar('0'))));
 
          if (fo & 0x2)
-            otherf->appendChild(buildFieldInfo("[......1.] NAD supported by the PICC"));
+            otherf->appendChild(buildChildInfo("[......1.] NAD supported by the PICC"));
 
          if (fo & 0x1)
-            otherf->appendChild(buildFieldInfo("[.......1] CID supported by the PICC"));
+            otherf->appendChild(buildChildInfo("[.......1] CID supported by the PICC"));
       }
    }
 
    // frame CRC
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -248,80 +243,78 @@ ProtocolFrame *ParserNfcB::parseRequestATTRIB(const nfc::NfcFrame &frame)
    int param3 = frame[7];
    int param4 = frame[8];
 
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
+   ProtocolFrame *root = buildRootInfo("ATTRIB", frame, ProtocolFrame::SenseFrame);
 
-   ProtocolFrame *root = buildFrameInfo("ATTRIB", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
+   root->appendChild(buildChildInfo("ID", toByteArray(frame, 1, 4)));
 
-   root->appendChild(buildFieldInfo("ID", toByteArray(frame, 1, 4)));
-
-   if (ProtocolFrame *param1f = root->appendChild(buildFieldInfo("PARAM1", QString("%1 [%2]").arg(param1, 2, 16, QChar('0')).arg(param1, 8, 2, QChar('0')))))
+   if (ProtocolFrame *param1f = root->appendChild(buildChildInfo("PARAM1", QString("%1 [%2]").arg(param1, 2, 16, QChar('0')).arg(param1, 8, 2, QChar('0')))))
    {
       int tr0min = (param1 >> 6) & 0x3;
       int tr1min = (param1 >> 4) & 0x3;
 
       if (tr0min)
-         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, %2 us").arg(tr0min, 2, 2, QChar('0')).arg(1E3 * nfc::NFCB_TR0_MIN_TABLE[tr0min] / nfc::NFC_FC, 0, 'f', 2)));
+         param1f->appendChild(buildChildInfo(QString("[%1.....] minimum TR0, %2 us").arg(tr0min, 2, 2, QChar('0')).arg(1E3 * nfc::NFCB_TR0_MIN_TABLE[tr0min] / nfc::NFC_FC, 0, 'f', 2)));
       else
-         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR0, DEFAULT").arg(tr0min, 2, 2, QChar('0'))));
+         param1f->appendChild(buildChildInfo(QString("[%1.....] minimum TR0, DEFAULT").arg(tr0min, 2, 2, QChar('0'))));
 
       if (tr1min)
-         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(1E3 * nfc::NFCB_TR1_MIN_TABLE[tr1min] / nfc::NFC_FC, 0, 'f', 2)));
+         param1f->appendChild(buildChildInfo(QString("[%1.....] minimum TR1, %2 us").arg(tr1min, 2, 2, QChar('0')).arg(1E3 * nfc::NFCB_TR1_MIN_TABLE[tr1min] / nfc::NFC_FC, 0, 'f', 2)));
       else
-         param1f->appendChild(buildFieldInfo(QString("[%1.....] minimum TR1, DEFAULT").arg(tr1min, 2, 2, QChar('0'))));
+         param1f->appendChild(buildChildInfo(QString("[%1.....] minimum TR1, DEFAULT").arg(tr1min, 2, 2, QChar('0'))));
 
       if (param1 & 0x08)
-         param1f->appendChild(buildFieldInfo(QString("[....1..] suppression of the EOF: Yes")));
+         param1f->appendChild(buildChildInfo(QString("[....1..] suppression of the EOF: Yes")));
       else
-         param1f->appendChild(buildFieldInfo(QString("[....0..] suppression of the EOF: No")));
+         param1f->appendChild(buildChildInfo(QString("[....0..] suppression of the EOF: No")));
 
       if (param1 & 0x04)
-         param1f->appendChild(buildFieldInfo(QString("[....1..] suppression of the SOF: Yes")));
+         param1f->appendChild(buildChildInfo(QString("[....1..] suppression of the SOF: Yes")));
       else
-         param1f->appendChild(buildFieldInfo(QString("[....0..] suppression of the SOF: No")));
+         param1f->appendChild(buildChildInfo(QString("[....0..] suppression of the SOF: No")));
    }
 
-   if (ProtocolFrame *param2f = root->appendChild(buildFieldInfo("PARAM2", QString("%1 [%2]").arg(param2, 2, 16, QChar('0')).arg(param2, 8, 2, QChar('0')))))
+   if (ProtocolFrame *param2f = root->appendChild(buildChildInfo("PARAM2", QString("%1 [%2]").arg(param2, 2, 16, QChar('0')).arg(param2, 8, 2, QChar('0')))))
    {
       int fdsi = param2 & 0x0f;
       int fds = nfc::NFC_FDS_TABLE[fdsi] / nfc::NFC_FC;
 
       if ((param2 & 0xC0) == 0x00)
-         param2f->appendChild(buildFieldInfo("[00......] selected 106 kbps PICC to PCD rate"));
+         param2f->appendChild(buildChildInfo("[00......] selected 106 kbps PICC to PCD rate"));
       else if ((param2 & 0xC0) == 0x40)
-         param2f->appendChild(buildFieldInfo("[01......] selected 212 kbps PICC to PCD rate"));
+         param2f->appendChild(buildChildInfo("[01......] selected 212 kbps PICC to PCD rate"));
       else if ((param2 & 0xC0) == 0x80)
-         param2f->appendChild(buildFieldInfo("[10......] selected 424 kbps PICC to PCD rate"));
+         param2f->appendChild(buildChildInfo("[10......] selected 424 kbps PICC to PCD rate"));
       else if ((param2 & 0xC0) == 0xC0)
-         param2f->appendChild(buildFieldInfo("[11......] selected 848 kbps PICC to PCD rate"));
+         param2f->appendChild(buildChildInfo("[11......] selected 848 kbps PICC to PCD rate"));
 
       if ((param2 & 0x30) == 0x00)
-         param2f->appendChild(buildFieldInfo("[..00....] selected 106 kbps PCD to PICC rate"));
+         param2f->appendChild(buildChildInfo("[..00....] selected 106 kbps PCD to PICC rate"));
       else if ((param2 & 0x30) == 0x10)
-         param2f->appendChild(buildFieldInfo("[..01....] selected 212 kbps PCD to PICC rate"));
+         param2f->appendChild(buildChildInfo("[..01....] selected 212 kbps PCD to PICC rate"));
       else if ((param2 & 0x30) == 0x20)
-         param2f->appendChild(buildFieldInfo("[..10....] selected 424 kbps PCD to PICC rate"));
+         param2f->appendChild(buildChildInfo("[..10....] selected 424 kbps PCD to PICC rate"));
       else if ((param2 & 0x30) == 0x30)
-         param2f->appendChild(buildFieldInfo("[..11....] selected 848 kbps PCD to PICC rate"));
+         param2f->appendChild(buildChildInfo("[..11....] selected 848 kbps PCD to PICC rate"));
 
-      param2f->appendChild(buildFieldInfo(QString("[....%1] maximum frame size, %2 bytes").arg(fdsi, 4, 2, QChar('0')).arg(fds)));
+      param2f->appendChild(buildChildInfo(QString("[....%1] maximum frame size, %2 bytes").arg(fdsi, 4, 2, QChar('0')).arg(fds)));
    }
 
-   if (ProtocolFrame *param3f = root->appendChild(buildFieldInfo("PARAM3", QString("%1 [%2]").arg(param3, 2, 16, QChar('0')).arg(param3, 8, 2, QChar('0')))))
+   if (ProtocolFrame *param3f = root->appendChild(buildChildInfo("PARAM3", QString("%1 [%2]").arg(param3, 2, 16, QChar('0')).arg(param3, 8, 2, QChar('0')))))
    {
       if (param3 & 1)
-         param3f->appendChild(buildFieldInfo("[.......1] PICC compliant with ISO/IEC 14443-4"));
+         param3f->appendChild(buildChildInfo("[.......1] PICC compliant with ISO/IEC 14443-4"));
       else
-         param3f->appendChild(buildFieldInfo("[.......0] PICC not compliant with ISO/IEC 14443-4"));
+         param3f->appendChild(buildChildInfo("[.......0] PICC not compliant with ISO/IEC 14443-4"));
    }
 
-   if (ProtocolFrame *param4f = root->appendChild(buildFieldInfo("PARAM4", QString("%1 [%2]").arg(param4, 2, 16, QChar('0')).arg(param4, 8, 2, QChar('0')))))
+   if (ProtocolFrame *param4f = root->appendChild(buildChildInfo("PARAM4", QString("%1 [%2]").arg(param4, 2, 16, QChar('0')).arg(param4, 8, 2, QChar('0')))))
    {
       int cid = param4 & 0x0f;
 
-      param4f->appendChild(buildFieldInfo(QString("[....%1] card identifier (CID) = %2").arg(cid, 4, 2, QChar('0')).arg(cid)));
+      param4f->appendChild(buildChildInfo(QString("[....%1] card identifier (CID) = %2").arg(cid, 4, 2, QChar('0')).arg(cid)));
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -333,20 +326,20 @@ ProtocolFrame *ParserNfcB::parseResponseATTRIB(const nfc::NfcFrame &frame)
 
    int flags = frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
+   ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::SenseFrame);
 
    int mbli = (frame[0] >> 4) & 0x0f;
    int cid = frame[0] & 0x0f;
 
-   root->appendChild(buildFieldInfo("MBLI", mbli));
-   root->appendChild(buildFieldInfo("CID", cid));
+   root->appendChild(buildChildInfo("MBLI", mbli));
+   root->appendChild(buildChildInfo("CID", cid));
 
    if (frame.limit() > 3)
    {
-      root->appendChild(buildFieldInfo("INF", toByteArray(frame, 1, frame.limit() - 3)));
+      root->appendChild(buildChildInfo("INF", toByteArray(frame, 1, frame.limit() - 3)));
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -360,10 +353,10 @@ ProtocolFrame *ParserNfcB::parseRequestHLTB(const nfc::NfcFrame &frame)
 
    int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
 
-   ProtocolFrame *root = buildFrameInfo("HLTB", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
+   ProtocolFrame *root = buildRootInfo("HLTB", frame, ProtocolFrame::SenseFrame);
 
-   root->appendChild(buildFieldInfo("PUPI", toByteArray(frame, 1, 4)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("PUPI", toByteArray(frame, 1, 4)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -375,9 +368,9 @@ ProtocolFrame *ParserNfcB::parseResponseHLTB(const nfc::NfcFrame &frame)
 
    int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::SenseFrame);
+   ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::SenseFrame);
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }

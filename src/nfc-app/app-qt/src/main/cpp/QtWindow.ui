@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainView</class>
+ <class>QtWindow</class>
  <widget class="QMainWindow" name="mainWindow">
   <property name="geometry">
    <rect>
@@ -337,7 +337,7 @@
         </attribute>
         <layout class="QHBoxLayout" name="horizontalLayout_20">
          <property name="spacing">
-          <number>0</number>
+          <number>2</number>
          </property>
          <property name="leftMargin">
           <number>0</number>
@@ -366,7 +366,7 @@
             <number>0</number>
            </property>
            <property name="selectionMode">
-            <enum>QAbstractItemView::NoSelection</enum>
+            <enum>QAbstractItemView::SingleSelection</enum>
            </property>
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectRows</enum>
@@ -376,6 +376,16 @@
            </property>
            <property name="headerHidden">
             <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="HexViewWidget" name="hexView" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
            </property>
           </widget>
          </item>
@@ -817,6 +827,11 @@
   </action>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>HexViewWidget</class>
+   <extends>QWidget</extends>
+   <header>widgets/HexViewWidget.h</header>
+  </customwidget>
   <customwidget>
    <class>FourierWidget</class>
    <extends>QWidget</extends>

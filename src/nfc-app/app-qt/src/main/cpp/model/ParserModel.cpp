@@ -51,10 +51,10 @@ struct ParserModel::Impl
    {
       QVector<QVariant> rootData;
 
-      rootData << "Cmd" << "" << "Data";
+      rootData << "Name" << "" << "Data";
 
       // root data
-      root = new ProtocolFrame(rootData);
+      root = new ProtocolFrame(rootData, 0, nullptr);
 
       // request fonts
       requestDefaultFont.setBold(true);
@@ -76,7 +76,7 @@ struct ParserModel::Impl
    {
       QString text;
 
-      for (char it : value)
+      for (char it: value)
       {
          text.append(QString("%1 ").arg(it & 0xff, 2, 16, QLatin1Char('0')));
       }
@@ -112,10 +112,8 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
    {
       switch (col)
       {
-         qInfo() << "UserRole" << col;
-
-         case Columns::Cmd:
-            return frame->data(ProtocolFrame::Type);
+         case Columns::Name:
+            return frame->data(ProtocolFrame::Name);
 
          case Columns::Flags:
             return frame->data(ProtocolFrame::Flags);
@@ -129,9 +127,9 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
    {
       switch (col)
       {
-         case Columns::Cmd:
+         case Columns::Name:
          {
-            return frame->data(ProtocolFrame::Type);
+            return frame->data(ProtocolFrame::Name);
          }
 
          case Columns::Flags:
@@ -168,7 +166,7 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
    {
       switch (col)
       {
-         case Columns::Cmd:
+         case Columns::Name:
          {
             if (frame->isFrameField())
                return impl->fieldFont;
@@ -299,7 +297,7 @@ void ParserModel::append(const nfc::NfcFrame &frame)
    }
 }
 
-ProtocolFrame *ParserModel::frame(const QModelIndex &index) const
+ProtocolFrame *ParserModel::entry(const QModelIndex &index) const
 {
    if (!index.isValid())
       return nullptr;

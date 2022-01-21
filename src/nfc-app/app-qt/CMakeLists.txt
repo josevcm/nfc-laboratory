@@ -18,7 +18,6 @@ add_executable(nfc-lab WIN32
         src/main/cpp/QtDecoder.cpp
         src/main/cpp/QtMemory.cpp
         src/main/cpp/QtWindow.cpp
-        src/main/cpp/comp/QHexView.cpp
         src/main/cpp/events/DecoderControlEvent.cpp
         src/main/cpp/events/DecoderStatusEvent.cpp
         src/main/cpp/events/ReceiverStatusEvent.cpp
@@ -43,6 +42,7 @@ add_executable(nfc-lab WIN32
         src/main/cpp/parser/ParserNfcV.cpp
         src/main/cpp/protocol/ProtocolFrame.cpp
         src/main/cpp/protocol/ProtocolParser.cpp
+        src/main/cpp/widgets/HexViewWidget.cpp
         src/main/cpp/widgets/FramesWidget.cpp
         src/main/cpp/widgets/FourierWidget.cpp
         src/main/cpp/widgets/SignalWidget.cpp

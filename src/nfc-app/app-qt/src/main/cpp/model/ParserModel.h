@@ -37,11 +37,11 @@
 #include <QPixmap>
 #include <QPointer>
 
+#include <protocol/ProtocolFrame.h>
+
 namespace nfc {
 class NfcFrame;
 }
-
-class ProtocolFrame;
 
 class ParserModel : public QAbstractItemModel
 {
@@ -53,7 +53,7 @@ class ParserModel : public QAbstractItemModel
 
       enum Columns
       {
-         Cmd = 0, Flags = 1, Data = 2
+         Name = 0, Flags = 1, Data = 2
       };
 
    public:
@@ -82,7 +82,7 @@ class ParserModel : public QAbstractItemModel
 
       void append(const nfc::NfcFrame &frame);
 
-      ProtocolFrame *frame(const QModelIndex &index) const;
+      ProtocolFrame *entry(const QModelIndex &index) const;
 
    signals:
 

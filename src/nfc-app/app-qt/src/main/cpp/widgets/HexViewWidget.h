@@ -22,13 +22,13 @@
 
 */
 
-#ifndef NFC_LAB_QHEXVIEW_H
-#define NFC_LAB_QHEXVIEW_H
+#ifndef NFC_LAB_HEXVIEWWIDGET_H
+#define NFC_LAB_HEXVIEWWIDGET_H
 
-#include <QWidget>
+#include <QAbstractScrollArea>
 #include <QByteArray>
 
-class QHexView : public QWidget
+class HexViewWidget : public QAbstractScrollArea
 {
    Q_OBJECT
 
@@ -36,11 +36,13 @@ class QHexView : public QWidget
 
    public:
 
-      explicit QHexView(QWidget *parent = nullptr);
+      explicit HexViewWidget(QWidget *parent = nullptr);
 
       void clear();
 
       void setData(const QByteArray &data);
+
+      void setCursor(int position);
 
    protected:
 
@@ -58,4 +60,4 @@ class QHexView : public QWidget
 
 };
 
-#endif //NFC_LAB_QHEXVIEW_H
+#endif //NFC_LAB_HEXVIEWWIDGET_H

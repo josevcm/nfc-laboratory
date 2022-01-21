@@ -42,17 +42,21 @@ struct NfcFrame::Impl
 
 const NfcFrame NfcFrame::Nil;
 
-NfcFrame::NfcFrame() : rt::ByteBuffer(256), impl(std::make_shared<Impl>())
+NfcFrame::NfcFrame() : rt::ByteBuffer(), impl(std::make_shared<Impl>())
 {
 }
 
-NfcFrame::NfcFrame(int techType, int frameType) : NfcFrame()
+NfcFrame::NfcFrame(int size) : rt::ByteBuffer(size), impl(std::make_shared<Impl>())
+{
+}
+
+NfcFrame::NfcFrame(int techType, int frameType) : NfcFrame(256)
 {
    impl->techType = techType;
    impl->frameType = frameType;
 }
 
-NfcFrame::NfcFrame(int techType, int frameType, double timeStart, double timeEnd) : NfcFrame()
+NfcFrame::NfcFrame(int techType, int frameType, double timeStart, double timeEnd) : NfcFrame(256)
 {
    impl->techType = techType;
    impl->frameType = frameType;

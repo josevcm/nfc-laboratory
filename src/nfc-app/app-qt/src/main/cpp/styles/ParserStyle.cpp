@@ -85,16 +85,14 @@ void ParserStyle::paint(QPainter *painter, const QStyleOptionViewItem &option, c
             else
                painter->fillRect(option.rect, impl->selectedInactive);
          }
-         else if (!(frame->isFrameField() || frame->isFieldInfo()))
+         else
          {
-            if (frame->isRequestFrame())
+            if (frame->isFrameField() || frame->isFieldInfo())
+               painter->fillRect(option.rect, option.palette.window());
+            else if (frame->isRequestFrame())
                painter->fillRect(option.rect, impl->requestBackground);
             else
                painter->fillRect(option.rect, impl->responseBackground);
-         }
-         else
-         {
-            painter->fillRect(option.rect, option.palette.window());
          }
 
          switch (index.column())

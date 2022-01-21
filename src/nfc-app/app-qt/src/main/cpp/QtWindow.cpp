@@ -55,7 +55,7 @@
 
 #include <dialogs/InspectDialog.h>
 
-#include <views/ui_MainView.h>
+#include <views/ui_QtWindow.h>
 
 #include "QtApplication.h"
 
@@ -96,7 +96,7 @@ struct QtWindow::Impl
    int deviceGainValue = -1;
 
    // interface
-   QSharedPointer<Ui_MainView> ui;
+   QSharedPointer<Ui_QtWindow> ui;
 
    // Frame view model
    QPointer<StreamModel> streamModel;
@@ -122,7 +122,7 @@ struct QtWindow::Impl
    // fft signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription frequencySubscription;
 
-   explicit Impl(QMainWindow *window, QSettings &settings, QtMemory *cache) : window(window), settings(settings), cache(cache), ui(new Ui_MainView()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
+   explicit Impl(QMainWindow *window, QSettings &settings, QtMemory *cache) : window(window), settings(settings), cache(cache), ui(new Ui_QtWindow()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
    {
       // IQ signal subject stream
       signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
@@ -168,7 +168,7 @@ struct QtWindow::Impl
 
       // setup protocol view model
       ui->parserView->setModel(parserModel);
-      ui->parserView->setColumnWidth(ParserModel::Cmd, 120);
+      ui->parserView->setColumnWidth(ParserModel::Name, 120);
       ui->parserView->setColumnWidth(ParserModel::Flags, 32);
       ui->parserView->setItemDelegate(new ParserStyle(ui->parserView));
 
@@ -176,6 +176,11 @@ struct QtWindow::Impl
 //      QObject::connect(ui->streamView->verticalScrollBar(), &QScrollBar::valueChanged, [=](int position) {
 //         streamScrollChanged();
 //      });
+
+      // connect selection signal from parser model
+      QObject::connect(ui->parserView->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &selected, const QItemSelection &deselected) {
+         parserSelectionChanged();
+      });
 
       // connect cell double click signal
       QObject::connect(ui->streamView, &QTableView::doubleClicked, [=](const QModelIndex &index) {
@@ -714,31 +719,17 @@ struct QtWindow::Impl
       }
    }
 
-   void streamCellClicked(const QModelIndex &index)
+   void parserSelectionChanged()
    {
-      if (index.isValid())
+      QModelIndexList indexList = ui->parserView->selectionModel()->selectedIndexes();
+
+      if (!indexList.isEmpty())
       {
-         QPointer<InspectDialog> dialog = new InspectDialog(window);
+         auto firstIndex = indexList.first();
 
-         dialog->addFrame(*streamModel->frame(index));
-
-         dialog->show();
-      }
-   }
-
-   void streamScrollChanged()
-   {
-      QModelIndex firstRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().topLeft());
-      QModelIndex lastRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().bottomLeft() - QPoint(0, 10));
-
-      if (firstRow.isValid() && lastRow.isValid())
-      {
-         nfc::NfcFrame *firstFrame = streamModel->frame(firstRow);
-         nfc::NfcFrame *lastFrame = streamModel->frame(lastRow);
-
-         if (firstFrame && lastFrame)
+         if (auto firstEntry = parserModel->entry(firstIndex))
          {
-            ui->signalView->setRange(firstFrame->timeStart(), lastFrame->timeEnd());
+            ui->hexView->setData(toByteArray(firstEntry->frame()));
          }
       }
    }
@@ -793,6 +784,8 @@ struct QtWindow::Impl
 
          if (auto firstFrame = streamModel->frame(firstIndex))
          {
+            ui->hexView->setData(toByteArray(*firstFrame));
+
             if (firstFrame->isPollFrame())
             {
                parserModel->append(*firstFrame);
@@ -840,6 +833,72 @@ struct QtWindow::Impl
          ui->signalView->blockSignals(true);
          ui->signalView->select(startTime, endTime);
          ui->signalView->blockSignals(false);
+      }
+   }
+
+   void streamScrollChanged()
+   {
+      QModelIndex firstRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().topLeft());
+      QModelIndex lastRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().bottomLeft() - QPoint(0, 10));
+
+      if (firstRow.isValid() && lastRow.isValid())
+      {
+         nfc::NfcFrame *firstFrame = streamModel->frame(firstRow);
+         nfc::NfcFrame *lastFrame = streamModel->frame(lastRow);
+
+         if (firstFrame && lastFrame)
+         {
+            ui->signalView->setRange(firstFrame->timeStart(), lastFrame->timeEnd());
+         }
+      }
+   }
+
+   void streamCellClicked(const QModelIndex &index)
+   {
+      auto firstIndex = index;
+
+      if (index.isValid())
+      {
+         QPointer<InspectDialog> dialog = new InspectDialog(window);
+
+         if (auto firstFrame = streamModel->frame(firstIndex))
+         {
+            if (firstFrame->isPollFrame())
+            {
+               dialog->addFrame(*firstFrame);
+
+               auto secondIndex = streamModel->index(firstIndex.row() + 1, 0);
+
+               if (secondIndex.isValid())
+               {
+                  if (auto secondFrame = streamModel->frame(secondIndex))
+                  {
+                     if (secondFrame->isListenFrame())
+                     {
+                        dialog->addFrame(*secondFrame);
+                     }
+                  }
+               }
+            }
+            else if (firstFrame->isListenFrame())
+            {
+               auto secondIndex = streamModel->index(firstIndex.row() - 1, 0);
+
+               if (secondIndex.isValid())
+               {
+                  if (auto secondFrame = streamModel->frame(secondIndex))
+                  {
+                     if (secondFrame->isPollFrame())
+                     {
+                        dialog->addFrame(*secondFrame);
+                        dialog->addFrame(*firstFrame);
+                     }
+                  }
+               }
+            }
+         }
+
+         dialog->show();
       }
    }
 
@@ -907,6 +966,32 @@ struct QtWindow::Impl
    void clipboardCopy() const
    {
       QApplication::clipboard()->setText(clipboard);
+   }
+
+   QByteArray toByteArray(const nfc::NfcFrame &frame)
+   {
+      QByteArray data;
+
+      for (int i = 0; i < frame.limit(); i++)
+      {
+         data.append(frame[i]);
+      }
+
+      for (int i = 0; i < frame.limit(); i++)
+      {
+         data.append(frame[i]);
+      }
+
+      for (int i = 0; i < frame.limit(); i++)
+      {
+         data.append(frame[i]);
+      }
+
+      for (int i = 0; i < frame.limit(); i++)
+      {
+         data.append(frame[i]);
+      }
+      return data;
    }
 };
 

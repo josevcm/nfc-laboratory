@@ -42,40 +42,36 @@ void ParserNfc::reset()
 
 ProtocolFrame *ParserNfc::parseRequestUnknown(const nfc::NfcFrame &frame)
 {
-   int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
-   return buildFrameInfo("(unk)", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
+   return buildRootInfo("(unk)", frame, 0);
 }
 
 ProtocolFrame *ParserNfc::parseResponseUnknown(const nfc::NfcFrame &frame)
 {
-   int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
-   return buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, 0);
+   return buildRootInfo("", frame, 0);
 }
 
 ProtocolFrame *ParserNfc::parseAPDU(const QString &name, const QByteArray &data)
 {
    int lc = (unsigned char) data[4];
 
-   ProtocolFrame *info = buildFieldInfo(name, data);
+   ProtocolFrame *info = buildChildInfo(name, data);
 
-   info->appendChild(buildFieldInfo("CLA", data.mid(0, 1)));
-   info->appendChild(buildFieldInfo("INS", data.mid(1, 1)));
-   info->appendChild(buildFieldInfo("P1", data.mid(2, 1)));
-   info->appendChild(buildFieldInfo("P2", data.mid(3, 1)));
-   info->appendChild(buildFieldInfo("LC", data.mid(4, 1)));
+   info->appendChild(buildChildInfo("CLA", data.mid(0, 1)));
+   info->appendChild(buildChildInfo("INS", data.mid(1, 1)));
+   info->appendChild(buildChildInfo("P1", data.mid(2, 1)));
+   info->appendChild(buildChildInfo("P2", data.mid(3, 1)));
+   info->appendChild(buildChildInfo("LC", data.mid(4, 1)));
 
    if (data.length() > lc + 5)
-      info->appendChild(buildFieldInfo("LE", data.mid(data.length() - 1, 1)));
+      info->appendChild(buildChildInfo("LE", data.mid(data.length() - 1, 1)));
 
    if (lc > 0)
    {
       QByteArray array = data.mid(5, lc);
 
-      ProtocolFrame *payload = buildFieldInfo("DATA", array);
+      ProtocolFrame *payload = buildChildInfo("DATA", array);
 
-      payload->appendChild(buildFieldInfo(toString(array)));
+      payload->appendChild(buildChildInfo(toString(array)));
 
       info->appendChild(payload);
    }
@@ -83,64 +79,42 @@ ProtocolFrame *ParserNfc::parseAPDU(const QString &name, const QByteArray &data)
    return info;
 }
 
-ProtocolFrame *ParserNfc::buildFrameInfo(const QString &name, int rate, const QVariant &info, double time, double end, int flags, int type)
-{
-   return buildInfo(name, rate, info, time, end, flags | ProtocolFrame::RequestFrame, type);
-}
-
-ProtocolFrame *ParserNfc::buildFrameInfo(int rate, const QVariant &info, double time, double end, int flags, int type)
-{
-   return buildInfo(QString(), rate, info, time, end, flags | ProtocolFrame::ResponseFrame, type);
-}
-
-ProtocolFrame *ParserNfc::buildFieldInfo(const QString &name, const QVariant &info)
-{
-   return buildInfo(name, 0, info, 0, 0, ProtocolFrame::FrameField, 0);
-}
-
-ProtocolFrame *ParserNfc::buildFieldInfo(const QVariant &info)
-{
-   return buildInfo(QString(), 0, info, 0, 0, ProtocolFrame::FieldInfo, 0);
-}
-
-ProtocolFrame *ParserNfc::buildInfo(const QString &name, int rate, const QVariant &info, double start, double end, int flags, int type)
+ProtocolFrame *ParserNfc::buildRootInfo(const QString &name, const nfc::NfcFrame &frame, int flags)
 {
    QVector<QVariant> values;
 
+   flags |= frame.isPollFrame() ? ProtocolFrame::Flags::RequestFrame : 0;
+   flags |= frame.isListenFrame() ? ProtocolFrame::Flags::ResponseFrame : 0;
+   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
+   flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
+
    // frame number
-   values << QVariant::Invalid;
-
-   // time start
-   if (start > 0)
-      values << QVariant::fromValue(start);
-   else
-      values << QVariant::Invalid;
-
-   // time end
-   if (end > 0)
-      values << QVariant::fromValue(end);
-   else
-      values << QVariant::Invalid;
-
-   // rate
-   if (rate > 0)
-      values << QVariant::fromValue(rate);
-   else
-      values << QVariant::Invalid;
-
-   // type
-   if (!name.isEmpty())
-      values << QVariant::fromValue(name);
-   else
-      values << QVariant::Invalid;
-
-   // flags
+   values << QVariant::fromValue(name);
    values << QVariant::fromValue(flags);
+   values << QVariant::fromValue(toByteArray(frame));
 
-   // content
+   return new ProtocolFrame(values, flags, frame);
+}
+
+ProtocolFrame *ParserNfc::buildChildInfo(const QVariant &info)
+{
+   return buildChildInfo("", info, ProtocolFrame::FieldInfo);
+}
+
+ProtocolFrame *ParserNfc::buildChildInfo(const QString &name, const QVariant &info)
+{
+   return buildChildInfo(name, info, ProtocolFrame::FrameField);
+}
+
+ProtocolFrame *ParserNfc::buildChildInfo(const QString &name, const QVariant &info, int flags)
+{
+   QVector<QVariant> values;
+
+   values << QVariant::fromValue(name);
+   values << QVariant::fromValue(flags);
    values << info;
 
-   return new ProtocolFrame(values, flags, type);
+   return new ProtocolFrame(values, flags, nullptr);
 }
 
 bool ParserNfc::isApdu(const QByteArray &apdu)
@@ -264,18 +238,14 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestIBlock(const nfc::NfcFrame &frame)
       return nullptr;
 
    int pcb = frame[0], offset = 1;
-   int flags = 0;
 
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
-   flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
-   ProtocolFrame *root = buildFrameInfo("I-Block", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("I-Block", frame, ProtocolFrame::ApplicationFrame);
 
    if (pcb & 0x08)
-      root->appendChild(buildFieldInfo("CID", frame[offset++] & 0x0F));
+      root->appendChild(buildChildInfo("CID", frame[offset++] & 0x0F));
 
    if (pcb & 0x04)
-      root->appendChild(buildFieldInfo("NAD", frame[offset++] & 0xFF));
+      root->appendChild(buildChildInfo("NAD", frame[offset++] & 0xFF));
 
    if (offset < frame.limit() - 2)
    {
@@ -283,20 +253,18 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestIBlock(const nfc::NfcFrame &frame)
 
       if (isApdu(data))
       {
-         flags |= IS_APDU;
-
          root->appendChild(parseAPDU("APDU", data));
       }
       else
       {
-         if (ProtocolFrame *payload = root->appendChild(buildFieldInfo("DATA", data)))
+         if (ProtocolFrame *payload = root->appendChild(buildChildInfo("DATA", data)))
          {
-            payload->appendChild(buildFieldInfo(toString(data)));
+            payload->appendChild(buildChildInfo(toString(data)));
          }
       }
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -309,16 +277,13 @@ ProtocolFrame *ParserNfcIsoDep::parseResponseIBlock(const nfc::NfcFrame &frame)
    int pcb = frame[0], offset = 1;
    int flags = 0;
 
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
-   flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::ApplicationFrame);
 
    if (pcb & 0x08)
-      root->appendChild(buildFieldInfo("CID", frame[offset++] & 0x0F));
+      root->appendChild(buildChildInfo("CID", frame[offset++] & 0x0F));
 
    if (pcb & 0x04)
-      root->appendChild(buildFieldInfo("NAD", frame[offset++] & 0xFF));
+      root->appendChild(buildChildInfo("NAD", frame[offset++] & 0xFF));
 
    if (offset < frame.limit() - 2)
    {
@@ -328,26 +293,26 @@ ProtocolFrame *ParserNfcIsoDep::parseResponseIBlock(const nfc::NfcFrame &frame)
          {
             QByteArray data = toByteArray(frame, offset, frame.limit() - offset - 4);
 
-            if (ProtocolFrame *payload = root->appendChild(buildFieldInfo("DATA", data)))
+            if (ProtocolFrame *payload = root->appendChild(buildChildInfo("DATA", data)))
             {
-               payload->appendChild(buildFieldInfo(toString(data)));
+               payload->appendChild(buildChildInfo(toString(data)));
             }
          }
 
-         root->appendChild(buildFieldInfo("SW", toByteArray(frame, -4, 2)));
+         root->appendChild(buildChildInfo("SW", toByteArray(frame, -4, 2)));
       }
       else
       {
          QByteArray data = toByteArray(frame, offset, frame.limit() - offset - 2);
 
-         if (ProtocolFrame *payload = root->appendChild(buildFieldInfo("DATA", data)))
+         if (ProtocolFrame *payload = root->appendChild(buildChildInfo("DATA", data)))
          {
-            payload->appendChild(buildFieldInfo(toString(data)));
+            payload->appendChild(buildChildInfo(toString(data)));
          }
       }
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -358,25 +323,21 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestRBlock(const nfc::NfcFrame &frame)
       return nullptr;
 
    int pcb = frame[0], offset = 1;
-   int flags = 0;
 
    ProtocolFrame *root;
 
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
-   flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
    if (pcb & 0x10)
-      root = buildFrameInfo("R(NACK)", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::ApplicationFrame);
+      root = buildRootInfo("R(NACK)", frame, ProtocolFrame::ApplicationFrame);
    else
-      root = buildFrameInfo("R(ACK)", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::ApplicationFrame);
+      root = buildRootInfo("R(ACK)", frame, ProtocolFrame::ApplicationFrame);
 
    if (pcb & 0x08)
-      root->appendChild(buildFieldInfo("CID", frame[offset++] & 0x0F));
+      root->appendChild(buildChildInfo("CID", frame[offset++] & 0x0F));
 
    if (offset < frame.limit() - 2)
-      root->appendChild(buildFieldInfo("INF", toByteArray(frame, offset, frame.limit() - offset - 2)));
+      root->appendChild(buildChildInfo("INF", toByteArray(frame, offset, frame.limit() - offset - 2)));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -386,9 +347,7 @@ ProtocolFrame *ParserNfcIsoDep::parseResponseRBlock(const nfc::NfcFrame &frame)
    if ((lastCommand & 0xE6) != 0xA2)
       return nullptr;
 
-   int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
-   return buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::ApplicationFrame);
+   return buildRootInfo("", frame, ProtocolFrame::ApplicationFrame);
 }
 
 ProtocolFrame *ParserNfcIsoDep::parseRequestSBlock(const nfc::NfcFrame &frame)
@@ -399,18 +358,15 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestSBlock(const nfc::NfcFrame &frame)
    int pcb = frame[0], offset = 1;
    int flags = 0;
 
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
-   flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
-   ProtocolFrame *root = buildFrameInfo("S-Block", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("S-Block", frame, ProtocolFrame::ApplicationFrame);
 
    if (pcb & 0x08)
-      root->appendChild(buildFieldInfo("CID", frame[offset++] & 0x0F));
+      root->appendChild(buildChildInfo("CID", frame[offset++] & 0x0F));
 
    if (offset < frame.limit() - 2)
-      root->appendChild(buildFieldInfo("INF", toByteArray(frame, offset, frame.limit() - offset - 2)));
+      root->appendChild(buildChildInfo("INF", toByteArray(frame, offset, frame.limit() - offset - 2)));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -420,8 +376,6 @@ ProtocolFrame *ParserNfcIsoDep::parseResponseSBlock(const nfc::NfcFrame &frame)
    if ((lastCommand & 0xC7) != 0xC2)
       return nullptr;
 
-   int flags = frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
-   return buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), flags, ProtocolFrame::ApplicationFrame);
+   return buildRootInfo("", frame, ProtocolFrame::ApplicationFrame);
 }
 
