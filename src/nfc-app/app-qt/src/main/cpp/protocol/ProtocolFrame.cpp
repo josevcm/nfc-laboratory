@@ -26,11 +26,11 @@
 
 struct ProtocolFrame::Impl
 {
-   // frame type
-   int type;
-
    // frame flags
    int flags;
+
+   // underline frame
+   nfc::NfcFrame frame;
 
    // parent frame node
    ProtocolFrame *parent;
@@ -41,7 +41,11 @@ struct ProtocolFrame::Impl
    // frame childs
    QList<ProtocolFrame *> childs;
 
-   Impl(int type, int flags, ProtocolFrame *parent, const QVector<QVariant> &data) : type(type), flags(flags), parent(parent), data(data)
+   Impl(int flags, const QVector<QVariant> &data, const nfc::NfcFrame &frame) : flags(flags), frame(frame), parent(nullptr), data(data)
+   {
+   }
+
+   Impl(int flags, const QVector<QVariant> &data, ProtocolFrame *parent) : flags(flags), parent(parent), data(data)
    {
    }
 
@@ -51,13 +55,13 @@ struct ProtocolFrame::Impl
    }
 };
 
-ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, QObject *parent) :
-      QObject(parent), impl(new Impl(0, 0, nullptr, data))
+ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, const nfc::NfcFrame &frame) :
+      QObject(nullptr), impl(new Impl(flags, data, frame))
 {
 }
 
-ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, int type, ProtocolFrame *parent) :
-      QObject(parent), impl(new Impl(type, flags, parent, data))
+ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, ProtocolFrame *parent) :
+      QObject(parent), impl(new Impl(flags, data, parent))
 {
 }
 
@@ -120,11 +124,19 @@ bool ProtocolFrame::insertChilds(int position, int count, int columns)
    for (int row = 0; row < count; ++row)
    {
       QVector<QVariant> data(columns);
-      auto *item = new ProtocolFrame(data, 0, 0, this);
+      auto *item = new ProtocolFrame(data, 0, this);
       impl->childs.insert(position, item);
    }
 
    return true;
+}
+
+nfc::NfcFrame &ProtocolFrame::frame() const
+{
+   if (impl->frame.isValid())
+      return impl->frame;
+
+   return impl->parent ? impl->parent->frame() : impl->frame;
 }
 
 QVariant ProtocolFrame::data(int column) const
@@ -153,26 +165,6 @@ int ProtocolFrame::row() const
       return impl->parent->impl->childs.indexOf(const_cast<ProtocolFrame *>(this));
 
    return -1;
-}
-
-bool ProtocolFrame::isSenseFrame() const
-{
-   return impl->type == Type::SenseFrame;
-}
-
-bool ProtocolFrame::isSelectionFrame() const
-{
-   return impl->type == Type::SelectionFrame;
-}
-
-bool ProtocolFrame::isInformationFrame() const
-{
-   return impl->type == Type::ApplicationFrame;
-}
-
-bool ProtocolFrame::isAuthFrame() const
-{
-   return impl->type == Type::AuthFrame;
 }
 
 bool ProtocolFrame::isRequestFrame() const

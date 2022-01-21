@@ -189,7 +189,7 @@ ProtocolFrame *ParserNfcV::parseRequestInventory(const nfc::NfcFrame &frame)
 
    int offset = 2;
 
-   ProtocolFrame *root = buildFrameInfo("Inventory", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::SelectionFrame);
+   ProtocolFrame *root = buildRootInfo("Inventory", frame, ProtocolFrame::SelectionFrame);
 
    // parse request flags
    root->appendChild(buildRequestFlags(frame[0]));
@@ -200,12 +200,12 @@ ProtocolFrame *ParserNfcV::parseRequestInventory(const nfc::NfcFrame &frame)
 
    int mlen = frame[offset++];
 
-   root->appendChild(buildFieldInfo("MLEN", QString("%1").arg(mlen, 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("MLEN", QString("%1").arg(mlen, 2, 16, QChar('0'))));
 
    if (mlen > 0)
-      root->appendChild(buildFieldInfo("MASK", toByteArray(frame, offset, (mlen & 0x7) ? 1 + (mlen >> 3) : (mlen >> 3))));
+      root->appendChild(buildChildInfo("MASK", toByteArray(frame, offset, (mlen & 0x7) ? 1 + (mlen >> 3) : (mlen >> 3))));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -218,12 +218,12 @@ ProtocolFrame *ParserNfcV::parseResponseInventory(const nfc::NfcFrame &frame)
    if (lastCommand != 0x01)
       return nullptr;
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::SenseFrame);
+   ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::SenseFrame);
 
    root->appendChild(buildResponseFlags(frame[0]));
-   root->appendChild(buildFieldInfo("DSFID", QString("%1").arg(frame[1], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("UID", toByteArray(frame, 2, 8)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("DSFID", QString("%1").arg(frame[1], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("UID", toByteArray(frame, 2, 8)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -239,11 +239,11 @@ ProtocolFrame *ParserNfcV::parseRequestStayQuiet(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("StayQuiet", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::SelectionFrame);
+   ProtocolFrame *root = buildRootInfo("StayQuiet", frame, ProtocolFrame::SelectionFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
-   root->appendChild(buildFieldInfo("UID", toByteArray(frame, 2, 8)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("UID", toByteArray(frame, 2, 8)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -268,7 +268,7 @@ ProtocolFrame *ParserNfcV::parseRequestReadSingle(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("ReadBlock", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("ReadBlock", frame, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
 
@@ -277,12 +277,12 @@ ProtocolFrame *ParserNfcV::parseRequestReadSingle(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("BLOCK", QString("%1").arg(frame[offset], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("BLOCK", QString("%1").arg(frame[offset], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -294,16 +294,16 @@ ProtocolFrame *ParserNfcV::parseResponseReadSingle(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
    else
-      root->appendChild(buildFieldInfo("DATA", toByteArray(frame, 1, frame.limit() - 3)));
+      root->appendChild(buildChildInfo("DATA", toByteArray(frame, 1, frame.limit() - 3)));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -320,7 +320,7 @@ ProtocolFrame *ParserNfcV::parseRequestWriteSingle(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("WriteBlock", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("WriteBlock", frame, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
 
@@ -329,13 +329,13 @@ ProtocolFrame *ParserNfcV::parseRequestWriteSingle(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("BLOCK", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("DATA", toByteArray(frame, offset, frame.limit() - offset - 2)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("BLOCK", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("DATA", toByteArray(frame, offset, frame.limit() - offset - 2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -347,14 +347,14 @@ ProtocolFrame *ParserNfcV::parseResponseWriteSingle(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -370,7 +370,7 @@ ProtocolFrame *ParserNfcV::parseRequestLockBlock(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("LockBlock", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("LockBlock", frame, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
 
@@ -379,12 +379,12 @@ ProtocolFrame *ParserNfcV::parseRequestLockBlock(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("BLOCK", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("BLOCK", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 
@@ -397,14 +397,14 @@ ProtocolFrame *ParserNfcV::parseResponseLockBlock(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -421,7 +421,7 @@ ProtocolFrame *ParserNfcV::parseRequestReadMultiple(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("ReadBlocks", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("ReadBlocks", frame, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
 
@@ -430,13 +430,13 @@ ProtocolFrame *ParserNfcV::parseRequestReadMultiple(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -448,16 +448,16 @@ ProtocolFrame *ParserNfcV::parseResponseReadMultiple(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
    else
-      root->appendChild(buildFieldInfo("DATA", toByteArray(frame, 1, frame.limit() - 3)));
+      root->appendChild(buildChildInfo("DATA", toByteArray(frame, 1, frame.limit() - 3)));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -474,7 +474,7 @@ ProtocolFrame *ParserNfcV::parseRequestWriteMultiple(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("WriteBlocks", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("WriteBlocks", frame, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
 
@@ -483,14 +483,14 @@ ProtocolFrame *ParserNfcV::parseRequestWriteMultiple(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("DATA", toByteArray(frame, offset, frame.limit() - offset - 3)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("DATA", toByteArray(frame, offset, frame.limit() - offset - 3)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -502,14 +502,14 @@ ProtocolFrame *ParserNfcV::parseResponseWriteMultiple(const nfc::NfcFrame &frame
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -528,11 +528,11 @@ ProtocolFrame *ParserNfcV::parseRequestSelect(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("Select", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("Select", frame, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
-   root->appendChild(buildFieldInfo("UID", toByteArray(frame, 2, 8)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("UID", toByteArray(frame, 2, 8)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -544,14 +544,14 @@ ProtocolFrame *ParserNfcV::parseResponseSelect(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -563,11 +563,11 @@ ProtocolFrame *ParserNfcV::parseRequestResetReady(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("Reset", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("Reset", frame, ProtocolFrame::ApplicationFrame);
 
    root->appendChild(buildRequestFlags(frame[0]));
-   root->appendChild(buildFieldInfo("UID", toByteArray(frame, 2, 8)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("UID", toByteArray(frame, 2, 8)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -579,14 +579,14 @@ ProtocolFrame *ParserNfcV::parseResponseResetReady(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -603,7 +603,7 @@ ProtocolFrame *ParserNfcV::parseRequestWriteAFI(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("WriteAFI", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("WriteAFI", frame, ProtocolFrame::ApplicationFrame);
 
    int offset = 2;
 
@@ -612,12 +612,12 @@ ProtocolFrame *ParserNfcV::parseRequestWriteAFI(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
    root->appendChild(buildApplicationFamily(frame[offset++]));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 
@@ -630,14 +630,14 @@ ProtocolFrame *ParserNfcV::parseResponseWriteAFI(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -654,7 +654,7 @@ ProtocolFrame *ParserNfcV::parseRequestLockAFI(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("LockAFI", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("LockAFI", frame, ProtocolFrame::ApplicationFrame);
 
    int offset = 2;
 
@@ -663,11 +663,11 @@ ProtocolFrame *ParserNfcV::parseRequestLockAFI(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 
@@ -680,14 +680,14 @@ ProtocolFrame *ParserNfcV::parseResponseLockAFI(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -704,7 +704,7 @@ ProtocolFrame *ParserNfcV::parseRequestWriteDSFID(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("WriteDSFID", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("WriteDSFID", frame, ProtocolFrame::ApplicationFrame);
 
    int offset = 2;
 
@@ -713,12 +713,12 @@ ProtocolFrame *ParserNfcV::parseRequestWriteDSFID(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("DSFID", toByteArray(frame, -2)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("DSFID", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 
@@ -731,14 +731,14 @@ ProtocolFrame *ParserNfcV::parseResponseWriteDSFID(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -755,7 +755,7 @@ ProtocolFrame *ParserNfcV::parseRequestLockDSFID(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("LockDSFID", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("LockDSFID", frame, ProtocolFrame::ApplicationFrame);
 
    int offset = 2;
 
@@ -764,11 +764,11 @@ ProtocolFrame *ParserNfcV::parseRequestLockDSFID(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -780,14 +780,14 @@ ProtocolFrame *ParserNfcV::parseResponseLockDSFID(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -804,7 +804,7 @@ ProtocolFrame *ParserNfcV::parseRequestSysInfo(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("SysInfo", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("SysInfo", frame, ProtocolFrame::ApplicationFrame);
 
    int offset = 2;
 
@@ -813,11 +813,11 @@ ProtocolFrame *ParserNfcV::parseRequestSysInfo(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -831,42 +831,42 @@ ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
    int info = frame[1];
    int offset = 10;
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if ((flags & 1) == 0)
    {
-      ProtocolFrame *ainfo = root->appendChild(buildFieldInfo("INFO", QString("%1").arg(info, 2, 16, QChar('0'))));
+      ProtocolFrame *ainfo = root->appendChild(buildChildInfo("INFO", QString("%1").arg(info, 2, 16, QChar('0'))));
 
       if (info & 0x01)
-         ainfo->appendChild(buildFieldInfo("[.......1] DSFID is supported. DSFID field is present"));
+         ainfo->appendChild(buildChildInfo("[.......1] DSFID is supported. DSFID field is present"));
       else
-         ainfo->appendChild(buildFieldInfo("[.......0] DSFID is not supported. DSFID field is not present"));
+         ainfo->appendChild(buildChildInfo("[.......0] DSFID is not supported. DSFID field is not present"));
 
       if (info & 0x02)
-         ainfo->appendChild(buildFieldInfo("[......1.] AFI is supported. AFI field is present"));
+         ainfo->appendChild(buildChildInfo("[......1.] AFI is supported. AFI field is present"));
       else
-         ainfo->appendChild(buildFieldInfo("[......0.] AFI is not supported. AFI field is not present"));
+         ainfo->appendChild(buildChildInfo("[......0.] AFI is not supported. AFI field is not present"));
 
       if (info & 0x04)
-         ainfo->appendChild(buildFieldInfo("[.....1..] Information on VICC memory size is supported. Memory size field is present"));
+         ainfo->appendChild(buildChildInfo("[.....1..] Information on VICC memory size is supported. Memory size field is present"));
       else
-         ainfo->appendChild(buildFieldInfo("[.....0..] Information on VICC memory size is not supported. Memory size field is not present"));
+         ainfo->appendChild(buildChildInfo("[.....0..] Information on VICC memory size is not supported. Memory size field is not present"));
 
       if (info & 0x08)
-         ainfo->appendChild(buildFieldInfo("[....1...] Information on IC reference is supported. IC reference field is present"));
+         ainfo->appendChild(buildChildInfo("[....1...] Information on IC reference is supported. IC reference field is present"));
       else
-         ainfo->appendChild(buildFieldInfo("[....0...] Information on IC reference is not supported. IC reference field is not present"));
+         ainfo->appendChild(buildChildInfo("[....0...] Information on IC reference is not supported. IC reference field is not present"));
 
-      ainfo->appendChild(buildFieldInfo(QString("[%1....] Reserved for future use").arg((info >> 4) & 0x0f, 4, 2, QChar('0'))));
+      ainfo->appendChild(buildChildInfo(QString("[%1....] Reserved for future use").arg((info >> 4) & 0x0f, 4, 2, QChar('0'))));
 
       // tag UID
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, 2, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, 2, 8)));
 
       // DSFID field is present
       if (info & 0x01)
-         root->appendChild(buildFieldInfo("DSFID", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+         root->appendChild(buildChildInfo("DSFID", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
 
       // AFI field is present
       if (info & 0x02)
@@ -875,25 +875,25 @@ ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
       // Memory size field is present
       if (info & 0x04)
       {
-         ProtocolFrame *amem = root->appendChild(buildFieldInfo("MEMORY", toByteArray(frame, offset, 2)));
+         ProtocolFrame *amem = root->appendChild(buildChildInfo("MEMORY", toByteArray(frame, offset, 2)));
 
          int count = frame[offset++];
          int size = frame[offset++] & 0x1f;
 
-         amem->appendChild(buildFieldInfo(QString("[%1] Number of blocks %2").arg(count, 8, 2, QChar('0')).arg(count)));
-         amem->appendChild(buildFieldInfo(QString("[...%1] Block size %2 bytes").arg(size, 5, 2, QChar('0')).arg(size)));
+         amem->appendChild(buildChildInfo(QString("[%1] Number of blocks %2").arg(count, 8, 2, QChar('0')).arg(count)));
+         amem->appendChild(buildChildInfo(QString("[...%1] Block size %2 bytes").arg(size, 5, 2, QChar('0')).arg(size)));
       }
 
       // IC reference field is not present
       if (info & 0x08)
-         root->appendChild(buildFieldInfo("IC", toByteArray(frame, offset, 1)));
+         root->appendChild(buildChildInfo("IC", toByteArray(frame, offset, 1)));
    }
    else
    {
       root->appendChild(buildResponseError(frame[1]));
    }
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -910,7 +910,7 @@ ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
-   ProtocolFrame *root = buildFrameInfo("GetSecurity", frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, ProtocolFrame::ApplicationFrame);
+   ProtocolFrame *root = buildRootInfo("GetSecurity", frame, ProtocolFrame::ApplicationFrame);
 
    int offset = 2;
 
@@ -919,13 +919,13 @@ ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const nfc::NfcFrame &frame)
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
    {
-      root->appendChild(buildFieldInfo("UID", toByteArray(frame, offset, 8)));
+      root->appendChild(buildChildInfo("UID", toByteArray(frame, offset, 8)));
       offset += 8;
    }
 
-   root->appendChild(buildFieldInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -937,11 +937,11 @@ ProtocolFrame *ParserNfcV::parseResponseGetSecurity(const nfc::NfcFrame &frame)
 
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
-   root->appendChild(buildFieldInfo("DATA", toByteArray(frame, 1, frame.limit() - 3)));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("DATA", toByteArray(frame, 1, frame.limit() - 3)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -950,11 +950,13 @@ ProtocolFrame *ParserNfcV::parseRequestGeneric(const nfc::NfcFrame &frame)
 {
    int cmd = frame[1]; // frame command
 
-   ProtocolFrame *root = buildFrameInfo(QString("CMD %1").arg(cmd, 2, 16, QChar('0')), frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   QString name = QString("CMD %1").arg(cmd, 2, 16, QChar('0'));
+
+   ProtocolFrame *root = buildRootInfo(name, frame, 0);
 
    root->appendChild(buildResponseFlags(frame[0]));
-   root->appendChild(buildFieldInfo("CODE", QString("%1 [%2]").arg(cmd, 2, 16, QChar('0')).arg(cmd, 8, 2, QChar('0'))));
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CODE", QString("%1 [%2]").arg(cmd, 2, 16, QChar('0')).arg(cmd, 8, 2, QChar('0'))));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
@@ -963,68 +965,68 @@ ProtocolFrame *ParserNfcV::parseResponseGeneric(const nfc::NfcFrame &frame)
 {
    int flags = frame[0];
 
-   ProtocolFrame *root = buildFrameInfo(frame.frameRate(), toByteArray(frame), frame.timeStart(), frame.timeEnd(), frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0, 0);
+   ProtocolFrame *root = buildRootInfo("", frame, 0);
 
    root->appendChild(buildResponseFlags(flags));
 
    if (flags & 0x1)
       root->appendChild(buildResponseError(frame[1]));
    else
-      root->appendChild(buildFieldInfo("PARAMS", toByteArray(frame, 1, frame.limit() - 3)));
+      root->appendChild(buildChildInfo("PARAMS", toByteArray(frame, 1, frame.limit() - 3)));
 
-   root->appendChild(buildFieldInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
 
    return root;
 }
 
 ProtocolFrame *ParserNfcV::buildRequestFlags(int flags)
 {
-   ProtocolFrame *afrf = buildFieldInfo("FLAGS", QString("%1").arg(flags, 2, 16, QChar('0')));
+   ProtocolFrame *afrf = buildChildInfo("FLAGS", QString("%1").arg(flags, 2, 16, QChar('0')));
 
    if (flags & 0x01)
-      afrf->appendChild(buildFieldInfo("[.......1] Two sub-carriers shall be used by the VICC"));
+      afrf->appendChild(buildChildInfo("[.......1] Two sub-carriers shall be used by the VICC"));
    else
-      afrf->appendChild(buildFieldInfo("[.......0] A single sub-carrier frequency shall be used by the VICC"));
+      afrf->appendChild(buildChildInfo("[.......0] A single sub-carrier frequency shall be used by the VICC"));
 
    if (flags & 0x02)
-      afrf->appendChild(buildFieldInfo("[......1.] High data rate shall be used"));
+      afrf->appendChild(buildChildInfo("[......1.] High data rate shall be used"));
    else
-      afrf->appendChild(buildFieldInfo("[......0.] Low data rate shall be used"));
+      afrf->appendChild(buildChildInfo("[......0.] Low data rate shall be used"));
 
    if (flags & 0x08)
-      afrf->appendChild(buildFieldInfo("[....1...] Protocol format is extended"));
+      afrf->appendChild(buildChildInfo("[....1...] Protocol format is extended"));
    else
-      afrf->appendChild(buildFieldInfo("[....0...] No protocol format extension"));
+      afrf->appendChild(buildChildInfo("[....0...] No protocol format extension"));
 
    if (flags & 0x04)
    {
       if (flags & 0x10)
-         afrf->appendChild(buildFieldInfo("[...1.1..] AFI field is present"));
+         afrf->appendChild(buildChildInfo("[...1.1..] AFI field is present"));
       else
-         afrf->appendChild(buildFieldInfo("[...0.1..] AFI field is not present"));
+         afrf->appendChild(buildChildInfo("[...0.1..] AFI field is not present"));
 
       if (flags & 0x20)
-         afrf->appendChild(buildFieldInfo("[..1..1..] 1 slot"));
+         afrf->appendChild(buildChildInfo("[..1..1..] 1 slot"));
       else
-         afrf->appendChild(buildFieldInfo("[..0..1..] 16 slots"));
+         afrf->appendChild(buildChildInfo("[..0..1..] 16 slots"));
 
-      afrf->appendChild(buildFieldInfo(QString("[.%1...1..] Custom flag. Meaning is defined by the Custom command").arg((flags >> 6) & 1, 1, 2, QChar('0'))));
-      afrf->appendChild(buildFieldInfo(QString("[%1....1..] Reserved for future use").arg((flags >> 7) & 1, 1, 2, QChar('0'))));
+      afrf->appendChild(buildChildInfo(QString("[.%1...1..] Custom flag. Meaning is defined by the Custom command").arg((flags >> 6) & 1, 1, 2, QChar('0'))));
+      afrf->appendChild(buildChildInfo(QString("[%1....1..] Reserved for future use").arg((flags >> 7) & 1, 1, 2, QChar('0'))));
    }
    else
    {
       if (flags & 0x10)
-         afrf->appendChild(buildFieldInfo("[...1.0..] Request shall be executed only by VICC in selected state"));
+         afrf->appendChild(buildChildInfo("[...1.0..] Request shall be executed only by VICC in selected state"));
       else
-         afrf->appendChild(buildFieldInfo("[...0.0..] Request shall be executed by any VICC according to the setting of Address flag"));
+         afrf->appendChild(buildChildInfo("[...0.0..] Request shall be executed by any VICC according to the setting of Address flag"));
 
       if (flags & 0x20)
-         afrf->appendChild(buildFieldInfo("[..1..0..] Request is addressed. UID field is present. It shall be executed only by the VICC whose UID matches"));
+         afrf->appendChild(buildChildInfo("[..1..0..] Request is addressed. UID field is present. It shall be executed only by the VICC whose UID matches"));
       else
-         afrf->appendChild(buildFieldInfo("[..0..0..] Request is not addressed. UID field is not present. It shall be executed by any VICC"));
+         afrf->appendChild(buildChildInfo("[..0..0..] Request is not addressed. UID field is not present. It shall be executed by any VICC"));
 
-      afrf->appendChild(buildFieldInfo(QString("[.%1...0..] Custom flag. Meaning is defined by the Custom command").arg((flags >> 6) & 1, 1, 2, QChar('0'))));
-      afrf->appendChild(buildFieldInfo(QString("[%1....0..] Reserved for future use").arg((flags >> 7) & 1, 1, 2, QChar('0'))));
+      afrf->appendChild(buildChildInfo(QString("[.%1...0..] Custom flag. Meaning is defined by the Custom command").arg((flags >> 6) & 1, 1, 2, QChar('0'))));
+      afrf->appendChild(buildChildInfo(QString("[%1....0..] Reserved for future use").arg((flags >> 7) & 1, 1, 2, QChar('0'))));
    }
 
    return afrf;
@@ -1032,87 +1034,87 @@ ProtocolFrame *ParserNfcV::buildRequestFlags(int flags)
 
 ProtocolFrame *ParserNfcV::buildResponseFlags(int flags)
 {
-   ProtocolFrame *afrf = buildFieldInfo("FLAGS", QString("%1").arg(flags, 2, 16, QChar('0')));
+   ProtocolFrame *afrf = buildChildInfo("FLAGS", QString("%1").arg(flags, 2, 16, QChar('0')));
 
    if (flags & 0x01)
-      afrf->appendChild(buildFieldInfo("[.......1] Error detected. Error code is in the error field"));
+      afrf->appendChild(buildChildInfo("[.......1] Error detected. Error code is in the error field"));
    else
-      afrf->appendChild(buildFieldInfo("[.......0] No error"));
+      afrf->appendChild(buildChildInfo("[.......0] No error"));
 
-   afrf->appendChild(buildFieldInfo(QString("[.....%1.] Reserved for future use").arg((flags >> 1) & 0x03, 2, 2, QChar('0'))));
+   afrf->appendChild(buildChildInfo(QString("[.....%1.] Reserved for future use").arg((flags >> 1) & 0x03, 2, 2, QChar('0'))));
 
    if (flags & 0x08)
-      afrf->appendChild(buildFieldInfo("[....1...] Protocol format is extended"));
+      afrf->appendChild(buildChildInfo("[....1...] Protocol format is extended"));
    else
-      afrf->appendChild(buildFieldInfo("[....0...] No protocol format extension"));
+      afrf->appendChild(buildChildInfo("[....0...] No protocol format extension"));
 
-   afrf->appendChild(buildFieldInfo(QString("[%1....] Reserved for future use").arg((flags >> 4) & 0x0f, 4, 2, QChar('0'))));
+   afrf->appendChild(buildChildInfo(QString("[%1....] Reserved for future use").arg((flags >> 4) & 0x0f, 4, 2, QChar('0'))));
 
    return afrf;
 }
 
 ProtocolFrame *ParserNfcV::buildResponseError(int error)
 {
-   ProtocolFrame *aerr = buildFieldInfo("ERROR", QString("%1").arg(error, 2, 16, QChar('0')));
+   ProtocolFrame *aerr = buildChildInfo("ERROR", QString("%1").arg(error, 2, 16, QChar('0')));
 
    if (error == 0x01)
-      aerr->appendChild(buildFieldInfo(QString("[%1] The command is not supported").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] The command is not supported").arg(error, 8, 2, QChar('0'))));
    else if (error == 0x02)
-      aerr->appendChild(buildFieldInfo(QString("[%1] The command is not recognized").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] The command is not recognized").arg(error, 8, 2, QChar('0'))));
    else if (error == 0x0f)
-      aerr->appendChild(buildFieldInfo(QString("[%1] Unknown error").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] Unknown error").arg(error, 8, 2, QChar('0'))));
    else if (error == 0x10)
-      aerr->appendChild(buildFieldInfo(QString("[%1] The specified block is not available").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] The specified block is not available").arg(error, 8, 2, QChar('0'))));
    else if (error == 0x11)
-      aerr->appendChild(buildFieldInfo(QString("[%1] The specified block is already locked").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] The specified block is already locked").arg(error, 8, 2, QChar('0'))));
    else if (error == 0x12)
-      aerr->appendChild(buildFieldInfo(QString("[%1] The specified block is locked and its content cannot be changed").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] The specified block is locked and its content cannot be changed").arg(error, 8, 2, QChar('0'))));
    else if (error == 0x13)
-      aerr->appendChild(buildFieldInfo(QString("[%1] The specified block was not successfully programmed").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] The specified block was not successfully programmed").arg(error, 8, 2, QChar('0'))));
    else if (error == 0x14)
-      aerr->appendChild(buildFieldInfo(QString("[%1] The specified block was not successfully locked").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] The specified block was not successfully locked").arg(error, 8, 2, QChar('0'))));
    else
-      aerr->appendChild(buildFieldInfo(QString("[%1] Custom command error code").arg(error, 8, 2, QChar('0'))));
+      aerr->appendChild(buildChildInfo(QString("[%1] Custom command error code").arg(error, 8, 2, QChar('0'))));
 
    return aerr;
 }
 
 ProtocolFrame *ParserNfcV::buildApplicationFamily(int afi)
 {
-   ProtocolFrame *afif = buildFieldInfo("AFI", QString("%1").arg(afi, 2, 16, QChar('0')));
+   ProtocolFrame *afif = buildChildInfo("AFI", QString("%1").arg(afi, 2, 16, QChar('0')));
 
    if (afi == 0x00)
-      afif->appendChild(buildFieldInfo("[00000000] All families and sub-families"));
+      afif->appendChild(buildChildInfo("[00000000] All families and sub-families"));
    else if ((afi & 0x0f) == 0x00)
-      afif->appendChild(buildFieldInfo(QString("[%10000] All sub-families of family %2").arg(afi >> 4, 4, 2, QChar('0')).arg(afi >> 4)));
+      afif->appendChild(buildChildInfo(QString("[%10000] All sub-families of family %2").arg(afi >> 4, 4, 2, QChar('0')).arg(afi >> 4)));
    else if ((afi & 0xf0) == 0x00)
-      afif->appendChild(buildFieldInfo(QString("[0000%1] Proprietary sub-family %2 only").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[0000%1] Proprietary sub-family %2 only").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x10)
-      afif->appendChild(buildFieldInfo(QString("[0001%1] Transport sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[0001%1] Transport sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x20)
-      afif->appendChild(buildFieldInfo(QString("[0010%1] Financial sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[0010%1] Financial sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x30)
-      afif->appendChild(buildFieldInfo(QString("[0011%1] Identification sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[0011%1] Identification sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x40)
-      afif->appendChild(buildFieldInfo(QString("[0100%1] Telecommunication sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[0100%1] Telecommunication sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x50)
-      afif->appendChild(buildFieldInfo(QString("[0101%1] Medical sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[0101%1] Medical sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x60)
-      afif->appendChild(buildFieldInfo(QString("[0110%1] Multimedia sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[0110%1] Multimedia sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x70)
-      afif->appendChild(buildFieldInfo(QString("[0111%1] Gaming sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[0111%1] Gaming sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x80)
-      afif->appendChild(buildFieldInfo(QString("[1000%1] Data Storage sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[1000%1] Data Storage sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0x90)
-      afif->appendChild(buildFieldInfo(QString("[1001%1] Item management sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[1001%1] Item management sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0xA0)
-      afif->appendChild(buildFieldInfo(QString("[1010%1] Express parcels sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[1010%1] Express parcels sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0xB0)
-      afif->appendChild(buildFieldInfo(QString("[1011%1] Postal services sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[1011%1] Postal services sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else if ((afi & 0xf0) == 0xC0)
-      afif->appendChild(buildFieldInfo(QString("[1100%1] Airline bags sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
+      afif->appendChild(buildChildInfo(QString("[1100%1] Airline bags sub-family %2").arg((afi & 0xf), 4, 2, QChar('0')).arg(afi & 0xf)));
    else
-      afif->appendChild(buildFieldInfo(QString("[%1] RFU %2").arg(afi, 8, 2, QChar('0')).arg(afi)));
+      afif->appendChild(buildChildInfo(QString("[%1] RFU %2").arg(afi, 8, 2, QChar('0')).arg(afi)));
 
    return afif;
 }

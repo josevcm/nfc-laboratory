@@ -31,27 +31,24 @@
 #include <QVariant>
 #include <QSharedPointer>
 
+#include <nfc/NfcFrame.h>
+
 class ProtocolFrame : public QObject
 {
       struct Impl;
 
    public:
 
-      enum Type
-      {
-         SenseFrame = 1,
-         SelectionFrame = 2,
-         ApplicationFrame = 3,
-         AuthFrame = 4
-      };
-
       enum Flags
       {
          RequestFrame = 0x0001,
          ResponseFrame = 0x0002,
-         FrameField = 0x0004,
-         FieldInfo = 0x0008,
-         Encrypted = 0x0080,
+         SenseFrame = 0x0004,
+         SelectionFrame = 0x0008,
+         ApplicationFrame = 0x0010,
+         AuthFrame = 0x0020,
+         FrameField = 0x040,
+         FieldInfo = 0x0080,
          ParityError = 0x0100,
          CrcError = 0x0200,
          SyncError = 0x0200
@@ -59,22 +56,18 @@ class ProtocolFrame : public QObject
 
       enum Fields
       {
-         Id = 0,
-         Start = 1,
-         End = 2,
-         Rate = 3,
-         Type = 4,
-         Flags = 5,
-         Data = 6
+         Name = 0,
+         Flags = 1,
+         Data = 2
       };
 
    public:
 
-      ProtocolFrame(const QVector<QVariant> &data, QObject *parent);
+      ProtocolFrame(const QVector<QVariant> &data, int flags, const nfc::NfcFrame &frame);
 
-      ProtocolFrame(const QVector<QVariant> &data, int flags = 0, int type = 0, ProtocolFrame *parent = nullptr);
+      ProtocolFrame(const QVector<QVariant> &data, int flags, ProtocolFrame *parent);
 
-      virtual ~ProtocolFrame();
+      ~ProtocolFrame() override;
 
       void clearChilds();
 
@@ -91,6 +84,8 @@ class ProtocolFrame : public QObject
       ProtocolFrame *prependChild(ProtocolFrame *child);
 
       bool insertChilds(int position, int count, int columns);
+
+      nfc::NfcFrame &frame() const;
 
       QVariant data(int column) const;
 

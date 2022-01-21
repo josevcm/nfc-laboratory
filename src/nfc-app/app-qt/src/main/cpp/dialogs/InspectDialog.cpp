@@ -27,64 +27,75 @@
 
 #include <nfc/NfcFrame.h>
 
-#include <comp/QHexView.h>
-
 #include <model/ParserModel.h>
 
 #include <parser/ParserNfc.h>
 
 #include <styles/ParserStyle.h>
 
+#include <views/ui_InspectDialog.h>
+
 #include "InspectDialog.h"
 
 struct InspectDialog::Impl
 {
-   InspectDialog *parent = nullptr;
+   InspectDialog *dialog = nullptr;
 
-   QTreeView *infoView;
-   QHexView *dataView;
+   QSharedPointer<Ui_InspectDialog> ui;
 
    ParserModel *parserModel;
 
-   explicit Impl(InspectDialog *parent) : parent(parent), parserModel(new ParserModel(parent))
+   explicit Impl(InspectDialog *dialog) : dialog(dialog), parserModel(new ParserModel(dialog)), ui(new Ui_InspectDialog())
    {
       setup();
    }
 
    void setup()
    {
-      QFont infoFont = {"Courier", 10, -1, false};
-
-      infoView = new QTreeView();
-      dataView = new QHexView();
+      ui->setupUi(dialog);
 
       // setup protocol view model
-      infoView->setFont(infoFont);
-      infoView->setLineWidth(0);
-      infoView->setFrameShape(QFrame::NoFrame);
-      infoView->setRootIsDecorated(true);
-      infoView->setSelectionMode(QAbstractItemView::NoSelection);
-      infoView->setSelectionBehavior(QAbstractItemView::SelectRows);
-      infoView->setRootIsDecorated(true);
-//      infoView->setHeaderHidden(true);
-      infoView->setColumnWidth(ParserModel::Cmd, 120);
-      infoView->setColumnWidth(ParserModel::Flags, 32);
-      infoView->setItemDelegate(new ParserStyle(infoView));
-      infoView->setModel(parserModel);
+      ui->infoView->setModel(parserModel);
+      ui->infoView->setColumnWidth(ParserModel::Name, 120);
+      ui->infoView->setColumnWidth(ParserModel::Flags, 32);
+      ui->infoView->setItemDelegate(new ParserStyle(ui->infoView));
 
-      // prepare layout
-      auto *layout = new QVBoxLayout(parent);
+      // connect selection signal from frame model
+      QObject::connect(ui->infoView->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &selected, const QItemSelection &deselected) {
+         infoSelectionChanged();
+      });
+   }
 
-      layout->setSpacing(0);
-      layout->setContentsMargins(0, 0, 0, 0);
-      layout->addWidget(infoView);
-      layout->addWidget(dataView);
+   void infoSelectionChanged()
+   {
+      QModelIndexList indexList = ui->infoView->selectionModel()->selectedIndexes();
+
+      if (!indexList.isEmpty())
+      {
+         auto firstIndex = indexList.first();
+
+         if (auto firstEntry = parserModel->entry(firstIndex))
+         {
+            ui->dataView->setData(toByteArray(firstEntry->frame()));
+         }
+      }
+   }
+
+   QByteArray toByteArray(const nfc::NfcFrame &frame)
+   {
+      QByteArray data;
+
+      for (int i = 0; i < frame.limit(); i++)
+      {
+         data.append(frame[i]);
+      }
+
+      return data;
    }
 };
 
 InspectDialog::InspectDialog(QWidget *parent) : QDialog(parent), impl(new Impl(this))
 {
-   setMinimumSize({640, 400});
 }
 
 void InspectDialog::clear()
@@ -94,9 +105,7 @@ void InspectDialog::clear()
 
 void InspectDialog::addFrame(const nfc::NfcFrame &frame)
 {
-   // add frame
    impl->parserModel->append(frame);
 
-   // expand protocol information
-   impl->infoView->expandAll();
+   impl->ui->infoView->expandAll();
 }

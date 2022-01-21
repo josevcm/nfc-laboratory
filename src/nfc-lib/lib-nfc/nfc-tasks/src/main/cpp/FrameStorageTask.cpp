@@ -131,7 +131,7 @@ struct FrameStorageTask::Impl : FrameStorageTask, AbstractTask
                // read frames from file
                for (const auto &frame: info["frames"])
                {
-                  nfc::NfcFrame nfcFrame;
+                  nfc::NfcFrame nfcFrame(256);
 
                   nfcFrame.setTechType(frame["techType"]);
                   nfcFrame.setFrameType(frame["frameType"]);

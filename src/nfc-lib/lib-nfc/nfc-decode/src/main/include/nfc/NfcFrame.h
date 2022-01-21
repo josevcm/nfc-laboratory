@@ -41,6 +41,8 @@ class NfcFrame : public rt::ByteBuffer
 
       NfcFrame();
 
+      explicit NfcFrame(int size);
+
       NfcFrame(int techType, int frameType);
 
       NfcFrame(int techType, int frameType, double timeStart, double timeEnd);
