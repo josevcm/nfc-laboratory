@@ -25,6 +25,9 @@
 #include <QPainter>
 #include <QScrollBar>
 #include <QPaintEvent>
+#include <QApplication>
+#include <QClipboard>
+#include <QTimer>
 
 #include "HexViewWidget.h"
 
@@ -33,12 +36,17 @@ struct HexViewWidget::Impl
    HexViewWidget *widget;
    QByteArray data;
 
+   int lineBytes = 16;
+
    int firstLine = 0;
    int lastLine = 0;
-   int cursorPos = 0;
-   int startSelection = 0;
-   int endSelection = 0;
-   int lineBytes = 16;
+
+   int cursorPosition = 0;
+   bool cursorVisible = true;
+   int cursorBlinkTime = 0;
+
+   int selectionStart = 0;
+   int selectionEnd = 0;
 
    int addrCoord;
    int addrWidth;
@@ -58,7 +66,9 @@ struct HexViewWidget::Impl
 
    QColor splitColor {0x455364};
 
-   explicit Impl(HexViewWidget *widget) : widget(widget)
+   QTimer *blinkTimer;
+
+   explicit Impl(HexViewWidget *widget) : widget(widget), blinkTimer(new QTimer(widget))
    {
       // set bold text for address
       addrFont.setBold(true);
@@ -81,14 +91,26 @@ struct HexViewWidget::Impl
       // char metrics
       charWidth = addrFontMetrics.averageCharWidth();
       charHeight = addrFontMetrics.height();
+
+      // connect refresh timer signal
+      QObject::connect(blinkTimer, &QTimer::timeout, [=]() {
+         if (widget->hasFocus())
+         {
+            cursorVisible = !cursorVisible;
+            widget->viewport()->update();
+         }
+      });
+
+      // start timer
+      blinkTimer->start(250);
    }
 
    void reset(const QByteArray &value)
    {
       data = value;
-      cursorPos = 0;
-      startSelection = 0;
-      endSelection = 0;
+      cursorPosition = 0;
+      selectionStart = 0;
+      selectionEnd = 0;
 
       layout();
 
@@ -110,6 +132,74 @@ struct HexViewWidget::Impl
       if (lastLine > data.count() / lineBytes)
          lastLine = (data.count() / lineBytes) + (data.count() % lineBytes ? 1 : 0);
    }
+
+   void paint(QPaintEvent *event)
+   {
+      QPainter painter(widget->viewport());
+
+      QBrush defaultBrush = painter.brush();
+      QBrush selectedBursh = QBrush(widget->palette().color(QPalette::Highlight));
+
+      // reprocess layout
+      layout();
+
+      // fill address background
+      painter.fillRect(QRect(addrCoord, event->rect().top(), dataCoord, widget->height()), QColor {0x3b4252});
+
+      // draw contents
+      painter.setPen(widget->palette().color(QPalette::WindowText));
+
+      for (int addr = firstLine * lineBytes, line = firstLine, lineCoord = 0; addr < data.count() && line <= lastLine; addr += lineBytes, lineCoord += charHeight, line++)
+      {
+         painter.setFont(addrFont);
+         painter.setBackgroundMode(Qt::TransparentMode);
+         painter.drawText(QRect(addrCoord + 5, lineCoord, addrWidth, charHeight), Qt::AlignTop, QString("%1").arg(addr, 4, 16, QChar('0')));
+
+         // draw hex data
+         painter.setFont(dataFont);
+         painter.setBackgroundMode(Qt::OpaqueMode);
+
+         for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.count(); i++, pos++, charCoord += charWidth * 3)
+         {
+            if (pos >= selectionStart && pos < selectionEnd)
+               painter.setBackground(selectedBursh);
+            else
+               painter.setBackground(defaultBrush);
+
+            painter.drawText(QRect(dataCoord + charCoord + 5, lineCoord, charWidth * 2, charHeight), Qt::AlignCenter, QString("%1").arg((int) data[pos] & 0xff, 2, 16, QChar('0')));
+         }
+
+         // draw ascii data
+         painter.setFont(textFont);
+         painter.setBackgroundMode(Qt::OpaqueMode);
+
+         for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.count(); i++, pos++, charCoord += charWidth)
+         {
+            if (pos >= selectionStart && pos < selectionEnd)
+               painter.setBackground(selectedBursh);
+            else
+               painter.setBackground(defaultBrush);
+
+            painter.drawText(QRect(textCoord + charCoord + 5, lineCoord, charWidth, charHeight), Qt::AlignCenter, (int) data[pos] >= 0x20 ? QString("%1").arg((char) data[pos]) : ".");
+         }
+      }
+
+      // draw hex / ascii split line
+      painter.setPen(splitColor);
+      painter.drawLine(textCoord, event->rect().top(), textCoord, widget->height());
+
+      if (widget->hasFocus())
+      {
+         if (cursorVisible)
+         {
+            int x = (cursorPosition % lineBytes) * charWidth * 3;
+            int y = (cursorPosition / lineBytes - firstLine) * charHeight;
+
+            painter.fillRect(dataCoord + x + 5, y + charHeight, charWidth * 2, 3, widget->palette().color(QPalette::WindowText));
+         }
+      }
+   }
+
 
    QString toHexString(const QByteArray &value, int from, int to) const
    {
@@ -153,15 +243,23 @@ void HexViewWidget::setData(const QByteArray &data)
 
 void HexViewWidget::setCursor(int position)
 {
-   impl->cursorPos = std::clamp(position, 0, impl->data.count() - 1);
-
+   impl->cursorPosition = std::clamp(position, 0, impl->data.count() - 1);
+   impl->blinkTimer->start(500);
+   impl->cursorVisible = true;
    viewport()->update();
 }
 
 void HexViewWidget::setSelection(int start, int end)
 {
-   impl->startSelection = std::clamp(start, 0, impl->data.count());
-   impl->endSelection = std::clamp(end, 0, impl->data.count());
+   impl->selectionStart = std::clamp(start, 0, impl->data.count());
+   impl->selectionEnd = std::clamp(end, 0, impl->data.count());
+
+   if (impl->selectionEnd > impl->selectionStart)
+   {
+      QClipboard *clipboard = QApplication::clipboard();
+
+      clipboard->setText(impl->toHexString(impl->data, impl->selectionStart, impl->selectionEnd));
+   }
 
    viewport()->update();
 }
@@ -170,98 +268,39 @@ void HexViewWidget::paintEvent(QPaintEvent *event)
 {
    QAbstractScrollArea::paintEvent(event);
 
-   QPainter painter(viewport());
-
-   QBrush defaultBrush = painter.brush();
-   QBrush selectedBursh = QBrush(palette().color(QPalette::Highlight));
-
-   // reprocess layout
-   impl->layout();
-
-   // fill address background
-   painter.fillRect(QRect(impl->addrCoord, event->rect().top(), impl->dataCoord, height()), QColor {0x3b4252});
-
-   // draw contents
-   painter.setPen(palette().color(QPalette::WindowText));
-
-   for (int addr = impl->firstLine * impl->lineBytes, line = impl->firstLine, lineCoord = 0; addr < impl->data.count() && line <= impl->lastLine; addr += impl->lineBytes, lineCoord += impl->charHeight, line++)
-   {
-      painter.setFont(impl->addrFont);
-      painter.setBackgroundMode(Qt::TransparentMode);
-      painter.drawText(QRect(impl->addrCoord + 5, lineCoord, impl->addrWidth, impl->charHeight), Qt::AlignTop, QString("%1").arg(addr, 4, 16, QChar('0')));
-
-      // draw hex data
-      painter.setFont(impl->dataFont);
-      painter.setBackgroundMode(Qt::OpaqueMode);
-
-      for (int i = 0, pos = addr, charCoord = 0; i < impl->lineBytes && pos < impl->data.count(); i++, pos++, charCoord += impl->charWidth * 3)
-      {
-         if (pos >= impl->startSelection && pos < impl->endSelection)
-            painter.setBackground(selectedBursh);
-         else
-            painter.setBackground(defaultBrush);
-
-         painter.drawText(QRect(impl->dataCoord + charCoord + 5, lineCoord, impl->charWidth * 2, impl->charHeight), Qt::AlignCenter, QString("%1").arg((int) impl->data[pos] & 0xff, 2, 16, QChar('0')));
-      }
-
-      // draw ascii data
-      painter.setFont(impl->textFont);
-      painter.setBackgroundMode(Qt::OpaqueMode);
-
-      for (int i = 0, pos = addr, charCoord = 0; i < impl->lineBytes && pos < impl->data.count(); i++, pos++, charCoord += impl->charWidth)
-      {
-         if (pos >= impl->startSelection && pos < impl->endSelection)
-            painter.setBackground(selectedBursh);
-         else
-            painter.setBackground(defaultBrush);
-
-         painter.drawText(QRect(impl->textCoord + charCoord + 5, lineCoord, impl->charWidth, impl->charHeight), Qt::AlignCenter, (int) impl->data[pos] >= 0x20 ? QString("%1").arg((char) impl->data[pos]) : ".");
-      }
-   }
-
-   // draw hex / ascii split line
-   painter.setPen(impl->splitColor);
-   painter.drawLine(impl->textCoord, event->rect().top(), impl->textCoord, height());
-
-   if (hasFocus())
-   {
-      int x = (impl->cursorPos % impl->lineBytes) * impl->charWidth * 3;
-      int y = (impl->cursorPos / impl->lineBytes - impl->firstLine) * impl->charHeight;
-
-      painter.fillRect(impl->dataCoord + x + 5, y + impl->charHeight, impl->charWidth * 2, 3, palette().color(QPalette::WindowText));
-   }
+   impl->paint(event);
 }
 
 void HexViewWidget::keyPressEvent(QKeyEvent *event)
 {
    if (event->matches(QKeySequence::MoveToNextChar))
    {
-      setCursor(impl->cursorPos + 1);
+      setCursor(impl->cursorPosition + 1);
    }
 
    else if (event->matches(QKeySequence::MoveToPreviousChar))
    {
-      setCursor(impl->cursorPos - 1);
+      setCursor(impl->cursorPosition - 1);
    }
 
    else if (event->matches(QKeySequence::MoveToEndOfLine))
    {
-      setCursor(impl->cursorPos | (impl->lineBytes - 1));
+      setCursor(impl->cursorPosition | (impl->lineBytes - 1));
    }
 
    else if (event->matches(QKeySequence::MoveToStartOfLine))
    {
-      setCursor(impl->cursorPos | (impl->cursorPos % (impl->lineBytes)));
+      setCursor(impl->cursorPosition % impl->lineBytes);
    }
 
    else if (event->matches(QKeySequence::MoveToPreviousLine))
    {
-      setCursor(impl->cursorPos - impl->lineBytes);
+      setCursor(impl->cursorPosition - impl->lineBytes);
    }
 
    else if (event->matches(QKeySequence::MoveToNextLine))
    {
-      setCursor(impl->cursorPos + impl->lineBytes);
+      setCursor(impl->cursorPosition + impl->lineBytes);
    }
 }
 
@@ -271,14 +310,23 @@ void HexViewWidget::mouseMoveEvent(QMouseEvent *event)
    {
       QPoint click = event->pos();
 
-      if (click.x() < impl->dataCoord || click.x() > (impl->dataCoord + impl->dataWidth))
-         return;
+      if (click.x() > (impl->dataCoord + 5) && click.x() < (impl->dataCoord + impl->dataWidth + 5))
+      {
+         int line = (click.y() / impl->charHeight);
+         int byte = (click.x() - impl->dataCoord - 5) / (impl->charWidth * 3);
+         int addr = (impl->firstLine + line) * impl->lineBytes + byte;
 
-      int line = (click.y() / impl->charHeight);
-      int byte = (click.x() - impl->dataCoord) / (impl->charWidth * 3);
-      int addr = (impl->firstLine + line) * impl->lineBytes + byte;
+         setSelection(impl->selectionStart, addr + 1);
+      }
 
-      setSelection(impl->startSelection, addr + 1);
+      else if (click.x() > (impl->textCoord + 5) && click.x() < (impl->textCoord + impl->textWidth + 5))
+      {
+         int line = (click.y() / impl->charHeight);
+         int byte = (click.x() - impl->textCoord - 5) / impl->charWidth;
+         int addr = (impl->firstLine + line) * impl->lineBytes + byte;
+
+         setSelection(impl->selectionStart, addr + 1);
+      }
    }
 }
 
@@ -286,13 +334,27 @@ void HexViewWidget::mousePressEvent(QMouseEvent *event)
 {
    QPoint click = event->pos();
 
-   if (click.x() < impl->dataCoord || click.x() > (impl->dataCoord + impl->dataWidth))
-      return;
+   if (click.x() > (impl->dataCoord + 5) && click.x() < (impl->dataCoord + impl->dataWidth + 5))
+   {
+      int line = (click.y() / impl->charHeight);
+      int byte = (click.x() - impl->dataCoord - 5) / (impl->charWidth * 3);
+      int addr = (impl->firstLine + line) * impl->lineBytes + byte;
 
-   int line = (click.y() / impl->charHeight);
-   int byte = (click.x() - impl->dataCoord) / (impl->charWidth * 3);
-   int addr = (impl->firstLine + line) * impl->lineBytes + byte;
+      setCursor(addr);
+      setSelection(addr, addr + 1);
+   }
 
-   setCursor(addr);
-   setSelection(addr, addr + 1);
+   else if (click.x() > (impl->textCoord + 5) && click.x() < (impl->textCoord + impl->textWidth + 5))
+   {
+      int line = (click.y() / impl->charHeight);
+      int byte = (click.x() - impl->textCoord - 5) / impl->charWidth;
+      int addr = (impl->firstLine + line) * impl->lineBytes + byte;
+
+      setCursor(addr);
+      setSelection(addr, addr + 1);
+   }
+   else
+   {
+      setSelection(0, 0);
+   }
 }
