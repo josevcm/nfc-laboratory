@@ -41,11 +41,15 @@ struct ProtocolFrame::Impl
    // frame childs
    QList<ProtocolFrame *> childs;
 
-   Impl(int flags, const QVector<QVariant> &data, const nfc::NfcFrame &frame) : flags(flags), frame(frame), parent(nullptr), data(data)
+   //
+   int start;
+   int end;
+
+   Impl(int flags, const QVector<QVariant> &data, const nfc::NfcFrame &frame) : flags(flags), frame(frame), parent(nullptr), data(data), start(0), end(frame.limit())
    {
    }
 
-   Impl(int flags, const QVector<QVariant> &data, ProtocolFrame *parent) : flags(flags), parent(parent), data(data)
+   Impl(int flags, const QVector<QVariant> &data, ProtocolFrame *parent, int start, int end) : flags(flags), parent(parent), data(data), start(start), end(end)
    {
    }
 
@@ -60,8 +64,8 @@ ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, const nfc
 {
 }
 
-ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, ProtocolFrame *parent) :
-      QObject(parent), impl(new Impl(flags, data, parent))
+ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, ProtocolFrame *parent, int start, int end) :
+      QObject(parent), impl(new Impl(flags, data, parent, start, end))
 {
 }
 
@@ -165,6 +169,16 @@ int ProtocolFrame::row() const
       return impl->parent->impl->childs.indexOf(const_cast<ProtocolFrame *>(this));
 
    return -1;
+}
+
+int ProtocolFrame::rangeStart() const
+{
+   return impl->start;
+}
+
+int ProtocolFrame::rangeEnd() const
+{
+   return impl->end;
 }
 
 bool ProtocolFrame::isRequestFrame() const

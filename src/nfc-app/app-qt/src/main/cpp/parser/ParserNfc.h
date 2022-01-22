@@ -46,7 +46,7 @@ struct ParserNfc
 
    ProtocolFrame *parseResponseUnknown(const nfc::NfcFrame &frame);
 
-   ProtocolFrame *parseAPDU(const QString &name, const QByteArray &data);
+   ProtocolFrame *parseAPDU(const QString &name, const nfc::NfcFrame &frame, int start, int length);
 
    ProtocolFrame *buildRootInfo(const QString &name, const nfc::NfcFrame &frame, int flags);
 
@@ -54,7 +54,11 @@ struct ParserNfc
 
    ProtocolFrame *buildChildInfo(const QString &name, const QVariant &info);
 
-   ProtocolFrame *buildChildInfo(const QString &name, const QVariant &info, int flags);
+   ProtocolFrame *buildChildInfo(const QString &name, const QVariant &info, int start, int length);
+
+   ProtocolFrame *buildChildInfo(const QString &name, const nfc::NfcFrame &frame, int start, int length);
+
+   ProtocolFrame *buildChildInfo(const QString &name, const QVariant &info, int flags, int start, int length);
 
    bool isApdu(const QByteArray &apdu);
 
