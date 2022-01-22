@@ -36,6 +36,8 @@ struct HexViewWidget::Impl
    int firstLine = 0;
    int lastLine = 0;
    int cursorPos = 0;
+   int startSelection = 0;
+   int endSelection = 0;
    int lineBytes = 16;
 
    int addrCoord;
@@ -85,6 +87,8 @@ struct HexViewWidget::Impl
    {
       data = value;
       cursorPos = 0;
+      startSelection = 0;
+      endSelection = 0;
 
       layout();
 
@@ -149,7 +153,17 @@ void HexViewWidget::setData(const QByteArray &data)
 
 void HexViewWidget::setCursor(int position)
 {
-   impl->cursorPos = std::clamp(position, 0, impl->data.count());
+   impl->cursorPos = std::clamp(position, 0, impl->data.count() - 1);
+
+   viewport()->update();
+}
+
+void HexViewWidget::setSelection(int start, int end)
+{
+   impl->startSelection = std::clamp(start, 0, impl->data.count());
+   impl->endSelection = std::clamp(end, 0, impl->data.count());
+
+   viewport()->update();
 }
 
 void HexViewWidget::paintEvent(QPaintEvent *event)
@@ -157,6 +171,9 @@ void HexViewWidget::paintEvent(QPaintEvent *event)
    QAbstractScrollArea::paintEvent(event);
 
    QPainter painter(viewport());
+
+   QBrush defaultBrush = painter.brush();
+   QBrush selectedBursh = QBrush(palette().color(QPalette::Highlight));
 
    // reprocess layout
    impl->layout();
@@ -170,13 +187,36 @@ void HexViewWidget::paintEvent(QPaintEvent *event)
    for (int addr = impl->firstLine * impl->lineBytes, line = impl->firstLine, lineCoord = 0; addr < impl->data.count() && line <= impl->lastLine; addr += impl->lineBytes, lineCoord += impl->charHeight, line++)
    {
       painter.setFont(impl->addrFont);
+      painter.setBackgroundMode(Qt::TransparentMode);
       painter.drawText(QRect(impl->addrCoord + 5, lineCoord, impl->addrWidth, impl->charHeight), Qt::AlignTop, QString("%1").arg(addr, 4, 16, QChar('0')));
 
+      // draw hex data
       painter.setFont(impl->dataFont);
-      painter.drawText(QRect(impl->dataCoord + 5, lineCoord, impl->dataWidth, impl->charHeight), Qt::AlignTop, impl->toHexString(impl->data, addr, addr + impl->lineBytes));
+      painter.setBackgroundMode(Qt::OpaqueMode);
 
+      for (int i = 0, pos = addr, charCoord = 0; i < impl->lineBytes && pos < impl->data.count(); i++, pos++, charCoord += impl->charWidth * 3)
+      {
+         if (pos >= impl->startSelection && pos < impl->endSelection)
+            painter.setBackground(selectedBursh);
+         else
+            painter.setBackground(defaultBrush);
+
+         painter.drawText(QRect(impl->dataCoord + charCoord + 5, lineCoord, impl->charWidth * 2, impl->charHeight), Qt::AlignCenter, QString("%1").arg((int) impl->data[pos] & 0xff, 2, 16, QChar('0')));
+      }
+
+      // draw ascii data
       painter.setFont(impl->textFont);
-      painter.drawText(QRect(impl->textCoord + 5, lineCoord, impl->textWidth, impl->charHeight), Qt::AlignTop, impl->toAsciiString(impl->data, addr, addr + impl->lineBytes));
+      painter.setBackgroundMode(Qt::OpaqueMode);
+
+      for (int i = 0, pos = addr, charCoord = 0; i < impl->lineBytes && pos < impl->data.count(); i++, pos++, charCoord += impl->charWidth)
+      {
+         if (pos >= impl->startSelection && pos < impl->endSelection)
+            painter.setBackground(selectedBursh);
+         else
+            painter.setBackground(defaultBrush);
+
+         painter.drawText(QRect(impl->textCoord + charCoord + 5, lineCoord, impl->charWidth, impl->charHeight), Qt::AlignCenter, (int) impl->data[pos] >= 0x20 ? QString("%1").arg((char) impl->data[pos]) : ".");
+      }
    }
 
    // draw hex / ascii split line
@@ -188,65 +228,71 @@ void HexViewWidget::paintEvent(QPaintEvent *event)
       int x = (impl->cursorPos % impl->lineBytes) * impl->charWidth * 3;
       int y = (impl->cursorPos / impl->lineBytes) * impl->charHeight;
 
-      painter.fillRect(impl->dataCoord + x, y, 3, impl->charHeight, palette().color(QPalette::WindowText));
+      painter.fillRect(impl->dataCoord + x + 5, y + impl->charHeight, impl->charWidth * 2, 3, palette().color(QPalette::WindowText));
    }
 }
 
 void HexViewWidget::keyPressEvent(QKeyEvent *event)
 {
-   bool cursorVisible = false;
-
    if (event->matches(QKeySequence::MoveToNextChar))
    {
       setCursor(impl->cursorPos + 1);
-//      resetSelection(impl->cursorOffset);
-      cursorVisible = true;
    }
 
    else if (event->matches(QKeySequence::MoveToPreviousChar))
    {
       setCursor(impl->cursorPos - 1);
-//      resetSelection(impl->cursorOffset);
-      cursorVisible = true;
    }
 
    else if (event->matches(QKeySequence::MoveToEndOfLine))
    {
       setCursor(impl->cursorPos | (impl->lineBytes - 1));
-//      resetSelection(impl->cursorOffset);
-      cursorVisible = true;
    }
 
    else if (event->matches(QKeySequence::MoveToStartOfLine))
    {
       setCursor(impl->cursorPos | (impl->cursorPos % (impl->lineBytes)));
-//      resetSelection(impl->cursorPos);
-      cursorVisible = true;
    }
 
    else if (event->matches(QKeySequence::MoveToPreviousLine))
    {
       setCursor(impl->cursorPos - impl->lineBytes);
-//      resetSelection(impl->cursorPos);
-      cursorVisible = true;
    }
 
    else if (event->matches(QKeySequence::MoveToNextLine))
    {
       setCursor(impl->cursorPos + impl->lineBytes);
-//      resetSelection(impl->cursorPos);
-      cursorVisible = true;
    }
-
-   viewport() -> update();
 }
 
 void HexViewWidget::mouseMoveEvent(QMouseEvent *event)
 {
+   if (event->buttons() & Qt::LeftButton)
+   {
+      QPoint click = event->pos();
 
+      if (click.x() < impl->dataCoord || click.x() > (impl->dataCoord + impl->dataWidth))
+         return;
+
+      int line = (click.y() / impl->charHeight);
+      int byte = (click.x() - impl->dataCoord) / (impl->charWidth * 3);
+      int addr = (impl->firstLine + line) * impl->lineBytes + byte;
+
+      setSelection(impl->startSelection, addr + 1);
+   }
 }
 
 void HexViewWidget::mousePressEvent(QMouseEvent *event)
 {
+   QPoint click = event->pos();
 
+   if (click.x() < impl->dataCoord || click.x() > (impl->dataCoord + impl->dataWidth))
+      return;
+
+   int line = (click.y() / impl->charHeight);
+   int byte = (click.x() - impl->dataCoord) / (impl->charWidth * 3);
+   int addr = (impl->firstLine + line) * impl->lineBytes + byte;
+
+   setCursor(addr);
+   setSelection(addr, addr + 1);
 }

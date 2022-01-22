@@ -44,6 +44,8 @@ class HexViewWidget : public QAbstractScrollArea
 
       void setCursor(int position);
 
+      void setSelection(int position, int length);
+
    protected:
 
       void paintEvent(QPaintEvent *event);
