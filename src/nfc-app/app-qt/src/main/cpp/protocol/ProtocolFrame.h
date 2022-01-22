@@ -65,7 +65,7 @@ class ProtocolFrame : public QObject
 
       ProtocolFrame(const QVector<QVariant> &data, int flags, const nfc::NfcFrame &frame);
 
-      ProtocolFrame(const QVector<QVariant> &data, int flags, ProtocolFrame *parent);
+      ProtocolFrame(const QVector<QVariant> &data, int flags, ProtocolFrame *parent, int start = -1, int end = -1);
 
       ~ProtocolFrame() override;
 
@@ -102,7 +102,14 @@ class ProtocolFrame : public QObject
       void setParent(ProtocolFrame *parent);
 
       /*
-       *
+       * frame range
+       */
+      int rangeStart() const;
+
+      int rangeEnd() const;
+
+      /*
+       * frame phase
        */
       bool isSenseFrame() const;
 
@@ -113,7 +120,7 @@ class ProtocolFrame : public QObject
       bool isAuthFrame() const;
 
       /*
-       *
+       * information type
        */
       bool isRequestFrame() const;
 

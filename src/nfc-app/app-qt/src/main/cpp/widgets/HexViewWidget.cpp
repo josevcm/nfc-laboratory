@@ -41,12 +41,11 @@ struct HexViewWidget::Impl
    int firstLine = 0;
    int lastLine = 0;
 
-   int cursorPosition = 0;
+   int cursorPosition = -1;
    bool cursorVisible = true;
-   int cursorBlinkTime = 0;
 
-   int selectionStart = 0;
-   int selectionEnd = 0;
+   int selectionStart = -1;
+   int selectionEnd = -1;
 
    int addrCoord;
    int addrWidth;
@@ -108,9 +107,10 @@ struct HexViewWidget::Impl
    void reset(const QByteArray &value)
    {
       data = value;
-      cursorPosition = 0;
-      selectionStart = 0;
-      selectionEnd = 0;
+
+      cursorPosition = -1;
+      selectionStart = -1;
+      selectionEnd = -1;
 
       layout();
 
@@ -161,7 +161,7 @@ struct HexViewWidget::Impl
 
          for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.count(); i++, pos++, charCoord += charWidth * 3)
          {
-            if (pos >= selectionStart && pos < selectionEnd)
+            if (pos >= selectionStart && pos <= selectionEnd)
                painter.setBackground(selectedBursh);
             else
                painter.setBackground(defaultBrush);
@@ -175,7 +175,7 @@ struct HexViewWidget::Impl
 
          for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.count(); i++, pos++, charCoord += charWidth)
          {
-            if (pos >= selectionStart && pos < selectionEnd)
+            if (pos >= selectionStart && pos <= selectionEnd)
                painter.setBackground(selectedBursh);
             else
                painter.setBackground(defaultBrush);
@@ -190,7 +190,7 @@ struct HexViewWidget::Impl
 
       if (widget->hasFocus())
       {
-         if (cursorVisible)
+         if (cursorVisible && cursorPosition >= 0)
          {
             int x = (cursorPosition % lineBytes) * charWidth * 3;
             int y = (cursorPosition / lineBytes - firstLine) * charHeight;
@@ -200,8 +200,7 @@ struct HexViewWidget::Impl
       }
    }
 
-
-   QString toHexString(const QByteArray &value, int from, int to) const
+   static QString toHexString(const QByteArray &value, int from, int to)
    {
       QString text;
 
@@ -213,7 +212,7 @@ struct HexViewWidget::Impl
       return text.trimmed();
    }
 
-   QString toAsciiString(const QByteArray &value, int from, int to) const
+   static QString toAsciiString(const QByteArray &value, int from, int to)
    {
       QString text;
 
@@ -243,32 +242,37 @@ void HexViewWidget::setData(const QByteArray &data)
 
 void HexViewWidget::setCursor(int position)
 {
-   impl->cursorPosition = std::clamp(position, 0, impl->data.count() - 1);
-   impl->blinkTimer->start(500);
-   impl->cursorVisible = true;
-   viewport()->update();
+   if (impl->data.count() > 0)
+   {
+      impl->cursorPosition = std::clamp(position, 0, impl->data.count() - 1);
+      impl->cursorVisible = true;
+
+      impl->blinkTimer->start(500);
+
+      viewport()->update();
+   }
 }
 
 void HexViewWidget::setSelection(int start, int end)
 {
-   impl->selectionStart = std::clamp(start, 0, impl->data.count());
-   impl->selectionEnd = std::clamp(end, 0, impl->data.count());
-
-   if (impl->selectionEnd > impl->selectionStart)
+   if (start >= 0 && end >= start && impl->data.count() > 0)
    {
+      impl->selectionStart = std::clamp(start, 0, impl->data.count() - 1);
+      impl->selectionEnd = std::clamp(end, 0, impl->data.count() - 1);
+
       QClipboard *clipboard = QApplication::clipboard();
 
-      clipboard->setText(impl->toHexString(impl->data, impl->selectionStart, impl->selectionEnd));
-   }
+      clipboard->setText(impl->toHexString(impl->data, impl->selectionStart, impl->selectionEnd + 1));
 
-   viewport()->update();
+      viewport()->update();
+   }
 }
 
 void HexViewWidget::paintEvent(QPaintEvent *event)
 {
-   QAbstractScrollArea::paintEvent(event);
-
    impl->paint(event);
+
+   QAbstractScrollArea::paintEvent(event);
 }
 
 void HexViewWidget::keyPressEvent(QKeyEvent *event)
@@ -285,12 +289,12 @@ void HexViewWidget::keyPressEvent(QKeyEvent *event)
 
    else if (event->matches(QKeySequence::MoveToEndOfLine))
    {
-      setCursor(impl->cursorPosition | (impl->lineBytes - 1));
+      setCursor(impl->cursorPosition + impl->lineBytes - (impl->cursorPosition % impl->lineBytes) - 1);
    }
 
    else if (event->matches(QKeySequence::MoveToStartOfLine))
    {
-      setCursor(impl->cursorPosition % impl->lineBytes);
+      setCursor((impl->cursorPosition / impl->lineBytes) * impl->lineBytes);
    }
 
    else if (event->matches(QKeySequence::MoveToPreviousLine))
@@ -302,6 +306,8 @@ void HexViewWidget::keyPressEvent(QKeyEvent *event)
    {
       setCursor(impl->cursorPosition + impl->lineBytes);
    }
+
+   QAbstractScrollArea::keyPressEvent(event);
 }
 
 void HexViewWidget::mouseMoveEvent(QMouseEvent *event)
@@ -316,7 +322,7 @@ void HexViewWidget::mouseMoveEvent(QMouseEvent *event)
          int byte = (click.x() - impl->dataCoord - 5) / (impl->charWidth * 3);
          int addr = (impl->firstLine + line) * impl->lineBytes + byte;
 
-         setSelection(impl->selectionStart, addr + 1);
+         setSelection(impl->selectionStart, addr);
       }
 
       else if (click.x() > (impl->textCoord + 5) && click.x() < (impl->textCoord + impl->textWidth + 5))
@@ -325,9 +331,11 @@ void HexViewWidget::mouseMoveEvent(QMouseEvent *event)
          int byte = (click.x() - impl->textCoord - 5) / impl->charWidth;
          int addr = (impl->firstLine + line) * impl->lineBytes + byte;
 
-         setSelection(impl->selectionStart, addr + 1);
+         setSelection(impl->selectionStart, addr);
       }
    }
+
+   QAbstractScrollArea::mouseMoveEvent(event);
 }
 
 void HexViewWidget::mousePressEvent(QMouseEvent *event)
@@ -341,7 +349,7 @@ void HexViewWidget::mousePressEvent(QMouseEvent *event)
       int addr = (impl->firstLine + line) * impl->lineBytes + byte;
 
       setCursor(addr);
-      setSelection(addr, addr + 1);
+      setSelection(addr, addr);
    }
 
    else if (click.x() > (impl->textCoord + 5) && click.x() < (impl->textCoord + impl->textWidth + 5))
@@ -351,10 +359,12 @@ void HexViewWidget::mousePressEvent(QMouseEvent *event)
       int addr = (impl->firstLine + line) * impl->lineBytes + byte;
 
       setCursor(addr);
-      setSelection(addr, addr + 1);
+      setSelection(addr, addr);
    }
    else
    {
       setSelection(0, 0);
    }
+
+   QAbstractScrollArea::mousePressEvent(event);
 }

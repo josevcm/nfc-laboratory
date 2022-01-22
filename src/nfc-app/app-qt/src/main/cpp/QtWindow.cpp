@@ -730,6 +730,7 @@ struct QtWindow::Impl
          if (auto firstEntry = parserModel->entry(firstIndex))
          {
             ui->hexView->setData(toByteArray(firstEntry->frame()));
+            ui->hexView->setSelection(firstEntry->rangeStart(), firstEntry->rangeEnd());
          }
       }
    }

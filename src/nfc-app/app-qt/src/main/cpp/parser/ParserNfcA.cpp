@@ -143,7 +143,7 @@ ProtocolFrame *ParserNfcA::parseResponseREQA(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::SenseFrame);
 
-   if (ProtocolFrame *atqa = root->appendChild(buildChildInfo("ATQA", QString("%1 [%2]").arg(atqv, 4, 16, QChar('0')).arg(atqv, 16, 2, QChar('0')))))
+   if (ProtocolFrame *atqa = root->appendChild(buildChildInfo("ATQA", QString("%1 [%2]").arg(atqv, 4, 16, QChar('0')).arg(atqv, 16, 2, QChar('0')), 0, 2)))
    {
       // propietary TYPE
       atqa->appendChild(buildChildInfo(QString("  [....%1........] propietary type %2").arg((atqv >> 8) & 0x0F, 4, 2, QChar('0')).arg((atqv >> 8) & 0x0F, 1, 16, QChar('0'))));
@@ -218,22 +218,22 @@ ProtocolFrame *ParserNfcA::parseRequestSELn(const nfc::NfcFrame &frame)
    }
 
    // command detailed info
-   root->appendChild(buildChildInfo("NVB", nvb));
+   root->appendChild(buildChildInfo("NVB", nvb, 1, 1));
 
    if (nvb == 7)
    {
       if (frame[2] == 0x88) // cascade tag
       {
-         root->appendChild(buildChildInfo("CT", toByteArray(frame, 2, 1)));
-         root->appendChild(buildChildInfo("UID", toByteArray(frame, 3, 3)));
+         root->appendChild(buildChildInfo("CT", frame, 2, 1));
+         root->appendChild(buildChildInfo("UID", frame, 3, 3));
       }
       else
       {
-         root->appendChild(buildChildInfo("UID", toByteArray(frame, 2, 4)));
+         root->appendChild(buildChildInfo("UID", frame, 2, 4));
       }
 
-      root->appendChild(buildChildInfo("BCC", toByteArray(frame, 6, 1)));
-      root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
+      root->appendChild(buildChildInfo("BCC", frame, 6, 1));
+      root->appendChild(buildChildInfo("CRC", frame, -2, 2));
    }
 
    return root;
@@ -250,21 +250,21 @@ ProtocolFrame *ParserNfcA::parseResponseSELn(const nfc::NfcFrame &frame)
    {
       if (frame[0] == 0x88) // cascade tag
       {
-         root->appendChild(buildChildInfo("CT", toByteArray(frame, 0, 1)));
-         root->appendChild(buildChildInfo("UID", toByteArray(frame, 1, 3)));
+         root->appendChild(buildChildInfo("CT", frame, 0, 1));
+         root->appendChild(buildChildInfo("UID", frame, 1, 3));
       }
       else
       {
-         root->appendChild(buildChildInfo("UID", toByteArray(frame, 0, 4)));
+         root->appendChild(buildChildInfo("UID", frame, 0, 4));
       }
 
-      root->appendChild(buildChildInfo("BCC", toByteArray(frame, 4, 1)));
+      root->appendChild(buildChildInfo("BCC", frame, 4, 1));
    }
    else if (frame.limit() == 3)
    {
       int sa = frame[0];
 
-      if (ProtocolFrame *sak = root->appendChild(buildChildInfo("SAK", QString("%1 [%2]").arg(sa, 2, 16, QChar('0')).arg(sa, 8, 2, QChar('0')))))
+      if (ProtocolFrame *sak = root->appendChild(buildChildInfo("SAK", QString("%1 [%2]").arg(sa, 2, 16, QChar('0')).arg(sa, 8, 2, QChar('0')), 0, 1)))
       {
          if (sa & 0x40)
             sak->appendChild(buildChildInfo("[.1......] ISO/IEC 18092 (NFC) compliant"));
@@ -282,7 +282,7 @@ ProtocolFrame *ParserNfcA::parseResponseSELn(const nfc::NfcFrame &frame)
             sak->appendChild(buildChildInfo("[.....0..] UID complete"));
       }
 
-      root->appendChild(buildChildInfo("CRC", toByteArray(frame, 1, 2)));
+      root->appendChild(buildChildInfo("CRC", frame, 1, 2));
    }
 
    return root;
@@ -301,13 +301,13 @@ ProtocolFrame *ParserNfcA::parseRequestRATS(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("RATS", frame, ProtocolFrame::SelectionFrame);
 
-   if (ProtocolFrame *param = root->appendChild(buildChildInfo("PARAM", QString("%1 [%2]").arg(par, 2, 16, QChar('0')).arg(par, 8, 2, QChar('0')))))
+   if (ProtocolFrame *param = root->appendChild(buildChildInfo("PARAM", QString("%1 [%2]").arg(par, 2, 16, QChar('0')).arg(par, 8, 2, QChar('0')), 0, 1)))
    {
       param->appendChild(buildChildInfo(QString("[%1....] FSD max frame size %2").arg(fsdi, 4, 2, QChar('0')).arg(nfc::NFC_FDS_TABLE[fsdi])));
       param->appendChild(buildChildInfo(QString("[....%1] CDI logical channel %2").arg(cdi, 4, 2, QChar('0')).arg(cdi)));
    }
 
-   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -324,7 +324,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
 
    root->appendChild(buildChildInfo("TL", tl));
 
-   if (ProtocolFrame *ats = root->appendChild(buildChildInfo("ATS", toByteArray(frame, 1, frame.limit() - 3))))
+   if (ProtocolFrame *ats = root->appendChild(buildChildInfo("ATS", frame, 1, frame.limit() - 3)))
    {
       if (tl > 0)
       {
@@ -412,12 +412,12 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
 
          if (offset < tl)
          {
-            ats->appendChild(buildChildInfo("HIST", toByteArray(frame, offset, tl - offset)));
+            ats->appendChild(buildChildInfo("HIST", frame, offset, tl - offset));
          }
       }
    }
 
-   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -431,7 +431,7 @@ ProtocolFrame *ParserNfcA::parseRequestHLTA(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("HLTA", frame, ProtocolFrame::SenseFrame);
 
-   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -455,8 +455,8 @@ ProtocolFrame *ParserNfcA::parseRequestPPSr(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("PPS", frame, ProtocolFrame::SelectionFrame);
 
-   root->appendChild(buildChildInfo("CID", pps & 0x0F));
-   root->appendChild(buildChildInfo("PPS0", toByteArray(frame, 1, 1)));
+   root->appendChild(buildChildInfo("CID", pps & 0x0F, 0, 1));
+   root->appendChild(buildChildInfo("PPS0", frame, 1, 1));
 
    int pps0 = frame[1];
 
@@ -486,7 +486,7 @@ ProtocolFrame *ParserNfcA::parseRequestPPSr(const nfc::NfcFrame &frame)
       }
    }
 
-   root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -514,7 +514,7 @@ ProtocolFrame *ParserNfcA::parseRequestAUTH(const nfc::NfcFrame &frame)
       ProtocolFrame *root = buildRootInfo(cmd == 0x60 ? "AUTH(A)" : "AUTH(B)", frame, ProtocolFrame::AuthFrame);
 
       root->appendChild(buildChildInfo("BLOCK", block));
-      root->appendChild(buildChildInfo("CRC", toByteArray(frame, -2)));
+      root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
       frameChain = cmd;
 
@@ -523,7 +523,7 @@ ProtocolFrame *ParserNfcA::parseRequestAUTH(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo(frameChain == 0x60 ? "AUTH(A)" : "AUTH(B)", frame, ProtocolFrame::AuthFrame);
 
-   root->appendChild(buildChildInfo("TOKEN", toByteArray(frame)));
+   root->appendChild(buildChildInfo("TOKEN", frame, 0, frame.limit()));
 
    frameChain = 0;
 
