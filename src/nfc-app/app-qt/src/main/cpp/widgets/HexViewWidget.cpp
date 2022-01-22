@@ -226,7 +226,7 @@ void HexViewWidget::paintEvent(QPaintEvent *event)
    if (hasFocus())
    {
       int x = (impl->cursorPos % impl->lineBytes) * impl->charWidth * 3;
-      int y = (impl->cursorPos / impl->lineBytes) * impl->charHeight;
+      int y = (impl->cursorPos / impl->lineBytes - impl->firstLine) * impl->charHeight;
 
       painter.fillRect(impl->dataCoord + x + 5, y + impl->charHeight, impl->charWidth * 2, 3, palette().color(QPalette::WindowText));
    }
