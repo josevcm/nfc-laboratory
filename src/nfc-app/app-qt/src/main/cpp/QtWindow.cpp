@@ -977,20 +977,6 @@ struct QtWindow::Impl
          data.append(frame[i]);
       }
 
-      for (int i = 0; i < frame.limit(); i++)
-      {
-         data.append(frame[i]);
-      }
-
-      for (int i = 0; i < frame.limit(); i++)
-      {
-         data.append(frame[i]);
-      }
-
-      for (int i = 0; i < frame.limit(); i++)
-      {
-         data.append(frame[i]);
-      }
       return data;
    }
 };
