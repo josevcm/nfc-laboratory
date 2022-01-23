@@ -138,7 +138,7 @@ struct HexViewWidget::Impl
       QPainter painter(widget->viewport());
 
       QBrush defaultBrush = painter.brush();
-      QBrush selectedBursh = QBrush(widget->palette().color(QPalette::Highlight));
+      QBrush selectedBrush = QBrush(widget->palette().color(QPalette::Highlight));
 
       // reprocess layout
       layout();
@@ -162,7 +162,7 @@ struct HexViewWidget::Impl
          for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.count(); i++, pos++, charCoord += charWidth * 3)
          {
             if (pos >= selectionStart && pos <= selectionEnd)
-               painter.setBackground(selectedBursh);
+               painter.setBackground(selectedBrush);
             else
                painter.setBackground(defaultBrush);
 
@@ -176,7 +176,7 @@ struct HexViewWidget::Impl
          for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.count(); i++, pos++, charCoord += charWidth)
          {
             if (pos >= selectionStart && pos <= selectionEnd)
-               painter.setBackground(selectedBursh);
+               painter.setBackground(selectedBrush);
             else
                painter.setBackground(defaultBrush);
 
@@ -270,13 +270,15 @@ void HexViewWidget::setSelection(int start, int end)
 
 void HexViewWidget::paintEvent(QPaintEvent *event)
 {
-   impl->paint(event);
-
    QAbstractScrollArea::paintEvent(event);
+
+   impl->paint(event);
 }
 
 void HexViewWidget::keyPressEvent(QKeyEvent *event)
 {
+   QAbstractScrollArea::keyPressEvent(event);
+
    if (event->matches(QKeySequence::MoveToNextChar))
    {
       setCursor(impl->cursorPosition + 1);
@@ -306,12 +308,12 @@ void HexViewWidget::keyPressEvent(QKeyEvent *event)
    {
       setCursor(impl->cursorPosition + impl->lineBytes);
    }
-
-   QAbstractScrollArea::keyPressEvent(event);
 }
 
 void HexViewWidget::mouseMoveEvent(QMouseEvent *event)
 {
+   QAbstractScrollArea::mouseMoveEvent(event);
+
    if (event->buttons() & Qt::LeftButton)
    {
       QPoint click = event->pos();
@@ -334,12 +336,12 @@ void HexViewWidget::mouseMoveEvent(QMouseEvent *event)
          setSelection(impl->selectionStart, addr);
       }
    }
-
-   QAbstractScrollArea::mouseMoveEvent(event);
 }
 
 void HexViewWidget::mousePressEvent(QMouseEvent *event)
 {
+   QAbstractScrollArea::mousePressEvent(event);
+
    QPoint click = event->pos();
 
    if (click.x() > (impl->dataCoord + 5) && click.x() < (impl->dataCoord + impl->dataWidth + 5))
@@ -365,6 +367,4 @@ void HexViewWidget::mousePressEvent(QMouseEvent *event)
    {
       setSelection(0, 0);
    }
-
-   QAbstractScrollArea::mousePressEvent(event);
 }

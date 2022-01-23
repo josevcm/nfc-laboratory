@@ -77,6 +77,7 @@ struct InspectDialog::Impl
          if (auto firstEntry = parserModel->entry(firstIndex))
          {
             ui->dataView->setData(toByteArray(firstEntry->frame()));
+            ui->dataView->setSelection(firstEntry->rangeStart(), firstEntry->rangeEnd());
          }
       }
    }
