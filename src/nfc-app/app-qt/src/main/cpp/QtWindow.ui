@@ -387,9 +387,6 @@
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
-           <property name="focusPolicy">
-            <enum>Qt::StrongFocus</enum>
-           </property>
           </widget>
          </item>
         </layout>
