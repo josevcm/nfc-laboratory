@@ -100,7 +100,7 @@ ProtocolFrame *ParserNfc::buildChildInfo(const QString &name, const QVariant &in
 
 ProtocolFrame *ParserNfc::buildChildInfo(const QString &name, const nfc::NfcFrame &frame, int start, int length)
 {
-   int from = start >= 0 ? start : frame.limit() - start;
+   int from = start < 0 ? frame.limit() + start : start;
 
    return buildChildInfo(name, toByteArray(frame, from, length), ProtocolFrame::FrameField, from, length);
 }
