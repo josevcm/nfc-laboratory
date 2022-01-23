@@ -63,7 +63,7 @@ bool readFrames(const std::string &path, std::list<nfc::NfcFrame> &list)
    // read frames from file
    for (const auto &entry: data["frames"])
    {
-      nfc::NfcFrame frame;
+      nfc::NfcFrame frame(256);
 
       frame.setTechType(entry["techType"]);
       frame.setFrameType(entry["frameType"]);
