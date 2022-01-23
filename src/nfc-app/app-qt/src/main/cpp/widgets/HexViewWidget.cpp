@@ -227,6 +227,7 @@ struct HexViewWidget::Impl
 
 HexViewWidget::HexViewWidget(QWidget *parent) : QAbstractScrollArea(parent), impl(new Impl(this))
 {
+   setFocusPolicy(Qt::StrongFocus);
    setMinimumWidth(impl->textCoord + impl->textWidth + 30);
 }
 
