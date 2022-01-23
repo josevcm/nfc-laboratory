@@ -317,12 +317,12 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
    if (lastCommand != 0xE0)
       return nullptr;
 
-   int offset = 0;
-   int tl = frame[offset++];
+   int tl = frame[0];
+   int offset = 1;
 
    ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::SelectionFrame);
 
-   root->appendChild(buildChildInfo("TL", tl));
+   root->appendChild(buildChildInfo("TL", tl, 0, 1));
 
    if (ProtocolFrame *ats = root->appendChild(buildChildInfo("ATS", frame, 1, frame.limit() - 3)))
    {
@@ -331,7 +331,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
          int t0 = frame[offset++];
          int fsci = t0 & 0x0f;
 
-         if (ProtocolFrame *t0f = ats->appendChild(buildChildInfo("T0", QString("%1 [%2]").arg(t0, 2, 16, QChar('0')).arg(t0, 8, 2, QChar('0')))))
+         if (ProtocolFrame *t0f = ats->appendChild(buildChildInfo("T0", QString("%1 [%2]").arg(t0, 2, 16, QChar('0')).arg(t0, 8, 2, QChar('0')), offset - 1, 1)))
          {
             t0f->appendChild(buildChildInfo(QString("[....%1] max frame size %2").arg(fsci, 4, 2, QChar('0')).arg(nfc::NFC_FDS_TABLE[fsci])));
 
@@ -342,7 +342,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
 
                int ta = frame[offset++];
 
-               if (ProtocolFrame *taf = ats->appendChild(buildChildInfo("TA", QString("%1 [%2]").arg(ta, 2, 16, QChar('0')).arg(ta, 8, 2, QChar('0')))))
+               if (ProtocolFrame *taf = ats->appendChild(buildChildInfo("TA", QString("%1 [%2]").arg(ta, 2, 16, QChar('0')).arg(ta, 8, 2, QChar('0')), offset - 1, 1)))
                {
                   if (ta & 0x80)
                      taf->appendChild(buildChildInfo(QString("[1.......] only support same rate for both directions")));
@@ -379,7 +379,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
 
                int tb = frame[offset++];
 
-               if (ProtocolFrame *tbf = ats->appendChild(buildChildInfo("TB", QString("%1 [%2]").arg(tb, 2, 16, QChar('0')).arg(tb, 8, 2, QChar('0')))))
+               if (ProtocolFrame *tbf = ats->appendChild(buildChildInfo("TB", QString("%1 [%2]").arg(tb, 2, 16, QChar('0')).arg(tb, 8, 2, QChar('0')), offset - 1, 1)))
                {
                   int fwi = (tb >> 4) & 0x0f;
                   int sfgi = (tb & 0x0f);
@@ -399,7 +399,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
 
                int tc = frame[offset++];
 
-               if (ProtocolFrame *tcf = ats->appendChild(buildChildInfo("TC", QString("%1 [%2]").arg(tc, 2, 16, QChar('0')).arg(tc, 8, 2, QChar('0')))))
+               if (ProtocolFrame *tcf = ats->appendChild(buildChildInfo("TC", QString("%1 [%2]").arg(tc, 2, 16, QChar('0')).arg(tc, 8, 2, QChar('0')), offset - 1, 1)))
                {
                   if (tc & 0x01)
                      tcf->appendChild(buildChildInfo("[.......1] NAD supported"));
@@ -464,7 +464,7 @@ ProtocolFrame *ParserNfcA::parseRequestPPSr(const nfc::NfcFrame &frame)
    {
       int pps1 = frame[2];
 
-      if (ProtocolFrame *pps1f = root->appendChild(buildChildInfo("PPS1", QString("%1 [%2]").arg(pps1, 2, 16, QChar('0')).arg(pps1, 8, 2, QChar('0')))))
+      if (ProtocolFrame *pps1f = root->appendChild(buildChildInfo("PPS1", QString("%1 [%2]").arg(pps1, 2, 16, QChar('0')).arg(pps1, 8, 2, QChar('0')), 2, 1)))
       {
          if ((pps1 & 0x0C) == 0x00)
             pps1f->appendChild(buildChildInfo("[....00..] selected 106 kbps PICC to PCD rate"));
