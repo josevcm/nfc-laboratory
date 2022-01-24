@@ -194,17 +194,20 @@ ProtocolFrame *ParserNfcIsoDep::parse(const nfc::NfcFrame &frame)
    {
       do
       {
-         // ISO-DEP protocol I-Block
-         if ((info = parseRequestIBlock(frame)))
-            break;
+         if (!frame.isEncrypted())
+         {
+            // ISO-DEP protocol I-Block
+            if ((info = parseRequestIBlock(frame)))
+               break;
 
-         // ISO-DEP protocol R-Block
-         if ((info = parseRequestRBlock(frame)))
-            break;
+            // ISO-DEP protocol R-Block
+            if ((info = parseRequestRBlock(frame)))
+               break;
 
-         // ISO-DEP protocol S-Block
-         if ((info = parseRequestSBlock(frame)))
-            break;
+            // ISO-DEP protocol S-Block
+            if ((info = parseRequestSBlock(frame)))
+               break;
+         }
 
          // Unknown frame...
          info = ParserNfc::parse(frame);
@@ -215,17 +218,20 @@ ProtocolFrame *ParserNfcIsoDep::parse(const nfc::NfcFrame &frame)
    {
       do
       {
-         // ISO-DEP protocol I-Block
-         if ((info = parseResponseIBlock(frame)))
-            break;
+         if (!frame.isEncrypted())
+         {
+            // ISO-DEP protocol I-Block
+            if ((info = parseResponseIBlock(frame)))
+               break;
 
-         // ISO-DEP protocol R-Block
-         if ((info = parseResponseRBlock(frame)))
-            break;
+            // ISO-DEP protocol R-Block
+            if ((info = parseResponseRBlock(frame)))
+               break;
 
-         // ISO-DEP protocol S-Block
-         if ((info = parseResponseSBlock(frame)))
-            break;
+            // ISO-DEP protocol S-Block
+            if ((info = parseResponseSBlock(frame)))
+               break;
+         }
 
          // Unknown frame...
          info = ParserNfc::parse(frame);

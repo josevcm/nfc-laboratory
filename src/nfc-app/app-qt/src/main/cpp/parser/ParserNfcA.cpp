@@ -43,34 +43,38 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
       {
          do
          {
-            // Request Command, Type A
-            if ((info = parseRequestREQA(frame)))
-               break;
+            if (!frame.isEncrypted())
+            {
+               // Request Command, Type A
+               if ((info = parseRequestREQA(frame)))
+                  break;
 
-            // Wake-UP Command, Type A
-            if ((info = parseRequestWUPA(frame)))
-               break;
+               // Wake-UP Command, Type A
+               if ((info = parseRequestWUPA(frame)))
+                  break;
 
-            // HALT Command, Type A
-            if ((info = parseRequestHLTA(frame)))
-               break;
+               // HALT Command, Type A
+               if ((info = parseRequestHLTA(frame)))
+                  break;
 
-            // Select Command, Type A
-            if ((info = parseRequestSELn(frame)))
-               break;
+               // Select Command, Type A
+               if ((info = parseRequestSELn(frame)))
+                  break;
 
-            // Request for Answer to Select
-            if ((info = parseRequestRATS(frame)))
-               break;
+               // Request for Answer to Select
+               if ((info = parseRequestRATS(frame)))
+                  break;
 
-            // Protocol Parameter Selection
-            if ((info = parseRequestPPSr(frame)))
-               break;
+               // Protocol Parameter Selection
+               if ((info = parseRequestPPSr(frame)))
+                  break;
 
-            // Mifare AUTH
-            if ((info = parseRequestAUTH(frame)))
-               break;
+               // Mifare AUTH
+               if ((info = parseRequestAUTH(frame)))
+                  break;
+            }
 
+            // Unknown frame...
             info = ParserNfcIsoDep::parse(frame);
 
          } while (false);
@@ -85,33 +89,36 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
    {
       do
       {
-         // Request Command, Type A
-         if ((info = parseResponseREQA(frame)))
-            break;
+         if (!frame.isEncrypted())
+         {
+            // Request Command, Type A
+            if ((info = parseResponseREQA(frame)))
+               break;
 
-         // Wake-UP Command, Type A
-         if ((info = parseResponseWUPA(frame)))
-            break;
+            // Wake-UP Command, Type A
+            if ((info = parseResponseWUPA(frame)))
+               break;
 
-         // HALT Command, Type A
-         if ((info = parseResponseHLTA(frame)))
-            break;
+            // HALT Command, Type A
+            if ((info = parseResponseHLTA(frame)))
+               break;
 
-         // Select Command, Type A
-         if ((info = parseResponseSELn(frame)))
-            break;
+            // Select Command, Type A
+            if ((info = parseResponseSELn(frame)))
+               break;
 
-         // Request for Answer to Select
-         if ((info = parseResponseRATS(frame)))
-            break;
+            // Request for Answer to Select
+            if ((info = parseResponseRATS(frame)))
+               break;
 
-         // Protocol Parameter Selection
-         if ((info = parseResponsePPSr(frame)))
-            break;
+            // Protocol Parameter Selection
+            if ((info = parseResponsePPSr(frame)))
+               break;
 
-         // Mifare AUTH
-         if ((info = parseResponseAUTH(frame)))
-            break;
+            // Mifare AUTH
+            if ((info = parseResponseAUTH(frame)))
+               break;
+         }
 
          // Unknown frame...
          info = ParserNfcIsoDep::parse(frame);

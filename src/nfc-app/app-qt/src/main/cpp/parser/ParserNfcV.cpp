@@ -192,20 +192,21 @@ ProtocolFrame *ParserNfcV::parseRequestInventory(const nfc::NfcFrame &frame)
    ProtocolFrame *root = buildRootInfo("Inventory", frame, ProtocolFrame::SelectionFrame);
 
    // parse request flags
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if AFI flag is set parse family
    if ((frame[0] & 0x14) == 0x14)
-      root->appendChild(buildApplicationFamily(frame[offset++]));
+      root->appendChild(buildApplicationFamily(frame, offset++));
+
+   root->appendChild(buildChildInfo("MLEN", frame, offset, 1));
 
    int mlen = frame[offset++];
-
-   root->appendChild(buildChildInfo("MLEN", QString("%1").arg(mlen, 2, 16, QChar('0'))));
 
    if (mlen > 0)
       root->appendChild(buildChildInfo("MASK", frame, offset, (mlen & 0x7) ? 1 + (mlen >> 3) : (mlen >> 3)));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,1));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -220,10 +221,10 @@ ProtocolFrame *ParserNfcV::parseResponseInventory(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::SenseFrame);
 
-   root->appendChild(buildResponseFlags(frame[0]));
-   root->appendChild(buildChildInfo("DSFID", QString("%1").arg(frame[1], 2, 16, QChar('0'))));
+   root->appendChild(buildResponseFlags(frame, 0));
+   root->appendChild(buildChildInfo("DSFID", frame, 1, 1));
    root->appendChild(buildChildInfo("UID", frame, 2, 8));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -241,9 +242,10 @@ ProtocolFrame *ParserNfcV::parseRequestStayQuiet(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("StayQuiet", frame, ProtocolFrame::SelectionFrame);
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
    root->appendChild(buildChildInfo("UID", frame, 2, 8));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -268,11 +270,12 @@ ProtocolFrame *ParserNfcV::parseRequestReadSingle(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
+   int offset = 2;
+
    ProtocolFrame *root = buildRootInfo("ReadBlock", frame, ProtocolFrame::ApplicationFrame);
 
-   root->appendChild(buildRequestFlags(frame[0]));
-
-   int offset = 2;
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -281,8 +284,8 @@ ProtocolFrame *ParserNfcV::parseRequestReadSingle(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("BLOCK", QString("%1").arg(frame[offset], 2, 16, QChar('0'))));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("BLOCK", frame, offset, 1));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -296,14 +299,14 @@ ProtocolFrame *ParserNfcV::parseResponseReadSingle(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
    else
       root->appendChild(buildChildInfo("DATA", frame, 1, frame.limit() - 3));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -320,11 +323,12 @@ ProtocolFrame *ParserNfcV::parseRequestWriteSingle(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
+   int offset = 2;
+
    ProtocolFrame *root = buildRootInfo("WriteBlock", frame, ProtocolFrame::ApplicationFrame);
 
-   root->appendChild(buildRequestFlags(frame[0]));
-
-   int offset = 2;
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -333,9 +337,9 @@ ProtocolFrame *ParserNfcV::parseRequestWriteSingle(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("BLOCK", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("BLOCK", frame, offset++, 1));
    root->appendChild(buildChildInfo("DATA", frame, offset, frame.limit() - offset - 2));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -349,12 +353,12 @@ ProtocolFrame *ParserNfcV::parseResponseWriteSingle(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -370,11 +374,12 @@ ProtocolFrame *ParserNfcV::parseRequestLockBlock(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
+   int offset = 2;
+
    ProtocolFrame *root = buildRootInfo("LockBlock", frame, ProtocolFrame::ApplicationFrame);
 
-   root->appendChild(buildRequestFlags(frame[0]));
-
-   int offset = 2;
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -383,8 +388,8 @@ ProtocolFrame *ParserNfcV::parseRequestLockBlock(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("BLOCK", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("BLOCK", frame, offset++, 1));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 
@@ -399,12 +404,12 @@ ProtocolFrame *ParserNfcV::parseResponseLockBlock(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -421,11 +426,12 @@ ProtocolFrame *ParserNfcV::parseRequestReadMultiple(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
+   int offset = 2;
+
    ProtocolFrame *root = buildRootInfo("ReadBlocks", frame, ProtocolFrame::ApplicationFrame);
 
-   root->appendChild(buildRequestFlags(frame[0]));
-
-   int offset = 2;
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -434,9 +440,9 @@ ProtocolFrame *ParserNfcV::parseRequestReadMultiple(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildChildInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("FIRST", frame, offset++, 1));
+   root->appendChild(buildChildInfo("COUNT", frame, offset++, 1));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -450,14 +456,14 @@ ProtocolFrame *ParserNfcV::parseResponseReadMultiple(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
    else
       root->appendChild(buildChildInfo("DATA", frame, 1, frame.limit() - 3));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -474,11 +480,12 @@ ProtocolFrame *ParserNfcV::parseRequestWriteMultiple(const nfc::NfcFrame &frame)
 
    lastCommand = frame[1];
 
+   int offset = 2;
+
    ProtocolFrame *root = buildRootInfo("WriteBlocks", frame, ProtocolFrame::ApplicationFrame);
 
-   root->appendChild(buildRequestFlags(frame[0]));
-
-   int offset = 2;
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -487,10 +494,10 @@ ProtocolFrame *ParserNfcV::parseRequestWriteMultiple(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildChildInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+   root->appendChild(buildChildInfo("FIRST", frame, offset++, 1));
+   root->appendChild(buildChildInfo("COUNT", frame, offset++, 1));
    root->appendChild(buildChildInfo("DATA", frame, offset, frame.limit() - offset - 3));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -504,12 +511,12 @@ ProtocolFrame *ParserNfcV::parseResponseWriteMultiple(const nfc::NfcFrame &frame
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -530,9 +537,10 @@ ProtocolFrame *ParserNfcV::parseRequestSelect(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("Select", frame, ProtocolFrame::ApplicationFrame);
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
    root->appendChild(buildChildInfo("UID", frame, 2, 8));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -546,12 +554,12 @@ ProtocolFrame *ParserNfcV::parseResponseSelect(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -565,9 +573,10 @@ ProtocolFrame *ParserNfcV::parseRequestResetReady(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("Reset", frame, ProtocolFrame::ApplicationFrame);
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
    root->appendChild(buildChildInfo("UID", frame, 2, 8));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -581,12 +590,12 @@ ProtocolFrame *ParserNfcV::parseResponseResetReady(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -607,7 +616,8 @@ ProtocolFrame *ParserNfcV::parseRequestWriteAFI(const nfc::NfcFrame &frame)
 
    int offset = 2;
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -616,8 +626,8 @@ ProtocolFrame *ParserNfcV::parseRequestWriteAFI(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildApplicationFamily(frame[offset++]));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildApplicationFamily(frame, offset++));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 
@@ -632,12 +642,12 @@ ProtocolFrame *ParserNfcV::parseResponseWriteAFI(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -658,7 +668,8 @@ ProtocolFrame *ParserNfcV::parseRequestLockAFI(const nfc::NfcFrame &frame)
 
    int offset = 2;
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -667,7 +678,7 @@ ProtocolFrame *ParserNfcV::parseRequestLockAFI(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 
@@ -682,12 +693,12 @@ ProtocolFrame *ParserNfcV::parseResponseLockAFI(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -708,7 +719,8 @@ ProtocolFrame *ParserNfcV::parseRequestWriteDSFID(const nfc::NfcFrame &frame)
 
    int offset = 2;
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -717,8 +729,8 @@ ProtocolFrame *ParserNfcV::parseRequestWriteDSFID(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("DSFID", frame, -2,2));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("DSFID", frame, -2, 2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 
@@ -733,12 +745,12 @@ ProtocolFrame *ParserNfcV::parseResponseWriteDSFID(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -759,7 +771,8 @@ ProtocolFrame *ParserNfcV::parseRequestLockDSFID(const nfc::NfcFrame &frame)
 
    int offset = 2;
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -768,7 +781,7 @@ ProtocolFrame *ParserNfcV::parseRequestLockDSFID(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -782,12 +795,12 @@ ProtocolFrame *ParserNfcV::parseResponseLockDSFID(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -808,7 +821,8 @@ ProtocolFrame *ParserNfcV::parseRequestSysInfo(const nfc::NfcFrame &frame)
 
    int offset = 2;
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
+   root->appendChild(buildChildInfo("CMD", frame, 1, 1));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -817,7 +831,7 @@ ProtocolFrame *ParserNfcV::parseRequestSysInfo(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -833,11 +847,11 @@ ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if ((flags & 1) == 0)
    {
-      ProtocolFrame *ainfo = root->appendChild(buildChildInfo("INFO", QString("%1").arg(info, 2, 16, QChar('0'))));
+      ProtocolFrame *ainfo = root->appendChild(buildChildInfo("INFO", frame, 1, 1));
 
       if (info & 0x01)
          ainfo->appendChild(buildChildInfo("[.......1] DSFID is supported. DSFID field is present"));
@@ -866,11 +880,11 @@ ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
 
       // DSFID field is present
       if (info & 0x01)
-         root->appendChild(buildChildInfo("DSFID", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
+         root->appendChild(buildChildInfo("DSFID", frame, offset++, 1));
 
       // AFI field is present
       if (info & 0x02)
-         root->appendChild(buildApplicationFamily(frame[offset++]));
+         root->appendChild(buildApplicationFamily(frame, offset++));
 
       // Memory size field is present
       if (info & 0x04)
@@ -890,10 +904,10 @@ ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
    }
    else
    {
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
    }
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -914,7 +928,7 @@ ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const nfc::NfcFrame &frame)
 
    int offset = 2;
 
-   root->appendChild(buildRequestFlags(frame[0]));
+   root->appendChild(buildRequestFlags(frame, 0));
 
    // if UID flag is set parse address
    if ((frame[0] & 0x24) == 0x20)
@@ -923,9 +937,9 @@ ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const nfc::NfcFrame &frame)
       offset += 8;
    }
 
-   root->appendChild(buildChildInfo("FIRST", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildChildInfo("COUNT", QString("%1").arg(frame[offset++], 2, 16, QChar('0'))));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("FIRST", frame, offset++, 1));
+   root->appendChild(buildChildInfo("COUNT", frame, offset++, 1));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -939,7 +953,7 @@ ProtocolFrame *ParserNfcV::parseResponseGetSecurity(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
    root->appendChild(buildChildInfo("DATA", frame, 1, frame.limit() - 3));
    root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
@@ -954,9 +968,9 @@ ProtocolFrame *ParserNfcV::parseRequestGeneric(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo(name, frame, 0);
 
-   root->appendChild(buildResponseFlags(frame[0]));
-   root->appendChild(buildChildInfo("CODE", QString("%1 [%2]").arg(cmd, 2, 16, QChar('0')).arg(cmd, 8, 2, QChar('0'))));
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildResponseFlags(frame, 0));
+   root->appendChild(buildChildInfo("CODE", frame, 1, 1));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
@@ -967,21 +981,23 @@ ProtocolFrame *ParserNfcV::parseResponseGeneric(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, 0);
 
-   root->appendChild(buildResponseFlags(flags));
+   root->appendChild(buildResponseFlags(frame, 0));
 
    if (flags & 0x1)
-      root->appendChild(buildResponseError(frame[1]));
+      root->appendChild(buildResponseError(frame, 1));
    else
       root->appendChild(buildChildInfo("PARAMS", frame, 1, frame.limit() - 3));
 
-   root->appendChild(buildChildInfo("CRC", frame, -2,2));
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
 
    return root;
 }
 
-ProtocolFrame *ParserNfcV::buildRequestFlags(int flags)
+ProtocolFrame *ParserNfcV::buildRequestFlags(const nfc::NfcFrame &frame, int offset)
 {
-   ProtocolFrame *afrf = buildChildInfo("FLAGS", QString("%1").arg(flags, 2, 16, QChar('0')));
+   int flags = frame[offset];
+
+   ProtocolFrame *afrf = buildChildInfo("FLAGS", frame, offset, 1);
 
    if (flags & 0x01)
       afrf->appendChild(buildChildInfo("[.......1] Two sub-carriers shall be used by the VICC"));
@@ -1032,9 +1048,11 @@ ProtocolFrame *ParserNfcV::buildRequestFlags(int flags)
    return afrf;
 }
 
-ProtocolFrame *ParserNfcV::buildResponseFlags(int flags)
+ProtocolFrame *ParserNfcV::buildResponseFlags(const nfc::NfcFrame &frame, int offset)
 {
-   ProtocolFrame *afrf = buildChildInfo("FLAGS", QString("%1").arg(flags, 2, 16, QChar('0')));
+   int flags = frame[offset];
+
+   ProtocolFrame *afrf = buildChildInfo("FLAGS", frame, offset, 1);
 
    if (flags & 0x01)
       afrf->appendChild(buildChildInfo("[.......1] Error detected. Error code is in the error field"));
@@ -1053,9 +1071,11 @@ ProtocolFrame *ParserNfcV::buildResponseFlags(int flags)
    return afrf;
 }
 
-ProtocolFrame *ParserNfcV::buildResponseError(int error)
+ProtocolFrame *ParserNfcV::buildResponseError(const nfc::NfcFrame &frame, int offset)
 {
-   ProtocolFrame *aerr = buildChildInfo("ERROR", QString("%1").arg(error, 2, 16, QChar('0')));
+   int error = frame[offset];
+
+   ProtocolFrame *aerr = buildChildInfo("ERROR", frame, offset, 1);
 
    if (error == 0x01)
       aerr->appendChild(buildChildInfo(QString("[%1] The command is not supported").arg(error, 8, 2, QChar('0'))));
@@ -1079,9 +1099,11 @@ ProtocolFrame *ParserNfcV::buildResponseError(int error)
    return aerr;
 }
 
-ProtocolFrame *ParserNfcV::buildApplicationFamily(int afi)
+ProtocolFrame *ParserNfcV::buildApplicationFamily(const nfc::NfcFrame &frame, int offset)
 {
-   ProtocolFrame *afif = buildChildInfo("AFI", QString("%1").arg(afi, 2, 16, QChar('0')));
+   int afi = frame[offset];
+
+   ProtocolFrame *afif = buildChildInfo("AFI", frame, offset, 1);
 
    if (afi == 0x00)
       afif->appendChild(buildChildInfo("[00000000] All families and sub-families"));
