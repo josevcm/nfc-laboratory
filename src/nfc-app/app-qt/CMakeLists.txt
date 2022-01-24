@@ -28,6 +28,7 @@ add_executable(nfc-lab WIN32
         src/main/cpp/events/SignalBufferEvent.cpp
         src/main/cpp/events/SystemStartupEvent.cpp
         src/main/cpp/events/SystemShutdownEvent.cpp
+        src/main/cpp/dialogs/ConfigDialog.cpp
         src/main/cpp/dialogs/InspectDialog.cpp
         src/main/cpp/graph/QCPAxisTickerFrequency.cpp
         src/main/cpp/graph/QCPAxisRangeMarker.cpp

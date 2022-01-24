@@ -53,9 +53,10 @@
 #include <styles/StreamStyle.h>
 #include <styles/ParserStyle.h>
 
+#include <dialogs/ConfigDialog.h>
 #include <dialogs/InspectDialog.h>
 
-#include <views/ui_QtWindow.h>
+#include "ui_QtWindow.h"
 
 #include "QtApplication.h"
 
@@ -1047,6 +1048,15 @@ void QtWindow::saveFile()
             {"sampleRate", impl->deviceSampleRate}
       }));
    }
+}
+
+void QtWindow::openConfig()
+{
+   QPointer<ConfigDialog> dialog = new ConfigDialog(this);
+
+   dialog->setModal(true);
+
+   dialog->show();
 }
 
 void QtWindow::toggleListen()

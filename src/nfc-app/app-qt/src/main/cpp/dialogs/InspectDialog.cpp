@@ -29,11 +29,9 @@
 
 #include <model/ParserModel.h>
 
-#include <parser/ParserNfc.h>
-
 #include <styles/ParserStyle.h>
 
-#include <views/ui_InspectDialog.h>
+#include "ui_InspectDialog.h"
 
 #include "InspectDialog.h"
 

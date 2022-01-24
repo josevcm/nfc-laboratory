@@ -22,6 +22,9 @@
    <property name="orientation">
     <enum>Qt::Vertical</enum>
    </property>
+   <property name="handleWidth">
+    <number>0</number>
+   </property>
    <widget class="QWidget" name="widget1" native="true">
     <property name="sizePolicy">
      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -887,7 +890,7 @@
    <sender>actionSetup</sender>
    <signal>triggered()</signal>
    <receiver>mainWindow</receiver>
-   <slot>openSettings()</slot>
+   <slot>openConfig()</slot>
   </connection>
   <connection>
    <sender>actionNfcA</sender>
@@ -956,7 +959,7 @@
   <slot>changeGainMode(int)</slot>
   <slot>changeGainValue(int)</slot>
   <slot>trackGainValue(int)</slot>
-  <slot>openSettings()</slot>
+  <slot>openConfig()</slot>
   <slot>saveFile()</slot>
   <slot>clearView()</slot>
   <slot>toggleFilter()</slot>
