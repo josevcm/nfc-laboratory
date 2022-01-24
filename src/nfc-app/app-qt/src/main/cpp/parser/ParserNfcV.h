@@ -97,13 +97,13 @@ struct ParserNfcV : ParserNfc
 
    ProtocolFrame *parseResponseGeneric(const nfc::NfcFrame &frame);
 
-   ProtocolFrame *buildRequestFlags(int flags);
+   ProtocolFrame *buildRequestFlags(const nfc::NfcFrame &frame, int offset);
 
-   ProtocolFrame *buildResponseFlags(int flags);
+   ProtocolFrame *buildResponseFlags(const nfc::NfcFrame &frame, int offset);
 
-   ProtocolFrame *buildResponseError(int error);
+   ProtocolFrame *buildResponseError(const nfc::NfcFrame &frame, int offset);
 
-   ProtocolFrame *buildApplicationFamily(int afi);
+   ProtocolFrame *buildApplicationFamily(const nfc::NfcFrame &frame, int offset);
 };
 
 
