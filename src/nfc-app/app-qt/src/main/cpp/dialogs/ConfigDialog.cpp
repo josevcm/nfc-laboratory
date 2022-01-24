@@ -22,68 +22,27 @@
 
 */
 
-#ifndef APP_QTWINDOW_H
-#define APP_QTWINDOW_H
+#include "ui_ConfigDialog.h"
 
-#include <QMainWindow>
-#include <QSettings>
-#include <QSharedPointer>
+#include "ConfigDialog.h"
 
-class QtMemory;
-
-class QtWindow : public QMainWindow
+struct ConfigDialog::Impl
 {
-   Q_OBJECT
+   ConfigDialog *dialog = nullptr;
 
-      struct Impl;
+   QSharedPointer<Ui_ConfigDialog> ui;
 
-   public:
+   explicit Impl(ConfigDialog *dialog) : dialog(dialog), ui(new Ui_ConfigDialog())
+   {
+      setup();
+   }
 
-      explicit QtWindow(QSettings &settings, QtMemory *cache);
-
-      void handleEvent(QEvent *event);
-
-   public Q_SLOTS:
-
-      void clearView();
-
-      void openFile();
-
-      void saveFile();
-
-      void openConfig();
-
-      void toggleListen();
-
-      void toggleRecord();
-
-      void toggleStop();
-
-      void toggleFollow();
-
-      void toggleFilter();
-
-      void toggleNfcA();
-
-      void toggleNfcB();
-
-      void toggleNfcF();
-
-      void toggleNfcV();
-
-      void changeGainMode(int index);
-
-      void changeGainValue(int value);
-
-      void trackGainValue(int value);
-
-   protected:
-
-      void keyPressEvent(QKeyEvent *event) override;
-
-   private:
-
-      QSharedPointer<Impl> impl;
+   void setup()
+   {
+      ui->setupUi(dialog);
+   }
 };
 
-#endif /* MAINWINDOW_H */
+ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent), impl(new Impl(this))
+{
+}

@@ -22,16 +22,12 @@
 
 */
 
-#ifndef APP_QTWINDOW_H
-#define APP_QTWINDOW_H
+#ifndef NFC_LAB_CONFIGDIALOG_H
+#define NFC_LAB_CONFIGDIALOG_H
 
-#include <QMainWindow>
-#include <QSettings>
-#include <QSharedPointer>
+#include <QDialog>
 
-class QtMemory;
-
-class QtWindow : public QMainWindow
+class ConfigDialog : public QDialog
 {
    Q_OBJECT
 
@@ -39,51 +35,13 @@ class QtWindow : public QMainWindow
 
    public:
 
-      explicit QtWindow(QSettings &settings, QtMemory *cache);
-
-      void handleEvent(QEvent *event);
-
-   public Q_SLOTS:
-
-      void clearView();
-
-      void openFile();
-
-      void saveFile();
-
-      void openConfig();
-
-      void toggleListen();
-
-      void toggleRecord();
-
-      void toggleStop();
-
-      void toggleFollow();
-
-      void toggleFilter();
-
-      void toggleNfcA();
-
-      void toggleNfcB();
-
-      void toggleNfcF();
-
-      void toggleNfcV();
-
-      void changeGainMode(int index);
-
-      void changeGainValue(int value);
-
-      void trackGainValue(int value);
-
-   protected:
-
-      void keyPressEvent(QKeyEvent *event) override;
+      explicit ConfigDialog(QWidget *parent = nullptr);
 
    private:
 
       QSharedPointer<Impl> impl;
+
 };
 
-#endif /* MAINWINDOW_H */
+
+#endif //NFC_LAB_CONFIGDIALOG_H
