@@ -253,7 +253,7 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestIBlock(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("I-Block", frame, ProtocolFrame::ApplicationFrame);
 
-   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", QString("%1 [%2]").arg(pcb, 2, 16, QChar('0')).arg(pcb, 8, 2, QChar('0')), 2, 1)))
+   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", frame, 0, 1)))
    {
       if ((pcb & 0xC0) == 0x00)
          pcbf->appendChild(buildChildInfo("[00....1.] I-Block"));
@@ -324,7 +324,7 @@ ProtocolFrame *ParserNfcIsoDep::parseResponseIBlock(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::ApplicationFrame);
 
-   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", QString("%1 [%2]").arg(pcb, 2, 16, QChar('0')).arg(pcb, 8, 2, QChar('0')), 2, 1)))
+   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", frame, 0, 1)))
    {
       pcbf->appendChild(buildChildInfo("[000...1.] I-Block"));
 
@@ -399,7 +399,7 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestRBlock(const nfc::NfcFrame &frame)
    else
       root = buildRootInfo("R(ACK)", frame, ProtocolFrame::ApplicationFrame);
 
-   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", QString("%1 [%2]").arg(pcb, 2, 16, QChar('0')).arg(pcb, 8, 2, QChar('0')), 2, 1)))
+   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", frame, 0, 1)))
    {
       pcbf->appendChild(buildChildInfo("[101..01.] R-Block"));
 
@@ -452,7 +452,7 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestSBlock(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("S-Block", frame, ProtocolFrame::ApplicationFrame);
 
-   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", QString("%1 [%2]").arg(pcb, 2, 16, QChar('0')).arg(pcb, 8, 2, QChar('0')), 2, 1)))
+   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", frame, 0, 1)))
    {
       pcbf->appendChild(buildChildInfo("[11...010] S-Block"));
 
