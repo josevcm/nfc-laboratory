@@ -253,6 +253,36 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestIBlock(const nfc::NfcFrame &frame)
 
    ProtocolFrame *root = buildRootInfo("I-Block", frame, ProtocolFrame::ApplicationFrame);
 
+   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", QString("%1 [%2]").arg(pcb, 2, 16, QChar('0')).arg(pcb, 8, 2, QChar('0')), 2, 1)))
+   {
+      if ((pcb & 0xC0) == 0x00)
+         pcbf->appendChild(buildChildInfo("[00....1.] I-Block"));
+      else if ((pcb & 0xC0) == 0x80)
+         pcbf->appendChild(buildChildInfo("[10....1.] R-Block"));
+      else if ((pcb & 0xC0) == 0xC0)
+         pcbf->appendChild(buildChildInfo("[11....1.] S-Block"));
+
+      if ((pcb & 0x10) == 0x00)
+         pcbf->appendChild(buildChildInfo("[...0....] NO Chaining"));
+      else
+         pcbf->appendChild(buildChildInfo("[...1....] Frame chaining"));
+
+      if ((pcb & 0x08) == 0x00)
+         pcbf->appendChild(buildChildInfo("[....0...] NO CID following"));
+      else
+         pcbf->appendChild(buildChildInfo("[....1...] CID following"));
+
+      if ((pcb & 0x04) == 0x00)
+         pcbf->appendChild(buildChildInfo("[.....0..] NO NAD following"));
+      else
+         pcbf->appendChild(buildChildInfo("[.....1..] NAD following"));
+
+      if ((pcb & 0x01) == 0x00)
+         pcbf->appendChild(buildChildInfo("[.......0] Block number"));
+      else
+         pcbf->appendChild(buildChildInfo("[.......1] Block number"));
+   }
+
    if (pcb & 0x08)
    {
       root->appendChild(buildChildInfo("CID", frame[offset] & 0x0F, offset, 1));
@@ -293,6 +323,31 @@ ProtocolFrame *ParserNfcIsoDep::parseResponseIBlock(const nfc::NfcFrame &frame)
    int flags = 0;
 
    ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::ApplicationFrame);
+
+   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", QString("%1 [%2]").arg(pcb, 2, 16, QChar('0')).arg(pcb, 8, 2, QChar('0')), 2, 1)))
+   {
+      pcbf->appendChild(buildChildInfo("[000...1.] I-Block"));
+
+      if ((pcb & 0x10) == 0x00)
+         pcbf->appendChild(buildChildInfo("[...0....] NO Chaining"));
+      else
+         pcbf->appendChild(buildChildInfo("[...1....] Frame chaining"));
+
+      if ((pcb & 0x08) == 0x00)
+         pcbf->appendChild(buildChildInfo("[....0...] NO CID following"));
+      else
+         pcbf->appendChild(buildChildInfo("[....1...] CID following"));
+
+      if ((pcb & 0x04) == 0x00)
+         pcbf->appendChild(buildChildInfo("[.....0..] NO NAD following"));
+      else
+         pcbf->appendChild(buildChildInfo("[.....1..] NAD following"));
+
+      if ((pcb & 0x01) == 0x00)
+         pcbf->appendChild(buildChildInfo("[.......0] Block number"));
+      else
+         pcbf->appendChild(buildChildInfo("[.......1] Block number"));
+   }
 
    if (pcb & 0x08)
    {
@@ -344,6 +399,26 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestRBlock(const nfc::NfcFrame &frame)
    else
       root = buildRootInfo("R(ACK)", frame, ProtocolFrame::ApplicationFrame);
 
+   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", QString("%1 [%2]").arg(pcb, 2, 16, QChar('0')).arg(pcb, 8, 2, QChar('0')), 2, 1)))
+   {
+      pcbf->appendChild(buildChildInfo("[101..01.] R-Block"));
+
+      if ((pcb & 0x10) == 0x00)
+         pcbf->appendChild(buildChildInfo("[...0....] ACK"));
+      else
+         pcbf->appendChild(buildChildInfo("[...1....] NAK"));
+
+      if ((pcb & 0x08) == 0x00)
+         pcbf->appendChild(buildChildInfo("[....0...] NO CID following"));
+      else
+         pcbf->appendChild(buildChildInfo("[....1...] CID following"));
+
+      if ((pcb & 0x01) == 0x00)
+         pcbf->appendChild(buildChildInfo("[.......0] Block number"));
+      else
+         pcbf->appendChild(buildChildInfo("[.......1] Block number"));
+   }
+
    if (pcb & 0x08)
    {
       root->appendChild(buildChildInfo("CID", frame[offset] & 0x0F, offset, 1));
@@ -376,6 +451,21 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestSBlock(const nfc::NfcFrame &frame)
    int pcb = frame[0], offset = 1;
 
    ProtocolFrame *root = buildRootInfo("S-Block", frame, ProtocolFrame::ApplicationFrame);
+
+   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", QString("%1 [%2]").arg(pcb, 2, 16, QChar('0')).arg(pcb, 8, 2, QChar('0')), 2, 1)))
+   {
+      pcbf->appendChild(buildChildInfo("[11...010] S-Block"));
+
+      if ((pcb & 0x30) == 0x00)
+         pcbf->appendChild(buildChildInfo("[..00....] DESELECT"));
+      else if ((pcb & 0x30) == 0x30)
+         pcbf->appendChild(buildChildInfo("[..11....] WTX"));
+
+      if ((pcb & 0x08) == 0x00)
+         pcbf->appendChild(buildChildInfo("[....0...] NO CID following"));
+      else
+         pcbf->appendChild(buildChildInfo("[....1...] CID following"));
+   }
 
    if (pcb & 0x08)
    {
