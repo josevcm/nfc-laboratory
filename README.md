@@ -1,6 +1,6 @@
 # SDR nfc-laboratory v2.0
 
-NFC signal sniffer and protocol decoder using SDR receiver, for demodulator and decoder NFC-A, NFC-B, NFC-F and NFC-V 
+NFC signal sniffer and protocol decoder using SDR receiver, for demodulation and decoding NFC-A, NFC-B, NFC-F and NFC-V 
 signals in real-time up to 424 Kbps.
 
 ## Description
