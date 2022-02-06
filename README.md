@@ -403,7 +403,6 @@ licenses, please check if you are interested in this work.
 - nlohmann json at `src/nfc-lib/lib-ext/nlohmann` see https://github.com/nlohmann/json
 - mufft library at `src/nfc-lib/lib-ext/mufft` see https://github.com/Themaister/muFFT
 - QCustomPlot at `src/nfc-app/app-qt/src/main/cpp/3party/customplot` see https://www.qcustomplot.com/
-- QHexEdit at `src/nfc-app/app-qt/src/main/cpp/3party/virinext` see https://github.com/virinext/QHexView
 - QDarkStyleSheet at `src/nfc-app/app-qt/src/main/assets/theme` see https://github.com/ColinDuquesnoy/QDarkStyleSheet
 
 ## Releases
