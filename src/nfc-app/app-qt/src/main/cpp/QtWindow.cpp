@@ -1052,11 +1052,9 @@ void QtWindow::saveFile()
 
 void QtWindow::openConfig()
 {
-   QPointer<ConfigDialog> dialog = new ConfigDialog(this);
-
-   dialog->setModal(true);
-
-   dialog->show();
+//   QPointer<ConfigDialog> dialog = new ConfigDialog(this);
+//
+//   dialog->show();
 }
 
 void QtWindow::toggleListen()
