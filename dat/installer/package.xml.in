@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package>
-    <DisplayName>NFC Laboratory 2.6.7 - josevcm@gmail.com</DisplayName>
+    <DisplayName>NFC Laboratory @nfc-lab_VERSION@ - josevcm@gmail.com</DisplayName>
     <Description>NFC Laboratory Package Installer</Description>
-    <Version>2.6.7</Version>
+    <Version>@nfc-lab_VERSION@</Version>
     <ReleaseDate>2022-02-06</ReleaseDate>
     <Licenses>
         <License name="License Agreement" file="license.txt" />
