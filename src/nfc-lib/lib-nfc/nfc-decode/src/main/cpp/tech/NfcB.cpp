@@ -490,6 +490,7 @@ struct NfcB::Impl : NfcTech
                request.setSampleEnd(frameStatus.frameEnd);
                request.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                request.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
+               request.setDateTime(decoder->referenceTime + request.timeStart());
 
                if (truncateError || streamError)
                   request.setFrameFlags(FrameFlags::Truncated);
@@ -626,6 +627,7 @@ struct NfcB::Impl : NfcTech
                   response.setSampleEnd(frameStatus.frameEnd);
                   response.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                   response.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
+                  response.setDateTime(decoder->referenceTime + response.timeStart());
 
                   if (truncateError || streamError)
                      response.setFrameFlags(FrameFlags::Truncated);

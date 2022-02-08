@@ -159,7 +159,7 @@ struct QtWindow::Impl
       // setup frame view model
       ui->streamView->setModel(streamModel);
       ui->streamView->setColumnWidth(StreamModel::Id, 75);
-      ui->streamView->setColumnWidth(StreamModel::Time, 100);
+      ui->streamView->setColumnWidth(StreamModel::Time, 225);
       ui->streamView->setColumnWidth(StreamModel::Delta, 75);
       ui->streamView->setColumnWidth(StreamModel::Rate, 60);
       ui->streamView->setColumnWidth(StreamModel::Tech, 60);

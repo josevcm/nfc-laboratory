@@ -67,6 +67,10 @@ class NfcDecoder
 
       void setSampleRate(long sampleRate);
 
+      long referenceTime() const;
+
+      void setReferenceTime(long referenceTime);
+
       float powerLevelThreshold() const;
 
       void setPowerLevelThreshold(float value);

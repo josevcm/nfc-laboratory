@@ -125,11 +125,25 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
    void startDecoder(rt::Event &command)
    {
+      long epoch = (long)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
       log.info("start frame decoding, pending frames {}", {signalQueue.size()});
 
-      decoder->setSampleRate(0);
-
       signalQueue.clear();
+
+      decoder->setSampleRate(0);
+      decoder->setReferenceTime(epoch);
+
+      // get command
+      if (auto data = command.get<std::string>("data"))
+      {
+         auto config = json::parse(data.value());
+
+         if (config.contains("referenceTime"))
+            decoder->setReferenceTime(config["referenceTime"]);
+      }
+
+      log.info("decoder reference time since epoch {}", { decoder->referenceTime() });
 
       command.resolve();
 
@@ -140,9 +154,9 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    {
       log.info("stop frame decoding, pending frames {}", {signalQueue.size()});
 
-      decoder->setSampleRate(0);
-
       signalQueue.clear();
+
+      decoder->setSampleRate(0);
 
       command.resolve();
 

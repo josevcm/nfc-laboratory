@@ -639,9 +639,10 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionOpen"/>
-   <addaction name="actionStore"/>
+   <addaction name="actionSave"/>
    <addaction name="actionClear"/>
    <addaction name="separator"/>
+   <addaction name="actionTime"/>
    <addaction name="actionFollow"/>
    <addaction name="actionFilter"/>
    <addaction name="separator"/>
@@ -655,11 +656,34 @@
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen">
    <property name="icon">
-    <iconset resource="../../assets/icons/icons.qrc">
-     <normaloff>:/app_icons/action-open</normaloff>:/app_icons/action-open</iconset>
+    <iconset>
+     <normaloff>:/app_icons/action-open</normaloff>
+    </iconset>
    </property>
    <property name="text">
     <string>Open</string>
+   </property>
+   <property name="toolTip">
+    <string>Open</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/app_icons/action-save</normaloff>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Record</string>
+   </property>
+   <property name="toolTip">
+    <string>Record</string>
    </property>
   </action>
   <action name="actionFollow">
@@ -671,61 +695,15 @@
    </property>
    <property name="icon">
     <iconset>
-     <activeoff>:/app_icons/follow-off</activeoff>
-     <activeon>:/app_icons/follow-on</activeon>
+     <activeon>:/app_icons/action-follow</activeon>
+     <activeoff>:/app_icons/action-follow</activeoff>
     </iconset>
    </property>
    <property name="text">
     <string>Follow</string>
    </property>
-  </action>
-  <action name="actionTime">
-   <property name="icon">
-    <iconset resource="../../assets/icons/icons.qrc">
-     <normaloff>:/app_icons/action-time</normaloff>:/app_icons/action-time</iconset>
-   </property>
    <property name="text">
-    <string>Time</string>
-   </property>
-  </action>
-  <action name="actionSetup">
-   <property name="icon">
-    <iconset resource="../../assets/icons/icons.qrc">
-     <normaloff>:/app_icons/action-setup</normaloff>:/app_icons/action-setup</iconset>
-   </property>
-   <property name="text">
-    <string>Setup</string>
-   </property>
-  </action>
-  <action name="actionStore">
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <activeoff>:/app_icons/record-off</activeoff>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Record</string>
-   </property>
-   <property name="toolTip">
-    <string>Store</string>
-   </property>
-  </action>
-  <action name="actionClear">
-   <property name="icon">
-    <iconset resource="../../assets/icons/icons.qrc">
-     <normaloff>:/app_icons/action-clear</normaloff>:/app_icons/action-clear</iconset>
-   </property>
-   <property name="text">
-    <string>Clear</string>
-   </property>
-   <property name="toolTip">
-    <string>Clear</string>
+    <string>Follow</string>
    </property>
   </action>
   <action name="actionFilter">
@@ -736,16 +714,62 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../assets/icons/icons.qrc">
-     <normaloff>:/app_icons/filter-off</normaloff>
-     <activeoff>:/app_icons/filter-off</activeoff>
-     <activeon>:/app_icons/filter-on</activeon>:/app_icons/filter-off</iconset>
+    <iconset>
+     <activeon>:/app_icons/action-filter</activeon>
+     <activeoff>:/app_icons/action-filter</activeoff>
+    </iconset>
    </property>
    <property name="text">
     <string>Filter</string>
    </property>
    <property name="toolTip">
     <string>Filter</string>
+   </property>
+  </action>
+  <action name="actionTime">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <activeon>:/app_icons/action-time</activeon>
+     <activeoff>:/app_icons/action-time</activeoff>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Time</string>
+   </property>
+   <property name="toolTip">
+    <string>Time</string>
+   </property>
+  </action>
+  <action name="actionSetup">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/app_icons/action-setup</normaloff>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Setup</string>
+   </property>
+   <property name="toolTip">
+    <string>Setup</string>
+   </property>
+  </action>
+  <action name="actionClear">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/app_icons/action-clear</normaloff>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Clear</string>
+   </property>
+   <property name="toolTip">
+    <string>Clear</string>
    </property>
   </action>
   <action name="actionNfcA">
@@ -869,7 +893,7 @@
    <slot>openFile()</slot>
   </connection>
   <connection>
-   <sender>actionStore</sender>
+   <sender>actionSave</sender>
    <signal>triggered()</signal>
    <receiver>mainWindow</receiver>
    <slot>saveFile()</slot>
