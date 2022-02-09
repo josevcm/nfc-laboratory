@@ -702,6 +702,16 @@ int RealtekDevice::setSampleType(int value)
    return -1;
 }
 
+long RealtekDevice::streamTime() const
+{
+   return 0;
+}
+
+int RealtekDevice::setStreamTime(long value)
+{
+   return 0;
+}
+
 long RealtekDevice::centerFreq() const
 {
    return impl->centerFreq;

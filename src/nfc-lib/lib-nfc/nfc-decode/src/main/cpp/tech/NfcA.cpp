@@ -114,7 +114,7 @@ struct NfcA::Impl : NfcTech
    /*
     * Configure NFC-A modulation
     */
-   inline void configure(long sampleRate)
+   inline void initialize(unsigned int sampleRate)
    {
       log.info("--------------------------------------------");
       log.info("initializing NFC-A decoder");
@@ -472,7 +472,7 @@ struct NfcA::Impl : NfcTech
                request.setSampleEnd(frameStatus.frameEnd);
                request.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                request.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
-               request.setDateTime(decoder->referenceTime + request.timeStart());
+               request.setDateTime(decoder->streamTime + request.timeStart());
 
                if (streamStatus.flags & FrameFlags::ParityError)
                   request.setFrameFlags(FrameFlags::ParityError);
@@ -630,7 +630,7 @@ struct NfcA::Impl : NfcTech
                      response.setSampleEnd(frameStatus.frameEnd);
                      response.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                      response.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
-                     response.setDateTime(decoder->referenceTime + response.timeStart());
+                     response.setDateTime(decoder->streamTime + response.timeStart());
 
                      if (streamStatus.flags & ParityError)
                         response.setFrameFlags(FrameFlags::ParityError);
@@ -755,7 +755,7 @@ struct NfcA::Impl : NfcTech
                      response.setSampleEnd(frameStatus.frameEnd);
                      response.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                      response.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
-                     response.setDateTime(decoder->referenceTime + response.timeStart());
+                     response.setDateTime(decoder->streamTime + response.timeStart());
 
                      if (streamStatus.flags & ParityError)
                         response.setFrameFlags(FrameFlags::ParityError);
@@ -2060,9 +2060,9 @@ void NfcA::setCorrelationThreshold(float value)
 /*
  * Configure NFC-A modulation
  */
-void NfcA::configure(long sampleRate)
+void NfcA::initialize(unsigned int sampleRate)
 {
-   self->configure(sampleRate);
+   self->initialize(sampleRate);
 }
 
 /*

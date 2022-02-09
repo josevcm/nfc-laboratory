@@ -118,7 +118,7 @@ struct NfcV::Impl : NfcTech
    {
    }
 
-   inline void configure(long sampleRate)
+   inline void initialize(unsigned int sampleRate)
    {
       log.info("--------------------------------------------");
       log.info("initializing NFC-V decoder");
@@ -491,7 +491,7 @@ struct NfcV::Impl : NfcTech
                request.setSampleEnd(frameStatus.frameEnd);
                request.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                request.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
-               request.setDateTime(decoder->referenceTime + request.timeStart());
+               request.setDateTime(decoder->streamTime + request.timeStart());
 
                if (truncateError || streamError)
                   request.setFrameFlags(FrameFlags::Truncated);
@@ -624,7 +624,7 @@ struct NfcV::Impl : NfcTech
                   response.setSampleEnd(frameStatus.frameEnd);
                   response.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                   response.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
-                  response.setDateTime(decoder->referenceTime + response.timeStart());
+                  response.setDateTime(decoder->streamTime + response.timeStart());
 
                   if (truncateError || streamError)
                      response.setFrameFlags(FrameFlags::Truncated);
@@ -1262,9 +1262,9 @@ void NfcV::setCorrelationThreshold(float value)
       self->minimumCorrelationThreshold = value;
 }
 
-void NfcV::configure(long sampleRate)
+void NfcV::initialize(unsigned int sampleRate)
 {
-   self->configure(sampleRate);
+   self->initialize(sampleRate);
 }
 
 bool NfcV::detect()

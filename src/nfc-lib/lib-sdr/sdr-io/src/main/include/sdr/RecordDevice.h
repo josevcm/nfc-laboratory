@@ -72,6 +72,10 @@ class RecordDevice : public SignalDevice
 
       int setSampleType(int value) override;
 
+      long streamTime() const override;
+
+      int setStreamTime(long value) override;
+
       int channelCount() const;
 
       void setChannelCount(int value);

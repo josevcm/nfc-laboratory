@@ -581,6 +581,16 @@ int AirspyDevice::setSampleType(int value)
    return -1;
 }
 
+long AirspyDevice::streamTime() const
+{
+   return 0;
+}
+
+int AirspyDevice::setStreamTime(long value)
+{
+   return 0;
+}
+
 long AirspyDevice::centerFreq() const
 {
    return impl->centerFreq;

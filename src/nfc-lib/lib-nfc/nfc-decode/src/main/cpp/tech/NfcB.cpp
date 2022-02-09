@@ -124,7 +124,7 @@ struct NfcB::Impl : NfcTech
    /*
     * Configure NFC-B modulation
     */
-   inline void configure(long sampleRate)
+   inline void initialize(unsigned int sampleRate)
    {
       log.info("--------------------------------------------");
       log.info("initializing NFC-B decoder");
@@ -490,7 +490,7 @@ struct NfcB::Impl : NfcTech
                request.setSampleEnd(frameStatus.frameEnd);
                request.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                request.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
-               request.setDateTime(decoder->referenceTime + request.timeStart());
+               request.setDateTime(decoder->streamTime + request.timeStart());
 
                if (truncateError || streamError)
                   request.setFrameFlags(FrameFlags::Truncated);
@@ -627,7 +627,7 @@ struct NfcB::Impl : NfcTech
                   response.setSampleEnd(frameStatus.frameEnd);
                   response.setTimeStart(double(frameStatus.frameStart) / double(decoder->sampleRate));
                   response.setTimeEnd(double(frameStatus.frameEnd) / double(decoder->sampleRate));
-                  response.setDateTime(decoder->referenceTime + response.timeStart());
+                  response.setDateTime(decoder->streamTime + response.timeStart());
 
                   if (truncateError || streamError)
                      response.setFrameFlags(FrameFlags::Truncated);
@@ -1311,9 +1311,9 @@ void NfcB::setCorrelationThreshold(float value)
       self->minimumCorrelationThreshold = value;
 }
 
-void NfcB::configure(long sampleRate)
+void NfcB::initialize(unsigned int sampleRate)
 {
-   self->configure(sampleRate);
+   self->initialize(sampleRate);
 }
 
 bool NfcB::detect()

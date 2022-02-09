@@ -65,7 +65,7 @@ struct NfcDecoder::Impl
 
    inline void cleanup();
 
-   inline void configure(long sampleRate);
+   inline void initialize();
 
    inline std::list<NfcFrame> nextFrames(sdr::SignalBuffer &samples);
 
@@ -74,6 +74,11 @@ struct NfcDecoder::Impl
 
 NfcDecoder::NfcDecoder() : impl(std::make_shared<Impl>())
 {
+}
+
+void NfcDecoder::initialize()
+{
+   impl->initialize();
 }
 
 void NfcDecoder::cleanup()
@@ -145,17 +150,17 @@ long NfcDecoder::sampleRate() const
 
 void NfcDecoder::setSampleRate(long sampleRate)
 {
-   impl->configure(sampleRate);
+   impl->decoder.sampleRate = sampleRate;
 }
 
-long NfcDecoder::referenceTime() const
+long NfcDecoder::streamTime() const
 {
-   return impl->decoder.referenceTime;
+   return impl->decoder.streamTime;
 }
 
-void NfcDecoder::setReferenceTime(long referenceTime)
+void NfcDecoder::setStreamTime(long referenceTime)
 {
-   impl->decoder.referenceTime = referenceTime;
+   impl->decoder.streamTime = referenceTime;
 }
 
 void NfcDecoder::setPowerLevelThreshold(float value)
@@ -195,13 +200,10 @@ NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder), nfcf(&decoder), nfcv(
 /**
  * Configure samplerate
  */
-void NfcDecoder::Impl::configure(long newSampleRate)
+void NfcDecoder::Impl::initialize()
 {
    // clear signal parameters
    decoder.signalParams = {0,};
-
-   // set decoder samplerate
-   decoder.sampleRate = newSampleRate;
 
    // clear signal master clock
    decoder.signalClock = 0;
@@ -227,16 +229,16 @@ void NfcDecoder::Impl::configure(long newSampleRate)
       decoder.signalParams.signalMdevW1 = float(1 - decoder.signalParams.signalMdevW0);
 
       // configure NFC-A decoder
-      nfca.configure(newSampleRate);
+      nfca.initialize(decoder.sampleRate);
 
       // configure NFC-B decoder
-      nfcb.configure(newSampleRate);
+      nfcb.initialize(decoder.sampleRate);
 
       // configure NFC-F decoder
-      nfcf.configure(newSampleRate);
+      nfcf.initialize(decoder.sampleRate);
 
       // configure NFC-V decoder
-      nfcv.configure(newSampleRate);
+      nfcv.initialize(decoder.sampleRate);
 
 #ifdef DEBUG_SIGNAL
       log.warn("SIGNAL DEBUGGER ENABLED!, highly affected performance!");
@@ -275,7 +277,9 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
       // re-configure decoder parameters on sample rate changes
       if (decoder.sampleRate != samples.sampleRate())
       {
-         configure(samples.sampleRate());
+         decoder.sampleRate = samples.sampleRate();
+
+         initialize();
       }
 
 #ifdef DEBUG_SIGNAL
@@ -350,7 +354,7 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
          silence.setSampleEnd(decoder.signalClock);
          silence.setTimeStart(double(decoder.carrierOff) / double(decoder.sampleRate));
          silence.setTimeEnd(double(decoder.signalClock) / double(decoder.sampleRate));
-         silence.setDateTime(decoder.referenceTime + silence.timeStart());
+         silence.setDateTime(decoder.streamTime + silence.timeStart());
 
          frames.push_back(silence);
       }
@@ -364,7 +368,7 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
          carrier.setSampleEnd(decoder.signalClock);
          carrier.setTimeStart(double(decoder.carrierOn) / double(decoder.sampleRate));
          carrier.setTimeEnd(double(decoder.signalClock) / double(decoder.sampleRate));
-         carrier.setDateTime(decoder.referenceTime + carrier.timeStart());
+         carrier.setDateTime(decoder.streamTime + carrier.timeStart());
 
          frames.push_back(carrier);
       }
@@ -396,7 +400,7 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
             silence.setSampleEnd(decoder.carrierOn);
             silence.setTimeStart(double(decoder.carrierOff) / double(decoder.sampleRate));
             silence.setTimeEnd(double(decoder.carrierOn) / double(decoder.sampleRate));
-            silence.setDateTime(decoder.referenceTime + silence.timeStart());
+            silence.setDateTime(decoder.streamTime + silence.timeStart());
 
             frames.push_back(silence);
          }
@@ -421,7 +425,7 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
             carrier.setSampleEnd(decoder.carrierOff);
             carrier.setTimeStart(double(decoder.carrierOn) / double(decoder.sampleRate));
             carrier.setTimeEnd(double(decoder.carrierOff) / double(decoder.sampleRate));
-            carrier.setDateTime(decoder.referenceTime + carrier.timeStart());
+            carrier.setDateTime(decoder.streamTime + carrier.timeStart());
 
             frames.push_back(carrier);
          }

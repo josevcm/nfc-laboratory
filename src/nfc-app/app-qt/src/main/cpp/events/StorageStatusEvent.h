@@ -71,6 +71,10 @@ class StorageStatusEvent : public QEvent
 
       long sampleCount() const;
 
+      bool hasStreamTime() const;
+
+      long streamTime() const;
+
       static StorageStatusEvent *create();
 
       static StorageStatusEvent *create(const QJsonObject &data);

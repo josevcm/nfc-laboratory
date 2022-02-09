@@ -102,6 +102,16 @@ long StorageStatusEvent::sampleCount() const
    return data["sampleCount"].toInt();
 }
 
+bool StorageStatusEvent::hasStreamTime() const
+{
+   return data.contains("streamTime");
+}
+
+long StorageStatusEvent::streamTime() const
+{
+   return data["streamTime"].toInt();
+}
+
 StorageStatusEvent *StorageStatusEvent::create()
 {
    return new StorageStatusEvent();

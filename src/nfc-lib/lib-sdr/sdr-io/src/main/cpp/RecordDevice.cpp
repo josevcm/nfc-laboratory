@@ -87,6 +87,7 @@ struct RecordDevice::Impl
    int sampleCount {};
    int sampleOffset {};
    int channelCount {};
+   int streamTime {};
 
    std::fstream file;
 
@@ -343,6 +344,9 @@ struct RecordDevice::Impl
       sampleCount = header.data.desc.size / (channelCount * sampleSize / 8);
       sampleOffset = 0;
 
+      // read stream time
+//      file.
+      
       return true;
    }
 
@@ -487,6 +491,18 @@ int RecordDevice::channelCount() const
 void RecordDevice::setChannelCount(int value)
 {
    impl->channelCount = value;
+}
+
+long RecordDevice::streamTime() const
+{
+   return impl->streamTime;
+}
+
+int RecordDevice::setStreamTime(long value)
+{
+   impl->streamTime = value;
+
+   return 0;
 }
 
 int RecordDevice::read(SignalBuffer &buffer)

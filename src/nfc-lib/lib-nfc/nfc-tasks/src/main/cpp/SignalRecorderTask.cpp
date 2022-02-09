@@ -463,7 +463,10 @@ struct SignalRecorderTask::Impl : SignalRecorderTask, AbstractTask
          data["sampleRate"] = device->sampleRate();
          data["sampleSize"] = device->sampleSize();
          data["sampleType"] = device->sampleType();
+         data["streamTime"] = device->streamTime();
       }
+
+      log.info("updated recorder status: {}", {data.dump()});
 
       updateStatus(status, data);
 
