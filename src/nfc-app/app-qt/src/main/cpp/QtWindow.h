@@ -59,6 +59,8 @@ class QtWindow : public QMainWindow
 
       void toggleStop();
 
+      void toggleTime();
+
       void toggleFollow();
 
       void toggleFilter();

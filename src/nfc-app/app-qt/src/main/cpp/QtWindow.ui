@@ -881,12 +881,6 @@
  </resources>
  <connections>
   <connection>
-   <sender>actionFollow</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleFollow()</slot>
-  </connection>
-  <connection>
    <sender>actionOpen</sender>
    <signal>triggered()</signal>
    <receiver>mainWindow</receiver>
@@ -903,6 +897,18 @@
    <signal>triggered()</signal>
    <receiver>mainWindow</receiver>
    <slot>clearView()</slot>
+  </connection>
+  <connection>
+   <sender>actionTime</sender>
+   <signal>triggered()</signal>
+   <receiver>mainWindow</receiver>
+   <slot>toggleTime()</slot>
+  </connection>
+  <connection>
+   <sender>actionFollow</sender>
+   <signal>triggered()</signal>
+   <receiver>mainWindow</receiver>
+   <slot>toggleFollow()</slot>
   </connection>
   <connection>
    <sender>actionFilter</sender>
@@ -986,6 +992,7 @@
   <slot>openConfig()</slot>
   <slot>saveFile()</slot>
   <slot>clearView()</slot>
+  <slot>toggleTime()</slot>
   <slot>toggleFilter()</slot>
   <slot>toggleFollow()</slot>
   <slot>toggleLive()</slot>
