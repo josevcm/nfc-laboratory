@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(nfc-lab VERSION 2.6.7)
+project(nfc-lab VERSION 2.6.8)
 
 set(CMAKE_C_FLAGS_DEBUG "-g -msse -msse3 -mno-avx -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -msse -msse3 -mno-avx -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
@@ -21,3 +21,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-installer.ps1.in ${
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-runenv.ps1.in ${CMAKE_CURRENT_BINARY_DIR}/build-runenv.ps1)
 
 add_subdirectory(src)
+
+add_custom_target(build-runenv
+        COMMAND powershell -File build-runenv.ps1
+        DEPENDS nfc-lab)
+
+add_custom_target(build-installer
+        COMMAND  powershell -File build-installer.ps1
+        DEPENDS nfc-lab)
+
