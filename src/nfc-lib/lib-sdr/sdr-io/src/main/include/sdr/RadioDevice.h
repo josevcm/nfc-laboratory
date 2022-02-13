@@ -70,7 +70,7 @@ class RadioDevice : public SignalDevice
 
       virtual int testMode() const  = 0;;
 
-      virtual int setTestMode(int value)  = 0;;
+      virtual int setTestMode(int value)  = 0;
 
       virtual long samplesReceived() = 0;
 

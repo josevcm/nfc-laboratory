@@ -67,6 +67,7 @@ struct RealtekDevice::Impl
    int mixerAgc = 0;
    int decimation = 0;
    int testMode = 0;
+   int streamTime = 0;
 
    int rtlsdrResult = 0;
    rtlsdr_dev *rtlsdrHandle {};
@@ -234,6 +235,9 @@ struct RealtekDevice::Impl
             workerThread = std::thread([this] { streamWorker(); });
          }
 
+         // sets stream start time
+         streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
          return rtlsdrResult;
       }
 
@@ -258,6 +262,7 @@ struct RealtekDevice::Impl
          // disable stream callback and queue
          streamCallback = nullptr;
          streamQueue = std::queue<SignalBuffer>();
+         streamTime = 0;
 
          return 0;
       }
@@ -700,6 +705,16 @@ int RealtekDevice::setSampleType(int value)
    impl->log.warn("setSampleType has no effect!");
 
    return -1;
+}
+
+long RealtekDevice::streamTime() const
+{
+   return 0;
+}
+
+int RealtekDevice::setStreamTime(long value)
+{
+   return 0;
 }
 
 long RealtekDevice::centerFreq() const

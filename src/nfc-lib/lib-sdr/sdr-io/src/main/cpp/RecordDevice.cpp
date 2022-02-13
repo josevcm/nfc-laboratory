@@ -22,6 +22,10 @@
 
 */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <queue>
 #include <fstream>
 #include <iostream>
@@ -43,33 +47,46 @@ struct chunk
    unsigned int size;
 };
 
-struct RIFFHeader
+struct DATEInfo
 {
-   chunk desc;
-   char type[4];
+   char id[4];
+   unsigned int epoch;
 };
 
-struct WAVEHeader
+struct RIFFChunk
 {
-   chunk desc;
-   unsigned short audioFormat;
-   unsigned short numChannels;
-   unsigned int sampleRate;
-   unsigned int byteRate;
-   unsigned short blockAlign;
-   unsigned short bitsPerSample;
+   chunk desc; // 8 bytes
+   char type[4]; // 4 bytes
 };
 
-struct DATAHeader
+struct WAVEChunk
+{
+   chunk desc; // 8 bytes
+   unsigned short audioFormat; // 2 bytes
+   unsigned short numChannels; // 2 bytes
+   unsigned int sampleRate; // 4 bytes
+   unsigned int byteRate; // 4 bytes
+   unsigned short blockAlign; // 2 bytes
+   unsigned short bitsPerSample; // 2 bytes
+};
+
+struct LISTChunk
+{
+   chunk desc;
+   DATEInfo time;
+};
+
+struct DATAChunk
 {
    chunk desc;
 };
 
 struct FILEHeader
 {
-   RIFFHeader riff;
-   WAVEHeader wave;
-   DATAHeader data;
+   RIFFChunk riff; // 12 bytes
+   WAVEChunk wave; // 24 bytes
+   LISTChunk list; // 8 bytes
+   DATAChunk data; // 8 bytes
 };
 
 struct RecordDevice::Impl
@@ -87,6 +104,7 @@ struct RecordDevice::Impl
    int sampleCount {};
    int sampleOffset {};
    int channelCount {};
+   int streamTime {};
 
    std::fstream file;
 
@@ -130,6 +148,8 @@ struct RecordDevice::Impl
 
             if (file.is_open())
             {
+               streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
                if (!writeHeader())
                {
                   file.close();
@@ -309,49 +329,121 @@ struct RecordDevice::Impl
       return buffer.position();
    }
 
-
    bool readHeader()
    {
-      FILEHeader header {};
-
       log.debug("read RecordDevice header for name [{}]", {name});
+
+      struct stat st {};
 
       file.seekg(0);
 
-      if (!file.read(reinterpret_cast<char *>(&header), sizeof(FILEHeader)))
+      RIFFChunk riff {};
+
+      if (!file.read(reinterpret_cast<char *>(&riff), sizeof(riff)))
          return false;
 
-      if (std::memcmp(&header.riff.desc.id, "RIFF", 4) != 0)
+      if (std::memcmp(&riff.desc.id, "RIFF", 4) != 0)
          return false;
 
-      if (std::memcmp(&header.riff.type, "WAVE", 4) != 0)
+      if (std::memcmp(&riff.type, "WAVE", 4) != 0)
          return false;
 
-      if (std::memcmp(&header.wave.desc.id, "fmt ", 4) != 0)
-         return false;
+      chunk entry {};
 
-      if (header.wave.audioFormat != 1)
-         return false;
+      while (file.read(reinterpret_cast<char *>(&entry), sizeof(chunk)))
+      {
+         // process FMT chuck
+         if (std::memcmp(&entry.id, "fmt ", 4) == 0)
+         {
+            WAVEChunk wave {};
 
-      // Establish format
-      sampleType = SignalDevice::Integer;
-      sampleRate = fromLittleEndian<unsigned int>(header.wave.sampleRate);
-      sampleSize = fromLittleEndian<unsigned short>(header.wave.bitsPerSample);
-      channelCount = fromLittleEndian<unsigned short>(header.wave.numChannels);
+            if (entry.size != sizeof(wave) - 8)
+               return false;
 
-      // initialize values
-      sampleCount = header.data.desc.size / (channelCount * sampleSize / 8);
-      sampleOffset = 0;
+            file.seekg(-(int) sizeof(chunk), std::ios_base::cur);
 
-      return true;
+            if (!file.read(reinterpret_cast<char *>(&wave), sizeof(wave)))
+               return false;
+
+            if (wave.audioFormat != 1)
+               return false;
+
+            // Establish format
+            sampleType = SignalDevice::Integer;
+            sampleRate = fromLittleEndian<unsigned int>(wave.sampleRate);
+            sampleSize = fromLittleEndian<unsigned short>(wave.bitsPerSample);
+            channelCount = fromLittleEndian<unsigned short>(wave.numChannels);
+         }
+            // process LIST chuck
+         else if (std::memcmp(&entry.id, "LIST", 4) == 0)
+         {
+            if (entry.size >= 8)
+            {
+               char type[4];
+
+               if (!file.read(reinterpret_cast<char *>(type), sizeof(type)))
+                  return false;
+
+               // recover previous file offset
+               file.seekg(-(int) sizeof(type), std::ios_base::cur);
+
+               // check if date information is present
+               if (std::memcmp(&type, "date", 4) == 0)
+               {
+                  DATEInfo date {};
+
+                  if (!file.read(reinterpret_cast<char *>(&date), sizeof(date)))
+                     return false;
+
+                  if (!file.seekg(entry.size - sizeof(date), std::ios_base::cur))
+                     return false;
+
+                  streamTime = fromLittleEndian<unsigned int>(date.epoch);
+
+                  continue;
+               }
+            }
+
+            // if not date found, skip remain list chuck
+            if (!file.seekg(entry.size, std::ios_base::cur))
+               return false;
+         }
+            // process DATA chuck
+         else if (std::memcmp(&entry.id, "data", 4) == 0)
+         {
+            // initialize values
+            sampleCount = entry.size / (channelCount * sampleSize / 8);
+            sampleOffset = 0;
+
+            if (streamTime == 0)
+            {
+               log.info("the file does not have a timestamp stored, it will default to the creation date");
+
+               // read default stream time from file creation date
+               if (stat(name.c_str(), &st) == 0)
+                  streamTime = st.st_ctime;
+            }
+
+            return true;
+         }
+
+            // unknown chuck
+         else
+         {
+            break;
+         }
+      }
+
+      return false;
    }
 
    bool writeHeader()
    {
       FILEHeader header = {
-            {{{'R', 'I', 'F', 'F'}, 0},  {'W', 'A', 'V', 'E'}}, // RIFFHeader
-            {{{'f', 'm', 't', ' '}, 16}, 0, 0, 0, 0, 0, 0}, // WAVEHeader
-            {{{'d', 'a', 't', 'a'}, 0}} // DATAHeader
+            {{{'R', 'I', 'F', 'F'}, 0}, {'W',                  'A', 'V', 'E'}},
+            {{{'f', 'm', 't', ' '}, 0}, 0, 0, 0, 0, 0, 0},
+            {{{'L', 'I', 'S', 'T'}, 0}, {{'d', 'a', 't', 'e'}, 0}},
+            {{{'d', 'a', 't', 'a'}, 0}}
       };
 
       log.debug("write RecordDevice header for name [{}]", {name});
@@ -359,7 +451,11 @@ struct RecordDevice::Impl
       // get current file offset written
       int length = file.tellp();
 
-      // update header file
+      // calculate overall file size
+      header.riff.desc.size = toLittleEndian<unsigned int>(length > sizeof(RIFFChunk) ? length - sizeof(RIFFChunk) + 4 : 0);
+
+      // update wave format chunk
+      header.wave.desc.size = toLittleEndian<unsigned int>(16);
       header.wave.audioFormat = toLittleEndian<unsigned short>(1);
       header.wave.numChannels = toLittleEndian<unsigned short>(channelCount);
       header.wave.sampleRate = toLittleEndian<unsigned int>(sampleRate);
@@ -367,11 +463,18 @@ struct RecordDevice::Impl
       header.wave.blockAlign = toLittleEndian<unsigned short>(channelCount * sampleSize / 8);
       header.wave.bitsPerSample = toLittleEndian<unsigned short>(sampleSize);
 
-      header.riff.desc.size = toLittleEndian<unsigned int>(length > 40 ? length - sizeof(RIFFHeader) + 4 : 40);
-      header.data.desc.size = toLittleEndian<unsigned int>(length > 36 ? length - sizeof(FILEHeader) : 0);
+      // update list info chunk
+      header.list.desc.size = toLittleEndian<unsigned int>(sizeof(DATEInfo));
+      header.list.time.epoch = toLittleEndian<unsigned int>(streamTime);
 
+      // update data format chunk
+      header.data.desc.size = toLittleEndian<unsigned int>(length > sizeof(FILEHeader) ? length - sizeof(FILEHeader) : 0);
+
+      // jump to file start
       file.seekp(0);
-      file.write(reinterpret_cast<char *>(&header), sizeof(FILEHeader));
+
+      // write file header
+      file.write(reinterpret_cast<char *>(&header), sizeof(header));
 
       return file.good();
    }
@@ -487,6 +590,18 @@ int RecordDevice::channelCount() const
 void RecordDevice::setChannelCount(int value)
 {
    impl->channelCount = value;
+}
+
+long RecordDevice::streamTime() const
+{
+   return impl->streamTime;
+}
+
+int RecordDevice::setStreamTime(long value)
+{
+   impl->streamTime = value;
+
+   return 0;
 }
 
 int RecordDevice::read(SignalBuffer &buffer)

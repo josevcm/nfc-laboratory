@@ -24,6 +24,7 @@
 
 #include <queue>
 #include <mutex>
+#include <chrono>
 
 #include <airspy.h>
 
@@ -55,6 +56,7 @@ struct AirspyDevice::Impl
    int tunerAgc = 0;
    int mixerAgc = 0;
    int decimation = 0;
+   int streamTime = 0;
 
    int airspyResult = 0;
    airspy_device *airspyHandle = nullptr;
@@ -227,6 +229,9 @@ struct AirspyDevice::Impl
          if (airspyResult != AIRSPY_SUCCESS)
             streamCallback = nullptr;
 
+         // sets stream start time
+         streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
          return airspyResult;
       }
 
@@ -246,6 +251,7 @@ struct AirspyDevice::Impl
          // disable stream callback and queue
          streamCallback = nullptr;
          streamQueue = std::queue<SignalBuffer>();
+         streamTime = 0;
 
          return airspyResult;
       }
@@ -579,6 +585,16 @@ int AirspyDevice::setSampleType(int value)
    impl->log.warn("setSampleType has no effect!");
 
    return -1;
+}
+
+long AirspyDevice::streamTime() const
+{
+   return impl->streamTime;
+}
+
+int AirspyDevice::setStreamTime(long value)
+{
+   return 0;
 }
 
 long AirspyDevice::centerFreq() const

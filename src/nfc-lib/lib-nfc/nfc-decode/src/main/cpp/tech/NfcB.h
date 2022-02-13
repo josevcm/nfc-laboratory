@@ -58,7 +58,7 @@ struct NfcB
 
    void setCorrelationThreshold(float value);
 
-   void configure(long sampleRate);
+   void initialize(unsigned int sampleRate);
 
    bool detect();
 

@@ -27,6 +27,7 @@
 #include <QFont>
 #include <QLabel>
 #include <QQueue>
+#include <QDateTime>
 #include <QReadLocker>
 
 #include <nfc/NfcFrame.h>
@@ -86,6 +87,9 @@ static QMap<int, QString> NfcVCmd = {
 
 struct StreamModel::Impl
 {
+   // time format
+   int timeFormat = StreamModel::ElapsedTimeFormat;
+
    // fonts
    QFont defaultFont;
    QFont requestDefaultFont;
@@ -119,9 +123,26 @@ struct StreamModel::Impl
       qDeleteAll(frames);
    }
 
-   inline static QString frameTime(const nfc::NfcFrame *frame)
+   inline QString frameTime(const nfc::NfcFrame *frame)
    {
-      return QString("%1").arg(frame->timeStart(), 9, 'f', 5);
+      switch (timeFormat)
+      {
+         case DateTimeFormat:
+         {
+            double epochDateTime = frame->dateTime(); // frame date time from epoch, with microseconds in fractional part
+            long epochSeconds = long(epochDateTime); // frame date time from epoch, only seconds
+            double epochFraction = epochDateTime - long(epochDateTime); // frame microseconds offset
+
+            QDateTime dateTime = QDateTime::fromSecsSinceEpoch(epochSeconds);
+
+            return dateTime.toString("yy-MM-dd hh:mm:ss") + QString(".%1").arg(long(epochFraction * 1E3), 3, 10, QChar('0'));
+         }
+
+         default:
+         {
+            return QString("%1").arg(frame->timeStart(), 9, 'f', 6);
+         }
+      }
    }
 
    inline static QString frameDelta(const nfc::NfcFrame *frame, const nfc::NfcFrame *prev)
@@ -455,5 +476,12 @@ nfc::NfcFrame *StreamModel::frame(const QModelIndex &index) const
       return nullptr;
 
    return static_cast<nfc::NfcFrame *>(index.internalPointer());
+}
+
+void StreamModel::setTimeFormat(int mode)
+{
+   impl->timeFormat = mode;
+
+   this->modelChanged();
 }
 

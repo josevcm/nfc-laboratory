@@ -125,11 +125,13 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
    void startDecoder(rt::Event &command)
    {
+//      long epoch = (long) std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
       log.info("start frame decoding, pending frames {}", {signalQueue.size()});
 
-      decoder->setSampleRate(0);
-
       signalQueue.clear();
+
+      decoder->initialize();
 
       command.resolve();
 
@@ -140,9 +142,9 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    {
       log.info("stop frame decoding, pending frames {}", {signalQueue.size()});
 
-      decoder->setSampleRate(0);
-
       signalQueue.clear();
+
+//      decoder->setSampleRate(0);
 
       command.resolve();
 
@@ -156,10 +158,6 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
          auto config = json::parse(data.value());
 
          log.info("change decoder config: {}", {config.dump()});
-
-         // global power level threshold
-         if (config.contains("powerLevelThreshold"))
-            decoder->setPowerLevelThreshold(config["powerLevelThreshold"]);
 
          // NFC-A parameters
          if (config.contains("nfca"))
@@ -241,9 +239,21 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
             decoder->setModulationThresholdNfcV(min, max);
          }
 
-         updateDecoderStatus(status, true);
+         // stream reference time
+         if (config.contains("streamTime"))
+            decoder->setStreamTime(config["streamTime"]);
+
+         // global power level threshold
+         if (config.contains("powerLevelThreshold"))
+            decoder->setPowerLevelThreshold(config["powerLevelThreshold"]);
+
+         // sample rate must be last value set
+         if (config.contains("sampleRate"))
+            decoder->setSampleRate(config["sampleRate"]);
 
          command.resolve();
+
+         updateDecoderStatus(status, true);
       }
       else
       {
@@ -287,8 +297,10 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       status = value;
 
       json data({
-                      {"status",    status == Listen ? "decoding" : "idle"},
-                      {"queueSize", signalQueue.size()}
+                      {"status",        status == Listen ? "decoding" : "idle"},
+                      {"queueSize",     signalQueue.size()},
+                      {"sampleRate",    decoder->sampleRate()},
+                      {"streamTime", decoder->streamTime()}
                 });
 
       if (config)
@@ -312,8 +324,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
       log.info("updated decoder status: {}", {data.dump()});
 
-      updateStatus(status, data
-      );
+      updateStatus(status, data);
 
       lastStatus = std::chrono::steady_clock::now();
    }

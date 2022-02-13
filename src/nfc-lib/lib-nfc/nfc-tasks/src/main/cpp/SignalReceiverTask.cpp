@@ -336,6 +336,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          // data parameters
          data["centerFreq"] = receiver->centerFreq();
          data["sampleRate"] = receiver->sampleRate();
+         data["streamTime"] = receiver->streamTime();
          data["gainMode"] = receiver->gainMode();
          data["gainValue"] = receiver->gainValue();
          data["mixerAgc"] = receiver->mixerAgc();
@@ -385,6 +386,8 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
       {
          data["status"] = "absent";
       }
+
+      log.info("updated receiver status: {}", {data.dump()});
 
       updateStatus(event, data);
    }

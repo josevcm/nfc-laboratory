@@ -69,6 +69,10 @@ class ReceiverStatusEvent : public QEvent
 
       long sampleCount() const;
 
+      bool hasStreamTime() const;
+
+      long streamTime() const;
+
       bool hasGainMode() const;
 
       int gainMode() const;

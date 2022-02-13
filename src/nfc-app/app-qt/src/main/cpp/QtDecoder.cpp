@@ -305,6 +305,12 @@ struct QtDecoder::Impl
          QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
 
          QtApplication::post(StorageStatusEvent::create(status));
+
+         // forward streamTime to decoder
+         if (status.contains("streamTime"))
+         {
+            taskDecoderConfig({{"streamTime", status["streamTime"].toInt()}});
+         }
       }
    }
 
@@ -318,6 +324,12 @@ struct QtDecoder::Impl
          QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
 
          QtApplication::post(ReceiverStatusEvent::create(status));
+
+         // forward streamTime to decoder
+         if (status.contains("streamTime"))
+         {
+            taskDecoderConfig({{"streamTime", status["streamTime"].toInt()}});
+         }
       }
    }
 
@@ -416,6 +428,12 @@ struct QtDecoder::Impl
       QJsonObject nfcb;
       QJsonObject nfcf;
       QJsonObject nfcv;
+
+      if (event->contains("sampleRate"))
+         json["sampleRate"] = event->getInteger("sampleRate");
+
+      if (event->contains("streamTime"))
+         json["streamTime"] = event->getInteger("streamTime");
 
       if (event->contains("powerLevelThreshold"))
          json["powerLevelThreshold"] = event->getFloat("powerLevelThreshold");

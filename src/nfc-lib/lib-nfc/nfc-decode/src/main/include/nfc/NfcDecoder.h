@@ -43,6 +43,8 @@ class NfcDecoder
 
       NfcDecoder();
 
+      void initialize();
+
       void cleanup();
 
       std::list<NfcFrame> nextFrames(sdr::SignalBuffer samples);
@@ -66,6 +68,10 @@ class NfcDecoder
       long sampleRate() const;
 
       void setSampleRate(long sampleRate);
+
+      long streamTime() const;
+
+      void setStreamTime(long referenceTime);
 
       float powerLevelThreshold() const;
 

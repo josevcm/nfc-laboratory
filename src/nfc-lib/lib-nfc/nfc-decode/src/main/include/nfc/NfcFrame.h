@@ -87,43 +87,47 @@ class NfcFrame : public rt::ByteBuffer
 
       unsigned int techType() const;
 
-      void setTechType(unsigned int tech);
+      void setTechType(unsigned int techType);
 
       unsigned int frameType() const;
 
-      void setFrameType(unsigned int type);
+      void setFrameType(unsigned int frameType);
 
       unsigned int framePhase() const;
 
-      void setFramePhase(unsigned int phase);
+      void setFramePhase(unsigned int framePhase);
 
       unsigned int frameFlags() const;
 
-      void setFrameFlags(unsigned int flags);
+      void setFrameFlags(unsigned int frameFlags);
 
-      void clearFrameFlags(unsigned int flags);
+      void clearFrameFlags(unsigned int frameFlags);
 
-      bool hasFrameFlags(unsigned int flags);
+      bool hasFrameFlags(unsigned int frameFlags);
 
       unsigned int frameRate() const;
 
-      void setFrameRate(unsigned int rate);
+      void setFrameRate(unsigned int frameRate);
 
       double timeStart() const;
 
-      void setTimeStart(double start);
+      void setTimeStart(double timeStart);
 
       double timeEnd() const;
 
-      void setTimeEnd(double end);
+      void setTimeEnd(double timeEnd);
+
+      double dateTime() const;
+
+      void setDateTime(double dateTime);
 
       unsigned long sampleStart() const;
 
-      void setSampleStart(unsigned long start);
+      void setSampleStart(unsigned long sampleStart);
 
       unsigned long sampleEnd() const;
 
-      void setSampleEnd(unsigned long end);
+      void setSampleEnd(unsigned long sampleEnd);
 
    private:
 

@@ -77,6 +77,10 @@ class SignalDevice
 
       virtual int setSampleType(int newSampleType) = 0;
 
+      virtual long streamTime() const = 0;
+
+      virtual int setStreamTime(long value) = 0;
+
       virtual int read(SignalBuffer &buffer) = 0;
 
       virtual int write(SignalBuffer &buffer) = 0;

@@ -38,6 +38,7 @@ struct NfcFrame::Impl
    unsigned long sampleEnd = 0;
    double timeStart = 0;
    double timeEnd = 0;
+   double dateTime = 0;
 };
 
 const NfcFrame NfcFrame::Nil;
@@ -183,9 +184,9 @@ unsigned int NfcFrame::techType() const
    return impl->techType;
 }
 
-void NfcFrame::setTechType(unsigned int tech)
+void NfcFrame::setTechType(unsigned int techType)
 {
-   impl->techType = tech;
+   impl->techType = techType;
 }
 
 unsigned int NfcFrame::frameType() const
@@ -193,9 +194,9 @@ unsigned int NfcFrame::frameType() const
    return impl->frameType;
 }
 
-void NfcFrame::setFrameType(unsigned int type)
+void NfcFrame::setFrameType(unsigned int frameType)
 {
-   impl->frameType = type;
+   impl->frameType = frameType;
 }
 
 unsigned int NfcFrame::framePhase() const
@@ -203,9 +204,9 @@ unsigned int NfcFrame::framePhase() const
    return impl->framePhase;
 }
 
-void NfcFrame::setFramePhase(unsigned int phase)
+void NfcFrame::setFramePhase(unsigned int framePhase)
 {
-   impl->framePhase = phase;
+   impl->framePhase = framePhase;
 }
 
 unsigned int NfcFrame::frameFlags() const
@@ -213,19 +214,19 @@ unsigned int NfcFrame::frameFlags() const
    return impl->frameFlags;
 }
 
-void NfcFrame::setFrameFlags(unsigned int flags)
+void NfcFrame::setFrameFlags(unsigned int frameFlags)
 {
-   impl->frameFlags |= flags;
+   impl->frameFlags |= frameFlags;
 }
 
-void NfcFrame::clearFrameFlags(unsigned int flags)
+void NfcFrame::clearFrameFlags(unsigned int frameFlags)
 {
-   impl->frameFlags &= ~flags;
+   impl->frameFlags &= ~frameFlags;
 }
 
-bool NfcFrame::hasFrameFlags(unsigned int flags)
+bool NfcFrame::hasFrameFlags(unsigned int frameFlags)
 {
-   return impl->frameFlags & flags;
+   return impl->frameFlags & frameFlags;
 }
 
 unsigned int NfcFrame::frameRate() const
@@ -243,9 +244,9 @@ double NfcFrame::timeStart() const
    return impl->timeStart;
 }
 
-void NfcFrame::setTimeStart(double start)
+void NfcFrame::setTimeStart(double timeStart)
 {
-   impl->timeStart = start;
+   impl->timeStart = timeStart;
 }
 
 double NfcFrame::timeEnd() const
@@ -253,9 +254,19 @@ double NfcFrame::timeEnd() const
    return impl->timeEnd;
 }
 
-void NfcFrame::setTimeEnd(double end)
+void NfcFrame::setTimeEnd(double timeEnd)
 {
-   impl->timeEnd = end;
+   impl->timeEnd = timeEnd;
+}
+
+double NfcFrame::dateTime() const
+{
+   return impl->dateTime;
+}
+
+void NfcFrame::setDateTime(double dateTime)
+{
+   impl->dateTime = dateTime;
 }
 
 unsigned long NfcFrame::sampleStart() const
@@ -263,9 +274,9 @@ unsigned long NfcFrame::sampleStart() const
    return impl->sampleStart;
 }
 
-void NfcFrame::setSampleStart(unsigned long start)
+void NfcFrame::setSampleStart(unsigned long sampleStart)
 {
-   impl->sampleStart = start;
+   impl->sampleStart = sampleStart;
 }
 
 unsigned long NfcFrame::sampleEnd() const
@@ -273,9 +284,9 @@ unsigned long NfcFrame::sampleEnd() const
    return impl->sampleEnd;
 }
 
-void NfcFrame::setSampleEnd(unsigned long end)
+void NfcFrame::setSampleEnd(unsigned long sampleEnd)
 {
-   impl->sampleEnd = end;
+   impl->sampleEnd = sampleEnd;
 }
 
 }

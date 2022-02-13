@@ -95,6 +95,16 @@ long ReceiverStatusEvent::sampleCount() const
    return data["samplesReceived"].toInt();
 }
 
+bool ReceiverStatusEvent::hasStreamTime() const
+{
+   return data.contains("streamTime");
+}
+
+long ReceiverStatusEvent::streamTime() const
+{
+   return data["streamTime"].toInt();
+}
+
 bool ReceiverStatusEvent::hasGainMode() const
 {
    return false; //mInfo & GainMode;

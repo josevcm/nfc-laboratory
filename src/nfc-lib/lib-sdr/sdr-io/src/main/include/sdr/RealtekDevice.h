@@ -84,6 +84,10 @@ class RealtekDevice : public RadioDevice
 
       int setSampleType(int value) override;
 
+      long streamTime() const override;
+
+      int setStreamTime(long value) override;
+
       long centerFreq() const override;
 
       int setCenterFreq(long value) override;

@@ -54,6 +54,11 @@ class StreamModel : public QAbstractTableModel
          Id = 0, Time = 1, Delta = 2, Rate = 3, Tech = 4, Cmd = 5, Flags = 6, Data = 7
       };
 
+      enum TimeFormat
+      {
+         ElapsedTimeFormat = 0, DateTimeFormat = 1
+      };
+
    public:
 
       explicit StreamModel(QObject *parent = nullptr);
@@ -81,6 +86,8 @@ class StreamModel : public QAbstractTableModel
       void append(const nfc::NfcFrame &frame);
 
       nfc::NfcFrame *frame(const QModelIndex &index) const;
+
+      void setTimeFormat(int mode);
 
    signals:
 

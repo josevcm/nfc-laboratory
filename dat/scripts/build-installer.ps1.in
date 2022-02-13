@@ -1,0 +1,18 @@
+$SourcePath="@CMAKE_CURRENT_SOURCE_DIR@"
+$TargetPath="@CMAKE_CURRENT_BINARY_DIR@"
+
+# Copy application resources
+Copy-Item -Force -Recurse $SourcePath/dat/config  $TargetPath/installer/packages/nfc-lab/data
+
+# Copy application external libraries
+Copy-Item -Force $SourcePath/dll/usb-1.0.20/x86_64-w64-mingw32/bin/*.dll $TargetPath/installer/packages/nfc-lab/data/
+
+# Copy application executable
+Copy-Item -Force $TargetPath/src/nfc-app/app-qt/nfc-lab.exe $TargetPath/installer/packages/nfc-lab/data/
+
+# Create QT deployment from executable
+windeployqt.exe --debug --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $TargetPath/installer/packages/nfc-lab/data/nfc-lab.exe
+# windeployqt.exe --release --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $TargetPath/installer/packages/nfc-lab/data/nfc-lab.exe
+
+# Create QT installer
+binarycreator.exe -c $TargetPath/installer/config/config.xml -p $TargetPath/installer/packages $TargetPath/nfc-lab-@nfc-lab_VERSION@-x86_64.exe

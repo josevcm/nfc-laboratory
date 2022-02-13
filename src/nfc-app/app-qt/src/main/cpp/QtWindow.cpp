@@ -159,7 +159,7 @@ struct QtWindow::Impl
       // setup frame view model
       ui->streamView->setModel(streamModel);
       ui->streamView->setColumnWidth(StreamModel::Id, 75);
-      ui->streamView->setColumnWidth(StreamModel::Time, 100);
+      ui->streamView->setColumnWidth(StreamModel::Time, 225);
       ui->streamView->setColumnWidth(StreamModel::Delta, 75);
       ui->streamView->setColumnWidth(StreamModel::Rate, 60);
       ui->streamView->setColumnWidth(StreamModel::Tech, 60);
@@ -554,6 +554,26 @@ struct QtWindow::Impl
       ui->signalStrength->setValue(value * 100);
    }
 
+   void setTimeFormat(bool value)
+   {
+      ui->actionTime->setChecked(value);
+
+      if (value)
+      {
+         streamModel->setTimeFormat(StreamModel::DateTimeFormat);
+         ui->streamView->setColumnWidth(StreamModel::Time, 225);
+      }
+      else
+      {
+         streamModel->setTimeFormat(StreamModel::ElapsedTimeFormat);
+         ui->streamView->setColumnWidth(StreamModel::Time, 125);
+      }
+
+      ui->streamView->update();
+
+      settings.setValue("window/timeFormat", value);
+   }
+
    void setFollowEnabled(bool value)
    {
       followEnabled = value;
@@ -648,6 +668,11 @@ struct QtWindow::Impl
       ui->stopButton->setEnabled(false);
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::StopDecode));
+   }
+
+   void toggleTime()
+   {
+      setTimeFormat(ui->actionTime->isChecked());
    }
 
    void toggleFollow()
@@ -988,6 +1013,7 @@ QtWindow::QtWindow(QSettings &settings, QtMemory *cache) : impl(new Impl(this, s
    impl->setupUi();
 
    // restore interface preferences
+   impl->setTimeFormat(settings.value("window/timeFormat", false).toBool());
    impl->setFollowEnabled(settings.value("window/followEnabled", true).toBool());
    impl->setFilterEnabled(settings.value("window/filterEnabled", true).toBool());
 
@@ -1070,6 +1096,11 @@ void QtWindow::toggleRecord()
 void QtWindow::toggleStop()
 {
    impl->toggleStop();
+}
+
+void QtWindow::toggleTime()
+{
+   impl->toggleTime();
 }
 
 void QtWindow::toggleFollow()

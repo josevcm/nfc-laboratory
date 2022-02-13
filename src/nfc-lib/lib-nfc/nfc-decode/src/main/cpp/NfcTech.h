@@ -331,6 +331,9 @@ struct DecoderStatus
    // signal master clock
    unsigned int signalClock = 0;
 
+   // reference time for all decoded frames
+   unsigned int streamTime = 0;
+
    // signal pulse filter
    unsigned int pulseFilter = 0;
 
