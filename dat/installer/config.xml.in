@@ -5,5 +5,5 @@
     <Title>NFC Laboratory Installer</Title>
     <Publisher>Jose Vicente Campos Martinez</Publisher>
     <StartMenuDir>NFC Laboratory</StartMenuDir>
-    <TargetDir>@ApplicationsDirX64@/nfc-laboratory</TargetDir>
+    <TargetDir>@SYSTEM_INSTALL_DIR@/nfc-laboratory</TargetDir>
 </Installer>
