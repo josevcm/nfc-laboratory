@@ -22,6 +22,10 @@
 
 */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <queue>
 #include <fstream>
 #include <iostream>
@@ -329,9 +333,11 @@ struct RecordDevice::Impl
    {
       log.debug("read RecordDevice header for name [{}]", {name});
 
+      struct stat st {};
+
       file.seekg(0);
 
-      RIFFChunk riff;
+      RIFFChunk riff {};
 
       if (!file.read(reinterpret_cast<char *>(&riff), sizeof(riff)))
          return false;
@@ -342,14 +348,14 @@ struct RecordDevice::Impl
       if (std::memcmp(&riff.type, "WAVE", 4) != 0)
          return false;
 
-      chunk entry;
+      chunk entry {};
 
       while (file.read(reinterpret_cast<char *>(&entry), sizeof(chunk)))
       {
          // process FMT chuck
          if (std::memcmp(&entry.id, "fmt ", 4) == 0)
          {
-            WAVEChunk wave;
+            WAVEChunk wave {};
 
             if (entry.size != sizeof(wave) - 8)
                return false;
@@ -384,7 +390,7 @@ struct RecordDevice::Impl
                // check if date information is present
                if (std::memcmp(&type, "date", 4) == 0)
                {
-                  DATEInfo date;
+                  DATEInfo date {};
 
                   if (!file.read(reinterpret_cast<char *>(&date), sizeof(date)))
                      return false;
@@ -408,6 +414,15 @@ struct RecordDevice::Impl
             // initialize values
             sampleCount = entry.size / (channelCount * sampleSize / 8);
             sampleOffset = 0;
+
+            if (streamTime == 0)
+            {
+               log.info("the file does not have a timestamp stored, it will default to the creation date");
+
+               // read default stream time from file creation date
+               if (stat(name.c_str(), &st) == 0)
+                  streamTime = st.st_ctime;
+            }
 
             return true;
          }
