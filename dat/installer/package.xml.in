@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package>
+    <Name>org.josevcm.nfclab</Name>
     <DisplayName>NFC Laboratory @nfc-lab_VERSION@ - josevcm@gmail.com</DisplayName>
     <Description>NFC Laboratory Package Installer</Description>
     <Version>@nfc-lab_VERSION@</Version>
@@ -8,4 +9,7 @@
         <License name="License Agreement" file="license.txt" />
     </Licenses>
     <Default>true</Default>
+    <ForcedInstallation>true</ForcedInstallation>
+    <ForcedUpdate>true</ForcedUpdate>
+    <Script>installscript.js</Script>
 </Package>

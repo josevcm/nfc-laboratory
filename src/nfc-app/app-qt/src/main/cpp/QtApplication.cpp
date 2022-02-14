@@ -53,7 +53,7 @@ struct QtApplication::Impl
    // decoder control
    QPointer<QtDecoder> decoder;
 
-   Impl() : settings("conf/nfc-lab.conf", QSettings::IniFormat)
+   Impl() : settings("nfc-lab.conf", QSettings::IniFormat)
    {
       // create user interface window
       memory = new QtMemory(settings);
