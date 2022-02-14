@@ -440,7 +440,7 @@ struct RecordDevice::Impl
    bool writeHeader()
    {
       FILEHeader header = {
-            {{{'R', 'I', 'F', 'F'}, 0}, {'W',                  'A', 'V', 'E'}},
+            {{{'R', 'I', 'F', 'F'}, 0}, {'W', 'A', 'V', 'E'}},
             {{{'f', 'm', 't', ' '}, 0}, 0, 0, 0, 0, 0, 0},
             {{{'L', 'I', 'S', 'T'}, 0}, {{'d', 'a', 't', 'e'}, 0}},
             {{{'d', 'a', 't', 'a'}, 0}}
