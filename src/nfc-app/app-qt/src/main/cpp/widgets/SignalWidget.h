@@ -71,6 +71,10 @@ class SignalWidget : public QWidget
 
       void leaveEvent(QEvent *event) override;
 
+      void keyPressEvent(QKeyEvent *event) override;
+
+      void keyReleaseEvent(QKeyEvent *event) override;
+
    public:
 
       Q_SIGNAL void rangeChanged(float from, float to);

@@ -27,25 +27,25 @@
 
 #include <QColor>
 #include <QString>
+#include <QSharedPointer>
 
 #include <3party/customplot/QCustomPlot.h>
 
 class QCPGraphValueMarker
 {
+      struct Impl;
+
    public:
 
       explicit QCPGraphValueMarker(QCPGraph *graph, const QColor &color);
 
-      ~QCPGraphValueMarker();
+      void setPosition(double value, const QString &text);
 
-      void show(double key, const QString &text);
-
-      void hide();
+      void setVisible(bool visible);
 
    private:
 
-      QCPItemTracer *tracer = nullptr;
-      QCPItemText *label = nullptr;
+      QSharedPointer<Impl> impl;
 };
 
 #endif //NFC_LAB_QCPGRAPHVALUEMARKER_H

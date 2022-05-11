@@ -22,6 +22,7 @@
 
 */
 
+#include <QList>
 #include <QMouseEvent>
 #include <QVBoxLayout>
 
@@ -49,9 +50,12 @@ struct SignalWidget::Impl
 
    QCPGraph *graph = nullptr;
 
-   QSharedPointer<QCPAxisRangeMarker> marker;
-   QSharedPointer<QCPAxisCursorMarker> cursor;
-   QSharedPointer<QCPGraphDataContainer> data;
+   QList<QSharedPointer<QCPAxisRangeMarker>> markerList;
+   QSharedPointer<QCPAxisRangeMarker> markerActive;
+   QSharedPointer<QCPAxisRangeMarker> selectedRange;
+   QSharedPointer<QCPAxisCursorMarker> cursorMarker;
+
+   QSharedPointer<QCPGraphDataContainer> graphData;
 
    double minimumRange = INT32_MAX;
    double maximumRange = INT32_MIN;
@@ -74,7 +78,7 @@ struct SignalWidget::Impl
    void setup()
    {
       // create data container
-      data.reset(new QCPGraphDataContainer());
+      graphData.reset(new QCPGraphDataContainer());
 
       // disable aliasing to increase performance
       plot->setNoAntialiasingOnDrag(true);
@@ -85,6 +89,7 @@ struct SignalWidget::Impl
       plot->setInteraction(QCP::iRangeDrag, true); // enable graph drag
       plot->setInteraction(QCP::iRangeZoom, true); // enable graph zoom
       plot->setInteraction(QCP::iSelectPlottables, true); // enable graph selection
+      plot->setInteraction(QCP::iSelectItems, true); // enable markers selection
       plot->setInteraction(QCP::iMultiSelect, true); // enable graph multiple selection
 
       plot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical); // drag horizontal and vertical axes
@@ -114,13 +119,13 @@ struct SignalWidget::Impl
       graph->selectionDecorator()->setPen(QPen(selectColor));
 
       // get storage backend
-      data = graph->data();
-
-      // create range marker
-      marker.reset(new QCPAxisRangeMarker(graph->keyAxis()));
+      graphData = graph->data();
 
       // create cursor marker
-      cursor.reset(new QCPAxisCursorMarker(graph->keyAxis()));
+      cursorMarker.reset(new QCPAxisCursorMarker(graph->keyAxis()));
+
+      // create selection marker
+      selectedRange.reset(new QCPAxisRangeMarker(graph->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -136,6 +141,10 @@ struct SignalWidget::Impl
 
       QObject::connect(plot, &QCustomPlot::mousePress, [=](QMouseEvent *event) {
          mousePress(event);
+      });
+
+      QObject::connect(plot, &QCustomPlot::mouseRelease, [=](QMouseEvent *event) {
+         mouseRelease(event);
       });
 
       QObject::connect(plot, &QCustomPlot::mouseWheel, [=](QWheelEvent *event) {
@@ -179,14 +188,14 @@ struct SignalWidget::Impl
 //               if (maximumScale < value * 1.25)
 //                  maximumScale = value * 1.25;
 
-               data->add({range, value});
+               graphData->add({range, value});
             }
 
             // update signal range
-            if (data->size() > 0)
+            if (graphData->size() > 0)
             {
-               minimumRange = data->at(0)->key;
-               maximumRange = data->at(data->size() - 1)->key;
+               minimumRange = graphData->at(0)->key;
+               maximumRange = graphData->at(graphData->size() - 1)->key;
             }
 
             break;
@@ -210,14 +219,14 @@ struct SignalWidget::Impl
 //               if (maximumScale < value * 1.25)
 //                  maximumScale = value * 1.25;
 
-               data->add({range, value});
+               graphData->add({range, value});
             }
 
             // update signal range
-            if (data->size() > 0)
+            if (graphData->size() > 0)
             {
-               minimumRange = data->at(0)->key;
-               maximumRange = data->at(data->size() - 1)->key;
+               minimumRange = graphData->at(0)->key;
+               maximumRange = graphData->at(graphData->size() - 1)->key;
             }
 
             break;
@@ -225,40 +234,11 @@ struct SignalWidget::Impl
       }
 
       // remove old data when maximum memory threshold is reached
-      if (data->size() > maximumEntries)
+      if (graphData->size() > maximumEntries)
       {
-         data->removeBefore(minimumRange);
-         minimumRange = data->at(0)->key;
+         graphData->removeBefore(minimumRange);
+         minimumRange = graphData->at(0)->key;
       }
-   }
-
-   void select(float from, float to)
-   {
-      for (int i = 0; i < plot->graphCount(); i++)
-      {
-         QCPDataSelection selection;
-
-         QCPGraph *graph = plot->graph(i);
-
-         int begin = graph->findBegin(from, false);
-         int end = graph->findEnd(to, false);
-
-         selection.addDataRange(QCPDataRange(begin, end));
-
-         graph->setSelection(selection);
-      }
-
-      if (from > minimumRange && to < maximumRange)
-      {
-         QCPRange currentRange = plot->xAxis->range();
-
-         float center = float(from + to) / 2.0f;
-         float length = float(currentRange.upper - currentRange.lower);
-
-         plot->xAxis->setRange(center - length / 2, center + length / 2);
-      }
-
-      selectionChanged();
    }
 
    void clear()
@@ -269,7 +249,7 @@ struct SignalWidget::Impl
       minimumScale = INT32_MAX;
       maximumScale = INT32_MIN;
 
-      data->clear();
+      graphData->clear();
 
       plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
       plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_SCALE);
@@ -278,9 +258,6 @@ struct SignalWidget::Impl
       {
          plot->graph(i)->setSelection(QCPDataSelection());
       }
-
-      cursor->hide();
-      marker->hide();
 
       plot->replot();
    }
@@ -297,37 +274,83 @@ struct SignalWidget::Impl
       plot->replot();
 
       // statistics
-      qDebug().noquote() << "total samples" << data->size() << "adaptive compression ratio" << QString("%1%").arg(float(data->size() / ((maximumRange - minimumRange) * 10E4)), 0, 'f', 2);
+      qDebug().noquote() << "total samples" << graphData->size() << "adaptive compression ratio" << QString("%1%").arg(float(graphData->size() / ((maximumRange - minimumRange) * 10E4)), 0, 'f', 2);
    }
 
-   void mouseEnter() const
+   void mouseEnter()
    {
-      cursor->show();
+      widget->setFocus(Qt::MouseFocusReason);
       plot->replot();
    }
 
-   void mouseLeave() const
+   void mouseLeave()
    {
-      cursor->hide();
+      widget->setFocus(Qt::NoFocusReason);
       plot->replot();
    }
 
-   void mouseMove(QMouseEvent *event) const
-   {
-      double time = plot->xAxis->pixelToCoord(event->pos().x());
-      cursor->update(time, QString("%1 s").arg(time, 10, 'f', 6));
-      plot->replot();
-   }
-
-   void mousePress(QMouseEvent *event) const
+   void mouseMove(QMouseEvent *event)
    {
       Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
 
-      // detect zoom key press
+      // current position
+      double position = plot->xAxis->pixelToCoord(event->pos().x());
+
+      // update cursor position
+      cursorMarker->setPosition(position, QString("%1 s").arg(position, 10, 'f', 6));
+
+      // select selection mode
       if (keyModifiers & Qt::ControlModifier)
          plot->setSelectionRectMode(QCP::srmSelect);
       else
          plot->setSelectionRectMode(QCP::srmNone);
+
+      // update marker end time if any
+      if (markerActive)
+         markerActive->setPositionEnd(position);
+
+      plot->replot();
+   }
+
+   void mousePress(QMouseEvent *event)
+   {
+//      Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
+   }
+
+   void mouseRelease(QMouseEvent *event)
+   {
+      Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
+
+      // add marker to list
+      if (markerActive)
+      {
+         if (markerActive->width() > 0)
+         {
+            markerActive->setSelected(true);
+
+            markerList.push_back(markerActive);
+         }
+
+         // reset active marker
+         markerActive.reset();
+      }
+      else
+      {
+         // start new marker if Control key is pressed
+         if (keyModifiers & Qt::AltModifier)
+         {
+            double time = plot->xAxis->pixelToCoord(event->pos().x());
+
+            // load new range marker
+            markerActive.reset(new QCPAxisRangeMarker(graph->keyAxis()));
+
+            // fix start and end time
+            markerActive->setPositionStart(time);
+            markerActive->setPositionEnd(time);
+            markerActive->setDeep(markerList.length());
+            markerActive->setVisible(true);
+         }
+      }
    }
 
    void mouseWheel(QWheelEvent *event) const
@@ -340,12 +363,61 @@ struct SignalWidget::Impl
          plot->axisRect()->setRangeZoom(Qt::Horizontal);
    }
 
+   void keyPress(QKeyEvent *event)
+   {
+      cursorMarker->setVisible(event->modifiers() & Qt::AltModifier);
+
+      plot->replot();
+   }
+
+   void keyRelease(QKeyEvent *event)
+   {
+      cursorMarker->setVisible(event->modifiers() & Qt::AltModifier);
+
+      switch (event->key())
+      {
+         case Qt::Key_Escape:
+         {
+            markerActive.reset();
+
+            break;
+         }
+
+         case Qt::Key_Delete:
+         {
+            QMutableListIterator<QSharedPointer<QCPAxisRangeMarker>> it(markerList);
+
+            while (it.hasNext())
+            {
+               auto marker = it.next();
+
+               if (marker->selected())
+               {
+                  marker->setVisible(false);
+
+                  it.remove();
+               }
+            }
+
+            selectDataset(0, 0);
+
+            selectionChanged();
+
+            break;
+         }
+      }
+
+      plot->replot();
+   }
+
    void selectionChanged() const
    {
       QList<QCPGraph *> selectedGraphs = plot->selectedGraphs();
 
       double startTime = 0;
       double endTime = 0;
+
+      selectedRange->setVisible(false);
 
       if (!selectedGraphs.empty())
       {
@@ -379,32 +451,23 @@ struct SignalWidget::Impl
             }
          }
 
-         if (startTime > 0 && startTime < endTime)
+      }
+
+      for (const auto &marker: markerList)
+      {
+         if (marker->selected())
          {
-            QString text;
+            if (startTime == 0 || startTime > marker->positionStart())
+               startTime = marker->positionStart();
 
-            double elapsed = endTime - startTime;
-
-            if (elapsed < 1E-3)
-               text = QString("%1 us").arg(elapsed * 1E6, 3, 'f', 0);
-            else if (elapsed < 1)
-               text = QString("%1 ms").arg(elapsed * 1E3, 7, 'f', 3);
-            else
-               text = QString("%1 s").arg(elapsed, 7, 'f', 5);
-
-            // show timing marker
-            marker->show(startTime, endTime, text);
-         }
-         else
-         {
-            startTime = 0;
-            endTime = 0;
-            marker->hide();
+            if (endTime == 0 || endTime < marker->positionEnd())
+               endTime = marker->positionEnd();
          }
       }
-      else
+
+      if (startTime > 0)
       {
-         marker->hide();
+         selectDataset(startTime, endTime);
       }
 
       // refresh graph
@@ -474,14 +537,58 @@ struct SignalWidget::Impl
    {
    }
 
-   void setRange(float lower, float upper)
+   void setRange(double lower, double upper)
    {
       plot->xAxis->setRange(lower, upper);
       plot->replot();
    }
 
-   void setCenter(float value)
+   void setCenter(double center) const
    {
+      QCPRange currentRange = plot->xAxis->range();
+
+      float length = float(currentRange.upper - currentRange.lower);
+
+      plot->xAxis->setRange(center - length / 2, center + length / 2);
+   }
+
+   void selectDataset(double from, double to) const
+   {
+      selectedRange->setVisible(false);
+
+      if (from >= 0 && to >= 0)
+      {
+         selectedRange->setPositionStart(from);
+         selectedRange->setPositionEnd(to);
+         selectedRange->setSelected(true);
+         selectedRange->setVisible(true);
+
+         for (int i = 0; i < plot->graphCount(); i++)
+         {
+            QCPDataSelection selection;
+
+            QCPGraph *graph = plot->graph(i);
+
+            int begin = graph->findBegin(from, false);
+            int end = graph->findEnd(to, false);
+
+            selection.addDataRange(QCPDataRange(begin, end));
+
+            graph->setSelection(selection);
+         }
+      }
+   }
+
+   void selectAndCenter(double from, double to) const
+   {
+      selectDataset(from, to);
+
+      if (from > minimumRange && to < maximumRange)
+      {
+         setCenter(double(from + to) / 2.0f);
+      }
+
+      selectionChanged();
    }
 };
 
@@ -516,7 +623,7 @@ void SignalWidget::append(const sdr::SignalBuffer &buffer)
 
 void SignalWidget::select(float from, float to)
 {
-   impl->select(from, to);
+   impl->selectAndCenter(from, to);
 }
 
 void SignalWidget::refresh()
@@ -557,5 +664,15 @@ void SignalWidget::enterEvent(QEvent *event)
 void SignalWidget::leaveEvent(QEvent *event)
 {
    impl->mouseLeave();
+}
+
+void SignalWidget::keyPressEvent(QKeyEvent *event)
+{
+   impl->keyPress(event);
+}
+
+void SignalWidget::keyReleaseEvent(QKeyEvent *event)
+{
+   impl->keyRelease(event);
 }
 

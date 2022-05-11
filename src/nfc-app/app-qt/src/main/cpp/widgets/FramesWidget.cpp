@@ -251,8 +251,8 @@ struct FramesWidget::Impl
 
       plot->xAxis->setRange(0, 1);
 
-      cursor->hide();
-      marker->hide();
+      cursor->setVisible(false);
+      marker->setVisible(false);
 
       plot->replot();
    }
@@ -268,20 +268,20 @@ struct FramesWidget::Impl
 
    void mouseEnter() const
    {
-      cursor->show();
+      cursor->setVisible(true);
       plot->replot();
    }
 
    void mouseLeave() const
    {
-      cursor->hide();
+      cursor->setVisible(false);
       plot->replot();
    }
 
    void mouseMove(QMouseEvent *event) const
    {
       double time = plot->xAxis->pixelToCoord(event->pos().x());
-      cursor->update(time, QString("%1 s").arg(time, 10, 'f', 6));
+      cursor->setPosition(time, QString("%1 s").arg(time, 10, 'f', 6));
       plot->replot();
    }
 
@@ -305,6 +305,8 @@ struct FramesWidget::Impl
 
       double startTime = 0;
       double endTime = 0;
+
+      marker->setVisible(false);
 
       if (!selectedGraphs.empty())
       {
@@ -340,30 +342,16 @@ struct FramesWidget::Impl
 
          if (startTime > 0 && startTime < endTime)
          {
-            QString text;
-
-            double elapsed = endTime - startTime;
-
-            if (elapsed < 1E-3)
-               text = QString("%1 us").arg(elapsed * 1000000, 3, 'f', 0);
-            else if (elapsed < 1)
-               text = QString("%1 ms").arg(elapsed * 1000, 7, 'f', 3);
-            else
-               text = QString("%1 s").arg(elapsed, 7, 'f', 5);
-
             // show timing marker
-            marker->show(startTime, endTime, text);
+            marker->setPositionStart(startTime);
+            marker->setPositionEnd(endTime);
+            marker->setVisible(true);
          }
          else
          {
             startTime = 0;
             endTime = 0;
-            marker->hide();
          }
-      }
-      else
-      {
-         marker->hide();
       }
 
       // refresh graph

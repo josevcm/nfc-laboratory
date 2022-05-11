@@ -24,43 +24,71 @@
 
 #include "QCPGraphValueMarker.h"
 
-QCPGraphValueMarker::QCPGraphValueMarker(QCPGraph *graph, const QColor &color) : tracer(new QCPItemTracer(graph->parentPlot())), label(new QCPItemText(graph->parentPlot()))
+struct QCPGraphValueMarker::Impl
 {
-   tracer->setVisible(false);
-   tracer->setGraph(graph);
-   tracer->setGraphKey(0);
-   tracer->setInterpolating(true);
-   tracer->setStyle(QCPItemTracer::tsSquare);
-   tracer->setPen(QPen(color, 2.5f));
-   tracer->setSize(10);
-   tracer->position->setTypeX(QCPItemPosition::ptPlotCoords);
-   tracer->position->setTypeY(QCPItemPosition::ptPlotCoords);
+   QCPItemTracer *tracer = nullptr;
+   QCPItemText *label = nullptr;
 
-   label->setVisible(false);
-   label->setColor(Qt::white);
-   label->setLayer("overlay");
-   label->setClipToAxisRect(false);
-   label->setPadding(QMargins(0, 0, 0, 15));
-   label->setPositionAlignment(Qt::AlignBottom | Qt::AlignHCenter);
-   label->position->setParentAnchor(tracer->position);
+   Impl(QCPGraph *graph, const QColor &color) : tracer(new QCPItemTracer(graph->parentPlot())),
+                                                label(new QCPItemText(graph->parentPlot()))
+   {
+      tracer->setVisible(false);
+      tracer->setGraph(graph);
+      tracer->setGraphKey(0);
+      tracer->setInterpolating(true);
+      tracer->setStyle(QCPItemTracer::tsSquare);
+      tracer->setPen(QPen(color, 2.5f));
+      tracer->setSize(10);
+      tracer->position->setTypeX(QCPItemPosition::ptPlotCoords);
+      tracer->position->setTypeY(QCPItemPosition::ptPlotCoords);
+
+      label->setVisible(false);
+      label->setColor(Qt::white);
+      label->setLayer("overlay");
+      label->setClipToAxisRect(false);
+      label->setPadding(QMargins(0, 0, 0, 15));
+      label->setPositionAlignment(Qt::AlignBottom | Qt::AlignHCenter);
+      label->position->setParentAnchor(tracer->position);
+   }
+
+   ~Impl()
+   {
+      delete label;
+      delete tracer;
+   }
+
+   void hide()
+   {
+      label->setVisible(false);
+      tracer->setVisible(false);
+   }
+
+   void show()
+   {
+      label->setVisible(true);
+      tracer->setVisible(true);
+   }
+
+   void setPosition(double value, const QString &text)
+   {
+      label->setText(text);
+      tracer->setGraphKey(value);
+   }
+};
+
+QCPGraphValueMarker::QCPGraphValueMarker(QCPGraph *graph, const QColor &color) : impl(new Impl(graph, color))
+{
 }
 
-QCPGraphValueMarker::~QCPGraphValueMarker()
+void QCPGraphValueMarker::setPosition(double value, const QString &text)
 {
-   delete label;
-   delete tracer;
+   impl->setPosition(value, text);
 }
 
-void QCPGraphValueMarker::hide()
+void QCPGraphValueMarker::setVisible(bool visible)
 {
-   label->setVisible(false);
-   tracer->setVisible(false);
-}
-
-void QCPGraphValueMarker::show(double key, const QString &text)
-{
-   label->setText(text);
-   tracer->setGraphKey(key);
-   label->setVisible(true);
-   tracer->setVisible(true);
+   if (visible)
+      impl->show();
+   else
+      impl->hide();
 }

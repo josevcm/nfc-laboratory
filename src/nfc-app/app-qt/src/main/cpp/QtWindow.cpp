@@ -745,7 +745,7 @@ struct QtWindow::Impl
       }
    }
 
-   void parserSelectionChanged()
+   void parserSelectionChanged() const
    {
       QModelIndexList indexList = ui->parserView->selectionModel()->selectedIndexes();
 
@@ -863,7 +863,7 @@ struct QtWindow::Impl
       }
    }
 
-   void streamScrollChanged()
+   void streamScrollChanged() const
    {
       QModelIndex firstRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().topLeft());
       QModelIndex lastRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().bottomLeft() - QPoint(0, 10));
@@ -880,7 +880,7 @@ struct QtWindow::Impl
       }
    }
 
-   void streamCellClicked(const QModelIndex &index)
+   void streamCellClicked(const QModelIndex &index) const
    {
       auto firstIndex = index;
 
@@ -929,7 +929,7 @@ struct QtWindow::Impl
       }
    }
 
-   void timingSelectionChanged(double from, double to)
+   void timingSelectionChanged(double from, double to) const
    {
       QModelIndexList selectionList = streamModel->modelRange(from, to);
 
@@ -947,8 +947,15 @@ struct QtWindow::Impl
       ui->signalView->blockSignals(false);
    }
 
-   void signalSelectionChanged(double from, double to)
+   void signalSelectionChanged(double from, double to) const
    {
+      if (from == 0 && to == 0)
+      {
+         ui->streamView->selectionModel()->blockSignals(true);
+         ui->streamView->selectionModel()->clearSelection();
+         ui->streamView->selectionModel()->blockSignals(false);
+      }
+
       QModelIndexList selectionList = streamModel->modelRange(from, to);
 
       if (!selectionList.isEmpty())
@@ -963,9 +970,12 @@ struct QtWindow::Impl
       ui->framesView->blockSignals(true);
       ui->framesView->select(from, to);
       ui->framesView->blockSignals(false);
+
+      ui->framesView->repaint();
+      ui->streamView->repaint();
    }
 
-   void signalRangeChanged(float from, float to)
+   void signalRangeChanged(float from, float to) const
    {
       float range = to - from;
       float length = ui->signalView->maximumRange() - ui->signalView->minimumRange();
@@ -979,7 +989,7 @@ struct QtWindow::Impl
       ui->signalScroll->blockSignals(false);
    }
 
-   void signalScrollChanged(int value)
+   void signalScrollChanged(int value) const
    {
       float length = ui->signalView->maximumRange() - ui->signalView->minimumRange();
       float from = ui->signalView->minimumRange() + length * (value / 1000.0f);
@@ -995,7 +1005,7 @@ struct QtWindow::Impl
       QApplication::clipboard()->setText(clipboard);
    }
 
-   QByteArray toByteArray(const nfc::NfcFrame &frame)
+   static QByteArray toByteArray(const nfc::NfcFrame &frame)
    {
       QByteArray data;
 

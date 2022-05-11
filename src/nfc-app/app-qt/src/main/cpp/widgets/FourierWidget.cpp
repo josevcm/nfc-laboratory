@@ -185,6 +185,8 @@ struct FourierWidget::Impl
    {
       QVector<QCPGraphData> bins;
 
+      peak->setVisible(false);
+
       switch (buffer.type())
       {
          case sdr::SignalType::FREQUENCY_BIN:
@@ -251,9 +253,10 @@ struct FourierWidget::Impl
             data->set(bins, true);
 
             if (maximum > INT32_MIN)
-               peak->show(signalPeak, frequencyString(signalPeak));
-            else
-               peak->hide();
+            {
+               peak->setPosition(signalPeak, frequencyString(signalPeak));
+               peak->setVisible(true);
+            }
 
             refreshReady.release();
 
@@ -280,7 +283,7 @@ struct FourierWidget::Impl
          plot->graph(i)->setSelection(QCPDataSelection());
       }
 
-      cursor->hide();
+      cursor->setVisible(false);
 
       plot->replot();
    }
@@ -299,13 +302,13 @@ struct FourierWidget::Impl
 
    void mouseEnter() const
    {
-      cursor->show();
+      cursor->setVisible(true);
       plot->replot();
    }
 
    void mouseLeave() const
    {
-      cursor->hide();
+      cursor->setVisible(false);
       plot->replot();
    }
 
@@ -313,7 +316,7 @@ struct FourierWidget::Impl
    {
       double freq = plot->xAxis->pixelToCoord(event->pos().x());
 
-      cursor->update(freq, frequencyString(freq));
+      cursor->setPosition(freq, frequencyString(freq));
 
       plot->replot();
    }

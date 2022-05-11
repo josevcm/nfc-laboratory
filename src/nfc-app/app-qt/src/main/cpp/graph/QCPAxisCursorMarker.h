@@ -26,27 +26,26 @@
 #define NFC_LAB_QCPAXISCURSORMARKER_H
 
 #include <QString>
+#include <QSharedPointer>
 
 #include <3party/customplot/QCustomPlot.h>
 
 class QCPAxisCursorMarker
 {
+      struct Impl;
+
    public:
 
       explicit QCPAxisCursorMarker(QCPAxis *axis);
 
-      ~QCPAxisCursorMarker();
+      void setPosition(double value, const QString &label = QString());
 
-      void show();
-
-      void hide();
-
-      void update(double from, const QString &text);
+      void setVisible(bool visible);
 
    private:
 
-      QCPItemTracer *tracer = nullptr;
-      QCPItemText *label = nullptr;
+      QSharedPointer<Impl> impl;
+
 };
 
 
