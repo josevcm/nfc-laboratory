@@ -48,17 +48,20 @@ struct QCPAxisCursorMarker::Impl
       cursorLabel->setClipToAxisRect(false);
       cursorLabel->setPadding(QMargins(2, 2, 4, 3));
       cursorLabel->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
+      cursorLabel->position->setTypeY(QCPItemPosition::ptAxisRectRatio);
       cursorLabel->position->setParentAnchorX(cursorTracer->position);
-      cursorLabel->position->setCoords(0, 0);
+      cursorLabel->position->setCoords(0, 1);
 
       cursorLine->setVisible(false);
       cursorLine->setLayer("overlay");
       cursorLine->setPen(QPen(Qt::gray, 0, Qt::SolidLine));
       cursorLine->setClipToAxisRect(true);
       cursorLine->setHead(QCPLineEnding::esFlatArrow);
-      cursorLine->setTail(QCPLineEnding::esFlatArrow);
+      cursorLine->setTail(QCPLineEnding::esBar);
+      cursorLine->start->setTypeY(QCPItemPosition::ptAxisRectRatio);
       cursorLine->start->setParentAnchorX(cursorTracer->position);
       cursorLine->start->setCoords(0, 0);
+      cursorLine->end->setTypeY(QCPItemPosition::ptAxisRectRatio);
       cursorLine->end->setParentAnchorX(cursorTracer->position);
       cursorLine->end->setCoords(0, 1);
    }

@@ -264,11 +264,8 @@ struct SignalWidget::Impl
 
    void refresh() const
    {
-      // refresh x range
-      plot->xAxis->setRange(minimumRange, maximumRange);
-
-      // refresh y scale
-      plot->yAxis->setRange(minimumScale, maximumScale);
+      // fix range if current value is out
+      rangeChanged(plot->xAxis->range(), plot->xAxis->range());
 
       // refresh graph
       plot->replot();
@@ -347,7 +344,6 @@ struct SignalWidget::Impl
             // fix start and end time
             markerActive->setPositionStart(time);
             markerActive->setPositionEnd(time);
-            markerActive->setDeep(markerList.length());
             markerActive->setVisible(true);
          }
       }
@@ -606,12 +602,12 @@ void SignalWidget::setSampleRate(long value)
    impl->setSampleRate(value);
 }
 
-void SignalWidget::setRange(float lower, float upper)
+void SignalWidget::setRange(double lower, double upper)
 {
    impl->setRange(lower, upper);
 }
 
-void SignalWidget::setCenter(float value)
+void SignalWidget::setCenter(double value)
 {
    impl->setCenter(value);
 }
@@ -621,7 +617,7 @@ void SignalWidget::append(const sdr::SignalBuffer &buffer)
    impl->append(buffer);
 }
 
-void SignalWidget::select(float from, float to)
+void SignalWidget::select(double from, double to)
 {
    impl->selectAndCenter(from, to);
 }
@@ -636,22 +632,22 @@ void SignalWidget::clear()
    impl->clear();
 }
 
-float SignalWidget::minimumRange() const
+double SignalWidget::minimumRange() const
 {
    return impl->minimumRange;
 }
 
-float SignalWidget::maximumRange() const
+double SignalWidget::maximumRange() const
 {
    return impl->maximumRange;
 }
 
-float SignalWidget::minimumScale() const
+double SignalWidget::minimumScale() const
 {
    return impl->minimumScale;
 }
 
-float SignalWidget::maximumScale() const
+double SignalWidget::maximumScale() const
 {
    return impl->maximumScale;
 }

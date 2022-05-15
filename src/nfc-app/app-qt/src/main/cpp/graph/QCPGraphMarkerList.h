@@ -22,60 +22,25 @@
 
 */
 
-#ifndef NFC_LAB_FRAMESWIDGET_H
-#define NFC_LAB_FRAMESWIDGET_H
+#ifndef NFC_LAB_QCPGRAPHMARKERLIST_H
+#define NFC_LAB_QCPGRAPHMARKERLIST_H
 
-#include <QWidget>
 #include <QSharedPointer>
 
-namespace nfc {
-class NfcFrame;
-}
+#include <3party/customplot/QCustomPlot.h>
 
-class FramesWidget : public QWidget
+class QCPGraphMarkerList
 {
-   Q_OBJECT
-
       struct Impl;
 
    public:
 
-      explicit FramesWidget(QWidget *parent = nullptr);
-
-      void setRange(double lower, double upper);
-
-      void setCenter(double value);
-
-      void append(const nfc::NfcFrame &frame);
-
-      void select(double from, double to);
-
-      void refresh();
-
-      void clear();
-
-      double minimumRange() const;
-
-      double maximumRange() const;
-
-   protected:
-
-      void enterEvent(QEvent *event) override;
-
-      void leaveEvent(QEvent *event) override;
-
-      void keyPressEvent(QKeyEvent *event) override;
-
-      void keyReleaseEvent(QKeyEvent *event) override;
-
-   public:
-
-      Q_SIGNAL void selectionChanged(float from, float to);
+      explicit QCPGraphMarkerList(QCPAxis *axis);
 
    private:
 
-      QSharedPointer<Impl> impl;
+      QSharedPointer <Impl> impl;
 };
 
 
-#endif //NFC_LAB_FRAMESWIDGET_H
+#endif //NFC_LAB_QCPGRAPHMARKERLIST_H

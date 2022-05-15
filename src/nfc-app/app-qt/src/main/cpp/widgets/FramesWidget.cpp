@@ -43,8 +43,8 @@ struct FramesWidget::Impl
 
    QCustomPlot *plot = nullptr;
 
-   QSharedPointer<QCPAxisRangeMarker> marker;
-   QSharedPointer<QCPAxisCursorMarker> cursor;
+   QSharedPointer<QCPAxisCursorMarker> cursorMarker;
+   QSharedPointer<QCPAxisRangeMarker> selectedFrames;
 
    double minimumRange = +INT32_MAX;
    double maximumRange = -INT32_MAX;
@@ -133,10 +133,10 @@ struct FramesWidget::Impl
       }
 
       // create range marker
-      marker.reset(new QCPAxisRangeMarker(plot->graph(0)->keyAxis()));
+      selectedFrames.reset(new QCPAxisRangeMarker(plot->graph(0)->keyAxis()));
 
       // create cursor marker
-      cursor.reset(new QCPAxisCursorMarker(plot->graph(0)->keyAxis()));
+      cursorMarker.reset(new QCPAxisCursorMarker(plot->graph(0)->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -161,6 +161,21 @@ struct FramesWidget::Impl
       QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
          rangeChanged(newRange);
       });
+   }
+
+   void setRange(double lower, double upper)
+   {
+      plot->xAxis->setRange(lower, upper);
+      plot->replot();
+   }
+
+   void setCenter(double center) const
+   {
+      QCPRange currentRange = plot->xAxis->range();
+
+      float length = float(currentRange.upper - currentRange.lower);
+
+      plot->xAxis->setRange(center - length / 2, center + length / 2);
    }
 
    void append(const nfc::NfcFrame &frame)
@@ -251,8 +266,7 @@ struct FramesWidget::Impl
 
       plot->xAxis->setRange(0, 1);
 
-      cursor->setVisible(false);
-      marker->setVisible(false);
+      selectedFrames->setVisible(false);
 
       plot->replot();
    }
@@ -268,20 +282,20 @@ struct FramesWidget::Impl
 
    void mouseEnter() const
    {
-      cursor->setVisible(true);
+      widget->setFocus(Qt::MouseFocusReason);
       plot->replot();
    }
 
    void mouseLeave() const
    {
-      cursor->setVisible(false);
+      widget->setFocus(Qt::NoFocusReason);
       plot->replot();
    }
 
    void mouseMove(QMouseEvent *event) const
    {
       double time = plot->xAxis->pixelToCoord(event->pos().x());
-      cursor->setPosition(time, QString("%1 s").arg(time, 10, 'f', 6));
+      cursorMarker->setPosition(time, QString("%1 s").arg(time, 10, 'f', 6));
       plot->replot();
    }
 
@@ -299,6 +313,20 @@ struct FramesWidget::Impl
       }
    }
 
+   void keyPress(QKeyEvent *event)
+   {
+      cursorMarker->setVisible(event->modifiers() & Qt::AltModifier);
+
+      plot->replot();
+   }
+
+   void keyRelease(QKeyEvent *event)
+   {
+      cursorMarker->setVisible(event->modifiers() & Qt::AltModifier);
+
+      plot->replot();
+   }
+
    void selectionChanged() const
    {
       QList<QCPGraph *> selectedGraphs = plot->selectedGraphs();
@@ -306,7 +334,7 @@ struct FramesWidget::Impl
       double startTime = 0;
       double endTime = 0;
 
-      marker->setVisible(false);
+      selectedFrames->setVisible(false);
 
       if (!selectedGraphs.empty())
       {
@@ -343,14 +371,9 @@ struct FramesWidget::Impl
          if (startTime > 0 && startTime < endTime)
          {
             // show timing marker
-            marker->setPositionStart(startTime);
-            marker->setPositionEnd(endTime);
-            marker->setVisible(true);
-         }
-         else
-         {
-            startTime = 0;
-            endTime = 0;
+            selectedFrames->setPositionStart(startTime);
+            selectedFrames->setPositionEnd(endTime);
+            selectedFrames->setVisible(true);
          }
       }
 
@@ -384,6 +407,16 @@ FramesWidget::FramesWidget(QWidget *parent) : QWidget(parent), impl(new Impl(thi
 {
 }
 
+void FramesWidget::setRange(double lower, double upper)
+{
+   impl->setRange(lower, upper);
+}
+
+void FramesWidget::setCenter(double value)
+{
+   impl->setCenter(value);
+}
+
 void FramesWidget::append(const nfc::NfcFrame &frame)
 {
    impl->append(frame);
@@ -394,14 +427,24 @@ void FramesWidget::select(double from, double to)
    impl->select(from, to);
 }
 
+void FramesWidget::refresh()
+{
+   impl->refresh();
+}
+
 void FramesWidget::clear()
 {
    impl->clear();
 }
 
-void FramesWidget::refresh()
+double FramesWidget::minimumRange() const
 {
-   impl->refresh();
+   return impl->minimumRange;
+}
+
+double FramesWidget::maximumRange() const
+{
+   return impl->maximumRange;
 }
 
 void FramesWidget::enterEvent(QEvent *event)
@@ -413,4 +456,15 @@ void FramesWidget::leaveEvent(QEvent *event)
 {
    impl->mouseLeave();
 }
+
+void FramesWidget::keyPressEvent(QKeyEvent *event)
+{
+   impl->keyPress(event);
+}
+
+void FramesWidget::keyReleaseEvent(QKeyEvent *event)
+{
+   impl->keyRelease(event);
+}
+
 
