@@ -57,10 +57,18 @@ static QMap<int, QString> NfcACmd = {
       {0xE0, "RATS"}
 };
 
+static QMap<int, QString> NfcAResp = {
+      {0x26, "ATQA"},
+};
+
 static QMap<int, QString> NfcBCmd = {
       {0x05, "REQB"},
       {0x1d, "ATTRIB"},
       {0x50, "HLTB"}
+};
+
+static QMap<int, QString> NfcBResp = {
+      {0x05, "ATQB"},
 };
 
 static QMap<int, QString> NfcFCmd = {
@@ -106,6 +114,9 @@ struct StreamModel::Impl
 
    // stream lock
    QReadWriteLock lock;
+
+   // last received command
+   int command;
 
    Impl()
    {
@@ -183,7 +194,7 @@ struct StreamModel::Impl
       return {};
    }
 
-   inline static QString frameCmd(const nfc::NfcFrame *frame)
+   QString frameCmd(const nfc::NfcFrame *frame)
    {
       if (frame->isPollFrame())
       {
@@ -192,7 +203,7 @@ struct StreamModel::Impl
          {
             if (frame->isNfcA())
             {
-               int command = (*frame)[0];
+               command = (*frame)[0];
 
                // Protocol Parameter Selection
                if (command == 0x50 && frame->limit() == 4)
@@ -219,7 +230,7 @@ struct StreamModel::Impl
             }
             else if (frame->isNfcB())
             {
-               int command = (*frame)[0];
+               command = (*frame)[0];
 
                // ISO-DEP protocol I-Block
                if ((command & 0xE2) == 0x02 && frame->limit() > 4)
@@ -238,7 +249,7 @@ struct StreamModel::Impl
             }
             else if (frame->isNfcF())
             {
-               int command = (*frame)[1];
+               command = (*frame)[1];
 
                if (NfcFCmd.contains(command))
                   return NfcFCmd[command];
@@ -247,7 +258,7 @@ struct StreamModel::Impl
             }
             else if (frame->isNfcV())
             {
-               int command = (*frame)[1];
+               command = (*frame)[1];
 
                if (NfcVCmd.contains(command))
                   return NfcVCmd[command];

@@ -96,6 +96,9 @@ struct QtWindow::Impl
    int deviceGainMode = -1;
    int deviceGainValue = -1;
 
+   // last decoder status received
+   QString decoderStatus;
+
    // interface
    QSharedPointer<Ui_QtWindow> ui;
 
@@ -234,8 +237,11 @@ struct QtWindow::Impl
    {
       if (event->hasStatus())
       {
-         if (event->status() == DecoderStatusEvent::Idle)
+         if (event->status() == DecoderStatusEvent::Idle && decoderStatus == DecoderStatusEvent::Decoding)
          {
+            ui->framesView->setRange(INT32_MIN, INT32_MAX);
+            ui->signalView->setRange(INT32_MIN, INT32_MAX);
+
             ui->framesView->refresh();
             ui->signalView->refresh();
          }
@@ -269,6 +275,8 @@ struct QtWindow::Impl
 
             ui->actionNfcV->setChecked(nfcv["enabled"].toBool());
          }
+
+         decoderStatus = event->status();
       }
    }
 
@@ -309,6 +317,18 @@ struct QtWindow::Impl
       if (frame.isPollFrame() || frame.isListenFrame())
       {
          streamModel->append(frame);
+      }
+
+      // add data frames to stream model
+      if (frame.isCarrierOn())
+      {
+         qInfo() << "isCarrierOn" << frame.timeStart() << "," << frame.timeEnd();
+      }
+
+      // add data frames to stream model
+      if (frame.isCarrierOff())
+      {
+         qInfo() << "isCarrierOff" << frame.timeStart() << "," << frame.timeEnd();;
       }
 
       // add all frames to timing graph

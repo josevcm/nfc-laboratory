@@ -45,25 +45,25 @@ class SignalWidget : public QWidget
 
       void setSampleRate(long value);
 
-      void setRange(float lower, float upper);
+      void setRange(double lower, double upper);
 
-      void setCenter(float value);
+      void setCenter(double value);
 
       void append(const sdr::SignalBuffer &buffer);
 
-      void select(float from, float to);
+      void select(double from, double to);
 
       void refresh();
 
       void clear();
 
-      float minimumRange() const;
+      double minimumRange() const;
 
-      float maximumRange() const;
+      double maximumRange() const;
 
-      float minimumScale() const;
+      double minimumScale() const;
 
-      float maximumScale() const;
+      double maximumScale() const;
 
    protected:
 

@@ -33,6 +33,7 @@ add_executable(nfc-lab
         src/main/cpp/graph/QCPAxisTickerFrequency.cpp
         src/main/cpp/graph/QCPAxisRangeMarker.cpp
         src/main/cpp/graph/QCPAxisCursorMarker.cpp
+        src/main/cpp/graph/QCPGraphMarkerList.cpp
         src/main/cpp/graph/QCPGraphValueMarker.cpp
         src/main/cpp/model/StreamModel.cpp
         src/main/cpp/model/ParserModel.cpp

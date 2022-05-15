@@ -347,7 +347,7 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
    {
       if (decoder.carrierOff)
       {
-         NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
+         NfcFrame silence = NfcFrame(TechType::None, FrameType::CarrierOff);
 
          silence.setFramePhase(FramePhase::CarrierFrame);
          silence.setSampleStart(decoder.carrierOff);
@@ -361,7 +361,7 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
 
       else if (decoder.carrierOn)
       {
-         NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
+         NfcFrame carrier = NfcFrame(TechType::None, FrameType::CarrierOn);
 
          carrier.setFramePhase(FramePhase::CarrierFrame);
          carrier.setSampleStart(decoder.carrierOn);
@@ -393,7 +393,7 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
 
          if (decoder.carrierOff)
          {
-            NfcFrame silence = NfcFrame(TechType::None, FrameType::NoCarrier);
+            NfcFrame silence = NfcFrame(TechType::None, FrameType::CarrierOff);
 
             silence.setFramePhase(FramePhase::CarrierFrame);
             silence.setSampleStart(decoder.carrierOff);
@@ -418,7 +418,7 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
 
          if (decoder.carrierOn)
          {
-            NfcFrame carrier = NfcFrame(TechType::None, FrameType::EmptyFrame);
+            NfcFrame carrier = NfcFrame(TechType::None, FrameType::CarrierOn);
 
             carrier.setFramePhase(FramePhase::CarrierFrame);
             carrier.setSampleStart(decoder.carrierOn);

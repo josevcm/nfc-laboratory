@@ -94,7 +94,7 @@ struct QCPAxisRangeMarker::Impl
       startLine->setLayer("overlay");
       startLine->setPen(QPen(Qt::gray, 0, Qt::DashLine));
       startLine->setClipToAxisRect(true);
-      startLine->setHead(QCPLineEnding::esFlatArrow);
+//      startLine->setHead(QCPLineEnding::esFlatArrow);
       startLine->setSelectable(true);
       startLine->setSelectedPen(QPen(selectColor));
       startLine->start->setTypeY(QCPItemPosition::ptAxisRectRatio);
@@ -108,7 +108,7 @@ struct QCPAxisRangeMarker::Impl
       endLine->setLayer("overlay");
       endLine->setPen(QPen(Qt::gray, 0, Qt::DashLine));
       endLine->setClipToAxisRect(true);
-      endLine->setHead(QCPLineEnding::esFlatArrow);
+//      endLine->setHead(QCPLineEnding::esFlatArrow);
       endLine->setSelectable(true);
       endLine->setSelectedPen(QPen(selectColor));
       endLine->start->setTypeY(QCPItemPosition::ptAxisRectRatio);

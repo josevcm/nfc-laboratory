@@ -46,8 +46,8 @@ enum RateType
 
 enum FrameType
 {
-   NoCarrier = 0,
-   EmptyFrame = 1,
+   CarrierOff = 0,
+   CarrierOn = 1,
    PollFrame = 2,
    ListenFrame = 3
 };
