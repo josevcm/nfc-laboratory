@@ -311,8 +311,6 @@ struct SignalWidget::Impl
 
    void mousePress(QMouseEvent *event)
    {
-//      Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
-
       // add marker to list
       if (markerActive && event->buttons() & Qt::RightButton)
       {
@@ -323,7 +321,7 @@ struct SignalWidget::Impl
             markerList.push_back(markerActive);
          }
 
-         // reset active marker
+         // clear active marker
          markerActive.reset();
       }
    }
@@ -332,7 +330,7 @@ struct SignalWidget::Impl
    {
       Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
 
-      // start new marker if Control key is pressed
+      // start new marker if Control key is pressed with any mouse button
       if (!markerActive && keyModifiers & Qt::AltModifier)
       {
          double time = plot->xAxis->pixelToCoord(event->pos().x());

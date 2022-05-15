@@ -140,11 +140,15 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
    void stopDecoder(rt::Event &command)
    {
-      log.info("stop frame decoding, pending frames {}", {signalQueue.size()});
+      log.info("stop frame decoding with {} pending buffers!", {signalQueue.size()});
 
       signalQueue.clear();
 
-//      decoder->setSampleRate(0);
+      // flush last carrier frames
+      for (const auto &frame: decoder->nextFrames(sdr::SignalBuffer()))
+      {
+         frameStream->next(frame);
+      }
 
       command.resolve();
 

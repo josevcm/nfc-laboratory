@@ -267,6 +267,14 @@ struct StreamModel::Impl
             }
          }
       }
+      else if (frame->isCarrierOn())
+      {
+         return {"RF-On"};
+      }
+      else if (frame->isCarrierOff())
+      {
+         return {"RF-Off"};
+      }
 
       return {};
    }
@@ -443,6 +451,10 @@ void StreamModel::fetchMore(const QModelIndex &parent)
    {
       impl->frames.append(new nfc::NfcFrame(impl->stream.dequeue()));
    }
+
+   std::sort(impl->frames.begin(), impl->frames.end(), [](nfc::NfcFrame *a, nfc::NfcFrame *b) {
+      return a->timeStart() < b->timeStart();
+   });
 
    endInsertRows();
 }
