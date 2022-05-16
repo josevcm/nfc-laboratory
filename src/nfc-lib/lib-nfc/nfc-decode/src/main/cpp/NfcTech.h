@@ -39,8 +39,8 @@
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 #define DEBUG_SIGNAL_FILTERED_CHANNEL 1
 //#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
-//#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
-#define DEBUG_SIGNAL_DEEP_CHANNEL 2
+#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
+//#define DEBUG_SIGNAL_DEEP_CHANNEL 2
 #define DEBUG_NFC_CHANNEL 3
 #endif
 
@@ -341,28 +341,22 @@ struct DecoderStatus
    float powerLevelThreshold = 0.01f;
 
    // signal raw value
-   float signalValue;
+   float signalValue = 0;
 
    // signal DC removed value (IIR filter)
-   float signalFiltered;
+   float signalFiltered = 0;
 
    // signal exponential average value
-   float signalAverage;
+   float signalAverage = 0;
 
    // signal exponential variance value
-   float signalDeviation;
+   float signalDeviation = 0;
 
    // signal DC-removal IIR filter (n sample)
-   float signalFilterN0;
+   float signalFilterN0 = 0;
 
    // signal DC-removal IIR filter (n-1 sample)
-   float signalFilterN1;
-
-   // silence start (no modulation detected)
-   unsigned int carrierOff;
-
-   // silence end (modulation detected)
-   unsigned int carrierOn;
+   float signalFilterN1 = 0;
 
    // signal debugger
    std::shared_ptr<SignalDebug> debug;

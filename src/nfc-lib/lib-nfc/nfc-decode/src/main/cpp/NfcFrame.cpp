@@ -129,14 +129,14 @@ bool NfcFrame::isNfcV() const
    return impl->techType == TechType::NfcV;
 }
 
-bool NfcFrame::isNoCarrier() const
+bool NfcFrame::isCarrierOff() const
 {
-   return impl->frameType == FrameType::NoCarrier;
+   return impl->frameType == FrameType::CarrierOff;
 }
 
-bool NfcFrame::isEmptyFrame() const
+bool NfcFrame::isCarrierOn() const
 {
-   return impl->frameType == FrameType::EmptyFrame;
+   return impl->frameType == FrameType::CarrierOn;
 }
 
 bool NfcFrame::isPollFrame() const

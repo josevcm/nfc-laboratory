@@ -34,6 +34,8 @@
 #include <QScrollBar>
 #include <QItemSelection>
 
+#include <nfc/Nfc.h>
+
 #include <rt/Subject.h>
 #include <sdr/SignalBuffer.h>
 
@@ -95,6 +97,9 @@ struct QtWindow::Impl
    int deviceSampleCount = 0;
    int deviceGainMode = -1;
    int deviceGainValue = -1;
+
+   // last decoder status received
+   QString decoderStatus;
 
    // interface
    QSharedPointer<Ui_QtWindow> ui;
@@ -234,8 +239,11 @@ struct QtWindow::Impl
    {
       if (event->hasStatus())
       {
-         if (event->status() == DecoderStatusEvent::Idle)
+         if (event->status() == DecoderStatusEvent::Idle && decoderStatus == DecoderStatusEvent::Decoding)
          {
+            ui->framesView->setRange(INT32_MIN, INT32_MAX);
+            ui->signalView->setRange(INT32_MIN, INT32_MAX);
+
             ui->framesView->refresh();
             ui->signalView->refresh();
          }
@@ -269,6 +277,8 @@ struct QtWindow::Impl
 
             ui->actionNfcV->setChecked(nfcv["enabled"].toBool());
          }
+
+         decoderStatus = event->status();
       }
    }
 
@@ -305,13 +315,10 @@ struct QtWindow::Impl
    {
       const auto &frame = event->frame();
 
-      // add data frames to stream model (omit carrier lost and empty frames)
-      if (frame.isPollFrame() || frame.isListenFrame())
-      {
-         streamModel->append(frame);
-      }
+      // add frames to stream model
+      streamModel->append(frame);
 
-      // add all frames to timing graph
+      // add frames to timing model
       ui->framesView->append(frame);
    }
 
@@ -745,7 +752,7 @@ struct QtWindow::Impl
       }
    }
 
-   void parserSelectionChanged()
+   void parserSelectionChanged() const
    {
       QModelIndexList indexList = ui->parserView->selectionModel()->selectedIndexes();
 
@@ -863,7 +870,7 @@ struct QtWindow::Impl
       }
    }
 
-   void streamScrollChanged()
+   void streamScrollChanged() const
    {
       QModelIndex firstRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().topLeft());
       QModelIndex lastRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().bottomLeft() - QPoint(0, 10));
@@ -880,7 +887,7 @@ struct QtWindow::Impl
       }
    }
 
-   void streamCellClicked(const QModelIndex &index)
+   void streamCellClicked(const QModelIndex &index) const
    {
       auto firstIndex = index;
 
@@ -929,7 +936,7 @@ struct QtWindow::Impl
       }
    }
 
-   void timingSelectionChanged(double from, double to)
+   void timingSelectionChanged(double from, double to) const
    {
       QModelIndexList selectionList = streamModel->modelRange(from, to);
 
@@ -947,8 +954,15 @@ struct QtWindow::Impl
       ui->signalView->blockSignals(false);
    }
 
-   void signalSelectionChanged(double from, double to)
+   void signalSelectionChanged(double from, double to) const
    {
+      if (from == 0 && to == 0)
+      {
+         ui->streamView->selectionModel()->blockSignals(true);
+         ui->streamView->selectionModel()->clearSelection();
+         ui->streamView->selectionModel()->blockSignals(false);
+      }
+
       QModelIndexList selectionList = streamModel->modelRange(from, to);
 
       if (!selectionList.isEmpty())
@@ -963,9 +977,12 @@ struct QtWindow::Impl
       ui->framesView->blockSignals(true);
       ui->framesView->select(from, to);
       ui->framesView->blockSignals(false);
+
+      ui->framesView->repaint();
+      ui->streamView->repaint();
    }
 
-   void signalRangeChanged(float from, float to)
+   void signalRangeChanged(float from, float to) const
    {
       float range = to - from;
       float length = ui->signalView->maximumRange() - ui->signalView->minimumRange();
@@ -979,7 +996,7 @@ struct QtWindow::Impl
       ui->signalScroll->blockSignals(false);
    }
 
-   void signalScrollChanged(int value)
+   void signalScrollChanged(int value) const
    {
       float length = ui->signalView->maximumRange() - ui->signalView->minimumRange();
       float from = ui->signalView->minimumRange() + length * (value / 1000.0f);
@@ -995,7 +1012,7 @@ struct QtWindow::Impl
       QApplication::clipboard()->setText(clipboard);
    }
 
-   QByteArray toByteArray(const nfc::NfcFrame &frame)
+   static QByteArray toByteArray(const nfc::NfcFrame &frame)
    {
       QByteArray data;
 

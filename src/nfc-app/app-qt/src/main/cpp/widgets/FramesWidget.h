@@ -42,18 +42,31 @@ class FramesWidget : public QWidget
 
       explicit FramesWidget(QWidget *parent = nullptr);
 
+      void setRange(double lower, double upper);
+
+      void setCenter(double value);
+
       void append(const nfc::NfcFrame &frame);
 
       void select(double from, double to);
 
+      void refresh();
+
       void clear();
 
-      void refresh();
+      double minimumRange() const;
+
+      double maximumRange() const;
 
    protected:
 
       void enterEvent(QEvent *event) override;
+
       void leaveEvent(QEvent *event) override;
+
+      void keyPressEvent(QKeyEvent *event) override;
+
+      void keyReleaseEvent(QKeyEvent *event) override;
 
    public:
 

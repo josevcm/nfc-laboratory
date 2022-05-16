@@ -412,10 +412,14 @@ struct QtDecoder::Impl
     */
    void doStopDecode(DecoderControlEvent *event) const
    {
-      // stop all taks
-      taskDecoderStop();
-      taskReceiverStop();
-      taskRecorderStop();
+      // stop receiver task
+      taskReceiverStop([=] {
+         // stop recorder task
+         taskRecorderStop([=] {
+            // stop decoder task
+            taskDecoderStop();
+         });
+      });
    }
 
    /*

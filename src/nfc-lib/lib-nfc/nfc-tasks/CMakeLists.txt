@@ -13,7 +13,7 @@ add_library(nfc-tasks STATIC
         )
 
 #target_compile_options(nfc-tasks PRIVATE "-fopt-info-vec-optimized")
-target_compile_options(nfc-tasks PRIVATE "-msse2" -DUSE_SSE2)
+#target_compile_options(nfc-tasks PRIVATE "-msse2" -DUSE_SSE2)
 
 target_include_directories(nfc-tasks PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(nfc-tasks PRIVATE ${PRIVATE_SOURCE_DIR})

@@ -22,47 +22,25 @@
 
 */
 
-#ifndef NFC_LAB_QCPAXISRANGEMARKER_H
-#define NFC_LAB_QCPAXISRANGEMARKER_H
+#ifndef NFC_LAB_QCPGRAPHMARKERLIST_H
+#define NFC_LAB_QCPGRAPHMARKERLIST_H
 
 #include <QSharedPointer>
 
 #include <3party/customplot/QCustomPlot.h>
 
-class QCPAxisRangeMarker
+class QCPGraphMarkerList
 {
       struct Impl;
 
    public:
 
-      explicit QCPAxisRangeMarker(QCPAxis *axis);
-
-      double positionStart() const;
-
-      void setPositionStart(double value);
-
-      double positionEnd() const;
-
-      void setPositionEnd(double value);
-
-      bool visible() const;
-
-      void setVisible(bool visible);
-
-      bool selected() const;
-
-      void setSelected(bool selected);
-
-      int deep() const;
-
-      void setDeep(int deep);
-
-      double width() const;
+      explicit QCPGraphMarkerList(QCPAxis *axis);
 
    private:
 
-      QSharedPointer<Impl> impl;
+      QSharedPointer <Impl> impl;
 };
 
 
-#endif //NFC_LAB_QCPAXISRANGEMARKER_H
+#endif //NFC_LAB_QCPGRAPHMARKERLIST_H

@@ -53,10 +53,10 @@ struct FourierWidget::Impl
 
    QCPGraph *graph = nullptr;
 
-   QSharedPointer<QCPAxisCursorMarker> cursor;
-   QSharedPointer<QCPGraphValueMarker> peak;
-   QSharedPointer<QCPGraphDataContainer> data;
-   QSharedPointer<QCPAxisTickerFrequency> ticker;
+   QSharedPointer<QCPGraphValueMarker> peakMarker;
+   QSharedPointer<QCPAxisCursorMarker> cursorMarker;
+   QSharedPointer<QCPGraphDataContainer> graphData;
+   QSharedPointer<QCPAxisTickerFrequency> axisTicker;
 
    double centerFreq;
    double sampleRate;
@@ -89,10 +89,10 @@ struct FourierWidget::Impl
    void setup()
    {
       // create data container
-      data.reset(new QCPGraphDataContainer());
+      graphData.reset(new QCPGraphDataContainer());
 
       // create frequency ticker
-      ticker.reset(new QCPAxisTickerFrequency());
+      axisTicker.reset(new QCPAxisTickerFrequency());
 
       // disable aliasing to increase performance
       plot->setNoAntialiasingOnDrag(true);
@@ -115,7 +115,7 @@ struct FourierWidget::Impl
       plot->xAxis->setTickLabelColor(Qt::white);
       plot->xAxis->setSubTickPen(QPen(Qt::darkGray));
       plot->xAxis->setSubTicks(true);
-      plot->xAxis->setTicker(ticker);
+      plot->xAxis->setTicker(axisTicker);
       plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
       plot->xAxis->grid()->setZeroLinePen(Qt::NoPen);
 
@@ -136,13 +136,13 @@ struct FourierWidget::Impl
       graph->selectionDecorator()->setPen(QPen(selectColor));
 
       // get storage backend
-      data = graph->data();
+      graphData = graph->data();
 
       // create cursor marker
-      cursor.reset(new QCPAxisCursorMarker(graph->keyAxis()));
+      cursorMarker.reset(new QCPAxisCursorMarker(graph->keyAxis()));
 
       // create cursor marker
-      peak.reset(new QCPGraphValueMarker(graph, markerColor));
+      peakMarker.reset(new QCPGraphValueMarker(graph, markerColor));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -184,6 +184,8 @@ struct FourierWidget::Impl
    void update(const sdr::SignalBuffer &buffer)
    {
       QVector<QCPGraphData> bins;
+
+      peakMarker->setVisible(false);
 
       switch (buffer.type())
       {
@@ -248,12 +250,13 @@ struct FourierWidget::Impl
                bins.append({range, value});
             }
 
-            data->set(bins, true);
+            graphData->set(bins, true);
 
             if (maximum > INT32_MIN)
-               peak->show(signalPeak, frequencyString(signalPeak));
-            else
-               peak->hide();
+            {
+               peakMarker->setPosition(signalPeak, frequencyString(signalPeak));
+               peakMarker->setVisible(true);
+            }
 
             refreshReady.release();
 
@@ -270,7 +273,7 @@ struct FourierWidget::Impl
       minimumScale = INT32_MAX;
       maximumScale = INT32_MIN;
 
-      data->clear();
+      graphData->clear();
 
       plot->xAxis->setRange(DEFAULT_LOWER_RANGE, DEFAULT_UPPER_RANGE);
       plot->yAxis->setRange(DEFAULT_LOWER_SCALE, DEFAULT_UPPER_SCALE);
@@ -280,7 +283,7 @@ struct FourierWidget::Impl
          plot->graph(i)->setSelection(QCPDataSelection());
       }
 
-      cursor->hide();
+      cursorMarker->setVisible(false);
 
       plot->replot();
    }
@@ -299,13 +302,15 @@ struct FourierWidget::Impl
 
    void mouseEnter() const
    {
-      cursor->show();
+      widget->setFocus(Qt::MouseFocusReason);
+      cursorMarker->setVisible(true);
       plot->replot();
    }
 
    void mouseLeave() const
    {
-      cursor->hide();
+      widget->setFocus(Qt::NoFocusReason);
+      cursorMarker->setVisible(false);
       plot->replot();
    }
 
@@ -313,7 +318,7 @@ struct FourierWidget::Impl
    {
       double freq = plot->xAxis->pixelToCoord(event->pos().x());
 
-      cursor->update(freq, frequencyString(freq));
+      cursorMarker->setPosition(freq, frequencyString(freq));
 
       plot->replot();
    }
