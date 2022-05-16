@@ -152,7 +152,7 @@ struct SignalWidget::Impl
       });
 
       QObject::connect(plot, &QCustomPlot::selectionChangedByUser, [=]() {
-         selectionChanged();
+         selectionChangedByUser();
       });
 
       QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange, const QCPRange &oldRange) {
@@ -391,9 +391,7 @@ struct SignalWidget::Impl
                }
             }
 
-            selectDataset(0, 0);
-
-            selectionChanged();
+            selectionChangedInternal(0, 0);
 
             break;
          }
@@ -402,49 +400,37 @@ struct SignalWidget::Impl
       plot->replot();
    }
 
-   void selectionChanged() const
+   void selectionChangedByUser() const
    {
-      QList<QCPGraph *> selectedGraphs = plot->selectedGraphs();
-
       double startTime = 0;
       double endTime = 0;
 
-      selectedRange->setVisible(false);
-
-      if (!selectedGraphs.empty())
+      // get user selected graphs
+      for (QCPGraph *entry: plot->selectedGraphs())
       {
-         QList<QCPGraph *>::Iterator itGraph = selectedGraphs.begin();
+         QCPDataSelection selection = entry->selection();
 
-         while (itGraph != selectedGraphs.end())
+         for (int i = 0; i < selection.dataRangeCount(); i++)
          {
-            QCPGraph *entry = *itGraph++;
+            QCPDataRange range = selection.dataRange(i);
 
-            QCPDataSelection selection = entry->selection();
+            QCPGraphDataContainer::const_iterator data = entry->data()->at(range.begin());
+            QCPGraphDataContainer::const_iterator end = entry->data()->at(range.end());
 
-            for (int i = 0; i < selection.dataRangeCount(); i++)
+            while (data != end)
             {
-               QCPDataRange range = selection.dataRange(i);
+               if (startTime == 0 || data->key < startTime)
+                  startTime = data->key;
 
-               QCPGraphDataContainer::const_iterator data = entry->data()->at(range.begin());
-               QCPGraphDataContainer::const_iterator end = entry->data()->at(range.end());
+               if (endTime == 0 || data->key > endTime)
+                  endTime = data->key;
 
-               while (data != end)
-               {
-                  double timestamp = data->key;
-
-                  if (startTime == 0 || timestamp < startTime)
-                     startTime = timestamp;
-
-                  if (endTime == 0 || timestamp > endTime)
-                     endTime = timestamp;
-
-                  data++;
-               }
+               data++;
             }
          }
-
       }
 
+      // get user selected markers
       for (const auto &marker: markerList)
       {
          if (marker->selected())
@@ -457,9 +443,60 @@ struct SignalWidget::Impl
          }
       }
 
+      // trigger internal selection
+      selectionChangedInternal(startTime, endTime);
+   }
+
+   void selectionChangedInternal(double startTime, double endTime) const
+   {
+      for (int i = 0; i < plot->graphCount(); i++)
+      {
+         QCPDataSelection selection;
+
+         if (startTime < endTime)
+         {
+            QCPGraph *graph = plot->graph(i);
+
+            int begin = graph->findBegin(startTime, false);
+            int end = graph->findEnd(endTime, false);
+
+            selection.addDataRange(QCPDataRange(begin, end));
+         }
+
+         graph->setSelection(selection);
+      }
+
+      selectedRange->setVisible(false);
+
       if (startTime > 0)
       {
-         selectDataset(startTime, endTime);
+         selectedRange->setPositionStart(startTime);
+         selectedRange->setPositionEnd(endTime);
+         selectedRange->setSelected(true);
+         selectedRange->setVisible(true);
+         selectedRange->setDeep(0);
+
+         // check if select marker overlaps user markers
+         for (const auto &marker: markerList)
+         {
+            if (marker->selected())
+            {
+               // check if selected marker is equals to selected range
+               if (marker->positionStart() == startTime && marker->positionEnd() == endTime)
+                  selectedRange->setVisible(false);
+
+               // move selected marker if overlaps user markers
+               if (marker->positionStart() < endTime || marker->positionEnd() > startTime)
+                  selectedRange->setDeep(1);
+            }
+         }
+      }
+      else
+      {
+         for (const auto &marker: markerList)
+         {
+            marker->setSelected(false);
+         }
       }
 
       // refresh graph
@@ -544,43 +581,14 @@ struct SignalWidget::Impl
       plot->xAxis->setRange(center - length / 2, center + length / 2);
    }
 
-   void selectDataset(double from, double to) const
-   {
-      selectedRange->setVisible(false);
-
-      if (from >= 0 && to >= 0)
-      {
-         selectedRange->setPositionStart(from);
-         selectedRange->setPositionEnd(to);
-         selectedRange->setSelected(true);
-         selectedRange->setVisible(true);
-
-         for (int i = 0; i < plot->graphCount(); i++)
-         {
-            QCPDataSelection selection;
-
-            QCPGraph *graph = plot->graph(i);
-
-            int begin = graph->findBegin(from, false);
-            int end = graph->findEnd(to, false);
-
-            selection.addDataRange(QCPDataRange(begin, end));
-
-            graph->setSelection(selection);
-         }
-      }
-   }
-
    void selectAndCenter(double from, double to) const
    {
-      selectDataset(from, to);
-
       if (from > minimumRange && to < maximumRange)
       {
          setCenter(double(from + to) / 2.0f);
       }
 
-      selectionChanged();
+      selectionChangedInternal(from, to);
    }
 };
 

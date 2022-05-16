@@ -144,6 +144,11 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
       signalQueue.clear();
 
+      for (const auto &frame: decoder->nextFrames({}))
+      {
+         frameStream->next(frame);
+      }
+
       command.resolve();
 
       updateDecoderStatus(FrameDecoderTask::Halt);
@@ -295,9 +300,9 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       status = value;
 
       json data({
-                      {"status",        status == Listen ? "decoding" : "idle"},
-                      {"queueSize",     signalQueue.size()},
-                      {"sampleRate",    decoder->sampleRate()},
+                      {"status",     status == Listen ? "decoding" : "idle"},
+                      {"queueSize",  signalQueue.size()},
+                      {"sampleRate", decoder->sampleRate()},
                       {"streamTime", decoder->streamTime()}
                 });
 

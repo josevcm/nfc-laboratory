@@ -30,6 +30,7 @@
 #include <QDateTime>
 #include <QReadLocker>
 
+#include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 
 #include "StreamModel.h"
@@ -120,7 +121,7 @@ struct StreamModel::Impl
 
    explicit Impl()
    {
-      headers << "#" << "Time" << "Delta" << "Rate" << "Type" << "Cmd" << "" << "Frame";
+      headers << "#" << "Time" << "Delta" << "Rate" << "Type" << "Cmd/Event" << "" << "Frame";
 
       // request fonts
       requestDefaultFont.setBold(true);
@@ -174,7 +175,10 @@ struct StreamModel::Impl
 
    inline static QString frameRate(const nfc::NfcFrame *frame)
    {
-      return QString("%1k").arg(double(frame->frameRate() / 1000.0f), 3, 'f', 0);
+      if (frame->isPollFrame() || frame->isListenFrame())
+         return QString("%1k").arg(double(frame->frameRate() / 1000.0f), 3, 'f', 0);
+
+      return {};
    }
 
    inline static QString frameTech(const nfc::NfcFrame *frame)
@@ -196,84 +200,92 @@ struct StreamModel::Impl
 
    QString frameCmd(const nfc::NfcFrame *frame)
    {
-      if (frame->isPollFrame())
+      switch (frame->frameType())
       {
-         // raw protocol commands
-         if (!frame->isEncrypted())
-         {
-            if (frame->isNfcA())
+         case nfc::FrameType::PollFrame:
+
+            // skip encrypted frames
+            if (frame->isEncrypted())
+               return {};
+
+            switch (frame->techType())
             {
-               command = (*frame)[0];
+               case nfc::TechType::NfcA:
 
-               // Protocol Parameter Selection
-               if (command == 0x50 && frame->limit() == 4)
-                  return "HALT";
+                  command = (*frame)[0];
 
-               // Protocol Parameter Selection
-               if ((command & 0xF0) == 0xD0 && frame->limit() == 5)
-                  return "PPS";
+                  // Protocol Parameter Selection
+                  if (command == 0x50 && frame->limit() == 4)
+                     return "HALT";
 
-               // ISO-DEP protocol I-Block
-               if ((command & 0xE2) == 0x02 && frame->limit() > 4)
-                  return "I-Block";
+                  // Protocol Parameter Selection
+                  if ((command & 0xF0) == 0xD0 && frame->limit() == 5)
+                     return "PPS";
 
-               // ISO-DEP protocol R-Block
-               if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
-                  return "R-Block";
+                  // ISO-DEP protocol I-Block
+                  if ((command & 0xE2) == 0x02 && frame->limit() > 4)
+                     return "I-Block";
 
-               // ISO-DEP protocol S-Block
-               if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
-                  return "S-Block";
+                  // ISO-DEP protocol R-Block
+                  if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
+                     return "R-Block";
 
-               if (NfcACmd.contains(command))
-                  return NfcACmd[command];
+                  // ISO-DEP protocol S-Block
+                  if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
+                     return "S-Block";
+
+                  if (NfcACmd.contains(command))
+                     return NfcACmd[command];
+
+                  return {};
+
+               case nfc::TechType::NfcB:
+
+                  command = (*frame)[0];
+
+                  // ISO-DEP protocol I-Block
+                  if ((command & 0xE2) == 0x02 && frame->limit() > 4)
+                     return "I-Block";
+
+                  // ISO-DEP protocol R-Block
+                  if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
+                     return "R-Block";
+
+                  // ISO-DEP protocol S-Block
+                  if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
+                     return "S-Block";
+
+                  if (NfcBCmd.contains(command))
+                     return NfcBCmd[command];
+
+                  return {};
+
+               case nfc::TechType::NfcF:
+
+                  command = (*frame)[1];
+
+                  if (NfcFCmd.contains(command))
+                     return NfcFCmd[command];
+
+                  return QString("CMD %1").arg(command, 2, 16, QChar('0'));
+
+               case nfc::TechType::NfcV:
+
+                  command = (*frame)[1];
+
+                  if (NfcVCmd.contains(command))
+                     return NfcVCmd[command];
+
+                  return QString("CMD %1").arg(command, 2, 16, QChar('0'));
             }
-            else if (frame->isNfcB())
-            {
-               command = (*frame)[0];
 
-               // ISO-DEP protocol I-Block
-               if ((command & 0xE2) == 0x02 && frame->limit() > 4)
-                  return "I-Block";
+            return {};
 
-               // ISO-DEP protocol R-Block
-               if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
-                  return "R-Block";
+         case nfc::FrameType::CarrierOn:
+            return {"RF-On"};
 
-               // ISO-DEP protocol S-Block
-               if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
-                  return "S-Block";
-
-               if (NfcBCmd.contains(command))
-                  return NfcBCmd[command];
-            }
-            else if (frame->isNfcF())
-            {
-               command = (*frame)[1];
-
-               if (NfcFCmd.contains(command))
-                  return NfcFCmd[command];
-
-               return QString("CMD %1").arg(command, 2, 16, QChar('0'));
-            }
-            else if (frame->isNfcV())
-            {
-               command = (*frame)[1];
-
-               if (NfcVCmd.contains(command))
-                  return NfcVCmd[command];
-
-               return QString("CMD %1").arg(command, 2, 16, QChar('0'));
-            }
-         }
-      }
-      else if (frame->isCarrierOn())
-      {
-         return {"RF-On"};
-      }
-      else if (frame->isCarrierOff())
-      {
-         return {"RF-Off"};
+         case nfc::FrameType::CarrierOff:
+            return {"RF-Off"};
       }
 
       return {};

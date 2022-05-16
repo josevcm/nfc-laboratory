@@ -92,9 +92,8 @@ struct QCPAxisRangeMarker::Impl
 
       startLine->setVisible(false);
       startLine->setLayer("overlay");
-      startLine->setPen(QPen(Qt::gray, 0, Qt::DashLine));
+      startLine->setPen(QPen(Qt::gray, 0, Qt::SolidLine));
       startLine->setClipToAxisRect(true);
-//      startLine->setHead(QCPLineEnding::esFlatArrow);
       startLine->setSelectable(true);
       startLine->setSelectedPen(QPen(selectColor));
       startLine->start->setTypeY(QCPItemPosition::ptAxisRectRatio);
@@ -106,9 +105,8 @@ struct QCPAxisRangeMarker::Impl
 
       endLine->setVisible(false);
       endLine->setLayer("overlay");
-      endLine->setPen(QPen(Qt::gray, 0, Qt::DashLine));
+      endLine->setPen(QPen(Qt::gray, 0, Qt::SolidLine));
       endLine->setClipToAxisRect(true);
-//      endLine->setHead(QCPLineEnding::esFlatArrow);
       endLine->setSelectable(true);
       endLine->setSelectedPen(QPen(selectColor));
       endLine->start->setTypeY(QCPItemPosition::ptAxisRectRatio);
@@ -207,28 +205,36 @@ struct QCPAxisRangeMarker::Impl
 
    void range() const
    {
-      // update rangeLabel position
-      labelTracer->position->setCoords((startTracer->position->key() + endTracer->position->key()) / 2, 0);
-
-      // get range time
-      double value = fabs(endTracer->position->key() - startTracer->position->key());
-
       QString text;
 
-      if (value < 1E-6)
-         text = QString("%1 ns").arg(value * 1E9, 3, 'f', 0);
-      if (value < 1E-3)
-         text = QString("%1 us").arg(value * 1E6, 3, 'f', 0);
-      else if (value < 1)
-         text = QString("%1 ms").arg(value * 1E3, 7, 'f', 3);
-      else if (value < 1E3)
-         text = QString("%1 s").arg(value, 7, 'f', 5);
-      else if (value < 1E6)
-         text = QString("%1 Ks").arg(value / 1E3, 7, 'f', 5);
-      else if (value < 1E9)
-         text = QString("%1 Ms").arg(value / 1E6, 7, 'f', 5);
-      else if (value < 1E12)
-         text = QString("%1 Gs").arg(value / 1E12, 7, 'f', 5);
+      double startPos = startTracer->position->key();
+      double endPos = endTracer->position->key();
+
+      labelTracer->position->setCoords((startPos + endPos) / 2, 0);
+
+      double value = fabs(endPos - startPos);
+
+      if (value > 0)
+      {
+         if (value < 1E-6)
+            text = QString("%1 ns").arg(value * 1E9, 3, 'f', 0);
+         if (value < 1E-3)
+            text = QString("%1 us").arg(value * 1E6, 3, 'f', 0);
+         else if (value < 1E0)
+            text = QString("%1 ms").arg(value * 1E3, 7, 'f', 3);
+         else if (value < 1E3)
+            text = QString("%1 s").arg(value, 7, 'f', 5);
+         else if (value < 1E6)
+            text = QString("%1 Ks").arg(value / 1E3, 7, 'f', 3);
+         else if (value < 1E9)
+            text = QString("%1 Ms").arg(value / 1E6, 7, 'f', 3);
+         else if (value < 1E12)
+            text = QString("%1 Gs").arg(value / 1E12, 7, 'f', 3);
+      }
+      else
+      {
+         text = QString("%1").arg(startPos, 10, 'f', 6);
+      }
 
       rangeLabel->setText(text);
    }
