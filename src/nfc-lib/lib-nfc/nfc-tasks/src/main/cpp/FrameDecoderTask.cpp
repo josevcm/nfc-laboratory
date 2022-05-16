@@ -127,7 +127,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    {
 //      long epoch = (long) std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-      log.info("start frame decoding, pending frames {}", {signalQueue.size()});
+      log.info("start frame decoding with {} pending buffers!", {signalQueue.size()});
 
       signalQueue.clear();
 
@@ -143,12 +143,6 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       log.info("stop frame decoding with {} pending buffers!", {signalQueue.size()});
 
       signalQueue.clear();
-
-      // flush last carrier frames
-      for (const auto &frame: decoder->nextFrames(sdr::SignalBuffer()))
-      {
-         frameStream->next(frame);
-      }
 
       command.resolve();
 

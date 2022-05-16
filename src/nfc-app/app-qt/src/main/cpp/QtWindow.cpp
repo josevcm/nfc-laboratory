@@ -315,67 +315,10 @@ struct QtWindow::Impl
    {
       const auto &frame = event->frame();
 
-      // add data frames to stream model (omit carrier lost and empty frames)
-      if (frame.isPollFrame() || frame.isListenFrame())
-      {
-         streamModel->append(frame);
-      }
+      // add frames to stream model
+      streamModel->append(frame);
 
-      // add data frames to stream model
-      if (frame.isCarrierOn())
-      {
-         qInfo() << "isCarrierOn" << frame.timeStart() << "," << frame.timeEnd();
-
-         nfc::NfcFrame carrierOnEvent(nfc::TechType::None, nfc::FrameType::CarrierOn);
-
-         carrierOnEvent.setFramePhase(nfc::FramePhase::CarrierFrame);
-         carrierOnEvent.setSampleStart(frame.sampleStart());
-         carrierOnEvent.setSampleEnd(frame.sampleStart());
-         carrierOnEvent.setTimeStart(frame.timeStart());
-         carrierOnEvent.setTimeEnd(frame.timeStart());
-         carrierOnEvent.flip();
-
-//         nfc::NfcFrame carrierOffEvent(nfc::TechType::None, nfc::FrameType::CarrierOff);
-//
-//         carrierOffEvent.setFramePhase(nfc::FramePhase::CarrierFrame);
-//         carrierOffEvent.setSampleStart(frame.sampleEnd());
-//         carrierOffEvent.setSampleEnd(frame.sampleEnd());
-//         carrierOffEvent.setTimeStart(frame.timeEnd());
-//         carrierOffEvent.setTimeEnd(frame.timeEnd());
-//         carrierOffEvent.flip();
-
-         streamModel->append(carrierOnEvent);
-//         streamModel->append(carrierOffEvent);
-      }
-
-      // add data frames to stream model
-      if (frame.isCarrierOff())
-      {
-         qInfo() << "isCarrierOff" << frame.timeStart() << "," << frame.timeEnd();;
-
-         nfc::NfcFrame carrierOffEvent(nfc::TechType::None, nfc::FrameType::CarrierOff);
-
-         carrierOffEvent.setFramePhase(nfc::FramePhase::CarrierFrame);
-         carrierOffEvent.setSampleStart(frame.sampleStart());
-         carrierOffEvent.setSampleEnd(frame.sampleStart());
-         carrierOffEvent.setTimeStart(frame.timeStart());
-         carrierOffEvent.setTimeEnd(frame.timeStart());
-         carrierOffEvent.flip();
-
-//         nfc::NfcFrame carrierOnEvent(nfc::TechType::None, nfc::FrameType::CarrierOn);
-//
-//         carrierOnEvent.setFramePhase(nfc::FramePhase::CarrierFrame);
-//         carrierOnEvent.setSampleStart(frame.sampleEnd());
-//         carrierOnEvent.setSampleEnd(frame.sampleEnd());
-//         carrierOnEvent.setTimeStart(frame.timeEnd());
-//         carrierOnEvent.setTimeEnd(frame.timeEnd());
-//         carrierOnEvent.flip();
-
-         streamModel->append(carrierOffEvent);
-//         streamModel->append(carrierOnEvent);
-      }
-
-      // add all frames to timing graph
+      // add frames to timing model
       ui->framesView->append(frame);
    }
 

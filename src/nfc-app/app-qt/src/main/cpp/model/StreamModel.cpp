@@ -116,9 +116,9 @@ struct StreamModel::Impl
    QReadWriteLock lock;
 
    // last received command
-   int command;
+   int command {};
 
-   Impl()
+   explicit Impl()
    {
       headers << "#" << "Time" << "Delta" << "Rate" << "Type" << "Cmd" << "" << "Frame";
 
@@ -451,10 +451,6 @@ void StreamModel::fetchMore(const QModelIndex &parent)
    {
       impl->frames.append(new nfc::NfcFrame(impl->stream.dequeue()));
    }
-
-   std::sort(impl->frames.begin(), impl->frames.end(), [](nfc::NfcFrame *a, nfc::NfcFrame *b) {
-      return a->timeStart() < b->timeStart();
-   });
 
    endInsertRows();
 }

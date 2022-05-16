@@ -36,7 +36,6 @@
 
 #include "FramesWidget.h"
 
-
 struct FramesWidget::Impl
 {
    FramesWidget *widget = nullptr;
@@ -48,6 +47,8 @@ struct FramesWidget::Impl
 
    double minimumRange = +INT32_MAX;
    double maximumRange = -INT32_MAX;
+
+   double lastCarrierValue = 0;
 
    explicit Impl(FramesWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
    {
@@ -190,48 +191,57 @@ struct FramesWidget::Impl
       // update view range
       plot->xAxis->setRange(minimumRange, maximumRange);
 
-      int graphChannel;
-      int graphValue;
-      float graphHeigth;
-
-      switch (frame.framePhase())
+      switch (frame.frameType())
       {
-         case nfc::FramePhase::CarrierFrame:
-         {
-            graphChannel = 0;
-            graphValue = 1;
-            graphHeigth = frame.isCarrierOn() ? 0.25 : 0.0;
+         case nfc::FrameType::CarrierOn:
+            addCarrier(frame.framePhase(), frame.timeStart(), 0.25f);
             break;
-         }
-         case nfc::FramePhase::SelectionFrame:
-         {
-            graphChannel = 1;
-            graphValue = 2;
-            graphHeigth = frame.isPollFrame() ? 0.25 : 0.15;
+         case nfc::FrameType::CarrierOff:
+            addCarrier(frame.framePhase(), frame.timeStart(), 0.0);
             break;
-         }
-         default:
-         {
-            graphChannel = 2;
-            graphValue = 3;
-            graphHeigth = frame.isPollFrame() ? 0.25 : 0.15;
-         }
+         case nfc::FrameType::PollFrame:
+            addFrame(frame.framePhase(), frame.timeStart(), frame.timeEnd(), 0.25f);
+            break;
+         case nfc::FrameType::ListenFrame:
+            addFrame(frame.framePhase(), frame.timeStart(), frame.timeEnd(), 0.15f);
+            break;
       }
+   }
 
-      int upperGraph = graphChannel * 2 + 0;
-      int lowerGraph = graphChannel * 2 + 1;
+   void addCarrier(int channel, double eventTime, float value)
+   {
+      int upperGraph = channel * 2 + 0;
+      int lowerGraph = channel * 2 + 1;
+      double graphOffset = 1 + channel;
 
       // draw upper shape
-      plot->graph(upperGraph)->addData(frame.timeStart(), graphValue);
-      plot->graph(upperGraph)->addData(frame.timeStart() + 2.5E-6, graphValue + graphHeigth);
-      plot->graph(upperGraph)->addData(frame.timeEnd() - 2.5E-6, graphValue + graphHeigth);
-      plot->graph(upperGraph)->addData(frame.timeEnd(), graphValue);
+      plot->graph(upperGraph)->addData(eventTime, graphOffset + lastCarrierValue);
+      plot->graph(upperGraph)->addData(eventTime + 2.5E-6, graphOffset + value);
 
       // draw lower shape
-      plot->graph(lowerGraph)->addData(frame.timeStart(), graphValue);
-      plot->graph(lowerGraph)->addData(frame.timeStart() + 2.5E-6, graphValue - graphHeigth);
-      plot->graph(lowerGraph)->addData(frame.timeEnd() - 2.5E-6, graphValue - graphHeigth);
-      plot->graph(lowerGraph)->addData(frame.timeEnd(), graphValue);
+      plot->graph(lowerGraph)->addData(eventTime, graphOffset - lastCarrierValue);
+      plot->graph(lowerGraph)->addData(eventTime + 2.5E-6, graphOffset - value);
+
+      lastCarrierValue = value;
+   }
+
+   void addFrame(int channel, double timeStart, double timeEnd, float value)
+   {
+      int upperGraph = channel * 2 + 0;
+      int lowerGraph = channel * 2 + 1;
+      double graphOffset = 1 + channel;
+
+      // draw upper shape
+      plot->graph(upperGraph)->addData(timeStart, graphOffset);
+      plot->graph(upperGraph)->addData(timeStart + 2.5E-6, graphOffset + value);
+      plot->graph(upperGraph)->addData(timeEnd - 2.5E-6, graphOffset + value);
+      plot->graph(upperGraph)->addData(timeEnd, graphOffset);
+
+      // draw lower shape
+      plot->graph(lowerGraph)->addData(timeStart, graphOffset);
+      plot->graph(lowerGraph)->addData(timeStart + 2.5E-6, graphOffset - value);
+      plot->graph(lowerGraph)->addData(timeEnd - 2.5E-6, graphOffset - value);
+      plot->graph(lowerGraph)->addData(timeEnd, graphOffset);
    }
 
    void select(double from, double to)
