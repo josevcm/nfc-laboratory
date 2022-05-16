@@ -39,7 +39,8 @@
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 #define DEBUG_SIGNAL_FILTERED_CHANNEL 1
 //#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
-#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
+#define DEBUG_SIGNAL_ENVELOPE_CHANNEL 2
+//#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
 //#define DEBUG_SIGNAL_DEEP_CHANNEL 2
 #define DEBUG_NFC_CHANNEL 3
 #endif
@@ -145,6 +146,10 @@ struct SignalParams
    // factors for exponential signal power
    float signalMeanW0;
    float signalMeanW1;
+
+   // factors for exponential signal envelope
+   float signalEnveW0;
+   float signalEnveW1;
 
    // factors for exponential signal variance
    float signalMdevW0;
@@ -349,6 +354,9 @@ struct DecoderStatus
    // signal exponential average value
    float signalAverage = 0;
 
+   // signal exponential average value
+   float signalEnvelope = 0;
+
    // signal exponential variance value
    float signalDeviation = 0;
 
@@ -398,6 +406,9 @@ struct DecoderStatus
       // compute signal variance
       signalDeviation = signalDeviation * signalParams.signalMdevW0 + std::abs(signalFiltered) * signalParams.signalMdevW1;
 
+      // process new signal envelope value
+      signalEnvelope = signalEnvelope * signalParams.signalEnveW0 + signalValue * signalParams.signalEnveW1;
+
       // store signal components in process buffer
       sample[signalClock & (BUFFER_SIZE - 1)].samplingValue = signalValue;
       sample[signalClock & (BUFFER_SIZE - 1)].filteredValue = signalFiltered;
@@ -429,6 +440,10 @@ struct DecoderStatus
 
 #ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL
       debug->set(DEBUG_SIGNAL_AVERAGE_CHANNEL, signalAverage);
+#endif
+
+#ifdef DEBUG_SIGNAL_ENVELOPE_CHANNEL
+      debug->set(DEBUG_SIGNAL_ENVELOPE_CHANNEL, signalEnvelope);
 #endif
 
       return true;

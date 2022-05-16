@@ -244,6 +244,10 @@ void NfcDecoder::Impl::initialize()
       decoder.signalParams.signalMeanW0 = float(1 - 5E5 / decoder.sampleRate);
       decoder.signalParams.signalMeanW1 = float(1 - decoder.signalParams.signalMeanW0);
 
+      // initialize exponential average factors for signal average
+      decoder.signalParams.signalEnveW0 = float(1 - 1E5 / decoder.sampleRate);
+      decoder.signalParams.signalEnveW1 = float(1 - decoder.signalParams.signalEnveW0);
+
       // initialize exponential average factors for signal mean deviation
       decoder.signalParams.signalMdevW0 = float(1 - 2E5 / decoder.sampleRate);
       decoder.signalParams.signalMdevW1 = float(1 - decoder.signalParams.signalMdevW0);
@@ -410,7 +414,7 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
    }
 
    // carrier present if signal average is over power Level Threshold
-   if (decoder.signalAverage > signalHighThreshold)
+   if (decoder.signalEnvelope > signalHighThreshold)
    {
       if (!carrierOnTime)
       {
@@ -434,7 +438,7 @@ void NfcDecoder::Impl::detectCarrier(std::list<NfcFrame> &frames)
    }
 
       // carrier not present if signal average is below power Level Threshold
-   else if (decoder.signalAverage < signalLowThreshold)
+   else if (decoder.signalEnvelope < signalLowThreshold)
    {
       if (!carrierOffTime)
       {
