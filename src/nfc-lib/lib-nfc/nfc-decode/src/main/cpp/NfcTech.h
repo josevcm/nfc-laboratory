@@ -351,13 +351,13 @@ struct DecoderStatus
    // signal DC removed value (IIR filter)
    float signalFiltered = 0;
 
-   // signal exponential average value
-   float signalAverage = 0;
-
-   // signal exponential average value
+   // signal envelope value
    float signalEnvelope = 0;
 
-   // signal exponential variance value
+   // signal average value
+   float signalAverage = 0;
+
+   // signal variance value
    float signalDeviation = 0;
 
    // signal DC-removal IIR filter (n sample)
@@ -365,6 +365,24 @@ struct DecoderStatus
 
    // signal DC-removal IIR filter (n-1 sample)
    float signalFilterN1 = 0;
+
+   // signal low threshold
+   float signalLowThreshold = 0.0090f;
+
+   // signal high threshold
+   float signalHighThreshold = 0.0110f;
+
+   // carrier trigger peak value
+   float carrierEdgePeak = 0;
+
+   // carrier trigger peak time
+   unsigned int carrierEdgeTime = 0;
+
+   // silence start (no modulation detected)
+   unsigned int carrierOffTime = 0;
+
+   // silence end (modulation detected)
+   unsigned int carrierOnTime = 0;
 
    // signal debugger
    std::shared_ptr<SignalDebug> debug;
@@ -381,7 +399,7 @@ struct DecoderStatus
 
       buffer.get(signalValue);
 
-      float signalDiff = std::abs(signalValue - signalAverage) / signalAverage;
+      float signalDiff = std::abs(signalValue - signalEnvelope) / signalEnvelope;
 
       // signal average envelope detector
       if (signalDiff < 0.05f || pulseFilter > signalParams.elementaryTimeUnit * 10)
@@ -389,12 +407,12 @@ struct DecoderStatus
          // reset silence counter
          pulseFilter = 0;
 
-         // compute slow signal average
-         signalAverage = signalAverage * signalParams.signalMeanW0 + signalValue * signalParams.signalMeanW1;
+         // compute signal average
+         signalEnvelope = signalEnvelope * signalParams.signalMeanW0 + signalValue * signalParams.signalMeanW1;
       }
       else if (signalClock < signalParams.elementaryTimeUnit)
       {
-         signalAverage = signalValue;
+         signalEnvelope = signalValue;
       }
 
       // process new IIR filter value
@@ -403,20 +421,38 @@ struct DecoderStatus
       // update signal value for IIR removal filter
       signalFiltered = signalFilterN0 - signalFilterN1;
 
+      // update IIR filter component
+      signalFilterN1 = signalFilterN0;
+
       // compute signal variance
       signalDeviation = signalDeviation * signalParams.signalMdevW0 + std::abs(signalFiltered) * signalParams.signalMdevW1;
 
       // process new signal envelope value
-      signalEnvelope = signalEnvelope * signalParams.signalEnveW0 + signalValue * signalParams.signalEnveW1;
+      signalAverage = signalAverage * signalParams.signalEnveW0 + signalValue * signalParams.signalEnveW1;
 
       // store signal components in process buffer
       sample[signalClock & (BUFFER_SIZE - 1)].samplingValue = signalValue;
       sample[signalClock & (BUFFER_SIZE - 1)].filteredValue = signalFiltered;
       sample[signalClock & (BUFFER_SIZE - 1)].meanDeviation = signalDeviation;
-      sample[signalClock & (BUFFER_SIZE - 1)].modulateDepth = (signalAverage - std::clamp(signalValue, 0.0f, signalAverage)) / signalAverage;
+      sample[signalClock & (BUFFER_SIZE - 1)].modulateDepth = (signalEnvelope - std::clamp(signalValue, 0.0f, signalEnvelope)) / signalEnvelope;
 
-      // update IIR filter component
-      signalFilterN1 = signalFilterN0;
+      // get absolute DC-removed signal for edge detector
+      float filteredRectified = std::fabs(signalFiltered);
+
+      // detect last carrier edge on/off
+      if (filteredRectified > signalHighThreshold)
+      {
+         // search maximum pulse value
+         if (filteredRectified > carrierEdgePeak)
+         {
+            carrierEdgePeak = filteredRectified;
+            carrierEdgeTime = signalClock;
+         }
+      }
+      else if (filteredRectified < signalLowThreshold)
+      {
+         carrierEdgePeak = 0;
+      }
 
 #ifdef DEBUG_SIGNAL
       debug->block(signalClock);

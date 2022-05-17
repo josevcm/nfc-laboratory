@@ -241,14 +241,14 @@ struct NfcV::Impl : NfcTech
          return false;
 
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold)
+      if (decoder->signalEnvelope < decoder->powerLevelThreshold)
          return false;
 
       BitrateParams *bitrate = &bitrateParams;
       ModulationStatus *modulation = &modulationStatus;
 
       // minimum correlation value for start detecting NFC-V symbols
-      float minimumCorrelationValue = decoder->signalAverage * minimumCorrelationThreshold;
+      float minimumCorrelationValue = decoder->signalEnvelope * minimumCorrelationThreshold;
 
       // compute signal pointers
       unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);

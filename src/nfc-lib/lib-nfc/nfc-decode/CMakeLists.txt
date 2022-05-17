@@ -13,7 +13,7 @@ add_library(nfc-decode STATIC
         src/main/cpp/tech/NfcV.cpp
         )
 
-target_compile_definitions(nfc-decode PRIVATE DEBUG_SIGNAL)
+#target_compile_definitions(nfc-decode PRIVATE DEBUG_SIGNAL)
 
 #target_compile_options(nfc-tasks PRIVATE "-fopt-info-vec-optimized")
 

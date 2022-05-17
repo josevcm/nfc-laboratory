@@ -245,7 +245,7 @@ struct NfcB::Impl : NfcTech
          return false;
 
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold)
+      if (decoder->signalEnvelope < decoder->powerLevelThreshold)
          return false;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
@@ -281,7 +281,7 @@ struct NfcB::Impl : NfcTech
          if (!modulation->symbolStartTime)
          {
             // first modulation must be over minimum modulation deep
-            modulation->searchValueThreshold = decoder->signalAverage * minimumModulationDeep;
+            modulation->searchValueThreshold = decoder->signalEnvelope * minimumModulationDeep;
 
             // detect edge at maximum peak
             if (signalEdge < -modulation->searchValueThreshold && signalEdge < modulation->detectorPeakValue)
