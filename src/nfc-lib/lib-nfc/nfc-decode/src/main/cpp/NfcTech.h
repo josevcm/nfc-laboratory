@@ -144,12 +144,12 @@ struct SignalParams
    float signalIIRdcA;
 
    // factors for exponential signal power
-   float signalMeanW0;
-   float signalMeanW1;
-
-   // factors for exponential signal envelope
    float signalEnveW0;
    float signalEnveW1;
+
+   // factors for exponential signal envelope
+   float signalMeanW0;
+   float signalMeanW1;
 
    // factors for exponential signal variance
    float signalMdevW0;
@@ -408,7 +408,7 @@ struct DecoderStatus
          pulseFilter = 0;
 
          // compute signal average
-         signalEnvelope = signalEnvelope * signalParams.signalMeanW0 + signalValue * signalParams.signalMeanW1;
+         signalEnvelope = signalEnvelope * signalParams.signalEnveW0 + signalValue * signalParams.signalEnveW1;
       }
       else if (signalClock < signalParams.elementaryTimeUnit)
       {
@@ -428,7 +428,7 @@ struct DecoderStatus
       signalDeviation = signalDeviation * signalParams.signalMdevW0 + std::abs(signalFiltered) * signalParams.signalMdevW1;
 
       // process new signal envelope value
-      signalAverage = signalAverage * signalParams.signalEnveW0 + signalValue * signalParams.signalEnveW1;
+      signalAverage = signalAverage * signalParams.signalMeanW0 + signalValue * signalParams.signalMeanW1;
 
       // store signal components in process buffer
       sample[signalClock & (BUFFER_SIZE - 1)].samplingValue = signalValue;

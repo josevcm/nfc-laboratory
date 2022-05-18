@@ -222,17 +222,17 @@ void NfcDecoder::Impl::initialize()
       // initialize DC removal IIR filter scale factor
       decoder.signalParams.signalIIRdcA = float(0.9);
 
-      // initialize exponential average factors for signal average
-      decoder.signalParams.signalMeanW0 = float(1 - 5E5 / decoder.sampleRate);
-      decoder.signalParams.signalMeanW1 = float(1 - decoder.signalParams.signalMeanW0);
+      // initialize exponential average factors for signal envelope
+      decoder.signalParams.signalEnveW0 = float(1 - 5E5 / decoder.sampleRate);
+      decoder.signalParams.signalEnveW1 = float(1 - decoder.signalParams.signalEnveW0);
 
       // initialize exponential average factors for signal mean deviation
       decoder.signalParams.signalMdevW0 = float(1 - 2E5 / decoder.sampleRate);
       decoder.signalParams.signalMdevW1 = float(1 - decoder.signalParams.signalMdevW0);
 
-      // initialize exponential average factors for signal mean deviation
-      decoder.signalParams.signalEnveW0 = float(1 - 5E4 / decoder.sampleRate);
-      decoder.signalParams.signalEnveW1 = float(1 - decoder.signalParams.signalEnveW0);
+      // initialize exponential average factors for signal mean
+      decoder.signalParams.signalMeanW0 = float(1 - 5E4 / decoder.sampleRate);
+      decoder.signalParams.signalMeanW1 = float(1 - decoder.signalParams.signalMeanW0);
 
       // configure carrier detector parameters
       decoder.signalLowThreshold = decoder.powerLevelThreshold / 1.25f;
