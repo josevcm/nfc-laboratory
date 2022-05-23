@@ -407,7 +407,7 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
          case Columns::Tech:
             return impl->frameTech(frame);
 
-         case Columns::Cmd:
+         case Columns::Event:
             return impl->frameEvent(frame, prev);
 
          case Columns::Flags:

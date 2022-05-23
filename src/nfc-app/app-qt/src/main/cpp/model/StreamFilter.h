@@ -14,7 +14,7 @@
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -22,72 +22,25 @@
 
 */
 
-#ifndef APP_QTWINDOW_H
-#define APP_QTWINDOW_H
+#ifndef NFC_LAB_STREAMFILTER_H
+#define NFC_LAB_STREAMFILTER_H
 
-#include <QMainWindow>
-#include <QSettings>
-#include <QSharedPointer>
+#include <QObject>
+#include <QSortFilterProxyModel>
 
-class QtMemory;
-
-class QtWindow : public QMainWindow
+class StreamFilter : public QSortFilterProxyModel
 {
    Q_OBJECT
 
-      struct Impl;
-
    public:
 
-      explicit QtWindow(QSettings &settings, QtMemory *cache);
-
-      void handleEvent(QEvent *event);
-
-   public Q_SLOTS:
-
-      void clearView();
-
-      void openFile();
-
-      void saveFile();
-
-      void openConfig();
-
-      void toggleListen();
-
-      void toggleRecord();
-
-      void toggleStop();
-
-      void toggleTime();
-
-      void toggleFollow();
-
-      void toggleFilter();
-
-      void toggleNfcA();
-
-      void toggleNfcB();
-
-      void toggleNfcF();
-
-      void toggleNfcV();
-
-      void changeFilter(const QString &value);
-
-      void changeGainMode(int index);
-
-      void changeGainValue(int value);
-
-      void trackGainValue(int value);
+      explicit StreamFilter(QObject *parent = nullptr);
 
    protected:
 
-      void keyPressEvent(QKeyEvent *event) override;
+      bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
 
-   private:
-
-      QSharedPointer<Impl> impl;
 };
 
-#endif /* MAINWINDOW_H */
+
+#endif //NFC_LAB_STREAMFILTER_H

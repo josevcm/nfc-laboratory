@@ -34,11 +34,10 @@
 #include <QScrollBar>
 #include <QItemSelection>
 
-#include <nfc/Nfc.h>
-
 #include <rt/Subject.h>
 #include <sdr/SignalBuffer.h>
 
+#include <model/StreamFilter.h>
 #include <model/StreamModel.h>
 #include <model/ParserModel.h>
 
@@ -110,6 +109,9 @@ struct QtWindow::Impl
    // Frame view model
    QPointer<ParserModel> parserModel;
 
+   // Frame filter
+   QPointer<StreamFilter> streamFilter;
+
    // refresh timer
    QPointer<QTimer> refreshTimer;
 
@@ -128,7 +130,14 @@ struct QtWindow::Impl
    // fft signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription frequencySubscription;
 
-   explicit Impl(QMainWindow *window, QSettings &settings, QtMemory *cache) : window(window), settings(settings), cache(cache), ui(new Ui_QtWindow()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
+   explicit Impl(QMainWindow *window, QSettings &settings, QtMemory *cache) : window(window),
+                                                                              settings(settings),
+                                                                              cache(cache),
+                                                                              ui(new Ui_QtWindow()),
+                                                                              streamModel(new StreamModel()),
+                                                                              parserModel(new ParserModel()),
+                                                                              streamFilter(new StreamFilter()),
+                                                                              refreshTimer(new QTimer())
    {
       // IQ signal subject stream
       signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
@@ -146,6 +155,9 @@ struct QtWindow::Impl
    {
       ui->setupUi(window);
 
+      // setup filter
+      streamFilter->setSourceModel(streamModel);
+
       // update window caption
       window->setWindowTitle(NFC_LAB_VENDOR_STRING);
 
@@ -162,13 +174,13 @@ struct QtWindow::Impl
       ui->workbench->setStretchFactor(1, 2);
 
       // setup frame view model
-      ui->streamView->setModel(streamModel);
+      ui->streamView->setModel(streamFilter);
       ui->streamView->setColumnWidth(StreamModel::Id, 75);
       ui->streamView->setColumnWidth(StreamModel::Time, 225);
       ui->streamView->setColumnWidth(StreamModel::Delta, 75);
       ui->streamView->setColumnWidth(StreamModel::Rate, 60);
       ui->streamView->setColumnWidth(StreamModel::Tech, 60);
-      ui->streamView->setColumnWidth(StreamModel::Cmd, 100);
+      ui->streamView->setColumnWidth(StreamModel::Event, 100);
       ui->streamView->setColumnWidth(StreamModel::Flags, 48);
       ui->streamView->setItemDelegate(new StreamStyle(ui->streamView));
 
@@ -482,6 +494,11 @@ struct QtWindow::Impl
       }
    }
 
+   void updateFilter(const QString &value)
+   {
+      qInfo() << "filter" << value;
+   }
+
    void updateGainMode(int value)
    {
       if (deviceGainMode != value)
@@ -595,6 +612,15 @@ struct QtWindow::Impl
       filterEnabled = value;
 
       ui->actionFilter->setChecked(filterEnabled);
+
+      ui->searchWidget->setVisible(value);
+
+//      streamFilter->setFilterRegularExpression();
+
+      if (filterEnabled)
+      {
+//         streamModel-
+      }
 
       settings.setValue("window/filterEnabled", filterEnabled);
    }
@@ -1148,6 +1174,11 @@ void QtWindow::toggleNfcF()
 void QtWindow::toggleNfcV()
 {
    impl->toggleNfcV();
+}
+
+void QtWindow::changeFilter(const QString &value)
+{
+   impl->updateFilter(value);
 }
 
 void QtWindow::changeGainMode(int index)

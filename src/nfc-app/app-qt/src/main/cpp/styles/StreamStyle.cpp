@@ -27,7 +27,7 @@
 #include <QLabel>
 #include <QPainter>
 
-#include <nfc/NfcFrame.h>
+#include <nfc/Nfc.h>
 
 #include <model/StreamModel.h>
 
@@ -70,39 +70,44 @@ void StreamStyle::paint(QPainter *painter, const QStyleOptionViewItem &option, c
 
    if (index.isValid())
    {
-      if (auto frame = static_cast<const nfc::NfcFrame *>(index.internalPointer()))
+      if (style.state & QStyle::State_Selected)
       {
-         if (style.state & QStyle::State_Selected)
-         {
-            if (style.state & QStyle::State_Active)
-               painter->fillRect(option.rect, option.palette.highlight());
-            else
-               painter->fillRect(option.rect, impl->selectedInactive);
-         }
+         if (style.state & QStyle::State_Active)
+            painter->fillRect(option.rect, option.palette.highlight());
          else
-         {
-            painter->fillRect(option.rect, option.palette.window());
-         }
+            painter->fillRect(option.rect, impl->selectedInactive);
+      }
+      else
+      {
+         painter->fillRect(option.rect, option.palette.window());
+      }
 
-         switch (index.column())
+      switch (index.column())
+      {
+         case StreamModel::Columns::Flags:
          {
-            case StreamModel::Columns::Flags:
+            QVariant data = index.data();
+
+            if (data.isValid())
             {
+               int flags = data.toInt() >> 8;
+               int type = data.toInt() & 0xff;
+
                QRect typeRect = impl->type.adjusted(option.rect.x(), option.rect.y(), option.rect.x(), option.rect.y());
                QRect flagRect = impl->flag.adjusted(option.rect.x(), option.rect.y(), option.rect.x(), option.rect.y());
 
-               if (frame->isPollFrame())
+               if (type == nfc::FrameType::PollFrame)
                   painter->drawPixmap(typeRect, impl->requestIcon);
-               else if (frame->isListenFrame())
+               else if (type == nfc::FrameType::ListenFrame)
                   painter->drawPixmap(typeRect, impl->responseIcon);
 
-               if (frame->isEncrypted())
+               if (flags & nfc::FrameFlags::Encrypted)
                   painter->drawPixmap(flagRect, impl->encryptedIcon);
-               else if (frame->hasCrcError() || frame->hasParityError())
+               else if (flags & (nfc::FrameFlags::CrcError | nfc::FrameFlags::ParityError))
                   painter->drawPixmap(flagRect, impl->warningIcon);
-
-               return;
             }
+
+            return;
          }
       }
    }
