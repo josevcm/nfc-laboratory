@@ -36,6 +36,14 @@ class StreamFilter : public QSortFilterProxyModel
 
       explicit StreamFilter(QObject *parent = nullptr);
 
+      QModelIndex mapToSource(const QModelIndex &proxyIndex) const override;
+
+      QModelIndex mapFromSource(const QModelIndex &sourceIndex) const override;
+
+//      QItemSelection mapSelectionToSource(const QItemSelection &proxySelection) const override;
+//
+//      QItemSelection mapSelectionFromSource(const QItemSelection &sourceSelection) const override;
+
    protected:
 
       bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
