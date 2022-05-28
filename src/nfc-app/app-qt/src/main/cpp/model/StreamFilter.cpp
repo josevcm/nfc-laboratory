@@ -25,6 +25,7 @@
 #include <QDebug>
 #include <QItemSelection>
 
+#include "StreamModel.h"
 #include "StreamFilter.h"
 
 StreamFilter::StreamFilter(QObject *parent) : QSortFilterProxyModel(parent)
@@ -36,26 +37,28 @@ bool StreamFilter::filterAcceptsRow(int sourceRow, const QModelIndex &sourcePare
    return true;
 }
 
-QModelIndex StreamFilter::mapToSource(const QModelIndex &proxyIndex) const
+QModelIndexList StreamFilter::modelRange(double from, double to)
 {
-   qInfo() << "mapToSource" << proxyIndex.internalPointer();
+   QModelIndexList list;
 
-   return QSortFilterProxyModel::mapToSource(proxyIndex);
+   if (auto streamModel = dynamic_cast<StreamModel *>(sourceModel()))
+   {
+      for (QModelIndex sourceIndex: streamModel->modelRange(from, to))
+      {
+         list.append(mapFromSource(sourceIndex));
+      }
+   }
+
+   return list;
 }
 
-QModelIndex StreamFilter::mapFromSource(const QModelIndex &sourceIndex) const
+nfc::NfcFrame *StreamFilter::frame(const QModelIndex &index) const
 {
-   qInfo() << "mapFromSource" << sourceIndex.internalPointer();
+   if (auto streamModel = dynamic_cast<StreamModel *>(sourceModel()))
+   {
+      return streamModel->frame(mapToSource(index));
+   }
 
-   return QSortFilterProxyModel::mapFromSource(sourceIndex);
+   return {};
 }
 
-//QItemSelection StreamFilter::mapSelectionToSource(const QItemSelection &proxySelection) const
-//{
-//   return QSortFilterProxyModel::mapSelectionToSource(proxySelection);
-//}
-//
-//QItemSelection StreamFilter::mapSelectionFromSource(const QItemSelection &sourceSelection) const
-//{
-//   return QSortFilterProxyModel::mapSelectionFromSource(sourceSelection);
-//}

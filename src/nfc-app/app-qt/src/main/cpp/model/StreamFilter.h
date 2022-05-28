@@ -28,6 +28,10 @@
 #include <QObject>
 #include <QSortFilterProxyModel>
 
+namespace nfc {
+class NfcFrame;
+}
+
 class StreamFilter : public QSortFilterProxyModel
 {
    Q_OBJECT
@@ -36,18 +40,13 @@ class StreamFilter : public QSortFilterProxyModel
 
       explicit StreamFilter(QObject *parent = nullptr);
 
-      QModelIndex mapToSource(const QModelIndex &proxyIndex) const override;
+      QModelIndexList modelRange(double from, double to);
 
-      QModelIndex mapFromSource(const QModelIndex &sourceIndex) const override;
-
-//      QItemSelection mapSelectionToSource(const QItemSelection &proxySelection) const override;
-//
-//      QItemSelection mapSelectionFromSource(const QItemSelection &sourceSelection) const override;
+      nfc::NfcFrame *frame(const QModelIndex &index) const;
 
    protected:
 
       bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
-
 };
 
 

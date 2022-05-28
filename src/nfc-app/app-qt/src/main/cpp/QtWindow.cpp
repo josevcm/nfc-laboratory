@@ -809,27 +809,27 @@ struct QtWindow::Impl
 
          for (const QModelIndex &current: indexList)
          {
-//            if (!previous.isValid() || current.row() != previous.row())
-//            {
-//               if (nfc::NfcFrame *frame = streamModel->frame(current))
-//               {
-//                  text.append(QString("%1;").arg(current.row()));
-//
-//                  for (int i = 0; i < frame->limit(); i++)
-//                  {
-//                     text.append(QString("%1 ").arg((*frame)[i], 2, 16, QLatin1Char('0')));
-//                  }
-//
-//                  text.append(QLatin1Char('\n'));
-//
-//                  // detect data start / end timing
-//                  if (startTime < 0 || frame->timeStart() < startTime)
-//                     startTime = frame->timeStart();
-//
-//                  if (endTime < 0 || frame->timeEnd() > endTime)
-//                     endTime = frame->timeEnd();
-//               }
-//            }
+            if (!previous.isValid() || current.row() != previous.row())
+            {
+               if (nfc::NfcFrame *frame = streamFilter->frame(current))
+               {
+                  text.append(QString("%1;").arg(current.row()));
+
+                  for (int i = 0; i < frame->limit(); i++)
+                  {
+                     text.append(QString("%1 ").arg((*frame)[i], 2, 16, QLatin1Char('0')));
+                  }
+
+                  text.append(QLatin1Char('\n'));
+
+                  // detect data start / end timing
+                  if (startTime < 0 || frame->timeStart() < startTime)
+                     startTime = frame->timeStart();
+
+                  if (endTime < 0 || frame->timeEnd() > endTime)
+                     endTime = frame->timeEnd();
+               }
+            }
 
             previous = current;
          }
@@ -842,44 +842,44 @@ struct QtWindow::Impl
 
          auto firstIndex = indexList.first();
 
-//         if (auto firstFrame = streamModel->frame(firstIndex))
-//         {
-//            ui->hexView->setData(toByteArray(*firstFrame));
-//
-//            if (firstFrame->isPollFrame())
-//            {
-//               parserModel->append(*firstFrame);
-//
-//               auto secondIndex = streamModel->index(firstIndex.row() + 1, 0);
-//
-//               if (secondIndex.isValid())
-//               {
-//                  if (auto secondFrame = streamModel->frame(secondIndex))
-//                  {
-//                     if (secondFrame->isListenFrame())
-//                     {
-//                        parserModel->append(*secondFrame);
-//                     }
-//                  }
-//               }
-//            }
-//            else if (firstFrame->isListenFrame())
-//            {
-//               auto secondIndex = streamModel->index(firstIndex.row() - 1, 0);
-//
-//               if (secondIndex.isValid())
-//               {
-//                  if (auto secondFrame = streamModel->frame(secondIndex))
-//                  {
-//                     if (secondFrame->isPollFrame())
-//                     {
-//                        parserModel->append(*secondFrame);
-//                        parserModel->append(*firstFrame);
-//                     }
-//                  }
-//               }
-//            }
-//         }
+         if (auto firstFrame = streamFilter->frame(firstIndex))
+         {
+            ui->hexView->setData(toByteArray(*firstFrame));
+
+            if (firstFrame->isPollFrame())
+            {
+               parserModel->append(*firstFrame);
+
+               auto secondIndex = streamFilter->index(firstIndex.row() + 1, 0);
+
+               if (secondIndex.isValid())
+               {
+                  if (auto secondFrame = streamFilter->frame(secondIndex))
+                  {
+                     if (secondFrame->isListenFrame())
+                     {
+                        parserModel->append(*secondFrame);
+                     }
+                  }
+               }
+            }
+            else if (firstFrame->isListenFrame())
+            {
+               auto secondIndex = streamFilter->index(firstIndex.row() - 1, 0);
+
+               if (secondIndex.isValid())
+               {
+                  if (auto secondFrame = streamFilter->frame(secondIndex))
+                  {
+                     if (secondFrame->isPollFrame())
+                     {
+                        parserModel->append(*secondFrame);
+                        parserModel->append(*firstFrame);
+                     }
+                  }
+               }
+            }
+         }
 
          // expand protocol information
          ui->parserView->expandAll();
@@ -903,8 +903,8 @@ struct QtWindow::Impl
 
       if (firstRow.isValid() && lastRow.isValid())
       {
-         nfc::NfcFrame *firstFrame = streamModel->frame(firstRow);
-         nfc::NfcFrame *lastFrame = streamModel->frame(lastRow);
+         nfc::NfcFrame *firstFrame = streamFilter->frame(firstRow);
+         nfc::NfcFrame *lastFrame = streamFilter->frame(lastRow);
 
          if (firstFrame && lastFrame)
          {
@@ -921,17 +921,17 @@ struct QtWindow::Impl
       {
          QPointer<InspectDialog> dialog = new InspectDialog(window);
 
-         if (auto firstFrame = streamModel->frame(firstIndex))
+         if (auto firstFrame = streamFilter->frame(firstIndex))
          {
             if (firstFrame->isPollFrame())
             {
                dialog->addFrame(*firstFrame);
 
-               auto secondIndex = streamModel->index(firstIndex.row() + 1, 0);
+               auto secondIndex = streamFilter->index(firstIndex.row() + 1, 0);
 
                if (secondIndex.isValid())
                {
-                  if (auto secondFrame = streamModel->frame(secondIndex))
+                  if (auto secondFrame = streamFilter->frame(secondIndex))
                   {
                      if (secondFrame->isListenFrame())
                      {
@@ -942,11 +942,11 @@ struct QtWindow::Impl
             }
             else if (firstFrame->isListenFrame())
             {
-               auto secondIndex = streamModel->index(firstIndex.row() - 1, 0);
+               auto secondIndex = streamFilter->index(firstIndex.row() - 1, 0);
 
                if (secondIndex.isValid())
                {
-                  if (auto secondFrame = streamModel->frame(secondIndex))
+                  if (auto secondFrame = streamFilter->frame(secondIndex))
                   {
                      if (secondFrame->isPollFrame())
                      {
@@ -964,7 +964,7 @@ struct QtWindow::Impl
 
    void timingSelectionChanged(double from, double to) const
    {
-      QModelIndexList selectionList = streamModel->modelRange(from, to);
+      QModelIndexList selectionList = streamFilter->modelRange(from, to);
 
       if (!selectionList.isEmpty())
       {
@@ -989,7 +989,7 @@ struct QtWindow::Impl
          ui->streamView->selectionModel()->blockSignals(false);
       }
 
-      QModelIndexList selectionList = streamModel->modelRange(from, to);
+      QModelIndexList selectionList = streamFilter->modelRange(from, to);
 
       if (!selectionList.isEmpty())
       {
