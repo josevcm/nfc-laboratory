@@ -46,10 +46,10 @@ bool StreamFilter::filterAcceptsRow(int sourceRow, const QModelIndex &sourcePare
 
       QVariant value = sourceModel()->data(sourceIndex, filterRole());
 
-      line.append(" " + value.toString());
+      line.append(value.toString() + " ");
    }
 
-   return filterRegularExpression().match(line).hasMatch();
+   return filterRegularExpression().match(line.trimmed()).hasMatch();
 }
 
 QModelIndexList StreamFilter::modelRange(double from, double to)
