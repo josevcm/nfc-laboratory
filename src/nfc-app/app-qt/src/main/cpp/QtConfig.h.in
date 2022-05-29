@@ -5,4 +5,4 @@
 #define NFC_LAB_VERSION_MINOR @nfc-lab_VERSION_MINOR@
 #define NFC_LAB_VERSION_PATCH @nfc-lab_VERSION_PATCH@
 #define NFC_LAB_VERSION_STRING "@nfc-lab_VERSION@"
-#define NFC_LAB_VENDOR_STRING "NFC laboratory @nfc-lab_VERSION@, Jose Vicente Campos Martinez - josevcm@gmail.com"
+#define NFC_LAB_VENDOR_STRING "NFC laboratory @nfc-lab_VERSION@ - josevcm@gmail.com"

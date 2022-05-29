@@ -51,7 +51,7 @@ class StreamModel : public QAbstractTableModel
 
       enum Columns
       {
-         Id = 0, Time = 1, Delta = 2, Rate = 3, Tech = 4, Cmd = 5, Flags = 6, Data = 7
+         Id = 0, Time = 1, Delta = 2, Rate = 3, Tech = 4, Event = 5, Flags = 6, Data = 7
       };
 
       enum TimeFormat

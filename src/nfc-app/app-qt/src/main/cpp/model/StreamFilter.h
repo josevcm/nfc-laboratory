@@ -22,35 +22,32 @@
 
 */
 
-#ifndef APP_FRAMESTYLE_H
-#define APP_FRAMESTYLE_H
+#ifndef NFC_LAB_STREAMFILTER_H
+#define NFC_LAB_STREAMFILTER_H
 
-#include <QWidget>
+#include <QObject>
+#include <QSortFilterProxyModel>
 
-#include <QStyledItemDelegate>
+namespace nfc {
+class NfcFrame;
+}
 
-class StreamModel;
-
-class StreamStyle : public QStyledItemDelegate
+class StreamFilter : public QSortFilterProxyModel
 {
-      struct Impl;
-
    Q_OBJECT
 
    public:
 
-      explicit StreamStyle(QObject *parent = nullptr);
+      explicit StreamFilter(QObject *parent = nullptr);
 
-      ~StreamStyle() override;
+      QModelIndexList modelRange(double from, double to);
 
-      QString displayText(const QVariant &value, const QLocale &locale) const override;
+      nfc::NfcFrame *frame(const QModelIndex &index) const;
 
-      void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+   protected:
 
-   private:
-
-      QSharedPointer<Impl> impl;
+      bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
 };
 
 
-#endif //NFC_LAB_FRAMESTYLE_H
+#endif //NFC_LAB_STREAMFILTER_H

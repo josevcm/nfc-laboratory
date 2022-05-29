@@ -339,27 +339,39 @@ struct StreamModel::Impl
 
    inline static QString frameData(const nfc::NfcFrame *frame)
    {
-      QString text;
+      QByteArray data;
 
-      for (int i = 0; i < frame->available(); i++)
+      for (int i = 0; i < frame->limit(); i++)
       {
-         text.append(QString("%1 ").arg((*frame)[i], 2, 16, QLatin1Char('0')));
+         data.append((*frame)[i]);
       }
 
-      if (!frame->isEncrypted())
-      {
-         if (frame->hasCrcError())
-            text.append("[ECRC]");
-
-         if (frame->hasParityError())
-            text.append("[EPAR]");
-
-         if (frame->hasSyncError())
-            text.append("[ESYNC]");
-      }
-
-      return text.trimmed();
+      return { data.toHex(' ') };
    }
+
+//   inline static QString frameData(const nfc::NfcFrame *frame)
+//   {
+//      QString text;
+//
+//      for (int i = 0; i < frame->available(); i++)
+//      {
+//         text.append(QString("%1 ").arg((*frame)[i], 2, 16, QLatin1Char('0')));
+//      }
+//
+//      if (!frame->isEncrypted())
+//      {
+//         if (frame->hasCrcError())
+//            text.append("[ECRC]");
+//
+//         if (frame->hasParityError())
+//            text.append("[EPAR]");
+//
+//         if (frame->hasSyncError())
+//            text.append("[ESYNC]");
+//      }
+//
+//      return text.trimmed();
+//   }
 };
 
 StreamModel::StreamModel(QObject *parent) : QAbstractTableModel(parent), impl(new Impl)
@@ -407,7 +419,7 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
          case Columns::Tech:
             return impl->frameTech(frame);
 
-         case Columns::Cmd:
+         case Columns::Event:
             return impl->frameEvent(frame, prev);
 
          case Columns::Flags:

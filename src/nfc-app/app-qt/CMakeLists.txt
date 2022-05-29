@@ -35,6 +35,7 @@ add_executable(nfc-lab WIN32
         src/main/cpp/graph/QCPAxisCursorMarker.cpp
         src/main/cpp/graph/QCPGraphMarkerList.cpp
         src/main/cpp/graph/QCPGraphValueMarker.cpp
+        src/main/cpp/model/StreamFilter.cpp
         src/main/cpp/model/StreamModel.cpp
         src/main/cpp/model/ParserModel.cpp
         src/main/cpp/parser/ParserNfc.cpp
