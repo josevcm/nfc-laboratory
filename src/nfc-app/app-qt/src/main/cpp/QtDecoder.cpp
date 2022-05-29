@@ -372,12 +372,12 @@ struct QtDecoder::Impl
       cache->clear();
 
       // clear storage queue
-      taskStorageClear();
-
-      // start decoder and...
-      taskDecoderStart([=] {
-         // enable receiver
-         taskReceiverStart();
+      taskStorageClear([=] {
+         // start decoder and...
+         taskDecoderStart([=] {
+            // enable receiver
+            taskReceiverStart();
+         });
       });
    }
 
@@ -395,14 +395,14 @@ struct QtDecoder::Impl
       cache->clear();
 
       // clear storage queue
-      taskStorageClear();
-
-      // start recorder and...
-      taskRecorderWrite(json, [=] {
-         // start decoder and...
-         taskDecoderStart([=] {
-            // enable receiver
-            taskReceiverStart();
+      taskStorageClear([=] {
+         // start recorder and...
+         taskRecorderWrite(json, [=] {
+            // start decoder and...
+            taskDecoderStart([=] {
+               // enable receiver
+               taskReceiverStart();
+            });
          });
       });
    }
@@ -412,10 +412,14 @@ struct QtDecoder::Impl
     */
    void doStopDecode(DecoderControlEvent *event) const
    {
-      // stop all taks
-      taskDecoderStop();
-      taskReceiverStop();
-      taskRecorderStop();
+      // stop receiver task
+      taskReceiverStop([=] {
+         // stop recorder task
+         taskRecorderStop([=] {
+            // stop decoder task
+            taskDecoderStop();
+         });
+      });
    }
 
    /*
@@ -535,22 +539,21 @@ struct QtDecoder::Impl
       if (fileName.endsWith(".wav"))
       {
          // clear storage queue
-         taskStorageClear();
-
-         // start decoder and...
-         taskDecoderStart([=] {
-
-            // read file
-            taskRecorderRead(json);
+         taskStorageClear([=] {
+            // start decoder and...
+            taskDecoderStart([=] {
+               // read file
+               taskRecorderRead(json);
+            });
          });
       }
       else if (fileName.endsWith(".xml") || fileName.endsWith(".json"))
       {
          // clear storage queue
-         taskStorageClear();
-
-         // start XML file read
-         taskStorageRead(json);
+         taskStorageClear([=] {
+            // start XML file read
+            taskStorageRead(json);
+         });
       }
    }
 

@@ -212,11 +212,11 @@ struct NfcF::Impl : NfcTech
          return false;
 
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold)
+      if (decoder->signalEnvelope < decoder->powerLevelThreshold)
          return false;
 
       // minimum correlation value for valid NFC-F symbols
-      float minimumCorrelationValue = decoder->signalAverage * minimumCorrelationThreshold;
+      float minimumCorrelationValue = decoder->signalEnvelope * minimumCorrelationThreshold;
 
       // POLL frame ASK detector for 212Kbps and 424Kbps
       for (int rate = r212k; rate <= r424k; rate++)

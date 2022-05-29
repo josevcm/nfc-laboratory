@@ -223,11 +223,11 @@ struct NfcA::Impl : NfcTech
          return false;
 
       // ignore low power signals
-      if (decoder->signalAverage < decoder->powerLevelThreshold)
+      if (decoder->signalEnvelope < decoder->powerLevelThreshold)
          return false;
 
       // for NFC-A minimum correlation is required to filter-out higher bit-rates, only valid rate can reach the threshold
-      float minimumCorrelationValue = decoder->signalAverage * minimumCorrelationThreshold;
+      float minimumCorrelationValue = decoder->signalEnvelope * minimumCorrelationThreshold;
 
       for (int rate = r106k; rate <= r424k; rate++)
       {

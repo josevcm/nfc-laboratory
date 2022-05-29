@@ -30,6 +30,7 @@
 #include <QDateTime>
 #include <QReadLocker>
 
+#include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
 
 #include "StreamModel.h"
@@ -57,14 +58,27 @@ static QMap<int, QString> NfcACmd = {
       {0xE0, "RATS"}
 };
 
+static QMap<int, QString> NfcAResp = {
+      {0x26, "ATQA"},
+      {0x52, "ATQA"}
+};
+
 static QMap<int, QString> NfcBCmd = {
       {0x05, "REQB"},
       {0x1d, "ATTRIB"},
       {0x50, "HLTB"}
 };
 
+static QMap<int, QString> NfcBResp = {
+      {0x05, "ATQB"},
+};
+
 static QMap<int, QString> NfcFCmd = {
       {0x00, "REQC"},
+};
+
+static QMap<int, QString> NfcFResp = {
+      {0x00, "ATQC"},
 };
 
 static QMap<int, QString> NfcVCmd = {
@@ -107,9 +121,9 @@ struct StreamModel::Impl
    // stream lock
    QReadWriteLock lock;
 
-   Impl()
+   explicit Impl()
    {
-      headers << "#" << "Time" << "Delta" << "Rate" << "Type" << "Cmd" << "" << "Frame";
+      headers << "#" << "Time" << "Delta" << "Rate" << "Type" << "Event" << "" << "Frame";
 
       // request fonts
       requestDefaultFont.setBold(true);
@@ -163,7 +177,10 @@ struct StreamModel::Impl
 
    inline static QString frameRate(const nfc::NfcFrame *frame)
    {
-      return QString("%1k").arg(double(frame->frameRate() / 1000.0f), 3, 'f', 0);
+      if (frame->isPollFrame() || frame->isListenFrame())
+         return QString("%1k").arg(double(frame->frameRate() / 1000.0f), 3, 'f', 0);
+
+      return {};
    }
 
    inline static QString frameTech(const nfc::NfcFrame *frame)
@@ -183,14 +200,23 @@ struct StreamModel::Impl
       return {};
    }
 
-   inline static QString frameCmd(const nfc::NfcFrame *frame)
+   QString frameEvent(const nfc::NfcFrame *frame, const nfc::NfcFrame *prev)
    {
-      if (frame->isPollFrame())
+      if (frame->isCarrierOn())
+         return {"RF-On"};
+
+      if (frame->isCarrierOff())
+         return {"RF-Off"};
+
+      switch (frame->techType())
       {
-         // raw protocol commands
-         if (!frame->isEncrypted())
-         {
-            if (frame->isNfcA())
+         case nfc::TechType::NfcA:
+
+            // skip encrypted frames
+            if (frame->isEncrypted())
+               return {};
+
+            if (frame->isPollFrame())
             {
                int command = (*frame)[0];
 
@@ -217,7 +243,28 @@ struct StreamModel::Impl
                if (NfcACmd.contains(command))
                   return NfcACmd[command];
             }
-            else if (frame->isNfcB())
+            else if (prev && prev->isPollFrame())
+            {
+               int command = (*prev)[0];
+
+               if (command == 0x93 || command == 0x95 || command == 0x97)
+               {
+                  if (frame->limit() == 3)
+                     return "SAK";
+
+                  if (frame->limit() == 5)
+                     return "UID";
+               }
+
+               if (NfcAResp.contains(command))
+                  return NfcAResp[command];
+            }
+
+            return {};
+
+         case nfc::TechType::NfcB:
+
+            if (frame->isPollFrame())
             {
                int command = (*frame)[0];
 
@@ -236,7 +283,19 @@ struct StreamModel::Impl
                if (NfcBCmd.contains(command))
                   return NfcBCmd[command];
             }
-            else if (frame->isNfcF())
+            else if (prev && prev->isPollFrame())
+            {
+               int command = (*prev)[0];
+
+               if (NfcBResp.contains(command))
+                  return NfcBResp[command];
+            }
+
+            return {};
+
+         case nfc::TechType::NfcF:
+
+            if (frame->isPollFrame())
             {
                int command = (*frame)[1];
 
@@ -245,7 +304,19 @@ struct StreamModel::Impl
 
                return QString("CMD %1").arg(command, 2, 16, QChar('0'));
             }
-            else if (frame->isNfcV())
+            else
+            {
+               int command = (*frame)[1];
+
+               if (NfcFResp.contains(command))
+                  return NfcFResp[command];
+            }
+
+            return {};
+
+         case nfc::TechType::NfcV:
+
+            if (frame->isPollFrame())
             {
                int command = (*frame)[1];
 
@@ -254,7 +325,8 @@ struct StreamModel::Impl
 
                return QString("CMD %1").arg(command, 2, 16, QChar('0'));
             }
-         }
+
+            return {};
       }
 
       return {};
@@ -267,27 +339,39 @@ struct StreamModel::Impl
 
    inline static QString frameData(const nfc::NfcFrame *frame)
    {
-      QString text;
+      QByteArray data;
 
-      for (int i = 0; i < frame->available(); i++)
+      for (int i = 0; i < frame->limit(); i++)
       {
-         text.append(QString("%1 ").arg((*frame)[i], 2, 16, QLatin1Char('0')));
+         data.append((*frame)[i]);
       }
 
-      if (!frame->isEncrypted())
-      {
-         if (frame->hasCrcError())
-            text.append("[ECRC]");
-
-         if (frame->hasParityError())
-            text.append("[EPAR]");
-
-         if (frame->hasSyncError())
-            text.append("[ESYNC]");
-      }
-
-      return text.trimmed();
+      return { data.toHex(' ') };
    }
+
+//   inline static QString frameData(const nfc::NfcFrame *frame)
+//   {
+//      QString text;
+//
+//      for (int i = 0; i < frame->available(); i++)
+//      {
+//         text.append(QString("%1 ").arg((*frame)[i], 2, 16, QLatin1Char('0')));
+//      }
+//
+//      if (!frame->isEncrypted())
+//      {
+//         if (frame->hasCrcError())
+//            text.append("[ECRC]");
+//
+//         if (frame->hasParityError())
+//            text.append("[EPAR]");
+//
+//         if (frame->hasSyncError())
+//            text.append("[ESYNC]");
+//      }
+//
+//      return text.trimmed();
+//   }
 };
 
 StreamModel::StreamModel(QObject *parent) : QAbstractTableModel(parent), impl(new Impl)
@@ -335,8 +419,8 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
          case Columns::Tech:
             return impl->frameTech(frame);
 
-         case Columns::Cmd:
-            return impl->frameCmd(frame);
+         case Columns::Event:
+            return impl->frameEvent(frame, prev);
 
          case Columns::Flags:
             return impl->frameFlags(frame);

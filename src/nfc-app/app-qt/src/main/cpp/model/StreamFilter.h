@@ -22,47 +22,32 @@
 
 */
 
-#ifndef NFC_LAB_QCPAXISRANGEMARKER_H
-#define NFC_LAB_QCPAXISRANGEMARKER_H
+#ifndef NFC_LAB_STREAMFILTER_H
+#define NFC_LAB_STREAMFILTER_H
 
-#include <QSharedPointer>
+#include <QObject>
+#include <QSortFilterProxyModel>
 
-#include <3party/customplot/QCustomPlot.h>
+namespace nfc {
+class NfcFrame;
+}
 
-class QCPAxisRangeMarker
+class StreamFilter : public QSortFilterProxyModel
 {
-      struct Impl;
+   Q_OBJECT
 
    public:
 
-      explicit QCPAxisRangeMarker(QCPAxis *axis);
+      explicit StreamFilter(QObject *parent = nullptr);
 
-      double positionStart() const;
+      QModelIndexList modelRange(double from, double to);
 
-      void setPositionStart(double value);
+      nfc::NfcFrame *frame(const QModelIndex &index) const;
 
-      double positionEnd() const;
+   protected:
 
-      void setPositionEnd(double value);
-
-      bool visible() const;
-
-      void setVisible(bool visible);
-
-      bool selected() const;
-
-      void setSelected(bool selected);
-
-      int deep() const;
-
-      void setDeep(int deep);
-
-      double width() const;
-
-   private:
-
-      QSharedPointer<Impl> impl;
+      bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
 };
 
 
-#endif //NFC_LAB_QCPAXISRANGEMARKER_H
+#endif //NFC_LAB_STREAMFILTER_H

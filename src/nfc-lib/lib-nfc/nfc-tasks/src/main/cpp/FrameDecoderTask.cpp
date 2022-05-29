@@ -127,7 +127,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
    {
 //      long epoch = (long) std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-      log.info("start frame decoding, pending frames {}", {signalQueue.size()});
+      log.info("start frame decoding with {} pending buffers!", {signalQueue.size()});
 
       signalQueue.clear();
 
@@ -140,11 +140,14 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
    void stopDecoder(rt::Event &command)
    {
-      log.info("stop frame decoding, pending frames {}", {signalQueue.size()});
+      log.info("stop frame decoding with {} pending buffers!", {signalQueue.size()});
 
       signalQueue.clear();
 
-//      decoder->setSampleRate(0);
+      for (const auto &frame: decoder->nextFrames({}))
+      {
+         frameStream->next(frame);
+      }
 
       command.resolve();
 
@@ -297,9 +300,9 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       status = value;
 
       json data({
-                      {"status",        status == Listen ? "decoding" : "idle"},
-                      {"queueSize",     signalQueue.size()},
-                      {"sampleRate",    decoder->sampleRate()},
+                      {"status",     status == Listen ? "decoding" : "idle"},
+                      {"queueSize",  signalQueue.size()},
+                      {"sampleRate", decoder->sampleRate()},
                       {"streamTime", decoder->streamTime()}
                 });
 

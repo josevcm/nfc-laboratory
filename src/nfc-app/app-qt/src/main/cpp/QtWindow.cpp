@@ -37,6 +37,7 @@
 #include <rt/Subject.h>
 #include <sdr/SignalBuffer.h>
 
+#include <model/StreamFilter.h>
 #include <model/StreamModel.h>
 #include <model/ParserModel.h>
 
@@ -96,6 +97,9 @@ struct QtWindow::Impl
    int deviceGainMode = -1;
    int deviceGainValue = -1;
 
+   // last decoder status received
+   QString decoderStatus;
+
    // interface
    QSharedPointer<Ui_QtWindow> ui;
 
@@ -104,6 +108,9 @@ struct QtWindow::Impl
 
    // Frame view model
    QPointer<ParserModel> parserModel;
+
+   // Frame filter
+   QPointer<StreamFilter> streamFilter;
 
    // refresh timer
    QPointer<QTimer> refreshTimer;
@@ -123,7 +130,14 @@ struct QtWindow::Impl
    // fft signal stream subscription
    rt::Subject<sdr::SignalBuffer>::Subscription frequencySubscription;
 
-   explicit Impl(QMainWindow *window, QSettings &settings, QtMemory *cache) : window(window), settings(settings), cache(cache), ui(new Ui_QtWindow()), streamModel(new StreamModel()), parserModel(new ParserModel()), refreshTimer(new QTimer())
+   explicit Impl(QMainWindow *window, QSettings &settings, QtMemory *cache) : window(window),
+                                                                              settings(settings),
+                                                                              cache(cache),
+                                                                              ui(new Ui_QtWindow()),
+                                                                              streamModel(new StreamModel()),
+                                                                              parserModel(new ParserModel()),
+                                                                              streamFilter(new StreamFilter()),
+                                                                              refreshTimer(new QTimer())
    {
       // IQ signal subject stream
       signalIqStream = rt::Subject<sdr::SignalBuffer>::name("signal.iq");
@@ -141,6 +155,9 @@ struct QtWindow::Impl
    {
       ui->setupUi(window);
 
+      // setup filter
+      streamFilter->setSourceModel(streamModel);
+
       // update window caption
       window->setWindowTitle(NFC_LAB_VENDOR_STRING);
 
@@ -157,13 +174,13 @@ struct QtWindow::Impl
       ui->workbench->setStretchFactor(1, 2);
 
       // setup frame view model
-      ui->streamView->setModel(streamModel);
+      ui->streamView->setModel(streamFilter);
       ui->streamView->setColumnWidth(StreamModel::Id, 75);
       ui->streamView->setColumnWidth(StreamModel::Time, 225);
       ui->streamView->setColumnWidth(StreamModel::Delta, 75);
       ui->streamView->setColumnWidth(StreamModel::Rate, 60);
       ui->streamView->setColumnWidth(StreamModel::Tech, 60);
-      ui->streamView->setColumnWidth(StreamModel::Cmd, 100);
+      ui->streamView->setColumnWidth(StreamModel::Event, 100);
       ui->streamView->setColumnWidth(StreamModel::Flags, 48);
       ui->streamView->setItemDelegate(new StreamStyle(ui->streamView));
 
@@ -234,8 +251,11 @@ struct QtWindow::Impl
    {
       if (event->hasStatus())
       {
-         if (event->status() == DecoderStatusEvent::Idle)
+         if (event->status() == DecoderStatusEvent::Idle && decoderStatus == DecoderStatusEvent::Decoding)
          {
+            ui->framesView->setRange(INT32_MIN, INT32_MAX);
+            ui->signalView->setRange(INT32_MIN, INT32_MAX);
+
             ui->framesView->refresh();
             ui->signalView->refresh();
          }
@@ -269,6 +289,8 @@ struct QtWindow::Impl
 
             ui->actionNfcV->setChecked(nfcv["enabled"].toBool());
          }
+
+         decoderStatus = event->status();
       }
    }
 
@@ -305,13 +327,10 @@ struct QtWindow::Impl
    {
       const auto &frame = event->frame();
 
-      // add data frames to stream model (omit carrier lost and empty frames)
-      if (frame.isPollFrame() || frame.isListenFrame())
-      {
-         streamModel->append(frame);
-      }
+      // add frames to stream model
+      streamModel->append(frame);
 
-      // add all frames to timing graph
+      // add frames to timing model
       ui->framesView->append(frame);
    }
 
@@ -475,6 +494,11 @@ struct QtWindow::Impl
       }
    }
 
+   void updateFilter(const QString &value)
+   {
+      streamFilter->setFilterRegularExpression(value);
+   }
+
    void updateGainMode(int value)
    {
       if (deviceGainMode != value)
@@ -588,6 +612,17 @@ struct QtWindow::Impl
       filterEnabled = value;
 
       ui->actionFilter->setChecked(filterEnabled);
+
+      ui->searchWidget->setVisible(value);
+
+      if (filterEnabled)
+      {
+         streamFilter->setFilterRegularExpression(ui->filterEdit->text());
+      }
+      else
+      {
+         streamFilter->setFilterRegularExpression(QRegularExpression());
+      }
 
       settings.setValue("window/filterEnabled", filterEnabled);
    }
@@ -745,7 +780,7 @@ struct QtWindow::Impl
       }
    }
 
-   void parserSelectionChanged()
+   void parserSelectionChanged() const
    {
       QModelIndexList indexList = ui->parserView->selectionModel()->selectedIndexes();
 
@@ -778,11 +813,9 @@ struct QtWindow::Impl
          {
             if (!previous.isValid() || current.row() != previous.row())
             {
-               if (nfc::NfcFrame *frame = streamModel->frame(current))
+               if (nfc::NfcFrame *frame = streamFilter->frame(current))
                {
-                  text.append(QString("%1;").arg(current.row()));
-
-                  for (int i = 0; i < frame->available(); i++)
+                  for (int i = 0; i < frame->limit(); i++)
                   {
                      text.append(QString("%1 ").arg((*frame)[i], 2, 16, QLatin1Char('0')));
                   }
@@ -809,7 +842,7 @@ struct QtWindow::Impl
 
          auto firstIndex = indexList.first();
 
-         if (auto firstFrame = streamModel->frame(firstIndex))
+         if (auto firstFrame = streamFilter->frame(firstIndex))
          {
             ui->hexView->setData(toByteArray(*firstFrame));
 
@@ -817,11 +850,11 @@ struct QtWindow::Impl
             {
                parserModel->append(*firstFrame);
 
-               auto secondIndex = streamModel->index(firstIndex.row() + 1, 0);
+               auto secondIndex = streamFilter->index(firstIndex.row() + 1, 0);
 
                if (secondIndex.isValid())
                {
-                  if (auto secondFrame = streamModel->frame(secondIndex))
+                  if (auto secondFrame = streamFilter->frame(secondIndex))
                   {
                      if (secondFrame->isListenFrame())
                      {
@@ -832,11 +865,11 @@ struct QtWindow::Impl
             }
             else if (firstFrame->isListenFrame())
             {
-               auto secondIndex = streamModel->index(firstIndex.row() - 1, 0);
+               auto secondIndex = streamFilter->index(firstIndex.row() - 1, 0);
 
                if (secondIndex.isValid())
                {
-                  if (auto secondFrame = streamModel->frame(secondIndex))
+                  if (auto secondFrame = streamFilter->frame(secondIndex))
                   {
                      if (secondFrame->isPollFrame())
                      {
@@ -863,15 +896,15 @@ struct QtWindow::Impl
       }
    }
 
-   void streamScrollChanged()
+   void streamScrollChanged() const
    {
       QModelIndex firstRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().topLeft());
       QModelIndex lastRow = ui->streamView->indexAt(ui->streamView->verticalScrollBar()->rect().bottomLeft() - QPoint(0, 10));
 
       if (firstRow.isValid() && lastRow.isValid())
       {
-         nfc::NfcFrame *firstFrame = streamModel->frame(firstRow);
-         nfc::NfcFrame *lastFrame = streamModel->frame(lastRow);
+         nfc::NfcFrame *firstFrame = streamFilter->frame(firstRow);
+         nfc::NfcFrame *lastFrame = streamFilter->frame(lastRow);
 
          if (firstFrame && lastFrame)
          {
@@ -880,7 +913,7 @@ struct QtWindow::Impl
       }
    }
 
-   void streamCellClicked(const QModelIndex &index)
+   void streamCellClicked(const QModelIndex &index) const
    {
       auto firstIndex = index;
 
@@ -888,17 +921,17 @@ struct QtWindow::Impl
       {
          QPointer<InspectDialog> dialog = new InspectDialog(window);
 
-         if (auto firstFrame = streamModel->frame(firstIndex))
+         if (auto firstFrame = streamFilter->frame(firstIndex))
          {
             if (firstFrame->isPollFrame())
             {
                dialog->addFrame(*firstFrame);
 
-               auto secondIndex = streamModel->index(firstIndex.row() + 1, 0);
+               auto secondIndex = streamFilter->index(firstIndex.row() + 1, 0);
 
                if (secondIndex.isValid())
                {
-                  if (auto secondFrame = streamModel->frame(secondIndex))
+                  if (auto secondFrame = streamFilter->frame(secondIndex))
                   {
                      if (secondFrame->isListenFrame())
                      {
@@ -909,11 +942,11 @@ struct QtWindow::Impl
             }
             else if (firstFrame->isListenFrame())
             {
-               auto secondIndex = streamModel->index(firstIndex.row() - 1, 0);
+               auto secondIndex = streamFilter->index(firstIndex.row() - 1, 0);
 
                if (secondIndex.isValid())
                {
-                  if (auto secondFrame = streamModel->frame(secondIndex))
+                  if (auto secondFrame = streamFilter->frame(secondIndex))
                   {
                      if (secondFrame->isPollFrame())
                      {
@@ -929,9 +962,9 @@ struct QtWindow::Impl
       }
    }
 
-   void timingSelectionChanged(double from, double to)
+   void timingSelectionChanged(double from, double to) const
    {
-      QModelIndexList selectionList = streamModel->modelRange(from, to);
+      QModelIndexList selectionList = streamFilter->modelRange(from, to);
 
       if (!selectionList.isEmpty())
       {
@@ -947,9 +980,16 @@ struct QtWindow::Impl
       ui->signalView->blockSignals(false);
    }
 
-   void signalSelectionChanged(double from, double to)
+   void signalSelectionChanged(double from, double to) const
    {
-      QModelIndexList selectionList = streamModel->modelRange(from, to);
+      if (from == 0 && to == 0)
+      {
+         ui->streamView->selectionModel()->blockSignals(true);
+         ui->streamView->selectionModel()->clearSelection();
+         ui->streamView->selectionModel()->blockSignals(false);
+      }
+
+      QModelIndexList selectionList = streamFilter->modelRange(from, to);
 
       if (!selectionList.isEmpty())
       {
@@ -963,9 +1003,12 @@ struct QtWindow::Impl
       ui->framesView->blockSignals(true);
       ui->framesView->select(from, to);
       ui->framesView->blockSignals(false);
+
+      ui->framesView->repaint();
+      ui->streamView->repaint();
    }
 
-   void signalRangeChanged(float from, float to)
+   void signalRangeChanged(float from, float to) const
    {
       float range = to - from;
       float length = ui->signalView->maximumRange() - ui->signalView->minimumRange();
@@ -979,7 +1022,7 @@ struct QtWindow::Impl
       ui->signalScroll->blockSignals(false);
    }
 
-   void signalScrollChanged(int value)
+   void signalScrollChanged(int value) const
    {
       float length = ui->signalView->maximumRange() - ui->signalView->minimumRange();
       float from = ui->signalView->minimumRange() + length * (value / 1000.0f);
@@ -995,7 +1038,7 @@ struct QtWindow::Impl
       QApplication::clipboard()->setText(clipboard);
    }
 
-   QByteArray toByteArray(const nfc::NfcFrame &frame)
+   static QByteArray toByteArray(const nfc::NfcFrame &frame)
    {
       QByteArray data;
 
@@ -1131,6 +1174,11 @@ void QtWindow::toggleNfcF()
 void QtWindow::toggleNfcV()
 {
    impl->toggleNfcV();
+}
+
+void QtWindow::changeFilter(const QString &value)
+{
+   impl->updateFilter(value);
 }
 
 void QtWindow::changeGainMode(int index)

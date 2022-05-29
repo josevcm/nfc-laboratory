@@ -36,18 +36,19 @@
 
 #include "FramesWidget.h"
 
-
 struct FramesWidget::Impl
 {
    FramesWidget *widget = nullptr;
 
    QCustomPlot *plot = nullptr;
 
-   QSharedPointer<QCPAxisRangeMarker> marker;
-   QSharedPointer<QCPAxisCursorMarker> cursor;
+   QSharedPointer<QCPAxisCursorMarker> cursorMarker;
+   QSharedPointer<QCPAxisRangeMarker> selectedFrames;
 
    double minimumRange = +INT32_MAX;
    double maximumRange = -INT32_MAX;
+
+   double lastCarrierValue = 0;
 
    explicit Impl(FramesWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
    {
@@ -133,10 +134,10 @@ struct FramesWidget::Impl
       }
 
       // create range marker
-      marker.reset(new QCPAxisRangeMarker(plot->graph(0)->keyAxis()));
+      selectedFrames.reset(new QCPAxisRangeMarker(plot->graph(0)->keyAxis()));
 
       // create cursor marker
-      cursor.reset(new QCPAxisCursorMarker(plot->graph(0)->keyAxis()));
+      cursorMarker.reset(new QCPAxisCursorMarker(plot->graph(0)->keyAxis()));
 
       // prepare layout
       auto *layout = new QVBoxLayout(widget);
@@ -163,6 +164,21 @@ struct FramesWidget::Impl
       });
    }
 
+   void setRange(double lower, double upper)
+   {
+      plot->xAxis->setRange(lower, upper);
+      plot->replot();
+   }
+
+   void setCenter(double center) const
+   {
+      QCPRange currentRange = plot->xAxis->range();
+
+      float length = float(currentRange.upper - currentRange.lower);
+
+      plot->xAxis->setRange(center - length / 2, center + length / 2);
+   }
+
    void append(const nfc::NfcFrame &frame)
    {
       // update signal ranges
@@ -175,48 +191,57 @@ struct FramesWidget::Impl
       // update view range
       plot->xAxis->setRange(minimumRange, maximumRange);
 
-      int graphChannel;
-      int graphValue;
-      float graphHeigth;
-
-      switch (frame.framePhase())
+      switch (frame.frameType())
       {
-         case nfc::FramePhase::CarrierFrame:
-         {
-            graphChannel = 0;
-            graphValue = 1;
-            graphHeigth = frame.isEmptyFrame() ? 0.25 : 0.0;
+         case nfc::FrameType::CarrierOn:
+            addCarrier(frame.framePhase(), frame.timeStart(), 0.25f);
             break;
-         }
-         case nfc::FramePhase::SelectionFrame:
-         {
-            graphChannel = 1;
-            graphValue = 2;
-            graphHeigth = frame.isPollFrame() ? 0.25 : 0.15;
+         case nfc::FrameType::CarrierOff:
+            addCarrier(frame.framePhase(), frame.timeStart(), 0.0);
             break;
-         }
-         default:
-         {
-            graphChannel = 2;
-            graphValue = 3;
-            graphHeigth = frame.isPollFrame() ? 0.25 : 0.15;
-         }
+         case nfc::FrameType::PollFrame:
+            addFrame(frame.framePhase(), frame.timeStart(), frame.timeEnd(), 0.25f);
+            break;
+         case nfc::FrameType::ListenFrame:
+            addFrame(frame.framePhase(), frame.timeStart(), frame.timeEnd(), 0.15f);
+            break;
       }
+   }
 
-      int upperGraph = graphChannel * 2 + 0;
-      int lowerGraph = graphChannel * 2 + 1;
+   void addCarrier(int channel, double eventTime, float value)
+   {
+      int upperGraph = channel * 2 + 0;
+      int lowerGraph = channel * 2 + 1;
+      double graphOffset = 1 + channel;
 
       // draw upper shape
-      plot->graph(upperGraph)->addData(frame.timeStart(), graphValue);
-      plot->graph(upperGraph)->addData(frame.timeStart() + 2.5E-6, graphValue + graphHeigth);
-      plot->graph(upperGraph)->addData(frame.timeEnd() - 2.5E-6, graphValue + graphHeigth);
-      plot->graph(upperGraph)->addData(frame.timeEnd(), graphValue);
+      plot->graph(upperGraph)->addData(eventTime, graphOffset + lastCarrierValue);
+      plot->graph(upperGraph)->addData(eventTime + 2.5E-6, graphOffset + value);
 
       // draw lower shape
-      plot->graph(lowerGraph)->addData(frame.timeStart(), graphValue);
-      plot->graph(lowerGraph)->addData(frame.timeStart() + 2.5E-6, graphValue - graphHeigth);
-      plot->graph(lowerGraph)->addData(frame.timeEnd() - 2.5E-6, graphValue - graphHeigth);
-      plot->graph(lowerGraph)->addData(frame.timeEnd(), graphValue);
+      plot->graph(lowerGraph)->addData(eventTime, graphOffset - lastCarrierValue);
+      plot->graph(lowerGraph)->addData(eventTime + 2.5E-6, graphOffset - value);
+
+      lastCarrierValue = value;
+   }
+
+   void addFrame(int channel, double timeStart, double timeEnd, float value)
+   {
+      int upperGraph = channel * 2 + 0;
+      int lowerGraph = channel * 2 + 1;
+      double graphOffset = 1 + channel;
+
+      // draw upper shape
+      plot->graph(upperGraph)->addData(timeStart, graphOffset);
+      plot->graph(upperGraph)->addData(timeStart + 2.5E-6, graphOffset + value);
+      plot->graph(upperGraph)->addData(timeEnd - 2.5E-6, graphOffset + value);
+      plot->graph(upperGraph)->addData(timeEnd, graphOffset);
+
+      // draw lower shape
+      plot->graph(lowerGraph)->addData(timeStart, graphOffset);
+      plot->graph(lowerGraph)->addData(timeStart + 2.5E-6, graphOffset - value);
+      plot->graph(lowerGraph)->addData(timeEnd - 2.5E-6, graphOffset - value);
+      plot->graph(lowerGraph)->addData(timeEnd, graphOffset);
    }
 
    void select(double from, double to)
@@ -251,8 +276,7 @@ struct FramesWidget::Impl
 
       plot->xAxis->setRange(0, 1);
 
-      cursor->hide();
-      marker->hide();
+      selectedFrames->setVisible(false);
 
       plot->replot();
    }
@@ -268,20 +292,20 @@ struct FramesWidget::Impl
 
    void mouseEnter() const
    {
-      cursor->show();
+      widget->setFocus(Qt::MouseFocusReason);
       plot->replot();
    }
 
    void mouseLeave() const
    {
-      cursor->hide();
+      widget->setFocus(Qt::NoFocusReason);
       plot->replot();
    }
 
    void mouseMove(QMouseEvent *event) const
    {
       double time = plot->xAxis->pixelToCoord(event->pos().x());
-      cursor->update(time, QString("%1 s").arg(time, 10, 'f', 6));
+      cursorMarker->setPosition(time, QString("%1 s").arg(time, 10, 'f', 6));
       plot->replot();
    }
 
@@ -299,12 +323,28 @@ struct FramesWidget::Impl
       }
    }
 
+   void keyPress(QKeyEvent *event)
+   {
+      cursorMarker->setVisible(event->modifiers() & Qt::AltModifier);
+
+      plot->replot();
+   }
+
+   void keyRelease(QKeyEvent *event)
+   {
+      cursorMarker->setVisible(event->modifiers() & Qt::AltModifier);
+
+      plot->replot();
+   }
+
    void selectionChanged() const
    {
       QList<QCPGraph *> selectedGraphs = plot->selectedGraphs();
 
       double startTime = 0;
       double endTime = 0;
+
+      selectedFrames->setVisible(false);
 
       if (!selectedGraphs.empty())
       {
@@ -340,30 +380,11 @@ struct FramesWidget::Impl
 
          if (startTime > 0 && startTime < endTime)
          {
-            QString text;
-
-            double elapsed = endTime - startTime;
-
-            if (elapsed < 1E-3)
-               text = QString("%1 us").arg(elapsed * 1000000, 3, 'f', 0);
-            else if (elapsed < 1)
-               text = QString("%1 ms").arg(elapsed * 1000, 7, 'f', 3);
-            else
-               text = QString("%1 s").arg(elapsed, 7, 'f', 5);
-
             // show timing marker
-            marker->show(startTime, endTime, text);
+            selectedFrames->setPositionStart(startTime);
+            selectedFrames->setPositionEnd(endTime);
+            selectedFrames->setVisible(true);
          }
-         else
-         {
-            startTime = 0;
-            endTime = 0;
-            marker->hide();
-         }
-      }
-      else
-      {
-         marker->hide();
       }
 
       // refresh graph
@@ -396,6 +417,16 @@ FramesWidget::FramesWidget(QWidget *parent) : QWidget(parent), impl(new Impl(thi
 {
 }
 
+void FramesWidget::setRange(double lower, double upper)
+{
+   impl->setRange(lower, upper);
+}
+
+void FramesWidget::setCenter(double value)
+{
+   impl->setCenter(value);
+}
+
 void FramesWidget::append(const nfc::NfcFrame &frame)
 {
    impl->append(frame);
@@ -406,14 +437,24 @@ void FramesWidget::select(double from, double to)
    impl->select(from, to);
 }
 
+void FramesWidget::refresh()
+{
+   impl->refresh();
+}
+
 void FramesWidget::clear()
 {
    impl->clear();
 }
 
-void FramesWidget::refresh()
+double FramesWidget::minimumRange() const
 {
-   impl->refresh();
+   return impl->minimumRange;
+}
+
+double FramesWidget::maximumRange() const
+{
+   return impl->maximumRange;
 }
 
 void FramesWidget::enterEvent(QEvent *event)
@@ -425,4 +466,15 @@ void FramesWidget::leaveEvent(QEvent *event)
 {
    impl->mouseLeave();
 }
+
+void FramesWidget::keyPressEvent(QKeyEvent *event)
+{
+   impl->keyPress(event);
+}
+
+void FramesWidget::keyReleaseEvent(QKeyEvent *event)
+{
+   impl->keyRelease(event);
+}
+
 

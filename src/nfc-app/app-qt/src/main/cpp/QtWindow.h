@@ -73,6 +73,8 @@ class QtWindow : public QMainWindow
 
       void toggleNfcV();
 
+      void changeFilter(const QString &value);
+
       void changeGainMode(int index);
 
       void changeGainValue(int value);
