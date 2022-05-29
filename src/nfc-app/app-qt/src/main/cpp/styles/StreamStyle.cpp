@@ -66,16 +66,7 @@ StreamStyle::~StreamStyle() = default;
 QString StreamStyle::displayText(const QVariant &value, const QLocale &locale) const
 {
    if (value.type() == QVariant::ByteArray)
-   {
-      QString text;
-
-      for (auto &&data: value.toByteArray())
-      {
-         text.append(QString("%1 ").arg((unsigned int) data & 0xff, 2, 16, QLatin1Char('0')));
-      }
-
-      return text;
-   }
+      return {value.toByteArray().toHex(' ')};
 
    return QStyledItemDelegate::displayText(value, locale);
 }

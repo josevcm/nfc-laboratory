@@ -496,7 +496,7 @@ struct QtWindow::Impl
 
    void updateFilter(const QString &value)
    {
-      qInfo() << "filter" << value;
+      streamFilter->setFilterRegularExpression(value);
    }
 
    void updateGainMode(int value)
@@ -615,11 +615,13 @@ struct QtWindow::Impl
 
       ui->searchWidget->setVisible(value);
 
-//      streamFilter->setFilterRegularExpression();
-
       if (filterEnabled)
       {
-//         streamModel-
+         streamFilter->setFilterRegularExpression(ui->filterEdit->text());
+      }
+      else
+      {
+         streamFilter->setFilterRegularExpression(QRegularExpression());
       }
 
       settings.setValue("window/filterEnabled", filterEnabled);
@@ -813,8 +815,6 @@ struct QtWindow::Impl
             {
                if (nfc::NfcFrame *frame = streamFilter->frame(current))
                {
-                  text.append(QString("%1;").arg(current.row()));
-
                   for (int i = 0; i < frame->limit(); i++)
                   {
                      text.append(QString("%1 ").arg((*frame)[i], 2, 16, QLatin1Char('0')));

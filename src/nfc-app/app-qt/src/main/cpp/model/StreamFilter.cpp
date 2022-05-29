@@ -24,6 +24,7 @@
 
 #include <QDebug>
 #include <QItemSelection>
+#include <QRegularExpression>
 
 #include "StreamModel.h"
 #include "StreamFilter.h"
@@ -34,7 +35,21 @@ StreamFilter::StreamFilter(QObject *parent) : QSortFilterProxyModel(parent)
 
 bool StreamFilter::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
-   return true;
+   if (!filterRegularExpression().isValid())
+      return true;
+
+   QString line;
+
+   for (int sourceColumn = 0; sourceColumn < sourceModel()->columnCount(sourceParent); ++sourceColumn)
+   {
+      QModelIndex sourceIndex = sourceModel()->index(sourceRow, sourceColumn, sourceParent);
+
+      QVariant value = sourceModel()->data(sourceIndex, filterRole());
+
+      line.append(" " + value.toString());
+   }
+
+   return filterRegularExpression().match(line).hasMatch();
 }
 
 QModelIndexList StreamFilter::modelRange(double from, double to)
@@ -61,4 +76,3 @@ nfc::NfcFrame *StreamFilter::frame(const QModelIndex &index) const
 
    return {};
 }
-

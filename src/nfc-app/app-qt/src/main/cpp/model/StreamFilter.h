@@ -46,7 +46,7 @@ class StreamFilter : public QSortFilterProxyModel
 
    protected:
 
-      bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
+      bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
 };
 
 

@@ -295,7 +295,7 @@
            </font>
           </property>
           <property name="text">
-           <string>Filter Regex:</string>
+           <string>Filter:</string>
           </property>
          </widget>
         </item>

@@ -337,7 +337,7 @@ struct StreamModel::Impl
       return frame->frameFlags() << 8 | frame->frameType();
    }
 
-   inline static QByteArray frameData(const nfc::NfcFrame *frame)
+   inline static QString frameData(const nfc::NfcFrame *frame)
    {
       QByteArray data;
 
@@ -346,7 +346,7 @@ struct StreamModel::Impl
          data.append((*frame)[i]);
       }
 
-      return data;
+      return { data.toHex(' ') };
    }
 
 //   inline static QString frameData(const nfc::NfcFrame *frame)
