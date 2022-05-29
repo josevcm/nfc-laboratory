@@ -10,8 +10,8 @@ find_package(Qt5 COMPONENTS Core Widgets PrintSupport REQUIRED)
 
 configure_file(${PRIVATE_SOURCE_DIR}/QtConfig.h.in ${PRIVATE_SOURCE_DIR}/QtConfig.h)
 
-#add_executable(nfc-lab WIN32
-add_executable(nfc-lab
+add_executable(nfc-lab WIN32
+#add_executable(nfc-lab
         src/main/cpp/main.cpp
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
