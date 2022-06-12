@@ -190,46 +190,22 @@ ProtocolFrame *ParserNfcIsoDep::parse(const nfc::NfcFrame &frame)
 {
    ProtocolFrame *info = nullptr;
 
-   if (frame.isPollFrame())
+   if (frame.isPollFrame() || frame.isListenFrame())
    {
       do
       {
          if (!frame.isEncrypted())
          {
             // ISO-DEP protocol I-Block
-            if ((info = parseRequestIBlock(frame)))
+            if ((info = parseIBlock(frame)))
                break;
 
             // ISO-DEP protocol R-Block
-            if ((info = parseRequestRBlock(frame)))
+            if ((info = parseRBlock(frame)))
                break;
 
             // ISO-DEP protocol S-Block
-            if ((info = parseRequestSBlock(frame)))
-               break;
-         }
-
-         // Unknown frame...
-         info = ParserNfc::parse(frame);
-
-      } while (false);
-   }
-   else if (frame.isListenFrame())
-   {
-      do
-      {
-         if (!frame.isEncrypted())
-         {
-            // ISO-DEP protocol I-Block
-            if ((info = parseResponseIBlock(frame)))
-               break;
-
-            // ISO-DEP protocol R-Block
-            if ((info = parseResponseRBlock(frame)))
-               break;
-
-            // ISO-DEP protocol S-Block
-            if ((info = parseResponseSBlock(frame)))
+            if ((info = parseSBlock(frame)))
                break;
          }
 
@@ -242,25 +218,18 @@ ProtocolFrame *ParserNfcIsoDep::parse(const nfc::NfcFrame &frame)
    return info;
 }
 
-ProtocolFrame *ParserNfcIsoDep::parseRequestIBlock(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcIsoDep::parseIBlock(const nfc::NfcFrame &frame)
 {
-   if ((frame[0] & 0xE2) != 0x02 || frame.limit() < 5)
-      return nullptr;
-
-   lastCommand = frame[0];
-
    int pcb = frame[0], offset = 1;
+
+   if ((pcb & 0xE2) != 0x02 || frame.limit() < 4)
+      return nullptr;
 
    ProtocolFrame *root = buildRootInfo("I-Block", frame, ProtocolFrame::ApplicationFrame);
 
    if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", frame, 0, 1)))
    {
-      if ((pcb & 0xC0) == 0x00)
-         pcbf->appendChild(buildChildInfo("[00....1.] I-Block"));
-      else if ((pcb & 0xC0) == 0x80)
-         pcbf->appendChild(buildChildInfo("[10....1.] R-Block"));
-      else if ((pcb & 0xC0) == 0xC0)
-         pcbf->appendChild(buildChildInfo("[11....1.] S-Block"));
+      pcbf->appendChild(buildChildInfo("[00....1.] I-Block"));
 
       if ((pcb & 0x10) == 0x00)
          pcbf->appendChild(buildChildInfo("[...0....] NO Chaining"));
@@ -314,83 +283,12 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestIBlock(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcIsoDep::parseResponseIBlock(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcIsoDep::parseRBlock(const nfc::NfcFrame &frame)
 {
-   if ((lastCommand & 0xE2) != 0x02)
-      return nullptr;
-
    int pcb = frame[0], offset = 1;
-   int flags = 0;
 
-   ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::ApplicationFrame);
-
-   if (ProtocolFrame *pcbf = root->appendChild(buildChildInfo("PCB", frame, 0, 1)))
-   {
-      pcbf->appendChild(buildChildInfo("[000...1.] I-Block"));
-
-      if ((pcb & 0x10) == 0x00)
-         pcbf->appendChild(buildChildInfo("[...0....] NO Chaining"));
-      else
-         pcbf->appendChild(buildChildInfo("[...1....] Frame chaining"));
-
-      if ((pcb & 0x08) == 0x00)
-         pcbf->appendChild(buildChildInfo("[....0...] NO CID following"));
-      else
-         pcbf->appendChild(buildChildInfo("[....1...] CID following"));
-
-      if ((pcb & 0x04) == 0x00)
-         pcbf->appendChild(buildChildInfo("[.....0..] NO NAD following"));
-      else
-         pcbf->appendChild(buildChildInfo("[.....1..] NAD following"));
-
-      if ((pcb & 0x01) == 0x00)
-         pcbf->appendChild(buildChildInfo("[.......0] Block number"));
-      else
-         pcbf->appendChild(buildChildInfo("[.......1] Block number"));
-   }
-
-   if (pcb & 0x08)
-   {
-      root->appendChild(buildChildInfo("CID", frame[offset] & 0x0F, offset, 1));
-      offset++;
-   }
-
-   if (pcb & 0x04)
-   {
-      root->appendChild(buildChildInfo("NAD", frame[offset] & 0xFF, offset, 1));
-      offset++;
-   }
-
-   if (offset < frame.limit() - 2)
-   {
-      if (flags & IS_APDU)
-      {
-         if (offset < frame.limit() - 4)
-         {
-            root->appendChild(buildChildInfo("DATA", frame, offset, frame.limit() - offset - 4));
-         }
-
-         root->appendChild(buildChildInfo("SW", frame, -4, 2));
-      }
-      else
-      {
-         root->appendChild(buildChildInfo("DATA", frame, offset, frame.limit() - offset - 2));
-      }
-   }
-
-   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
-
-   return root;
-}
-
-ProtocolFrame *ParserNfcIsoDep::parseRequestRBlock(const nfc::NfcFrame &frame)
-{
-   if ((frame[0] & 0xE6) != 0xA2 || frame.limit() != 3)
+   if ((pcb & 0xE6) != 0xA2 || frame.limit() != 3)
       return nullptr;
-
-   lastCommand = frame[0];
-
-   int pcb = frame[0], offset = 1;
 
    ProtocolFrame *root;
 
@@ -406,7 +304,7 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestRBlock(const nfc::NfcFrame &frame)
       if ((pcb & 0x10) == 0x00)
          pcbf->appendChild(buildChildInfo("[...0....] ACK"));
       else
-         pcbf->appendChild(buildChildInfo("[...1....] NAK"));
+         pcbf->appendChild(buildChildInfo("[...1....] NACK"));
 
       if ((pcb & 0x08) == 0x00)
          pcbf->appendChild(buildChildInfo("[....0...] NO CID following"));
@@ -433,22 +331,12 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestRBlock(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcIsoDep::parseResponseRBlock(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcIsoDep::parseSBlock(const nfc::NfcFrame &frame)
 {
-   if ((lastCommand & 0xE6) != 0xA2)
-      return nullptr;
-
-   return buildRootInfo("", frame, ProtocolFrame::ApplicationFrame);
-}
-
-ProtocolFrame *ParserNfcIsoDep::parseRequestSBlock(const nfc::NfcFrame &frame)
-{
-   if ((frame[0] & 0xC7) != 0xC2 || frame.limit() != 4)
-      return nullptr;
-
-   lastCommand = frame[0];
-
    int pcb = frame[0], offset = 1;
+
+   if ((pcb & 0xC7) != 0xC2 || frame.limit() < 3 || frame.limit() > 4)
+      return nullptr;
 
    ProtocolFrame *root = buildRootInfo("S-Block", frame, ProtocolFrame::ApplicationFrame);
 
@@ -480,12 +368,3 @@ ProtocolFrame *ParserNfcIsoDep::parseRequestSBlock(const nfc::NfcFrame &frame)
 
    return root;
 }
-
-ProtocolFrame *ParserNfcIsoDep::parseResponseSBlock(const nfc::NfcFrame &frame)
-{
-   if ((lastCommand & 0xC7) != 0xC2)
-      return nullptr;
-
-   return buildRootInfo("", frame, ProtocolFrame::ApplicationFrame);
-}
-

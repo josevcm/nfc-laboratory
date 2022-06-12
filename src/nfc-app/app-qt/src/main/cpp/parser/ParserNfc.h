@@ -73,17 +73,11 @@ struct ParserNfcIsoDep : ParserNfc
 
    ProtocolFrame *parse(const nfc::NfcFrame &frame) override;
 
-   ProtocolFrame *parseRequestIBlock(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseIBlock(const nfc::NfcFrame &frame);
 
-   ProtocolFrame *parseResponseIBlock(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRBlock(const nfc::NfcFrame &frame);
 
-   ProtocolFrame *parseRequestRBlock(const nfc::NfcFrame &frame);
-
-   ProtocolFrame *parseResponseRBlock(const nfc::NfcFrame &frame);
-
-   ProtocolFrame *parseRequestSBlock(const nfc::NfcFrame &frame);
-
-   ProtocolFrame *parseResponseSBlock(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseSBlock(const nfc::NfcFrame &frame);
 };
 
 #endif //NFC_LAB_PARSERNFC_H

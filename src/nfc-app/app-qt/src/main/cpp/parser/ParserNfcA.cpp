@@ -74,7 +74,7 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
                   break;
             }
 
-            // Unknown frame...
+            // Unknown frame... try isoDep
             info = ParserNfcIsoDep::parse(frame);
 
          } while (false);
@@ -120,7 +120,7 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
                break;
          }
 
-         // Unknown frame...
+         // Unknown frame... try isoDep
          info = ParserNfcIsoDep::parse(frame);
 
       } while (false);

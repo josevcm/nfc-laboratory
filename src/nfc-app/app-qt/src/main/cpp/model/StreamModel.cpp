@@ -212,121 +212,19 @@ struct StreamModel::Impl
       {
          case nfc::TechType::NfcA:
 
-            // skip encrypted frames
-            if (frame->isEncrypted())
-               return {};
-
-            if (frame->isPollFrame())
-            {
-               int command = (*frame)[0];
-
-               // Protocol Parameter Selection
-               if (command == 0x50 && frame->limit() == 4)
-                  return "HALT";
-
-               // Protocol Parameter Selection
-               if ((command & 0xF0) == 0xD0 && frame->limit() == 5)
-                  return "PPS";
-
-               // ISO-DEP protocol I-Block
-               if ((command & 0xE2) == 0x02 && frame->limit() > 4)
-                  return "I-Block";
-
-               // ISO-DEP protocol R-Block
-               if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
-                  return "R-Block";
-
-               // ISO-DEP protocol S-Block
-               if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
-                  return "S-Block";
-
-               if (NfcACmd.contains(command))
-                  return NfcACmd[command];
-            }
-            else if (prev && prev->isPollFrame())
-            {
-               int command = (*prev)[0];
-
-               if (command == 0x93 || command == 0x95 || command == 0x97)
-               {
-                  if (frame->limit() == 3)
-                     return "SAK";
-
-                  if (frame->limit() == 5)
-                     return "UID";
-               }
-
-               if (NfcAResp.contains(command))
-                  return NfcAResp[command];
-            }
-
-            return {};
+            return eventNfcA(frame, prev);
 
          case nfc::TechType::NfcB:
 
-            if (frame->isPollFrame())
-            {
-               int command = (*frame)[0];
-
-               // ISO-DEP protocol I-Block
-               if ((command & 0xE2) == 0x02 && frame->limit() > 4)
-                  return "I-Block";
-
-               // ISO-DEP protocol R-Block
-               if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
-                  return "R-Block";
-
-               // ISO-DEP protocol S-Block
-               if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
-                  return "S-Block";
-
-               if (NfcBCmd.contains(command))
-                  return NfcBCmd[command];
-            }
-            else if (prev && prev->isPollFrame())
-            {
-               int command = (*prev)[0];
-
-               if (NfcBResp.contains(command))
-                  return NfcBResp[command];
-            }
-
-            return {};
+            return eventNfcB(frame, prev);
 
          case nfc::TechType::NfcF:
 
-            if (frame->isPollFrame())
-            {
-               int command = (*frame)[1];
-
-               if (NfcFCmd.contains(command))
-                  return NfcFCmd[command];
-
-               return QString("CMD %1").arg(command, 2, 16, QChar('0'));
-            }
-            else
-            {
-               int command = (*frame)[1];
-
-               if (NfcFResp.contains(command))
-                  return NfcFResp[command];
-            }
-
-            return {};
+            return eventNfcF(frame, prev);
 
          case nfc::TechType::NfcV:
 
-            if (frame->isPollFrame())
-            {
-               int command = (*frame)[1];
-
-               if (NfcVCmd.contains(command))
-                  return NfcVCmd[command];
-
-               return QString("CMD %1").arg(command, 2, 16, QChar('0'));
-            }
-
-            return {};
+            return eventNfcV(frame, prev);
       }
 
       return {};
@@ -346,7 +244,7 @@ struct StreamModel::Impl
          data.append((*frame)[i]);
       }
 
-      return { data.toHex(' ') };
+      return {data.toHex(' ')};
    }
 
 //   inline static QString frameData(const nfc::NfcFrame *frame)
@@ -372,6 +270,156 @@ struct StreamModel::Impl
 //
 //      return text.trimmed();
 //   }
+
+   inline static QString eventNfcA(const nfc::NfcFrame *frame, const nfc::NfcFrame *prev)
+   {
+      QString result;
+
+      // skip encrypted frames
+      if (frame->isEncrypted())
+         return {};
+
+      if (frame->isPollFrame())
+      {
+         int command = (*frame)[0];
+
+         // Protocol Parameter Selection
+         if (command == 0x50 && frame->limit() == 4)
+            return "HALT";
+
+         // Protocol Parameter Selection
+         if ((command & 0xF0) == 0xD0 && frame->limit() == 5)
+            return "PPS";
+
+         if (!(result = eventIsoDep(frame)).isEmpty())
+            return result;
+
+         if (NfcACmd.contains(command))
+            return NfcACmd[command];
+      }
+      else if (prev && prev->isPollFrame())
+      {
+         int command = (*prev)[0];
+
+         if (command == 0x93 || command == 0x95 || command == 0x97)
+         {
+            if (frame->limit() == 3)
+               return "SAK";
+
+            if (frame->limit() == 5)
+               return "UID";
+         }
+
+         if (command == 0xE0 && (*frame)[0] == (frame->limit() - 2))
+            return "ATS";
+
+         if (!(result = eventIsoDep(frame)).isEmpty())
+            return result;
+
+         if (NfcAResp.contains(command))
+            return NfcAResp[command];
+      }
+
+      return {};
+   }
+
+   inline static QString eventNfcB(const nfc::NfcFrame *frame, const nfc::NfcFrame *prev)
+   {
+      QString result;
+
+      if (frame->isPollFrame())
+      {
+         int command = (*frame)[0];
+
+         if (!(result = eventIsoDep(frame)).isEmpty())
+            return result;
+
+         if (NfcBCmd.contains(command))
+            return NfcBCmd[command];
+      }
+      else if (frame->isListenFrame())
+      {
+         int command = (*frame)[0];
+
+         if (!(result = eventIsoDep(frame)).isEmpty())
+            return result;
+
+         if (NfcBResp.contains(command))
+            return NfcBResp[command];
+      }
+
+      return {};
+   }
+
+   inline static QString eventNfcF(const nfc::NfcFrame *frame, const nfc::NfcFrame *prev)
+   {
+      int command = (*frame)[1];
+
+      if (frame->isPollFrame())
+      {
+         if (NfcFCmd.contains(command))
+            return NfcFCmd[command];
+
+         return QString("CMD %1").arg(command, 2, 16, QChar('0'));
+      }
+      else if (frame->isListenFrame())
+      {
+         if (NfcFResp.contains(command))
+            return NfcFResp[command];
+      }
+
+      return {};
+   }
+
+   inline static QString eventNfcV(const nfc::NfcFrame *frame, const nfc::NfcFrame *prev)
+   {
+      if (frame->isPollFrame())
+      {
+         int command = (*frame)[1];
+
+         if (NfcVCmd.contains(command))
+            return NfcVCmd[command];
+
+         return QString("CMD %1").arg(command, 2, 16, QChar('0'));
+      }
+
+      return {};
+   }
+
+   inline static QString eventIsoDep(const nfc::NfcFrame *frame)
+   {
+      int command = (*frame)[0];
+
+      // ISO-DEP protocol S(Deselect)
+      if ((command & 0xF7) == 0xC2 && frame->limit() == 3)
+         return "S(Deselect)";
+
+      // ISO-DEP protocol S(WTX)
+      if ((command & 0xF7) == 0xF2 && frame->limit() == 3)
+         return "S(WTX)";
+
+      // ISO-DEP protocol R(ACK)
+      if ((command & 0xF6) == 0xA2 && frame->limit() == 3)
+         return "R(ACK)";
+
+      // ISO-DEP protocol R(NACK)
+      if ((command & 0xF6) == 0xB2 && frame->limit() == 3)
+         return "R(NACK)";
+
+      // ISO-DEP protocol I-Block
+      if ((command & 0xE2) == 0x02 && frame->limit() >= 4)
+         return "I-Block";
+
+      // ISO-DEP protocol R-Block
+      if ((command & 0xE6) == 0xA2 && frame->limit() == 3)
+         return "R-Block";
+
+      // ISO-DEP protocol S-Block
+      if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
+         return "S-Block";
+
+      return {};
+   }
 };
 
 StreamModel::StreamModel(QObject *parent) : QAbstractTableModel(parent), impl(new Impl)
@@ -443,16 +491,28 @@ QVariant StreamModel::data(const QModelIndex &index, int role) const
 
             if (frame->isListenFrame())
                return impl->responseDefaultFont;
+
+            break;
+         }
+
+         case Columns::Event:
+         {
+            if (frame->isListenFrame())
+               return impl->responseDefaultFont;
+
+            break;
          }
       }
    }
 
    else if (role == Qt::ForegroundRole)
    {
-      if (index.column() == Columns::Data)
+      switch (index.column())
       {
-         if (frame->isListenFrame())
-            return QColor(Qt::darkGray);
+         case Columns::Event:
+         case Columns::Data:
+            if (frame->isListenFrame())
+               return QColor(Qt::darkGray);
       }
    }
 
