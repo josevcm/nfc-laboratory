@@ -391,11 +391,11 @@ struct StreamModel::Impl
       int command = (*frame)[0];
 
       // ISO-DEP protocol S(Deselect)
-      if ((command & 0xF7) == 0xC2 && frame->limit() == 3)
+      if ((command & 0xF7) == 0xC2 && frame->limit() >= 3 && frame->limit() <= 4)
          return "S(Deselect)";
 
       // ISO-DEP protocol S(WTX)
-      if ((command & 0xF7) == 0xF2 && frame->limit() == 3)
+      if ((command & 0xF7) == 0xF2 && frame->limit() >= 3 && frame->limit() <= 4)
          return "S(WTX)";
 
       // ISO-DEP protocol R(ACK)
@@ -415,7 +415,7 @@ struct StreamModel::Impl
          return "R-Block";
 
       // ISO-DEP protocol S-Block
-      if ((command & 0xC7) == 0xC2 && frame->limit() == 4)
+      if ((command & 0xC7) == 0xC2 && frame->limit() >= 3 && frame->limit() <= 4)
          return "S-Block";
 
       return {};
