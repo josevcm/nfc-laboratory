@@ -35,7 +35,7 @@ Protocol detail view.
 
 ## Recommended settings
 
-The configuration file is found in `conf/nfc-lab.conf` and consists of the following sections:
+The configuration file is found in `nfc-lab.conf` and consists of the following sections:
 
 ```
 [settings]
@@ -160,6 +160,10 @@ Nooelec RTL-SDR with HydraNFC calibration coil:
 AirSpy with custom antenna and ARC122U reader:
 
 ![Devices](doc/img/nfc-lab-devices3.png?raw=true "Devices")
+
+### Driver Setup for RTL-SDR
+
+You can found instructions under https://www.rtl-sdr.com/rtl-sdr-quick-start-guide/
 
 ### Upconverters
 
