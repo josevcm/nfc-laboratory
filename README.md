@@ -408,6 +408,7 @@ licenses, please check if you are interested in this work.
 - mufft library at `src/nfc-lib/lib-ext/mufft` see https://github.com/Themaister/muFFT
 - QCustomPlot at `src/nfc-app/app-qt/src/main/cpp/3party/customplot` see https://www.qcustomplot.com/
 - QDarkStyleSheet at `src/nfc-app/app-qt/src/main/assets/theme` see https://github.com/ColinDuquesnoy/QDarkStyleSheet
+- Crapto1 at `src/nfc-lib/lib-ext/crapto1`
 
 ## Releases
 

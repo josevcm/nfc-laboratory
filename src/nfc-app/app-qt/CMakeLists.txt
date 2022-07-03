@@ -64,6 +64,7 @@ target_link_libraries(nfc-lab
         nfc-tasks
         sdr-io
         rt-lang
+        crapto1
         mingw32
         psapi
         Qt5::Core
