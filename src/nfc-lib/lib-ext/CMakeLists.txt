@@ -1,5 +1,6 @@
 add_subdirectory(airspy)
 add_subdirectory(airspy-tools)
+add_subdirectory(crapto1)
 #add_subdirectory(lime)
 #add_subdirectory(posix)
 add_subdirectory(mufft)
