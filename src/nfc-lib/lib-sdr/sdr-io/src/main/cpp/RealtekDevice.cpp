@@ -561,10 +561,10 @@ struct RealtekDevice::Impl
 #pragma GCC ivdep
             for (int i = 0; i < length; i += 4)
             {
-               scaled[i + 0] = float((data[i + 0] - 128) / 256.0);
-               scaled[i + 1] = float((data[i + 1] - 128) / 256.0);
-               scaled[i + 2] = float((data[i + 2] - 128) / 256.0);
-               scaled[i + 3] = float((data[i + 3] - 128) / 256.0);
+               scaled[i + 0] = float((data[i + 0] - 128) / 256.0) + 0.0025f;
+               scaled[i + 1] = float((data[i + 1] - 128) / 256.0) + 0.0025f;
+               scaled[i + 2] = float((data[i + 2] - 128) / 256.0) + 0.0025f;
+               scaled[i + 3] = float((data[i + 3] - 128) / 256.0) + 0.0025f;
             }
 
             // add data to buffer
