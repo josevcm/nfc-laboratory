@@ -250,14 +250,13 @@ struct NfcF::Impl : NfcTech
          float correlatedS1 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3]);
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
-#endif
+         if (decoder->debug)
+         {
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
 
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime && modulation->searchPulseWidth % 8 == 0)
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.50f);
-#endif
+            if (decoder->signalClock == modulation->searchSyncTime && modulation->searchPulseWidth % 8 == 0)
+               decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, 0.50f);
+         }
 
          // recover status from previous partial search or maximum modulation depth
          if (signalDeep > maximumModulationDeep || (modulation->correlatedPeakTime && decoder->signalClock > modulation->correlatedPeakTime + bitrate->period1SymbolSamples))
@@ -379,9 +378,8 @@ struct NfcF::Impl : NfcTech
             continue;
          }
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.75f);
-#endif
+         if (decoder->debug)
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, 0.75f);
 
          modulation->searchModeState = modulation->searchLastPhase > 0 ? SEARCH_MODE_OBSERVED : SEARCH_MODE_REVERSED;
          modulation->searchSyncTime = modulation->searchSyncTime + bitrate->period2SymbolSamples;
@@ -675,14 +673,13 @@ struct NfcF::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
-#endif
+         if (decoder->debug)
+         {
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
 
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.50f);
-#endif
+            if (decoder->signalClock == modulation->searchSyncTime)
+               decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, 0.50f);
+         }
 
          // wait until correlation search start
          if (decoder->signalClock < modulation->searchStartTime)
@@ -790,14 +787,13 @@ struct NfcF::Impl : NfcTech
          // get signal deep
 //         float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].deep;
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
-#endif
+         if (decoder->debug)
+         {
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
 
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime && modulation->searchPulseWidth % 8 == 0)
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.50f);
-#endif
+            if (decoder->signalClock == modulation->searchSyncTime && modulation->searchPulseWidth % 8 == 0)
+               decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, 0.50f);
+         }
 
          // wait until frame guard time is reached
          if (decoder->signalClock < frameStatus.guardEnd)
@@ -917,9 +913,8 @@ struct NfcF::Impl : NfcTech
             continue;
          }
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.75f);
-#endif
+         if (decoder->debug)
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, 0.75f);
 
          modulation->searchModeState = modulation->searchLastPhase > 0 ? SEARCH_MODE_OBSERVED : SEARCH_MODE_REVERSED;
          modulation->searchSyncTime = modulation->searchSyncTime + bitrate->period2SymbolSamples;
@@ -977,14 +972,13 @@ struct NfcF::Impl : NfcTech
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
-#endif
+         if (decoder->debug)
+         {
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, correlatedS0 / float(bitrate->period4SymbolSamples));
 
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 0, 0.50f);
-#endif
+            if (decoder->signalClock == modulation->searchSyncTime)
+               decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, 0.50f);
+         }
 
          // wait until correlation search start
          if (decoder->signalClock < modulation->searchStartTime)

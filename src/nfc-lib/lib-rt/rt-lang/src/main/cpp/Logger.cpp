@@ -39,11 +39,9 @@
 #include <rt/FileSystem.h>
 #include <rt/BlockingQueue.h>
 
-//#define NULL_LOG
-//#define STDERR_LOG
-//#define STDOUT_LOG
-#define FSTREAM_LOG
-
+#ifndef LOG_OUTPUT
+#define LOG_OUTPUT 3
+#endif
 namespace rt {
 
 const char *tags[] = {
@@ -79,43 +77,8 @@ struct LogEvent
    }
 };
 
-// null logger for discard all messages
-#ifdef NULL_LOG
-struct LogWriter
-{
-   void push(LogEvent *event)
-   {
-      delete event;
-   }
-} writer;
-#endif
-
-// direct to stderr logger, warning, performance impact! use only for strange debugging when others logger do not work!
-#ifdef STDERR_LOG
-struct LogWriter
-{
-   void push(LogEvent *event)
-   {
-      char date[32];
-      struct tm timeinfo {};
-
-      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
-      auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
-
-      localtime_s(&timeinfo, &seconds);
-
-      strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
-
-      fprintf(stderr, "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
-
-      delete event;
-   }
-
-} writer;
-#endif
-
 // threaded logger to console stdout, runs on low priority thread
-#ifdef STDOUT_LOG
+#if LOG_OUTPUT == 1
 struct LogWriter
 {
    // writer thread
@@ -180,10 +143,33 @@ struct LogWriter
    }
 
 } writer;
-#endif
+
+// direct to stderr logger, warning, performance impact! use only for strange debugging when others logger do not work!
+#elif LOG_OUTPUT == 2
+struct LogWriter
+{
+   void push(LogEvent *event)
+   {
+      char date[32];
+      struct tm timeinfo {};
+
+      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
+      auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
+
+      localtime_s(&timeinfo, &seconds);
+
+      strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
+
+      fprintf(stderr, "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
+
+      delete event;
+   }
+
+} writer;
+
 
 // threaded logger to file stream, runs on low priority thread
-#ifdef FSTREAM_LOG
+#elif LOG_OUTPUT == 3
 struct LogWriter
 {
    // writer thread
@@ -263,6 +249,16 @@ struct LogWriter
       delete event;
    }
 
+} writer;
+
+// null logger for discard all messages
+#else
+struct LogWriter
+{
+   void push(LogEvent *event)
+   {
+      delete event;
+   }
 } writer;
 #endif
 

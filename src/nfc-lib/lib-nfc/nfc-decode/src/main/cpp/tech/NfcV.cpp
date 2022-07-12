@@ -274,18 +274,15 @@ struct NfcV::Impl : NfcTech
       // compute correlation factor
       float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_NFC_CHANNEL
-      decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
-#endif
+      if (decoder->debug)
+      {
+         decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
 
-#ifdef DEBUG_NFC_CHANNEL
-      decoder->debug->set(DEBUG_NFC_CHANNEL + 1, correlatedS0);
-#endif
+         decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, correlatedS0);
 
-#ifdef DEBUG_NFC_CHANNEL
-      if (decoder->signalClock == modulation->searchSyncTime)
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.75f);
-#endif
+         if (decoder->signalClock == modulation->searchSyncTime)
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, 0.75f);
+      }
 
       // recover status from previous partial search
       if (modulation->correlatedPeakTime && decoder->signalClock > modulation->correlatedPeakTime + bitrate->period0SymbolSamples)
@@ -704,18 +701,14 @@ struct NfcV::Impl : NfcTech
          // compute correlation factor
          float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / float(bitrate->period2SymbolSamples);
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
-#endif
+         if (decoder->debug)
+         {
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, modulation->filterIntegrate / float(bitrate->period2SymbolSamples));
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, correlatedS0);
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, correlatedS0);
-#endif
-
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 1, 0.50f);
-#endif
+            if (decoder->signalClock == modulation->searchSyncTime)
+               decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, 0.50f);
+         }
 
          // wait until search finished
          if (decoder->signalClock < modulation->searchStartTime)
@@ -840,17 +833,12 @@ struct NfcV::Impl : NfcTech
          // compute correlation results for each symbol and distance
          float correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1];
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
-#endif
-
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->filterIntegrate);
-#endif
-
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 2, correlatedS0);
-#endif
+         if (decoder->debug)
+         {
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, modulation->filterIntegrate);
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 2, correlatedS0);
+         }
 
          // start correlation after frameGuardTime
          if (decoder->signalClock < frameStatus.guardEnd)
@@ -868,15 +856,14 @@ struct NfcV::Impl : NfcTech
          if (signalDeep > maximumModulationDeep)
             return PatternType::NoPattern;
 
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock < (frameStatus.guardEnd + 5))
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 2, modulation->searchValueThreshold);
-#endif
+         if (decoder->debug)
+         {
+            if (decoder->signalClock < (frameStatus.guardEnd + 5))
+               decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 2, modulation->searchValueThreshold);
 
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 2, 0.75f);
-#endif
+            if (decoder->signalClock == modulation->searchSyncTime)
+               decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 2, 0.75f);
+         }
 
          // wait until search start
          if (decoder->signalClock < modulation->searchStartTime)
@@ -1029,22 +1016,15 @@ struct NfcV::Impl : NfcTech
          float correlatedS0 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1];
          float correlatedSD = std::fabs(correlatedS0);
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
-#endif
+         if (decoder->debug)
+         {
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]);
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, modulation->filterIntegrate);
+            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 2, correlatedS0);
 
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 1, modulation->filterIntegrate);
-#endif
-
-#ifdef DEBUG_NFC_CHANNEL
-         decoder->debug->set(DEBUG_NFC_CHANNEL + 2, correlatedS0);
-#endif
-
-#ifdef DEBUG_NFC_CHANNEL
-         if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_NFC_CHANNEL + 2, 0.50f);
-#endif
+            if (decoder->signalClock == modulation->searchSyncTime)
+               decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 2, 0.50f);
+         }
 
          // wait until search window start
          if (decoder->signalClock < modulation->searchStartTime)

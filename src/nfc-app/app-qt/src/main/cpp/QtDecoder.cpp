@@ -189,14 +189,17 @@ struct QtDecoder::Impl
                {
                   QString nfc = group.mid(sep + 1);
 
-                  if (key.toLower().contains("enabled"))
+                  if (key.toLower().contains("enable"))
                      decoderConfigEvent->setBoolean(nfc + "/" + key, settings.value(key).toBool());
                   else
                      decoderConfigEvent->setFloat(nfc + "/" + key, settings.value(key).toFloat());
                }
                else
                {
-                  decoderConfigEvent->setFloat(key, settings.value(key).toFloat());
+                  if (key.toLower().contains("enable"))
+                     decoderConfigEvent->setBoolean(key, settings.value(key).toBool());
+                  else
+                     decoderConfigEvent->setFloat(key, settings.value(key).toFloat());
                }
             }
 
@@ -438,6 +441,9 @@ struct QtDecoder::Impl
 
       if (event->contains("streamTime"))
          json["streamTime"] = event->getInteger("streamTime");
+
+      if (event->contains("debugEnabled"))
+         json["debugEnabled"] = event->getBoolean("debugEnabled");
 
       if (event->contains("powerLevelThreshold"))
          json["powerLevelThreshold"] = event->getFloat("powerLevelThreshold");

@@ -49,6 +49,10 @@ class NfcDecoder
 
       std::list<NfcFrame> nextFrames(sdr::SignalBuffer samples);
 
+      bool isDebugEnabled() const;
+
+      void setEnableDebug(bool enabled);
+
       bool isNfcAEnabled() const;
 
       void setEnableNfcA(bool enabled);

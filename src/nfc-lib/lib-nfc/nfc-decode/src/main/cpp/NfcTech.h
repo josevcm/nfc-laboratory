@@ -34,16 +34,12 @@
 
 #include <nfc/Nfc.h>
 
-#ifdef DEBUG_SIGNAL
-#define DEBUG_CHANNELS 6
+#define DEBUG_CHANNELS 10
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 #define DEBUG_SIGNAL_FILTERED_CHANNEL 1
-//#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
-#define DEBUG_SIGNAL_ENVELOPE_CHANNEL 2
-//#define DEBUG_SIGNAL_AVERAGE_CHANNEL 2
-//#define DEBUG_SIGNAL_DEEP_CHANNEL 2
-#define DEBUG_NFC_CHANNEL 3
-#endif
+#define DEBUG_SIGNAL_VARIANCE_CHANNEL 2
+#define DEBUG_SIGNAL_AVERAGE_CHANNEL 3
+#define DEBUG_SIGNAL_DECODER_CHANNEL 4
 
 namespace nfc {
 
@@ -454,33 +450,15 @@ struct DecoderStatus
          carrierEdgePeak = 0;
       }
 
-#ifdef DEBUG_SIGNAL
-      debug->block(signalClock);
-#endif
+      if (debug)
+      {
+         debug->block(signalClock);
 
-#ifdef DEBUG_SIGNAL_VALUE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].samplingValue);
-#endif
-
-#ifdef DEBUG_SIGNAL_FILTERED_CHANNEL
-      debug->set(DEBUG_SIGNAL_FILTERED_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].filteredValue);
-#endif
-
-#ifdef DEBUG_SIGNAL_VARIANCE_CHANNEL
-      debug->set(DEBUG_SIGNAL_VARIANCE_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].meanDeviation);
-#endif
-
-#ifdef DEBUG_SIGNAL_DEEP_CHANNEL
-      debug->set(DEBUG_SIGNAL_DEEP_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].modulateDepth);
-#endif
-
-#ifdef DEBUG_SIGNAL_AVERAGE_CHANNEL
-      debug->set(DEBUG_SIGNAL_AVERAGE_CHANNEL, signalAverage);
-#endif
-
-#ifdef DEBUG_SIGNAL_ENVELOPE_CHANNEL
-      debug->set(DEBUG_SIGNAL_ENVELOPE_CHANNEL, signalEnvelope);
-#endif
+         debug->set(DEBUG_SIGNAL_VALUE_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].samplingValue);
+         debug->set(DEBUG_SIGNAL_FILTERED_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].filteredValue);
+         debug->set(DEBUG_SIGNAL_VARIANCE_CHANNEL, sample[signalClock & (BUFFER_SIZE - 1)].meanDeviation);
+         debug->set(DEBUG_SIGNAL_AVERAGE_CHANNEL, signalAverage);
+      }
 
       return true;
    }

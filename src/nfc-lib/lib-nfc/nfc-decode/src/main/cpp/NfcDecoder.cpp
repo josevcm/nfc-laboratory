@@ -45,6 +45,9 @@ struct NfcDecoder::Impl
    static constexpr int ENABLED_NFCF = 1 << 2;
    static constexpr int ENABLED_NFCV = 1 << 3;
 
+   // debug disabled by default
+   int debugEnabled = false;
+
    // all tech enabled by default
    int enabledTech = ENABLED_NFCA | ENABLED_NFCB | ENABLED_NFCF | ENABLED_NFCV;
 
@@ -91,6 +94,16 @@ void NfcDecoder::cleanup()
 std::list<NfcFrame> NfcDecoder::nextFrames(sdr::SignalBuffer samples)
 {
    return impl->nextFrames(samples);
+}
+
+bool NfcDecoder::isDebugEnabled() const
+{
+   return impl->debugEnabled;
+}
+
+void NfcDecoder::setEnableDebug(bool enabled)
+{
+   impl->debugEnabled = enabled;
 }
 
 bool NfcDecoder::isNfcAEnabled() const
@@ -250,10 +263,11 @@ void NfcDecoder::Impl::initialize()
       // configure NFC-V decoder
       nfcv.initialize(decoder.sampleRate);
 
-#ifdef DEBUG_SIGNAL
-      log.warn("SIGNAL DEBUGGER ENABLED!, highly affected performance!");
-      decoder.debug = std::make_shared<SignalDebug>(DEBUG_CHANNELS, decoder.sampleRate);
-#endif
+      if (debugEnabled)
+      {
+         log.warn("SIGNAL DEBUG ENABLED!, highly affected performance!");
+         decoder.debug = std::make_shared<SignalDebug>(DEBUG_CHANNELS, decoder.sampleRate);
+      }
    }
 
    // starts without bitrate
@@ -268,9 +282,8 @@ void NfcDecoder::Impl::initialize()
  */
 void NfcDecoder::Impl::cleanup()
 {
-#ifdef DEBUG_SIGNAL
-   decoder.debug.reset();
-#endif
+   if (decoder.debug)
+      decoder.debug.reset();
 }
 
 /**
@@ -292,9 +305,8 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
          initialize();
       }
 
-#ifdef DEBUG_SIGNAL
-      decoder.debug->begin(samples.elements());
-#endif
+      if (decoder.debug)
+         decoder.debug->begin(samples.elements());
 
       do
       {
@@ -347,9 +359,8 @@ std::list<NfcFrame> NfcDecoder::Impl::nextFrames(sdr::SignalBuffer &samples)
 
       } while (!samples.isEmpty());
 
-#ifdef DEBUG_SIGNAL
-      decoder.debug->write();
-#endif
+      if (decoder.debug)
+         decoder.debug->write();
    }
 
       // if sample buffer is not valid only process remain carrier detector

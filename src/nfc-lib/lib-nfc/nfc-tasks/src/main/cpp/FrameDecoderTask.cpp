@@ -246,6 +246,10 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
          if (config.contains("streamTime"))
             decoder->setStreamTime(config["streamTime"]);
 
+         // Debug parameters
+         if (config.contains("debugEnabled"))
+            decoder->setEnableDebug(config["debugEnabled"]);
+
          // global power level threshold
          if (config.contains("powerLevelThreshold"))
             decoder->setPowerLevelThreshold(config["powerLevelThreshold"]);
