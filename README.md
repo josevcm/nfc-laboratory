@@ -55,10 +55,12 @@ Stores the status of the window and controls, nothing very interesting.
 
 ```
 [decoder]
+debugEnabled=false
 powerLevelThreshold=0.01
 ```
 
-Indicates the absolute minimum signal strength to start decoding, 0.5 is the maximum peak.
+Indicates the absolute minimum signal strength to start decoding, 0.5 is the maximum peak. And enable / disable signal 
+debugging output.
 
 ```
 [decoder.nfca]
