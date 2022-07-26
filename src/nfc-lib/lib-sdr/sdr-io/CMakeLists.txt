@@ -14,4 +14,4 @@ add_library(sdr-io STATIC
 target_include_directories(sdr-io PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(sdr-io PRIVATE ${PRIVATE_SOURCE_DIR})
 
-target_link_libraries(sdr-io rt-lang mufft airspy rtlsdr)
+target_link_libraries(sdr-io rt-lang mufft airspy rtlsdr LimeSuite)

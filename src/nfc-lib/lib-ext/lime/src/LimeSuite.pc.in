@@ -1,0 +1,15 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib@LIB_SUFFIX@
+includedir=${prefix}/include
+
+Name: LimeSuite
+Description: Driver and GUI for LMS7002M-based SDR platforms.
+URL: https://myriadrf.org/projects/lime-suite/
+Version: @LIME_SUITE_VERSION@
+Requires:
+Requires.private:
+Conflicts:
+Cflags: -I${includedir}
+Libs: -L${libdir} -lLimeSuite
+Libs.private:

@@ -1,0 +1,427 @@
+Release 20.10.0 (2020-10-29)
+==========================
+
+LimeSuite library changes:
+- Fixed GFIR floating point comparison
+- Disabled caller-saves optimization for GCC versions 9.3 onwards
+- Changed USB processing, FIFO and remote thread priorities on Linux systems
+- Fixed null pointer dereferences in StreamChannel write/read functions
+- Added option to configure data link format from API
+- TDD mode registers are reset after initialization on LimeSDR-Core boards
+- Changed default Common Control Signal value for most boards
+- Changed LMS_Init to tune SXR/SXT PLL's
+- Changed LMS_Init to calibrate Tx frontend IAMP gain
+- Updated SXR/SXT MCU tune algorithm to match host
+- Added optional gain behavior where TIA/IAMP gain elements are removed from available gain range
+- Improved spurious USB transfer handling
+
+LimeSuiteGUI:
+- Fixed an issue of file close not being called in FFTviewer
+- Fixed compilation for wxWidgets STL
+
+SoapyLMS:
+- Updated linkFormat stream option so it changes link format in LimeSuite library
+
+Other changes:
+- Added LimeSuite library information to QuickTest
+- Added CMake option to enable optional gain behavior
+
+Release 20.07.2 (2020-08-05)
+==========================
+
+- Updated CMake to automatically include atomic library when needed
+- Updated CMake to include required thread libraries on different systems
+- Added missing changelog entries and version information
+
+Release 20.07.1 (2020-07-30)
+==========================
+
+- Fixed dkpg build failures for Debian/Ubuntu systems
+
+Release 20.07.0 (2020-07-29)
+==========================
+
+LimeSuite library changes:
+- Changed LimeSDR-Mini SXR default values to match SXT
+- Fix for lms chip id not changing when setting interface frequency
+- Improve SXT/SXR tune in MCU calibrations
+- Set stream FIFO size to be at least 4 packets
+- Increased availble COM port values for LimeRFE board
+- Added unicode check when LimeRFE COM port is being opened
+
+LimeSuiteGUI:
+- Fixed display of CLKGEN values
+- Changed numeric slider settings for better fit on some distributions
+- Changed power meter to always be visible in LimeRFE panel
+- Changed LimeRFE panel's info to be read only
+- Added clear button to LimeRFE info panel
+- Fixed GUI freezing when opening LimeRFE board through SDR connection with flipped cable
+- Fixed fitting and display issues for LimeRFE board panel on Ubuntu 20.04
+
+SoapyLMS:
+- Return actual supported sample rates instead of returning static limits
+
+Octave:
+- Fixed warnings when loading LimeSuite library
+
+Other changes:
+- Updated CMake so that LimeRFE module is optional
+- Added HW, GW version and temperature information to QuickTest output
+- Fixed LimeUtil loading wrong device with optional arguments
+- Updated wxgtk3.0 library name in debian/control
+
+Release 20.01.0 (2020-01-28)
+==========================
+
+LimeSuite library changes:
+- Including LimeRFE support
+- Update CGEN calculation to allow lower CGEN values
+- Configure RF switches (when possible) to avoid transmission during calibration
+- Automatically reconfigure GFIR LPF after sample rate change
+- Remove LMS_EnableCalibCache function from LimeSuite.h
+- Improve PLL locking in calibration procedures
+- Fix Tx transfer size being set to Rx transfer size
+- Fix RF path being auto-set after it was selected explicitly for LimeSDR-Mini
+- Add option to perform Rx phase alignment instead of of always running it
+- Improve SXT/SXR tune by automatically retrying with higher bias current setting
+- Update FIFO buffers to use memory more efficiently
+
+SoapyLMS:
+- Add oversampling setting
+- Set bandwidth to sample rate if bandwidth is not explicitly set
+- Fix possible segfault when 2 Rx cahnnels are used
+- Pause streaming when changing sample rate
+- Return time error when negative timestmp is used
+- Automatically use wide enough bandwidth setting for RF frequencies bellow 30 MHz
+- Remove master clock setting
+- Add setting descriptions
+- Implement read for setting advertised by getSettingInfo()
+
+LimeSuiteGUI:
+- Add panel for LMS API function testing
+- Add option to play WFM file from software
+- fix channel measurement in FFTviewer for Ch.B in MIMO mode
+
+Octave plugin:
+- Add LimeGetStreamStatus function
+- Add LimeTransceiveSamples function
+- Update antenna selection after loading ini file
+
+Other changes:
+- Fix LimeQuickTest not outputing to windows command line
+
+Release 19.04.0 (2019-05-09)
+==========================
+
+LimeSuite library changes:
+- Added support for LimeNet-Micro v2.1
+- Fixed Tx ch.B calibration when Rx ch.B is disabled 
+- Added save and restore of analog DC/IQ calibration values when saving/loading INI file
+- Fixed Rx only mode not working on LimeSDR-USB with sample rate <2.5 MSps
+- Fixed Rx only mode not working on LimeSDR-USB with sample rate <2.5 MSps
+- change coefficents in LMS7002M::GetTemperature() to approximately match actual temperature
+
+LimeSuiteGUI:
+- Updated "Board controls" panel for LimeNet-Micro
+
+Other changes
+- Added LimeNET-Micro support to LimeQuickTest
+- LimeSDR-USB v1.4 updated to r2.21 gateware
+- LimeSDR-Mini updated to r1.30 gateware
+
+Release 19.01.0 (2019-01-08)
+==========================
+
+LimeSuite library changes:
+- Allow filtering devices by partial serial number
+- Add GPIO control for LimeSDR-Mini
+- Change LMS_VCTCXOWrite() to save value to non-volatile storage
+- Change LMS_VCTCXORead() to read value from non-volatile storage
+- Make some improvements in GFIR setup
+- Fix Tx not working when Rx is disabled on LimeSDR-Mini
+- Add initial support for LimeNET-Micro
+- Add auto RF path selection option (LMS_PATH_AUTO) for LMS_SetAntenna()
+- Remove LMS_Disconnect() and LMS_IsOpen() functions from API
+- Add support for sending smaller Tx packets (improve end of burst handling) 
+- Change Rx RF path set by LMS_Init() for LimeSDR-USB to LNA_L
+- Disable Tx channel in LMS_Init()
+
+LimeSuiteGUI:
+- Add GPIO controls to "Board controls" panel for LimeSDR-Mini
+- Add option to "Board controls" panel to write VCTCXO value to non-volatile storage
+
+SoapyLMS:
+- Update to soapysdr0.7 module ABI
+- add manual DC/IQ calibrations
+
+Other changes:
+- LimeUtil: fix LimeSDR-Mini not exiting programming mode after flashing FPGA
+- LimeQuickTest: test 1st board when multiple boards are detected (instead of exiting)
+- Add Octave plugin to CMake build
+- Add log handler to Octave plugin
+- Add IQ/DC calibration to basicTX example
+
+- LimeSDR-USB v1.4 updated to r2.20 gateware
+- LimeSDR-Mini updated to r1.29 gateware
+
+Release 18.10.0 (2018-10-04)
+==========================
+
+LimeSuite library changes:
+- Fix CalibrateTxGain() XBUF settings for 3rd party boards
+- Add interpolation/decimation support for SISODDR mode
+- Always use SISODDR mode for LimeSDR-Mini
+- Fix Rx filter calibration for 2nd channel with low bandwidth values
+- Fix index lookup for opt_gain_tbb cache (ChB out of bounds)
+- Add SXT/SXR VCO cache
+- Add FPGA register cache
+- Add connection remote (disabled by default)
+- Fix incorrect TBB gain control behaviour under certain conditions
+- Disable GFIR coefficient ordering based on oversampling when coefficient count is to high 
+- Remove late timestamp reset commands from Rx streaming loop
+
+LimeSuiteGUI:
+- Update board controls panel
+- Add LPF coefficient calculation controls for GFIRs to TxTSP and RxTSP tabs
+
+Other changes:
+- LimeSDR-USB v1.4 updated to r2.18 gateware
+- LimeSDR-Mini updated to r1.27 gateware
+- Add Tx only LMS API example
+- SoapyLMS: remove stream activity checks
+
+Release 18.06.0 (2018-06-13)
+==========================
+
+LimeSuite library changes:
+- Fixed zero filled packet transmitted on Tx FIFO timeout
+- Fixed LMS_GetFrequency() to return correct frequency in TDD mode
+- Added HBD/HBI bypass mode for LimeSDR-USB
+- Made automatic Tx gain calibrations less frequent
+- Fixed some issues with GFIR usage
+- Some fixes for LimeSDR-QPCIe
+
+SoapyLMS changes:
+- Fixed writeSetting to not throw every time
+- Added 'skipCal' stream argument to disable calibration
+- Added 'CALIBRATE' setting for writeSetting()
+
+Other changes:
+- Added LimeSDR-USB support to LimeQuickTest
+- Added sample format and Tx sync selection to FFTviewer
+- Fix LimeSuiteConfig for debian packages
+- LimeSDR-USB v1.4 updated to r2.17 gateware
+- LimeSDR-Mini v1.1 updated to r1.25 gateware
+
+Release 18.04.1 (2018-04-19)
+==========================
+
+- Add multiple device support for LimeSDR-Mini
+- Add QuickTest Utility for LimeSDR-Mini
+- Remove calibration cache database
+- LimeSuiteGUI: Remove duplicate information from 'Device Info' panel
+
+Release 18.04.0 (2018-04-06)
+==========================
+
+- Fixed Tx filter calibration
+- Fixed FPGA PLL configuration when B channel is disabled
+- Fixed non-working controls in LimeSuiteGUI 'TRX Gain' tab
+- Changed CGEN VCO tune algorithm
+- LimeSDR-USB v1.4 updated to r2.16 gateware
+
+Release 18.03.0 (2018-03-28)
+==========================
+
+SoapyLMS changes:
+- Do not tune NCO when LO is within tuning range
+- Filter BW reported to match filtersCalibration
+- Function implementations changed to use same code as LMS API
+
+LimeSuiteGUI changes:
+- Added log levels
+- Added additional controls to SPI panel
+- Reduced number of programming modes in Programming panel
+
+LimeSuite library changes:
+- Added LimeSDR-Mini programming
+- Changed default settings for LimeSDR-Mini
+- Updated calibrations
+- Add phase alignment for dual channel configuration
+- Updated FPGA PLL configuration
+- Fix B channel only streaming
+- Fixed LMS7002M::GetPathRFE for LNAH case
+- Fixed CGEN not tuning to 484-487 MHz
+
+LMS API changes:
+- LMS_Open() can no longer succeed without connecting to hardware
+- LMS_Disconnect() and LMS_IsOpen() are now deprecated because of above change
+- Changed firmware/gateware programming functions
+- Changed lms_dev_info_t structure
+- LMS_SetLOFrequency() now attempts to set different frequencies for A/B channels using NCO
+- Fix Rx NCO direction flip (downconvert flag used to set Rx NCO to upconvert) 
+- Disabling LPF is now same as setting it to maximum bandwidth 
+- Extented gain range for LMS_SetGaindB()
+
+Other changes:
+- Reduce SIMD flags when packaging for x86
+- LimeSDR-USB v1.4 updated to r2.15 gateware
+- LimeSDR-Mini v1.1 updated to r1.24 gateware
+
+Release 17.12.0 (2017-10-19)
+==========================
+
+SoapyLMS changes:
+- Force MIMO alignment
+- Add TBB frontend gain configuration
+- Fix/adjust gain ranges
+
+LMS API changes:
+- Increased USB timeouts
+- Updated FTDI library (LimeSDR-Mini on Windows)
+- RF switch control for LimeSDR-Mini
+- Updated setup/destruction of streams
+- various bug fixes
+
+LimeSuiteGUI changes:
+- Update LimeSDR-Mini panel
+
+Other changes:
+- LimeSDR-USB v1.4 updated to r2.12 gateware
+- LimeSDR-USB v1.4 updated to v4.0 firmware
+
+Release 17.10.0 (2017-10-19)
+==========================
+
+SoapyLMS changes:
+- Initial support for LimeSDR-Mini
+- Disable calibration cache by default
+
+LMS API changes:
+- Initial support for LimeSDR-Mini
+
+LimeSuiteGUI changes:
+- Added scrollbars
+- Fix multiple crashes that occured when board is not connected 
+- Bring window to front when trying to open already opened window
+- Some cosmetic GUI changes
+- Added default config button to GUI
+
+Other changes:
+- LimeSDR v1.4 updated to r2.11 gateware
+
+Release 17.09.1 (2017-09-21)
+==========================
+
+SoapyLMS changes:
+- SoapyLMS7 caches stream enable and disables on close
+- Fixed late packet reporting in SoapyLMS7 stream status
+
+LMS API changes:
+- Added simple GPIO example utilizing functions from LimeSuite.h
+- Fixed WriteStream() end of burst flushing in fifo.h
+- Fixed abs() overload compiler issue in lms7_device.cpp
+- Removed private include in mcu_program/host_src/main.cpp
+- Fixed error checking bug causing compilation error on MacOS in LMS_GetGaindB() and LMS_GetNormalizedGain() 
+
+Other changes:
+- LimeSDR v1.4 updated to r2.10 gateware
+
+Release 17.09.0 (2017-09-01)
+==========================
+
+LimeSuite library changes:
+- Added transfer size adjustment based on sample rate
+- Improved MCU calibration procedures
+- Initial support for LimeSDR-QPCIe
+- Changed format to 16 bit for data transfer when float (non-native) format is selected in API 
+
+LMS API changes:
+- Added external reference clock(LMS_CLOCK_EXTREF) configuration to LMS_SetClockFreq()  
+- Change LMS_SetGaindB() and LMS_SetNormalizedGain() to select optimal TBB gain for TX
+- Fixed LMS_GetStreamStatus() not returning some status values
+
+LimeSuiteGUI changes:
+- Unified read/write params in board controls panel
+- Fixed some GUI fields not updating correctly/reporting wrong values
+
+Other changes:
+- LimeSDR v1.4 updated to r2.9 gateware
+- Added LMS API doxygen generation to CMake
+- Added CMake option to enable compiler SIMD flags
+
+Release 17.06.0 (2017-06-20)
+==========================
+
+API additions:
+- LMS_GPIODirRead
+- LMS_GPIODirWrite
+- LMS_CalibrateInternalADC
+- LMS_CalibrateAnalogRSSIDC
+- LMS_CalibrateRP_BIAS
+- LMS_CalibrateTxGain
+- LMS_SetClockFreqWithSpurCancelation
+
+General changes:
+- SoapyLMS7 - added getMasterClockRates()
+- SoapyLMS7 - added getSampleRateRange()
+- LimeSDR v1.4 updated to r2.8 gateware
+- GPIO support in SoapyLM7 module
+- Library level logging support
+- Speed up x640,x641 spi
+- FFTviewer: add checkbox for RX->TX loopback control
+- Merged major MCU based calibrations update
+
+Release 17.02.2 (2017-04-30)
+==========================
+
+- Fixed register typo in LMS7002M::SetTxDCOffset()
+- Added option defaults for stream args in SoapyLMS7
+- Fixed LMS7002M::GetPathRFE() currently selected path
+
+Release 17.02.1 (2017-03-11)
+==========================
+
+- Fix ILimeSDRStreaming fifo size power of two issue
+
+Release 17.02.0 (2017-03-07)
+==========================
+
+- Automatic phase configuration for DIQ clocks
+- Fix FFT avg amplitudes when MIMO is enabled
+- Fix free usb device list for STREAM connection
+- Device handle display and label improvements
+- General fixes for LimeSDR-PCIE support
+- Add gain control with dB value (for RX only)
+
+Release 17.01.1 (2017-02-03)
+==========================
+
+- Updated LimeSDR rev1.4 gateware images to version 2.6
+- LMS7 API: Fix CGEN clock config in LMS_SetClockFreq()
+- Fix debug assertion in FFT viewer wx format string
+- LMS7 API: Fix NCO down/upconvert for new chip rev
+- Fix NCO tuning sign in SoapyLMS7 for LMS7 silicon rev
+- Fixed bug in downloadImageResource() call for windows
+- Updated LimeSDR images for USB enumeration problem fix
+
+Release 17.01.0 (2017-01-22)
+==========================
+
+- Support filter by serial for ConnectionSTREAM
+- Added resource location API and image update API
+- configure LML clock phases based on interface freq
+- LimeSDR: detect reference clock presence on connect
+- Set CMIX setting in calib/tune based on chip version
+
+Release 16.12.1 (2017-01-22)
+==========================
+
+- Minor compilation fixes for OSX/clang (narrowing)
+- Improve cmake check for novena connection i2c support
+- Fix abs() overload for mcu lms7002m calibrations
+
+Release 16.12.0 (2016-12-31)
+==========================
+
+This is the first changelog entry for LimeSuite

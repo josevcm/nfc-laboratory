@@ -1,0 +1,4 @@
+[submodule "LimeSuite"]
+	path = LimeSuite
+	url = https://github.com/myriadrf/LimeSuite
+	branch = LimeSDR_USB_Test

@@ -178,7 +178,7 @@ struct AirspyDevice::Impl
          // configure gain value
          setGainValue(gainValue);
 
-         log.info("openned airspy device {}, firmware {}", {deviceName, deviceVersion});
+         log.info("opened airspy device {}, firmware {}", {deviceName, deviceVersion});
 
          return true;
       }

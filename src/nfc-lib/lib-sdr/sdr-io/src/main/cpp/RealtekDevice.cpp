@@ -176,7 +176,7 @@ struct RealtekDevice::Impl
             // configure gain value
             setGainValue(gainValue);
 
-            log.info("openned rtlsdr device {} width tuner type {}", {deviceName, rtlsdrTuner});
+            log.info("opened rtlsdr device {} width tuner type {}", {deviceName, rtlsdrTuner});
 
             return true;
          }
