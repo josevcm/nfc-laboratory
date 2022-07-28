@@ -54,6 +54,9 @@ struct LimeDevice::Impl
    int decimation = 0;
    int streamTime = 0;
 
+   int limeResult = 0;
+   lms_device_t *limeHandle = 0;
+
    std::mutex streamMutex;
    std::queue<SignalBuffer> streamQueue;
    RadioDevice::StreamHandler streamCallback;
@@ -95,37 +98,24 @@ struct LimeDevice::Impl
 
    bool open(SignalDevice::OpenMode mode)
    {
-//      airspy_device *handle;
-//
-//      if (deviceName.find("://") != -1 && deviceName.find("airspy://") == -1)
-//      {
-//         log.warn("invalid device name [{}]", {deviceName});
-//         return false;
-//      }
-//
-//      close();
-//
-//#ifdef ANDROID
-//      // special open mode based on /sys/ node and file descriptor (primary for android devices)
-//   if (name.startsWith("airspy://sys/"))
-//   {
-//      // extract full /sys/... path to device node
-//      QByteArray node = device->name.mid(8).toLocal8Bit();
-//
-//      // open Airspy device
-//      result = airspy_open_fd(&device->handle, node.data(), device->fileDesc);
-//   }
-//   else
-//#endif
-//
-//      // standard open mode based on serial number
-//      {
-//         // extract serial number
-//         uint64_t sn = std::stoull(deviceName.substr(9), nullptr, 16);
-//
-//         // open Airspy device
-//         airspyResult = airspy_open_sn(&handle, sn);
-//      }
+      lms_device_t *handle;
+
+      if (deviceName.find("://") != -1 && deviceName.find("lime://") == -1)
+      {
+         log.warn("invalid device name [{}]", {deviceName});
+         return false;
+      }
+
+      close();
+
+      // extract device name
+      std::string device = deviceName.substr(7);
+
+      // open lime device
+      if (LMS_Open(&handle, device.c_str(), NULL) == LMS_SUCCESS)
+      {
+         limeHandle = handle;
+      }
 //
 //      if (airspyResult == AIRSPY_SUCCESS)
 //      {
@@ -176,21 +166,21 @@ struct LimeDevice::Impl
 
    void close()
    {
-//      if (airspyHandle)
-//      {
-//         // stop streaming if active...
-//         stop();
-//
-//         log.info("close device {}", {deviceName});
-//
-//         // close device
-//         if ((airspyResult = airspy_close(airspyHandle)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_close: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         deviceName = "";
-//         deviceVersion = "";
-//         airspyHandle = nullptr;
-//      }
+      if (limeHandle)
+      {
+         // stop streaming if active...
+         stop();
+
+         log.info("close device {}", {deviceName});
+
+         // close device
+         if ((limeResult = LMS_Close(limeHandle)) != LMS_SUCCESS)
+            log.warn("failed LMS_Close: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         deviceName = "";
+         deviceVersion = "";
+         limeHandle = nullptr;
+      }
    }
 
    int start(RadioDevice::StreamHandler handler)
