@@ -13,7 +13,7 @@ set(CONNECTION_XILLYBUS_SOURCES
 ########################################################################
 include(FeatureSummary)
 include(CMakeDependentOption)
-cmake_dependent_option(ENABLE_PCIE_XILLYBUS "Enable PCIE Xillybus" ON "ENABLE_LIBRARY" OFF)
+cmake_dependent_option(ENABLE_PCIE_XILLYBUS "Enable PCIE Xillybus" OFF "ENABLE_LIBRARY" OFF)
 add_feature_info(ConnectionXillybus ENABLE_PCIE_XILLYBUS "PCIE Xillybus Connection support")
 if (NOT ENABLE_PCIE_XILLYBUS)
     return()

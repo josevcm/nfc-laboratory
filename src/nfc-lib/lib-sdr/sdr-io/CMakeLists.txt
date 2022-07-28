@@ -5,11 +5,12 @@ set(PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
 add_library(sdr-io STATIC
         src/main/cpp/AirspyDevice.cpp
-        src/main/cpp/FourierTransform.cpp
+        src/main/cpp/LimeDevice.cpp
         src/main/cpp/RealtekDevice.cpp
         src/main/cpp/RecordDevice.cpp
         src/main/cpp/DeviceFactory.cpp
-        src/main/cpp/SignalBuffer.cpp)
+        src/main/cpp/SignalBuffer.cpp
+        src/main/cpp/FourierTransform.cpp)
 
 target_include_directories(sdr-io PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(sdr-io PRIVATE ${PRIVATE_SOURCE_DIR})

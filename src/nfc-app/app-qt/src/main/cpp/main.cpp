@@ -33,6 +33,7 @@
 #include <sdr/SignalType.h>
 #include <sdr/RecordDevice.h>
 #include <sdr/AirspyDevice.h>
+#include <sdr/LimeDevice.h>
 #include <sdr/RealtekDevice.h>
 
 #include <nfc/AdaptiveSamplingTask.h>
