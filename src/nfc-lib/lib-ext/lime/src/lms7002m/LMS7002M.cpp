@@ -42,6 +42,24 @@ extern std::vector<const LMS7Parameter*> LMS7parameterList;
 const uint16_t LMS7002M::readOnlyRegisters[] =      { 0x002F, 0x008C, 0x00A8, 0x00A9, 0x00AA, 0x00AB, 0x00AC, 0x0123, 0x0209, 0x020A, 0x020B, 0x040E, 0x040F };
 const uint16_t LMS7002M::readOnlyRegistersMasks[] = { 0x0000, 0x0FFF, 0x007F, 0x0000, 0x0000, 0x0000, 0x0000, 0x003F, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000 };
 
+int vasprintf(char ** __restrict__ ret,
+              const char * __restrict__ format,
+              va_list ap) {
+   int len;
+   /* Get Length */
+   len = _vsnprintf(NULL,0,format,ap);
+   if (len < 0) return -1;
+   /* +1 for \0 terminator. */
+   *ret = static_cast<char *>(malloc(len + 1));
+   /* Check malloc fail*/
+   if (!*ret) return -1;
+   /* Write String */
+   _vsnprintf(*ret,len+1,format,ap);
+   /* Terminate explicitly */
+   (*ret)[len] = '\0';
+   return len;
+}
+
 /** @brief Simple logging function to print status messages
     @param text message to print
     @param type message type for filtering specific information

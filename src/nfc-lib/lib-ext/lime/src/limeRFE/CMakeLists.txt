@@ -29,7 +29,7 @@ set(LIMERFE_SOURCES
 ########################################################################
 include(FeatureSummary)
 include(CMakeDependentOption)
-cmake_dependent_option(ENABLE_LIMERFE "Enable LimeRFE support" ON "ENABLE_LIBRARY" OFF)
+cmake_dependent_option(ENABLE_LIMERFE "Enable LimeRFE support" OFF "ENABLE_LIBRARY" OFF)
 add_feature_info(LimeRFE ENABLE_LIMERFE "LimeRFE support")
 
 if(ENABLE_LIMERFE AND ENABLE_GUI)

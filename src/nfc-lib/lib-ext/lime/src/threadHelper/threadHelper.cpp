@@ -133,7 +133,7 @@ int lime::SetOSThreadPriority(ThreadPriority priority, ThreadPolicy /*policy*/, 
         break;
     }
 
-    if (!SetThreadPriority(thread->native_handle(), win_priority))
+    if (!SetThreadPriority(reinterpret_cast<HANDLE>(thread->native_handle()), win_priority))
     {
         lime::debug("SetThreadPriority: Failed to set priority(%d)", win_priority);
         return -1;

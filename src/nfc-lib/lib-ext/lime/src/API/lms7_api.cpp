@@ -9,7 +9,7 @@
 #include "Logger.h"
 #include "LMS64CProtocol.h"
 #include "Streamer.h"
-#include "../limeRFE/RFE_Device.h"
+//#include "../limeRFE/RFE_Device.h"
 
 using namespace std;
 

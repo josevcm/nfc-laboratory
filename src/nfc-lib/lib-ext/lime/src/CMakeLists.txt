@@ -26,7 +26,7 @@ set(LIME_SUITE_PUBLIC_HEADERS
     Si5351C/Si5351C.h
     FPGA_common/FPGA_common.h
     API/lms7_device.h
-    limeRFE/limeRFE.h
+#    limeRFE/limeRFE.h
 )
 
 include(FeatureSummary)
@@ -95,7 +95,7 @@ set(LIME_SUITE_INCLUDES
     lms7002m_mcu
     ${PROJECT_SOURCE_DIR}/external/cpp-feather-ini-parser
     ${PROJECT_SOURCE_DIR}/external/kissFFT/
-    limeRFE
+#    limeRFE
     threadHelper
 )
 
@@ -260,7 +260,7 @@ if (ENABLE_GUI)
     include_directories(fftviewer_wxgui)
     include_directories(lms7suiteEvents)
     include_directories(boards_wxgui)
-    include_directories(limeRFE)
+#    include_directories(limeRFE)
 
     include(${wxWidgets_USE_FILE})
     add_subdirectory(oglGraph)
@@ -310,4 +310,4 @@ add_subdirectory(examples)
 #########################################################################
 # LimeRFE
 #########################################################################
-add_subdirectory(limeRFE)
+#add_subdirectory(limeRFE)
