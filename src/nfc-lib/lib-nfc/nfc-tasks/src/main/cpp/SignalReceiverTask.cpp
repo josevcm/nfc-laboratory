@@ -170,6 +170,15 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                   receiver->setGainMode(1);
                   receiver->setGainValue(77);
                }
+                  // default parameters for Lime SDR
+               else if (name.find("lime") == 0)
+               {
+                  receiver->setCenterFreq(27.12E6);
+                  receiver->setSampleRate(10E6);
+                  receiver->setGainMode(1);
+                  receiver->setGainValue(30);
+               }
+
                   // default parameters for others
                else
                {

@@ -24,6 +24,13 @@
 
 // https://gist.github.com/csete/ece39ec9f66d751889821fa7619360e4
 
+#ifdef _WIN32
+
+#include <windows.h>
+
+#undef ERROR
+#endif
+
 #include <queue>
 #include <mutex>
 #include <chrono>
@@ -35,6 +42,10 @@
 #include <sdr/SignalType.h>
 #include <sdr/SignalBuffer.h>
 #include <sdr/LimeDevice.h>
+
+#define STREAM_SAMPLES 1024*1024
+#define BUFFER_SAMPLES 65536
+#define MAX_QUEUE_SIZE 4
 
 namespace sdr {
 
@@ -58,6 +69,11 @@ struct LimeDevice::Impl
 
    int limeResult = 0;
    lms_device_t *limeHandle = 0;
+   lms_stream_t limeStream = {};
+
+   std::mutex workerMutex;
+   std::atomic_bool workerStreaming {false};
+   std::thread workerThread;
 
    std::mutex streamMutex;
    std::queue<SignalBuffer> streamQueue;
@@ -100,7 +116,10 @@ struct LimeDevice::Impl
 
    bool open(SignalDevice::OpenMode mode)
    {
+      log.info("open device {}", {deviceName});
+
       lms_device_t *handle;
+      const lms_dev_info_t *info;
 
       if (deviceName.find("://") != -1 && deviceName.find("lime://") == -1)
       {
@@ -114,54 +133,46 @@ struct LimeDevice::Impl
       std::string device = deviceName.substr(7);
 
       // open lime device
-      if (LMS_Open(&handle, device.c_str(), NULL) == LMS_SUCCESS)
+      if ((limeResult = LMS_Open(&handle, device.c_str(), nullptr)) == LMS_SUCCESS)
       {
          limeHandle = handle;
+
+         if ((info = LMS_GetDeviceInfo(limeHandle)) != nullptr)
+         {
+            log.info("firmware version {}", {std::string(info->firmwareVersion)});
+            log.info("hardware version {}", {std::string(info->hardwareVersion)});
+            log.info("protocol version {}", {std::string(info->protocolVersion)});
+            log.info("gateware version {}", {std::string(info->gatewareVersion)});
+         }
+
+         // Reset device configuration
+         if ((limeResult = LMS_Reset(limeHandle)) != LMS_SUCCESS)
+            log.warn("failed LMS_Reset: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         // Initialize device with default configuration, Use LMS_LoadConfig(device, "/path/to/file.ini") to load config from INI
+         if ((limeResult = LMS_Init(limeHandle)) != LMS_SUCCESS)
+            log.warn("failed LMS_Init: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         // enable RX channel
+         if ((limeResult = LMS_EnableChannel(limeHandle, LMS_CH_RX, 0, true)) != LMS_SUCCESS)
+            log.warn("failed LMS_EnableChannel: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         // configure frequency
+         setCenterFreq(centerFreq);
+
+         // configure samplerate
+         setSampleRate(sampleRate);
+
+         // configure gain mode
+         setGainMode(gainMode);
+
+         // configure gain value
+         setGainValue(gainValue);
+
+         return true;
       }
-//
-//      if (airspyResult == AIRSPY_SUCCESS)
-//      {
-//         airspyHandle = handle;
-//
-//         char tmp[128];
-//
-//         // get version string
-//         if ((airspyResult = airspy_version_string_read(handle, tmp, sizeof(tmp))) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_version_string_read: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         // disable bias tee
-//         if ((airspyResult = airspy_set_rf_bias(handle, 0)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_set_rf_bias: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         // read board serial
-//         if ((airspyResult = airspy_board_partid_serialno_read(handle, &airspySerial)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_board_partid_serialno_read: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         // set sample type
-//         if ((airspyResult = airspy_set_sample_type(handle, airspySample)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_set_sample_type: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         // set version string
-//         deviceVersion = std::string(tmp);
-//
-//         // configure frequency
-//         setCenterFreq(centerFreq);
-//
-//         // configure samplerate
-//         setSampleRate(sampleRate);
-//
-//         // configure gain mode
-//         setGainMode(gainMode);
-//
-//         // configure gain value
-//         setGainValue(gainValue);
-//
-//         log.info("opened airspy device {}, firmware {}", {deviceName, deviceVersion});
-//
-//         return true;
-//      }
-//
-//      log.warn("failed airspy_open_sn: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+
+      log.warn("failed LMS_Open: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
 
       return false;
    }
@@ -187,195 +198,168 @@ struct LimeDevice::Impl
 
    int start(RadioDevice::StreamHandler handler)
    {
-//      if (airspyHandle)
-//      {
-//         log.info("start streaming for device {}", {deviceName});
-//
-//         // clear counters
-//         samplesDropped = 0;
-//         samplesReceived = 0;
-//
-//         // reset stream status
-//         streamCallback = std::move(handler);
-//         streamQueue = std::queue<SignalBuffer>();
-//
-//         // start reception
-//         if ((airspyResult = airspy_start_rx(airspyHandle, reinterpret_cast<airspy_sample_block_cb_fn>(process_transfer), this)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_start_rx: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         // clear callback to disable receiver
-//         if (airspyResult != AIRSPY_SUCCESS)
-//            streamCallback = nullptr;
-//
-//         // sets stream start time
-//         streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-//
-//         return airspyResult;
-//      }
+      if (limeHandle)
+      {
+         log.info("start streaming for device {}", {deviceName});
+
+         // reset result
+         limeResult = LMS_SUCCESS;
+
+         // clear counters
+         samplesDropped = 0;
+         samplesReceived = 0;
+
+         // reset stream status
+         streamCallback = std::move(handler);
+         streamQueue = std::queue<SignalBuffer>();
+
+         // setup stream
+         limeStream.channel = 0;
+         limeStream.isTx = false;
+         limeStream.fifoSize = STREAM_SAMPLES;
+         limeStream.throughputVsLatency = 1.0;
+         limeStream.dataFmt = lms_stream_t::LMS_FMT_F32;
+
+         if (!limeResult && (limeResult = LMS_SetupStream(limeHandle, &limeStream)) != LMS_SUCCESS)
+            log.warn("failed LMS_SetupStream: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         // start reception
+         if (!limeResult && (limeResult = LMS_StartStream(&limeStream)) != LMS_SUCCESS)
+            log.warn("failed LMS_StartStream: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         // enable worker thread on success
+         if (!limeResult)
+         {
+            // set streaming flag to enable worker
+            workerStreaming = true;
+
+            // run worker thread
+            workerThread = std::thread([this] { streamWorker(); });
+         }
+
+         // sets stream start time
+         streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+         return limeResult;
+      }
 
       return -1;
    }
 
    int stop()
    {
-//      if (airspyHandle && streamCallback)
-//      {
-//         log.info("stop streaming for device {}", {deviceName});
-//
-//         // stop reception
-//         if ((airspyResult = airspy_stop_rx(airspyHandle)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_stop_rx: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         // disable stream callback and queue
-//         streamCallback = nullptr;
-//         streamQueue = std::queue<SignalBuffer>();
-//         streamTime = 0;
-//
-//         return airspyResult;
-//      }
+      if (limeHandle && streamCallback)
+      {
+         // reset result
+         limeResult = LMS_SUCCESS;
+
+         log.info("stop streaming for device {}", {deviceName});
+
+         // signal finish to running thread
+         workerStreaming = false;
+
+         // wait until worker is finished
+         std::lock_guard<std::mutex> lock(workerMutex);
+
+         // wait for thread joint
+         workerThread.join();
+
+         // stop reception
+         if (!limeResult && (limeResult = LMS_StopStream(&limeStream)) != LMS_SUCCESS)
+            log.warn("failed LMS_StopStream: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         // release stream
+         if (!limeResult && (limeResult = LMS_DestroyStream(limeHandle, &limeStream)) != LMS_SUCCESS)
+            log.warn("failed LMS_DestroyStream: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         // disable stream callback and queue
+         streamCallback = nullptr;
+         streamQueue = std::queue<SignalBuffer>();
+         streamTime = 0;
+
+         return limeResult;
+      }
 
       return -1;
    }
 
    bool isOpen() const
    {
-//      return airspyHandle;
-      return false;
+      return limeHandle;
    }
 
    bool isEof() const
    {
-//      return !airspyHandle || !airspy_is_streaming(airspyHandle);
-      return true;
+      return !limeHandle || !workerStreaming;
    }
 
    bool isReady() const
    {
-//      char version[1];
-//
-//      return airspyHandle && airspy_version_string_read(airspyHandle, version, sizeof(version)) == AIRSPY_SUCCESS;
-
-      return false;
+      return limeHandle;
    }
 
    bool isStreaming() const
    {
-//      return airspyHandle && airspy_is_streaming(airspyHandle);
-
-      return false;
+      return workerStreaming;
    }
 
    int setCenterFreq(long value)
    {
-//      centerFreq = value;
-//
-//      if (airspyHandle)
-//      {
-//         if ((airspyResult = airspy_set_freq(airspyHandle, centerFreq)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_set_freq: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         return airspyResult;
-//      }
+      centerFreq = value;
+
+      if (limeHandle)
+      {
+         if ((limeResult = LMS_SetLOFrequency(limeHandle, LMS_CH_RX, 0, centerFreq)) != LMS_SUCCESS)
+            log.warn("failed LMS_SetLOFrequency: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         return limeResult;
+      }
 
       return 0;
    }
 
    int setSampleRate(long value)
    {
-//      sampleRate = value;
-//
-//      if (airspyHandle)
-//      {
-//         if ((airspyResult = airspy_set_samplerate(airspyHandle, sampleRate)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_set_samplerate: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         return airspyResult;
-//      }
+      sampleRate = value;
+
+      if (limeHandle)
+      {
+         if ((limeResult = LMS_SetSampleRate(limeHandle, sampleRate, 0)) != LMS_SUCCESS)
+            log.warn("failed LMS_SetSampleRate: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         return limeResult;
+      }
 
       return 0;
    }
 
    int setGainMode(int mode)
    {
-//      gainMode = mode;
-//
-//      if (airspyHandle)
-//      {
-//         if (gainMode == LimeDevice::Auto)
-//         {
-//            if ((airspyResult = airspy_set_lna_agc(airspyHandle, tunerAgc)) != AIRSPY_SUCCESS)
-//               log.warn("failed airspy_set_lna_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//            if ((airspyResult = airspy_set_mixer_agc(airspyHandle, mixerAgc)) != AIRSPY_SUCCESS)
-//               log.warn("failed airspy_set_mixer_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//            return airspyResult;
-//         }
-//         else
-//         {
-//            return setGainValue(gainValue);
-//         }
-//      }
-
       return 0;
    }
 
    int setGainValue(int value)
    {
-//      gainValue = value;
-//
-//      if (airspyHandle)
-//      {
-//         if (gainMode == LimeDevice::Linearity)
-//         {
-//            if ((airspyResult = airspy_set_linearity_gain(airspyHandle, gainValue)) != AIRSPY_SUCCESS)
-//               log.warn("failed airspy_set_linearity_gain: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//         }
-//         else if (gainMode == LimeDevice::Sensitivity)
-//         {
-//            if ((airspyResult = airspy_set_sensitivity_gain(airspyHandle, gainValue)) != AIRSPY_SUCCESS)
-//               log.warn("failed airspy_set_linearity_gain: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//         }
-//
-//         return airspyResult;
-//      }
+      gainValue = value;
+
+      if (limeHandle)
+      {
+         if ((limeResult = LMS_SetGaindB(limeHandle, LMS_CH_RX, 0, gainValue)) != LMS_SUCCESS)
+            log.warn("failed LMS_SetGaindB: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         return limeResult;
+      }
 
       return 0;
    }
 
    int setTunerAgc(int value)
    {
-//      tunerAgc = value;
-//
-//      if (tunerAgc)
-//         gainMode = LimeDevice::Auto;
-//
-//      if (airspyHandle)
-//      {
-//         if ((airspyResult = airspy_set_lna_agc(airspyHandle, tunerAgc)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_set_lna_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         return airspyResult;
-//      }
-
       return 0;
    }
 
    int setMixerAgc(int value)
    {
-//      mixerAgc = value;
-//
-//      if (mixerAgc)
-//         gainMode = LimeDevice::Auto;
-//
-//      if (airspyHandle)
-//      {
-//         if ((airspyResult = airspy_set_mixer_agc(airspyHandle, mixerAgc)) != AIRSPY_SUCCESS)
-//            log.warn("failed airspy_set_mixer_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-//
-//         return airspyResult;
-//      }
-
       return 0;
    }
 
@@ -450,17 +434,17 @@ struct LimeDevice::Impl
 
    int read(SignalBuffer &buffer)
    {
-//      // lock buffer access
-//      std::lock_guard<std::mutex> lock(streamMutex);
-//
-//      if (!streamQueue.empty())
-//      {
-//         buffer = streamQueue.front();
-//
-//         streamQueue.pop();
-//
-//         return buffer.limit();
-//      }
+      // lock buffer access
+      std::lock_guard<std::mutex> lock(streamMutex);
+
+      if (!streamQueue.empty())
+      {
+         buffer = streamQueue.front();
+
+         streamQueue.pop();
+
+         return buffer.limit();
+      }
 
       return -1;
    }
@@ -472,6 +456,70 @@ struct LimeDevice::Impl
       return -1;
    }
 
+   void streamWorker()
+   {
+      int received;
+
+#ifdef _WIN32
+      SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#elif
+      sched_param param {20};
+
+      if (pthread_setschedparam(workerThread.native_handle(), SCHED_MAX, &param))
+         log.warn("error setting logger thread priority: {}", {std::strerror(errno)});
+#endif
+
+      std::lock_guard<std::mutex> lock(workerMutex);
+
+      log.info("stream worker started for device {}", {deviceName});
+
+      int readTimeout = int(1E4 * float(BUFFER_SAMPLES) / sampleRate); // 10 * sample buffer in ms
+
+      while (workerStreaming)
+      {
+         SignalBuffer buffer = SignalBuffer(BUFFER_SAMPLES * 2, 2, sampleRate, samplesReceived, 0, SignalType::SAMPLE_IQ);
+
+         if ((received = LMS_RecvStream(&limeStream, buffer.data(), BUFFER_SAMPLES, nullptr, readTimeout)) > 0)
+         {
+            buffer.pull(received * 2);
+
+            // flip buffer contents
+            buffer.flip();
+
+            // update counters
+            samplesReceived += received;
+
+            // stream to buffer callback
+            if (streamCallback)
+            {
+               streamCallback(buffer);
+            }
+
+               // or store buffer in receive queue
+            else
+            {
+               // lock buffer access
+               std::lock_guard<std::mutex> lock(streamMutex);
+
+               // discard oldest buffers
+               if (streamQueue.size() >= MAX_QUEUE_SIZE)
+               {
+                  samplesDropped += streamQueue.front().elements();
+                  streamQueue.pop();
+               }
+
+               // queue new sample buffer
+               streamQueue.push(buffer);
+            }
+         }
+         else
+         {
+            log.warn("read timeout");
+         }
+      }
+
+      log.info("stream worker finished for device {}", {deviceName});
+   }
 };
 
 LimeDevice::LimeDevice(const std::string &name) : impl(std::make_shared<Impl>(name))

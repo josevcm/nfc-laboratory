@@ -129,6 +129,8 @@ struct RealtekDevice::Impl
 
    bool open(SignalDevice::OpenMode mode)
    {
+      log.info("open device device {}", {deviceName});
+
       if (deviceName.find("://") != -1 && deviceName.find("rtlsdr://") == -1)
       {
          log.warn("invalid device name [{}]", {deviceName});
@@ -176,7 +178,7 @@ struct RealtekDevice::Impl
             // configure gain value
             setGainValue(gainValue);
 
-            log.info("opened rtlsdr device {} width tuner type {}", {deviceName, rtlsdrTuner});
+            log.info("tuner type {}", {rtlsdrTuner});
 
             return true;
          }
@@ -208,6 +210,8 @@ struct RealtekDevice::Impl
    {
       if (rtlsdrHandle)
       {
+         log.info("start streaming for device {}", {deviceName});
+
          // delay worker start until method is finished
          std::lock_guard<std::mutex> lock(workerMutex);
 
@@ -226,8 +230,6 @@ struct RealtekDevice::Impl
          // enable worker thread on success
          if (rtlsdrResult == 0)
          {
-            log.info("start streaming for device {}", {deviceName});
-
             // set streaming flag to enable worker
             workerStreaming = true;
 

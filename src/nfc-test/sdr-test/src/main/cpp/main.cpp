@@ -63,9 +63,9 @@ int limeTest(int argc, char *argv[])
 
       // default parameters
       receiver.setCenterFreq(40.68E6);
-      receiver.setSampleRate(10E6);
+      receiver.setSampleRate(8E6);
       receiver.setGainMode(2);
-      receiver.setGainValue(3);
+      receiver.setGainValue(30);
       receiver.setMixerAgc(0);
       receiver.setTunerAgc(0);
 
@@ -83,8 +83,6 @@ int limeTest(int argc, char *argv[])
          // open recorder
          if (recorder.open(sdr::RecordDevice::OpenMode::Write))
          {
-            logger.info("start streaming for device {}", {receiver.name()});
-
             // signal stream queue buffer
             rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
 
@@ -135,8 +133,6 @@ int limeTest(int argc, char *argv[])
             }
 
             receiver.close();
-
-            logger.info("stop streaming for device {}", {receiver.name()});
          }
 
          logger.info("capture finished");

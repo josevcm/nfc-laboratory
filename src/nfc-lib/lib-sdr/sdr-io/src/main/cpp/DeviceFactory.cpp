@@ -24,6 +24,7 @@
 
 #include <sdr/AirspyDevice.h>
 #include <sdr/RealtekDevice.h>
+#include <sdr/LimeDevice.h>
 #include <sdr/DeviceFactory.h>
 
 namespace sdr {
@@ -40,6 +41,10 @@ std::vector<std::string> DeviceFactory::deviceList()
    for (const auto &entry: sdr::RealtekDevice::listDevices())
       devices.push_back(entry);
 
+   // add Lime devices
+   for (const auto &entry: sdr::LimeDevice::listDevices())
+      devices.push_back(entry);
+
    return devices;
 }
 
@@ -51,8 +56,8 @@ RadioDevice *DeviceFactory::newInstance(const std::string &name)
    if (name.rfind("rtlsdr://", 0) == 0)
       return new RealtekDevice(name);
 
-   //   if (name.startsWith("lime://"))
-//      return new LimeDevice(name, parent);
+   if (name.rfind("lime://", 0) == 0)
+      return new LimeDevice(name);
 
    return nullptr;
 }

@@ -109,6 +109,8 @@ struct AirspyDevice::Impl
 
    bool open(SignalDevice::OpenMode mode)
    {
+      log.info("open device {}", {deviceName});
+
       airspy_device *handle;
 
       if (deviceName.find("://") != -1 && deviceName.find("airspy://") == -1)
@@ -178,7 +180,7 @@ struct AirspyDevice::Impl
          // configure gain value
          setGainValue(gainValue);
 
-         log.info("opened airspy device {}, firmware {}", {deviceName, deviceVersion});
+         log.info("device version {}", {deviceVersion});
 
          return true;
       }
