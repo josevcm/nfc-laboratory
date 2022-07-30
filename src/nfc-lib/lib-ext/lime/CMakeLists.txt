@@ -5,14 +5,14 @@ cmake_minimum_required(VERSION 3.1.3)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING INTERNAL FORCE)
 project("LimeSuite")
 
-option(BUILD_SHARED_LIBS "Build the shared library" ON)
 option(ENABLE_FTDI "FTDI Connection support" ON)
 option(ENABLE_EVB7COM "Enable EVB+COM" OFF)
 option(ENABLE_PCIE_XILLYBUS "Enable PCIE Xillybus" OFF)
 option(ENABLE_EXAMPLES "LimeSuite library API examples" OFF)
-option(ENABLE_LIME_UTIL "Command line device discovery utility" OFF)
+option(ENABLE_LIME_UTIL "Command line device discovery utility" ON)
 option(ENABLE_NEW_GAIN_BEHAVIOUR "Enable new gain functionality" OFF)
 option(ENABLE_QUICKTEST "LimeSDR-QuickTest Utility" OFF)
+option(BUILD_SHARED_LIBS "Build the shared library" OFF)
 
 #include modules for finding CyAPI
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
@@ -219,7 +219,7 @@ endif()
 ########################################################################
 add_subdirectory(src)
 #add_subdirectory(mcu_program)
-#add_subdirectory(LimeUtil)
+add_subdirectory(LimeUtil)
 #add_subdirectory(QuickTest)
 
 ########################################################################
