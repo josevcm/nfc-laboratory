@@ -44,7 +44,7 @@ class LimeDevice : public RadioDevice
 
       enum GainMode
       {
-         Auto = 0, Linearity = 1, Sensitivity = 2
+         Auto = 0, Manual = 1
       };
 
    public:

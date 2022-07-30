@@ -146,10 +146,6 @@ struct LimeDevice::Impl
             log.info("gateware version {}", {std::string(info->gatewareVersion)});
          }
 
-//         // Reset device configuration
-//         if ((limeResult = LMS_Reset(limeHandle)) != LMS_SUCCESS)
-//            log.warn("failed LMS_Reset: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
-
          // Initialize device with default configuration, Use LMS_LoadConfig(device, "/path/to/file.ini") to load config from INI
          if ((limeResult = LMS_Init(limeHandle)) != LMS_SUCCESS)
             log.warn("failed LMS_Init: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
@@ -220,6 +216,7 @@ struct LimeDevice::Impl
          limeStream.fifoSize = STREAM_SAMPLES;
          limeStream.throughputVsLatency = 1.0;
          limeStream.dataFmt = lms_stream_t::LMS_FMT_F32;
+         limeStream.linkFmt = lms_stream_t::LMS_LINK_FMT_I12;
 
          if (!limeResult && (limeResult = LMS_SetupStream(limeHandle, &limeStream)) != LMS_SUCCESS)
             log.warn("failed LMS_SetupStream: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
@@ -390,26 +387,13 @@ struct LimeDevice::Impl
    {
       std::map<int, std::string> result;
 
-//      uint32_t count, rates[256];
-//
-//      if (airspyHandle)
-//      {
-//         // get number of supported sample rates
-//         airspy_get_samplerates(airspyHandle, &count, 0);
-//
-//         // get list of supported sample rates
-//         airspy_get_samplerates(airspyHandle, rates, count);
-//
-//         for (int i = 0; i < (int) count; i++)
-//         {
-//            char buffer[64];
-//            int samplerate = rates[i];
-//
-//            snprintf(buffer, sizeof(buffer), "%d", samplerate);
-//
-//            result[samplerate] = buffer;
-//         }
-//      }
+      result[225000] = "1000000"; // 1 MSPS
+      result[900000] = "2000000"; // 2 MSPS
+      result[1024000] = "4000000"; // 4 MSPS
+      result[1400000] = "8000000"; // 8 MSPS
+      result[1800000] = "10000000"; // 10 MSPS
+      result[1920000] = "15000000"; // 15 MSPS
+      result[2048000] = "10000000"; // 20 MSPS
 
       return result;
    }
@@ -418,9 +402,8 @@ struct LimeDevice::Impl
    {
       std::map<int, std::string> result;
 
-//      result[LimeDevice::Auto] = "Auto";
-//      result[LimeDevice::Linearity] = "Linearity";
-//      result[LimeDevice::Sensitivity] = "Sensitivity";
+      result[LimeDevice::Auto] = "Auto";
+      result[LimeDevice::Manual] = "Manual";
 
       return result;
    }
@@ -429,14 +412,14 @@ struct LimeDevice::Impl
    {
       std::map<int, std::string> result;
 
-//      for (int i = 0; i < 22; i++)
-//      {
-//         char buffer[64];
-//
-//         snprintf(buffer, sizeof(buffer), "%d db", i);
-//
-//         result[i] = buffer;
-//      }
+      for (int i = 0; i < 73; i++)
+      {
+         char buffer[64];
+
+         snprintf(buffer, sizeof(buffer), "%d db", i);
+
+         result[i] = buffer;
+      }
 
       return result;
    }
