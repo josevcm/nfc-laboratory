@@ -66,6 +66,7 @@ struct LimeDevice::Impl
    int mixerAgc = 0;
    int decimation = 0;
    int streamTime = 0;
+   int testMode = 0;
 
    int limeResult = 0;
    lms_device_t *limeHandle = 0;
@@ -145,9 +146,9 @@ struct LimeDevice::Impl
             log.info("gateware version {}", {std::string(info->gatewareVersion)});
          }
 
-         // Reset device configuration
-         if ((limeResult = LMS_Reset(limeHandle)) != LMS_SUCCESS)
-            log.warn("failed LMS_Reset: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+//         // Reset device configuration
+//         if ((limeResult = LMS_Reset(limeHandle)) != LMS_SUCCESS)
+//            log.warn("failed LMS_Reset: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
 
          // Initialize device with default configuration, Use LMS_LoadConfig(device, "/path/to/file.ini") to load config from INI
          if ((limeResult = LMS_Init(limeHandle)) != LMS_SUCCESS)
@@ -372,7 +373,15 @@ struct LimeDevice::Impl
 
    int setTestMode(int value)
    {
-      log.warn("test mode not supported on this device!");
+      testMode = value;
+
+      if (limeHandle)
+      {
+         if ((limeResult = LMS_SetTestSignal(limeHandle, LMS_CH_RX, 0, testMode ? LMS_TESTSIG_NCODIV8 : LMS_TESTSIG_NONE, 0, 0)) != LMS_SUCCESS)
+            log.warn("failed LMS_SetTestSignal: [{}] {}", {limeResult, LMS_GetLastErrorMessage()});
+
+         return limeResult;
+      }
 
       return -1;
    }

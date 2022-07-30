@@ -3,13 +3,13 @@
  * with the library. Additional connections can be added dynamically.
  **********************************************************************/
 
-#cmakedefine ENABLE_EVB7COM
-#cmakedefine ENABLE_FX3
-#cmakedefine ENABLE_STREAM_UNITE
+//#cmakedefine ENABLE_EVB7COM
+//#cmakedefine ENABLE_FX3
+//#cmakedefine ENABLE_STREAM_UNITE
 #cmakedefine ENABLE_FTDI
-#cmakedefine ENABLE_PCIE_XILLYBUS
-#cmakedefine ENABLE_REMOTE
-#cmakedefine ENABLE_SPI
+//#cmakedefine ENABLE_PCIE_XILLYBUS
+//#cmakedefine ENABLE_REMOTE
+//#cmakedefine ENABLE_SPI
 
 void __loadConnectionEVB7COMEntry(void);
 void __loadConnectionFX3Entry(void);

@@ -152,12 +152,12 @@ endif()
 ########################################################################
 ## Supported connections
 ########################################################################
-include(ConnectionEVB7COM/CMakeLists.txt)
-include(ConnectionFX3/CMakeLists.txt)
-include(ConnectionSTREAM_UNITE/CMakeLists.txt)
+#include(ConnectionEVB7COM/CMakeLists.txt)
+#include(ConnectionFX3/CMakeLists.txt)
+#include(ConnectionSTREAM_UNITE/CMakeLists.txt)
 include(ConnectionFTDI/CMakeLists.txt)
-include(ConnectionXillybus/CMakeLists.txt)
-include(ConnectionSPI/CMakeLists.txt)
+#include(ConnectionXillybus/CMakeLists.txt)
+#include(ConnectionSPI/CMakeLists.txt)
 
 ## Remote connection is not safe or efficient, it should not be in releases (github #263)
 ## it's only for debugging purposes when USB device cannot be used by multiple applications simultaneously.

@@ -62,8 +62,8 @@ int limeTest(int argc, char *argv[])
       sdr::LimeDevice receiver(name);
 
       // default parameters
-      receiver.setCenterFreq(40.68E6);
-      receiver.setSampleRate(8E6);
+      receiver.setCenterFreq(27.12E6);
+      receiver.setSampleRate(10E6);
       receiver.setGainMode(2);
       receiver.setGainValue(30);
       receiver.setMixerAgc(0);
@@ -95,7 +95,7 @@ int limeTest(int argc, char *argv[])
 
             while (auto buffer = signalQueue.get(-1))
             {
-               if (++count == 1000)
+               if (++count == 100)
                   break;
 
                if (!buffer->isEmpty())
