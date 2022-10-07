@@ -45,6 +45,8 @@
 #include <nfc/NfcFrame.h>
 #include <nfc/NfcDecoder.h>
 
+#include <libusb.h>
+
 #include "QtApplication.h"
 
 // https://beesbuzz.biz/code/4399-Embedding-binary-resources-with-CMake-and-C-11
@@ -85,7 +87,7 @@ int startTest1(int argc, char *argv[])
    Logger log {"main"};
 
    log.info("***********************************************************************");
-   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("NFC laboratory, 2022 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
 
    nfc::NfcDecoder decoder;
@@ -134,7 +136,7 @@ int startTest2(int argc, char *argv[])
    Logger log {"main"};
 
    log.info("***********************************************************************");
-   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("NFC laboratory, 2022 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
 
    char file[128];
@@ -240,7 +242,7 @@ int startTest3(int argc, char *argv[])
    Logger log {"main"};
 
    log.info("***********************************************************************");
-   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("NFC laboratory, 2022 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
 
    char file[128];
@@ -357,11 +359,15 @@ int startApp(int argc, char *argv[])
    Logger log {"main"};
 
    log.info("***********************************************************************");
-   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("NFC laboratory, 2022 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
 
    for (int i = 0; i < argc; i++)
       log.info("\t{}", {argv[i]});
+
+   const struct libusb_version *lusbv = libusb_get_version();
+
+   log.info("using libusb version: {}.{}.{}", {lusbv->major, lusbv->minor, lusbv->micro});
 
    // create executor service
    Executor executor(128, 10);

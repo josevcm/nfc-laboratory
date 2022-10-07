@@ -270,7 +270,7 @@ $ cmake.exe -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - MinGW Makefiles" -S nfc-
 -- Check for working CXX compiler: D:/develop/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin/g++.exe - skipped
 -- Detecting CXX compile features
 -- Detecting CXX compile features - done
--- USB_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/usb-1.0.20/x86_64-w64-mingw32/lib/libusb-1.0.dll.a
+-- USB_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/usb-1.0.26/x86_64-w64-mingw32/lib/libusb-1.0.dll.a
 -- GLEW_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/glew-2.1.0/x86_64-w64-mingw32/lib/libglew32.dll.a
 -- FT_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/freetype-2.11.0/x86_64-w64-mingw32/lib/libfreetype.dll.a
 -- Configuring done
@@ -308,7 +308,7 @@ mkdir qt-deploy
 cp -rf nfc-laboratory/dat/conf/ qt-deploy/
 cp -rf nfc-laboratory/dat/fonts/ qt-deploy/
 cp nfc-laboratory/dll/glew-2.1.0/x86_64-w64-mingw32/bin/*.dll qt-deploy/
-cp nfc-laboratory/dll/usb-1.0.20/x86_64-w64-mingw32/bin/*.dll qt-deploy/
+cp nfc-laboratory/dll/usb-1.0.26/x86_64-w64-mingw32/bin/*.dll qt-deploy/
 cp nfc-laboratory/dll/freetype-2.11.0/x86_64-w64-mingw32/bin/*.dll qt-deploy/
 cp cmake-build-release/src/nfc-app/app-qt/nfc-lab.exe qt-deploy/
 ```
@@ -382,7 +382,7 @@ cp -a %nflab_git_path%\dat\fonts ./
 
 cp %nflab_git_path%\dll\glew-2.1.0\x86_64-w64-mingw32\bin\libglew32.dll ./
 cp %nflab_git_path%\dll\freetype-2.11.0\x86_64-w64-mingw32\bin\libfreetype.dll ./
-cp %nflab_git_path%\dll\usb-1.0.20\x86_64-w64-mingw32\bin\libusb-1.0.dll ./
+cp %nflab_git_path%\dll\usb-1.0.26\x86_64-w64-mingw32\bin\libusb-1.0.dll ./
 ```
 ### Build from Jetbrains CLion
 
