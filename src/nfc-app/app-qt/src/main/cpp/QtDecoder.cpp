@@ -522,6 +522,9 @@ struct QtDecoder::Impl
       if (event->contains("tunerAgc"))
          json["tunerAgc"] = event->getInteger("tunerAgc");
 
+      if (event->contains("biasTee"))
+         json["biasTee"] = event->getInteger("biasTee");
+
       taskReceiverConfig(json);
    }
 
