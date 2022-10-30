@@ -145,6 +145,16 @@ int ReceiverStatusEvent::mixerAgc() const
    return data["mixerAgc"].toInt();
 }
 
+bool ReceiverStatusEvent::hasBiasTee() const
+{
+   return data.contains("biasTee");
+}
+
+int ReceiverStatusEvent::biasTee() const
+{
+   return data["biasTee"].toInt();
+}
+
 bool ReceiverStatusEvent::hasSignalPower() const
 {
    return false; //mInfo & SignalPower;
