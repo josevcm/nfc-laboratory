@@ -56,6 +56,10 @@ class RadioDevice : public SignalDevice
 
       virtual int setMixerAgc(int value) = 0;
 
+      virtual int biasTee() const = 0;
+
+      virtual int setBiasTee(int value) = 0;
+
       virtual int gainMode() const = 0;
 
       virtual int setGainMode(int value) = 0;

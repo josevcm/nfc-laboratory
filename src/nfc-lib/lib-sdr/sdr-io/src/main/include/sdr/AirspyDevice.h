@@ -102,6 +102,10 @@ class AirspyDevice : public RadioDevice
 
       int setMixerAgc(int value) override;
 
+      int biasTee() const override;
+
+      int setBiasTee(int value) override;
+
       int gainMode() const override;
 
       int setGainMode(int value) override;

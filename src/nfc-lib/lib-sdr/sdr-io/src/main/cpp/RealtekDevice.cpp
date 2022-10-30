@@ -747,6 +747,18 @@ int RealtekDevice::setMixerAgc(int value)
    return impl->setMixerAgc(value);
 }
 
+int RealtekDevice::biasTee() const
+{
+   return 0;
+}
+
+int RealtekDevice::setBiasTee(int value)
+{
+   impl->log.warn("setBiasTee has no effect!");
+
+   return -1;
+}
+
 int RealtekDevice::gainMode() const
 {
    return impl->gainMode;

@@ -96,6 +96,7 @@ struct QtWindow::Impl
    int deviceSampleCount = 0;
    int deviceGainMode = -1;
    int deviceGainValue = -1;
+   int deviceBiasTee = 0;
 
    // last decoder status received
    QString decoderStatus;
@@ -361,6 +362,7 @@ struct QtWindow::Impl
             updateSampleRate(settings.value("device." + deviceType + "/sampleRate", "10000000").toInt());
             updateGainMode(settings.value("device." + deviceType + "/gainMode", "1").toInt());
             updateGainValue(settings.value("device." + deviceType + "/gainValue", "6").toInt());
+            updateBiasTee(settings.value("device." + deviceType + "/biasTee", "0").toInt());
 
             ui->eventsLog->append(QString("Detected device %1").arg(deviceName));
          }
@@ -560,6 +562,21 @@ struct QtWindow::Impl
                   {"gainValue", deviceGainValue}
             }));
          }
+      }
+   }
+
+   void updateBiasTee(int value)
+   {
+      if (deviceBiasTee != value)
+      {
+         deviceBiasTee = value;
+
+         qInfo() << "receiver deviceBiasTee value changed:" << value;
+
+         if (!deviceType.isEmpty())
+            settings.setValue("device." + deviceType + "/biasTee", deviceBiasTee);
+
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, { {"biasTee", deviceBiasTee} }));
       }
    }
 
