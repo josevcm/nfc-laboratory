@@ -55,6 +55,7 @@ struct AirspyDevice::Impl
    int gainValue = 0;
    int tunerAgc = 0;
    int mixerAgc = 0;
+   int biasTee = 0;
    int decimation = 0;
    int streamTime = 0;
 
@@ -153,10 +154,6 @@ struct AirspyDevice::Impl
          if ((airspyResult = airspy_version_string_read(handle, tmp, sizeof(tmp))) != AIRSPY_SUCCESS)
             log.warn("failed airspy_version_string_read: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
 
-         // disable bias tee
-         if ((airspyResult = airspy_set_rf_bias(handle, 0)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_set_rf_bias: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
-
          // read board serial
          if ((airspyResult = airspy_board_partid_serialno_read(handle, &airspySerial)) != AIRSPY_SUCCESS)
             log.warn("failed airspy_board_partid_serialno_read: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
@@ -179,6 +176,9 @@ struct AirspyDevice::Impl
 
          // configure gain value
          setGainValue(gainValue);
+		 
+         // configure bias tee (LNA or SpyVerter)
+         setBiasTee(biasTee);		 
 
          log.info("device version {}", {deviceVersion});
 
@@ -196,6 +196,10 @@ struct AirspyDevice::Impl
       {
          // stop streaming if active...
          stop();
+		 
+         // disable bias tee
+         if ((airspyResult = airspy_set_rf_bias(airspyHandle, 0)) != AIRSPY_SUCCESS)
+             log.warn("failed airspy_set_rf_bias: [{}] {}", { airspyResult, airspy_error_name((enum airspy_error)airspyResult) });
 
          log.info("close device {}", {deviceName});
 
@@ -390,6 +394,21 @@ struct AirspyDevice::Impl
       {
          if ((airspyResult = airspy_set_mixer_agc(airspyHandle, mixerAgc)) != AIRSPY_SUCCESS)
             log.warn("failed airspy_set_mixer_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+
+         return airspyResult;
+      }
+
+      return 0;
+   }
+
+   int setBiasTee(int value)
+   {
+      biasTee = value;
+
+      if (airspyHandle)
+      {
+         if ((airspyResult = airspy_set_rf_bias(airspyHandle, biasTee)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_set_rf_bias: [{}] {}", { airspyResult, airspy_error_name((enum airspy_error)airspyResult) });
 
          return airspyResult;
       }
@@ -627,6 +646,16 @@ int AirspyDevice::mixerAgc() const
 int AirspyDevice::setMixerAgc(int value)
 {
    return impl->setMixerAgc(value);
+}
+
+int AirspyDevice::biasTee() const
+{
+   return impl->biasTee;
+}
+
+int AirspyDevice::setBiasTee(int value)
+{
+   return impl->setBiasTee(value);
 }
 
 int AirspyDevice::gainMode() const

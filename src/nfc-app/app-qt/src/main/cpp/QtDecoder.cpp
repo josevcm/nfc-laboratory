@@ -189,14 +189,14 @@ struct QtDecoder::Impl
                {
                   QString nfc = group.mid(sep + 1);
 
-                  if (key.toLower().contains("enable"))
+                  if (key.toLower().contains("enabled"))
                      decoderConfigEvent->setBoolean(nfc + "/" + key, settings.value(key).toBool());
                   else
                      decoderConfigEvent->setFloat(nfc + "/" + key, settings.value(key).toFloat());
                }
                else
                {
-                  if (key.toLower().contains("enable"))
+                  if (key.toLower().contains("enabled"))
                      decoderConfigEvent->setBoolean(key, settings.value(key).toBool());
                   else
                      decoderConfigEvent->setFloat(key, settings.value(key).toFloat());
@@ -527,6 +527,9 @@ struct QtDecoder::Impl
 
       if (event->contains("tunerAgc"))
          json["tunerAgc"] = event->getInteger("tunerAgc");
+
+      if (event->contains("biasTee"))
+         json["biasTee"] = event->getInteger("biasTee");
 
       taskReceiverConfig(json);
    }

@@ -6,7 +6,7 @@ New-Item -Force -Path $TargetPath/installer/packages/org.josevcm.nfclab/meta/ -I
 
 # Copy application resources
 Copy-Item -Force $SourcePath/dat/config/*.conf $TargetPath/installer/packages/org.josevcm.nfclab/data/
-Copy-Item -Force $SourcePath/dll/usb-1.0.20/x86_64-w64-mingw32/bin/*.dll $TargetPath/installer/packages/org.josevcm.nfclab/data/
+Copy-Item -Force $SourcePath/dll/usb-1.0.26/x86_64-w64-mingw32/bin/*.dll $TargetPath/installer/packages/org.josevcm.nfclab/data/
 Copy-Item -Force $SourcePath/dll/ftd3xx-1.3.0.4/x86_64-w64-mingw32/bin/*.dll $TargetPath/installer/packages/org.josevcm.nfclab/data/
 Copy-Item -Force $TargetPath/src/nfc-app/app-qt/nfc-lab.exe $TargetPath/installer/packages/org.josevcm.nfclab/data/
 

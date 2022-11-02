@@ -166,7 +166,7 @@ struct StreamModel::Impl
 
       double elapsed = frame->timeStart() - prev->timeEnd();
 
-      if (elapsed < 1E-3)
+      if (elapsed < 20E-3)
          return QString("%1 us").arg(elapsed * 1000000, 3, 'f', 0);
 
       if (elapsed < 1)

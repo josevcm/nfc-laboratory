@@ -88,6 +88,10 @@ class ReceiverStatusEvent : public QEvent
       bool hasMixerAgc() const;
 
       int mixerAgc() const;
+	  
+      bool hasBiasTee() const;
+
+      int biasTee() const;
 
       bool hasSignalPower() const;
 

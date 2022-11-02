@@ -58,6 +58,7 @@ add_executable(nfc-lab WIN32
 
 target_include_directories(nfc-lab PRIVATE ${PRIVATE_SOURCE_DIR})
 target_include_directories(nfc-lab PRIVATE ${AUTOGEN_BUILD_DIR}/include)
+target_include_directories(nfc-lab PRIVATE ${USB_INCLUDE_DIR})
 
 target_link_libraries(nfc-lab
         nfc-decode

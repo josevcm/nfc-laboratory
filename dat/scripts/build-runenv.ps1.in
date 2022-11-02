@@ -7,7 +7,7 @@ if (Test-Path "$TargetPath/src/nfc-app/app-qt/nfc-lab.exe") {
     Copy-Item -Force -Recurse $SourcePath/dat/config/*.conf $TargetPath
 
     # Copy application external libraries
-    Copy-Item -Force $SourcePath/dll/usb-1.0.20/x86_64-w64-mingw32/bin/*.dll $TargetPath
+    Copy-Item -Force $SourcePath/dll/usb-1.0.26/x86_64-w64-mingw32/bin/*.dll $TargetPath
     Copy-Item -Force $SourcePath/dll/ftd3xx-1.3.0.4/x86_64-w64-mingw32/bin/*.dll $TargetPath
 
     # Deploy QT required libraries

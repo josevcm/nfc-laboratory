@@ -190,6 +190,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
                receiver->setMixerAgc(0);
                receiver->setTunerAgc(0);
+               receiver->setBiasTee(0);
                receiver->setTestMode(0);
 
                // try to open...
@@ -299,6 +300,9 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
             if (config.contains("mixerAgc"))
                receiver->setMixerAgc(config["mixerAgc"]);
 
+            if (config.contains("biasTee"))
+               receiver->setBiasTee(config["biasTee"]);
+
             if (config.contains("gainMode"))
             {
                receiverGainMode = config["gainMode"];
@@ -350,6 +354,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          data["gainValue"] = receiver->gainValue();
          data["mixerAgc"] = receiver->mixerAgc();
          data["tunerAgc"] = receiver->tunerAgc();
+         data["biasTee"] = receiver->biasTee();
 
          // data statistics
          data["samplesReceived"] = receiver->samplesReceived();
