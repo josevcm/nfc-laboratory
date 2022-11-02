@@ -667,6 +667,18 @@ int LimeDevice::setGainValue(int value)
    return impl->setGainValue(value);
 }
 
+int LimeDevice::biasTee() const
+{
+   return 0;
+}
+
+int LimeDevice::setBiasTee(int value)
+{
+   impl->log.warn("setBiasTee has no effect!");
+
+   return -1;
+}
+
 int LimeDevice::decimation() const
 {
    return impl->decimation;

@@ -111,6 +111,10 @@ class LimeDevice : public RadioDevice
 
       int setGainValue(int value) override;
 
+      int biasTee() const override;
+
+      int setBiasTee(int value) override;
+
       int decimation() const override;
 
       int setDecimation(int value) override;
