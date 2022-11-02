@@ -169,8 +169,21 @@ You can found instructions under https://www.rtl-sdr.com/rtl-sdr-quick-start-gui
 
 ### Upconverters
 
-To avoid the use of harmonics it is possible to use an up-converter and thus tune directly to the carrier 
-frequency of 13.56Mhz, although I have not tried this combination.
+To avoid tuning harmonics it is possible to use an up-converter and thus tune directly to the carrier 
+frequency of 13.56Mhz. Currently, biasTee is only supported for AirSpy in combination with SpyVerter thanks to [Benjamin DELPY](https://github.com/gentilkiwi). 
+
+The configuration required is:
+
+```
+[device.airspy]
+gainMode=0
+gainValue=4
+tunerAgc=false
+mixerAgc=false
+biasTee=1
+centerFreq=133560000
+sampleRate=10000000
+```
 
 ## Hardware requirements and performance
 
