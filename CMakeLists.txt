@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(nfc-lab VERSION 2.8.1)
+project(nfc-lab VERSION 2.8.2)
 
 set(CMAKE_C_FLAGS_DEBUG "-g -msse -msse3 -mno-avx -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -msse -msse3 -mno-avx -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
