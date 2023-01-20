@@ -124,6 +124,10 @@ class RealtekDevice : public RadioDevice
 
       long samplesDropped() override;
 
+      int directSampling() const;
+
+      int setDirectSampling(int value);
+
       std::map<int, std::string> supportedSampleRates() const override;
 
       std::map<int, std::string> supportedGainValues() const override;
