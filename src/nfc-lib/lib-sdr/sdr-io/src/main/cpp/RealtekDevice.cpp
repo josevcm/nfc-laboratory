@@ -68,7 +68,7 @@ struct RealtekDevice::Impl
    int decimation = 0;
    int testMode = 0;
    int streamTime = 0;
-   int directSampling = 0;
+   int directSampling = 2;
 
    int rtlsdrResult = 0;
    rtlsdr_dev *rtlsdrHandle {};
