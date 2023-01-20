@@ -68,6 +68,7 @@ struct RealtekDevice::Impl
    int decimation = 0;
    int testMode = 0;
    int streamTime = 0;
+   int directSampling = 0;
 
    int rtlsdrResult = 0;
    rtlsdr_dev *rtlsdrHandle {};
@@ -175,6 +176,9 @@ struct RealtekDevice::Impl
 
             // configure gain value
             setGainValue(gainValue);
+
+            // configure direct sampling
+            setDirectSampling(directSampling);
 
             log.info("openned rtlsdr device {} width tuner type {}", {deviceName, rtlsdrTuner});
 
@@ -442,6 +446,23 @@ struct RealtekDevice::Impl
 
          if ((rtlsdrResult = rtlsdr_set_testmode(rtldev(rtlsdrHandle), testMode)) < 0)
             log.warn("failed rtlsdr_set_testmode: [{}]", {rtlsdrResult});
+
+         return rtlsdrResult;
+      }
+
+      return 0;
+   }
+
+   int setDirectSampling(int value)
+   {
+      directSampling = value;
+
+      if (rtlsdrHandle)
+      {
+         log.debug("rtlsdr_set_direct_sampling({})", {directSampling});
+
+         if ((rtlsdrResult = rtlsdr_set_direct_sampling(rtldev(rtlsdrHandle), directSampling)) < 0)
+            log.warn("failed rtlsdr_set_direct_sampling: [{}]", {rtlsdrResult});
 
          return rtlsdrResult;
       }
@@ -797,6 +818,17 @@ int RealtekDevice::testMode() const
 int RealtekDevice::setTestMode(int value)
 {
    return impl->setTestMode(value);
+}
+
+int RealtekDevice::directSampling() const
+{
+   // should report the same as rtlsdr_get_direct_sampling
+   return impl->directSampling;
+}
+
+int RealtekDevice::setDirectSampling(int value)
+{
+   return impl->setDirectSampling(value);
 }
 
 long RealtekDevice::samplesReceived()
