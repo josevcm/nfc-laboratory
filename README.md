@@ -188,6 +188,7 @@ sampleRate=10000000
 
 Another way to avoid using harmonics is activate direct sampling mode and tune to the carrier frequency of 13.56Mhz in those devices that allow it. 
 Currently it is only available for RTLSDR thanks to the contribution of [Vincent Långström](https://github.com/vinicentus).
+Note: Seems no all RTLSDR devices support this feature.
 
 The configuration required is:
 
