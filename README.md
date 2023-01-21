@@ -167,7 +167,7 @@ AirSpy with custom antenna and ARC122U reader:
 
 You can found instructions under https://www.rtl-sdr.com/rtl-sdr-quick-start-guide/
 
-### Upconverters
+### Upconverters & Bias-tee
 
 To avoid tuning harmonics it is possible to use an up-converter and thus tune directly to the carrier 
 frequency of 13.56Mhz. Currently, biasTee is only supported for AirSpy in combination with SpyVerter thanks to [Benjamin DELPY](https://github.com/gentilkiwi). 
@@ -183,6 +183,20 @@ mixerAgc=false
 biasTee=1
 centerFreq=133560000
 sampleRate=10000000
+```
+### Direct Sampling mode
+
+Another way to avoid using harmonics is activate direct sampling mode and tune to the carrier frequency of 13.56Mhz in those devices that allow it. 
+Currently it is only available for RTLSDR thanks to the contribution of [Vincent Långström](https://github.com/vinicentus).
+
+The configuration required is:
+
+```
+[device.rtlsdr]
+...
+centerFreq=13560000
+directSampling=1
+...
 ```
 
 ## Hardware requirements and performance
