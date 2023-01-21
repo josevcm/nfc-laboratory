@@ -696,6 +696,18 @@ int AirspyDevice::setTestMode(int value)
    return impl->setTestMode(value);
 }
 
+int AirspyDevice::directSampling() const
+{
+   return 0;
+}
+
+int AirspyDevice::setDirectSampling(int value)
+{
+   impl->log.warn("setDirectSampling has no effect! unsupported feature");
+
+   return -1;
+}
+
 long AirspyDevice::samplesReceived()
 {
    return impl->samplesReceived;

@@ -97,6 +97,7 @@ struct QtWindow::Impl
    int deviceGainMode = -1;
    int deviceGainValue = -1;
    int deviceBiasTee = 0;
+   int deviceDirectSampling = 0;
 
    // last decoder status received
    QString decoderStatus;
@@ -348,7 +349,7 @@ struct QtWindow::Impl
    {
       if (deviceName != value)
       {
-         qInfo() << "receiver device changed:" << value;
+         qInfo() << "receiver deviceName changed:" << value;
 
          deviceName = value;
 
@@ -363,6 +364,7 @@ struct QtWindow::Impl
             updateGainMode(settings.value("device." + deviceType + "/gainMode", "1").toInt());
             updateGainValue(settings.value("device." + deviceType + "/gainValue", "6").toInt());
             updateBiasTee(settings.value("device." + deviceType + "/biasTee", "0").toInt());
+            updateDirectSampling(settings.value("device." + deviceType + "/directSampling", "0").toInt());
 
             ui->eventsLog->append(QString("Detected device %1").arg(deviceName));
          }
@@ -375,7 +377,7 @@ struct QtWindow::Impl
    {
       if (deviceStatus != value)
       {
-         qInfo() << "receiver status changed:" << value;
+         qInfo() << "receiver deviceStatus changed:" << value;
 
          deviceStatus = value;
 
@@ -420,7 +422,7 @@ struct QtWindow::Impl
    {
       if (deviceGainModes != value)
       {
-         qInfo() << "receiver gains modes changed:" << value;
+         qInfo() << "receiver deviceGainModes changed:" << value;
 
          deviceGainModes = value;
 
@@ -460,7 +462,7 @@ struct QtWindow::Impl
    {
       if (deviceFrequency != value)
       {
-         qInfo() << "receiver frequency changed:" << value;
+         qInfo() << "receiver deviceFrequency changed:" << value;
 
          deviceFrequency = value;
 
@@ -481,7 +483,7 @@ struct QtWindow::Impl
    {
       if (deviceSampleRate != value)
       {
-         qInfo() << "receiver samplerate changed:" << value;
+         qInfo() << "receiver deviceSampleRate changed:" << value;
 
          deviceSampleRate = value;
 
@@ -507,7 +509,7 @@ struct QtWindow::Impl
       {
          deviceGainMode = value;
 
-         qInfo() << "receiver gain mode changed:" << value;
+         qInfo() << "receiver deviceGainMode changed:" << value;
 
          if (!deviceType.isEmpty())
             settings.setValue("device." + deviceType + "/gainMode", deviceGainMode);
@@ -549,7 +551,7 @@ struct QtWindow::Impl
 
          if (deviceGainMode != 0)
          {
-            qInfo() << "receiver gain value changed:" << value;
+            qInfo() << "receiver deviceGainValue changed:" << value;
 
             ui->gainValue->setValue(deviceGainList.indexOf(deviceGainValue));
             ui->gainLabel->setText(QString("Gain %1").arg(deviceGainValues[deviceGainValue]));
@@ -577,6 +579,21 @@ struct QtWindow::Impl
             settings.setValue("device." + deviceType + "/biasTee", deviceBiasTee);
 
          QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, { {"biasTee", deviceBiasTee} }));
+      }
+   }
+
+   void updateDirectSampling(int value)
+   {
+      if (deviceDirectSampling != value)
+      {
+         deviceDirectSampling = value;
+
+         qInfo() << "receiver deviceDirectSampling value changed:" << value;
+
+         if (!deviceType.isEmpty())
+            settings.setValue("device." + deviceType + "/directSampling", deviceDirectSampling);
+
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReceiverConfig, { {"directSampling", deviceDirectSampling} }));
       }
    }
 

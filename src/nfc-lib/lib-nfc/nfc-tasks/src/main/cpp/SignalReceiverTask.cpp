@@ -161,6 +161,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                   receiver->setSampleRate(10E6);
                   receiver->setGainMode(1);
                   receiver->setGainValue(4);
+                  receiver->setBiasTee(0);
                }
                   // default parameters for Rtl SDR
                else if (name.find("rtlsdr") == 0)
@@ -183,6 +184,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                receiver->setTunerAgc(0);
                receiver->setBiasTee(0);
                receiver->setTestMode(0);
+               receiver->setDirectSampling(0);
 
                // try to open...
                if (receiver->open(sdr::SignalDevice::Read))
@@ -294,6 +296,9 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
             if (config.contains("biasTee"))
                receiver->setBiasTee(config["biasTee"]);
 
+            if (config.contains("directSampling"))
+               receiver->setDirectSampling(config["directSampling"]);
+
             if (config.contains("gainMode"))
             {
                receiverGainMode = config["gainMode"];
@@ -346,6 +351,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          data["mixerAgc"] = receiver->mixerAgc();
          data["tunerAgc"] = receiver->tunerAgc();
          data["biasTee"] = receiver->biasTee();
+         data["directSampling"] = receiver->directSampling();
 
          // data statistics
          data["samplesReceived"] = receiver->samplesReceived();
