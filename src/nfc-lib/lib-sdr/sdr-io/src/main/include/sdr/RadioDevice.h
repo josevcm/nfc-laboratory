@@ -76,6 +76,10 @@ class RadioDevice : public SignalDevice
 
       virtual int setTestMode(int value)  = 0;
 
+      virtual int directSampling() const = 0;
+
+      virtual int setDirectSampling(int value) = 0;
+
       virtual long samplesReceived() = 0;
 
       virtual long samplesDropped() = 0;

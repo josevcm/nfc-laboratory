@@ -122,6 +122,10 @@ class AirspyDevice : public RadioDevice
 
       int setTestMode(int value) override;
 
+      int directSampling() const override;
+
+      int setDirectSampling(int value) override;
+
       long samplesReceived() override;
 
       long samplesDropped() override;

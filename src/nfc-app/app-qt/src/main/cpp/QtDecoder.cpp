@@ -531,6 +531,9 @@ struct QtDecoder::Impl
       if (event->contains("biasTee"))
          json["biasTee"] = event->getInteger("biasTee");
 
+      if (event->contains("directSampling"))
+         json["directSampling"] = event->getInteger("directSampling");
+
       taskReceiverConfig(json);
    }
 
