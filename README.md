@@ -35,7 +35,7 @@ Protocol detail view.
 
 ## Recommended settings
 
-The configuration file is found in `nfc-lab.conf` and consists of the following sections:
+The example configuration file is found in `dat/nfc-lab.conf` and consists of the following sections:
 
 ```
 [settings]
@@ -108,6 +108,7 @@ tunerAgc=false
 mixerAgc=false
 centerFreq=40680000
 sampleRate=2400000
+directSampling=0
 ```
 
 Configuration parameters for the RTL-SDR receiver, the best performance is obtained by tuning to the 2nd harmonic 
@@ -187,8 +188,11 @@ sampleRate=10000000
 ### Direct Sampling mode
 
 Another way to avoid using harmonics is activate direct sampling mode and tune to the carrier frequency of 13.56Mhz in those devices that allow it. 
-Currently it is only available for RTLSDR thanks to the contribution of [Vincent Långström](https://github.com/vinicentus).
-Note: Seems no all RTLSDR devices support this feature.
+Currently it is only available for RTLSDR thanks to the contribution of [Vincent Långström](https://github.com/vinicentus). You can use direct 
+sampling on either the Q- or I-branch. The Q-branch is preferred due to better results, set the Q-branch with directSampling=2 and the I-branch 
+with directSampling=1, directSampling=0 turns off direct sampling.
+
+Note: No all RTLSDR devices support this feature.
 
 The configuration required is:
 

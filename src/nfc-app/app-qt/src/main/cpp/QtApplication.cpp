@@ -55,7 +55,7 @@ struct QtApplication::Impl
 
    Impl() : settings("nfc-lab.conf", QSettings::IniFormat)
    {
-      // create user interface window
+      // create signal cache
       memory = new QtMemory(settings);
 
       // create user interface window
