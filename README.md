@@ -412,8 +412,6 @@ cp %qtpath%\libstdc++-6.dll ./
 cp -a %nflab_git_path%\dat\conf ./
 cp -a %nflab_git_path%\dat\fonts ./
 
-cp %nflab_git_path%\dll\glew-2.1.0\x86_64-w64-mingw32\bin\libglew32.dll ./
-cp %nflab_git_path%\dll\freetype-2.11.0\x86_64-w64-mingw32\bin\libfreetype.dll ./
 cp %nflab_git_path%\dll\usb-1.0.26\x86_64-w64-mingw32\bin\libusb-1.0.dll ./
 ```
 ### Build from Jetbrains CLion
