@@ -133,7 +133,11 @@ struct LogWriter
       auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
       auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
+#ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
+#else
+      localtime_r(&seconds, &timeinfo);
+#endif
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
@@ -156,7 +160,11 @@ struct LogWriter
       auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
       auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
+#ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
+#else
+      localtime_r(&seconds, &timeinfo);
+#endif
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
@@ -232,17 +240,21 @@ struct LogWriter
 
    void write(LogEvent *event)
    {
-      struct tm timeinfo {};
       char date[32], buffer[4096];
+      struct tm timeinfo {};
 
       auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
       auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
+#ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
+#else
+      localtime_r(&seconds, &timeinfo);
+#endif
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      snprintf(buffer, sizeof(buffer), "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      snprintf(buffer, sizeof(buffer), "%s.%03d %s (thread-%d) [%s] %s\n", date, (int) millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       stream << buffer;
 

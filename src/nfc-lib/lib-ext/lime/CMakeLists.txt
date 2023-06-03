@@ -12,4 +12,4 @@ add_library(lms7002m STATIC ${LMS7002M_SOURCES})
 target_include_directories(lms7002m PUBLIC ${PUBLIC_SOURCE_DIR})
 target_include_directories(lms7002m PRIVATE ${PUBLIC_INCLUDE_DIR})
 
-target_link_libraries(lms7002m posix ${USB_LIBRARY})
+target_link_libraries(lms7002m posix ${LIBUSB_LIBRARY})

@@ -10,6 +10,6 @@ add_library(airspy STATIC
 target_compile_options(airspy PRIVATE "-msse2" -DUSE_SSE2)
 
 target_include_directories(airspy PUBLIC ${PUBLIC_SOURCE_DIR})
-target_include_directories(airspy PRIVATE ${USB_INCLUDE_DIR})
+target_include_directories(airspy PRIVATE ${LIBUSB_INCLUDE_DIR})
 
-target_link_libraries(airspy ${USB_LIBRARY})
+target_link_libraries(airspy ${LIBUSB_LIBRARY})

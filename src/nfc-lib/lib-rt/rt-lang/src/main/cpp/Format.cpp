@@ -104,7 +104,7 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
       }
       else if (auto value = std::get_if<void *>(&parameter))
       {
-         snprintf(buffer, sizeof(buffer), "0x%08x", *value);
+         snprintf(buffer, sizeof(buffer), "0x%08p", *value);
       }
       else if (auto value = std::get_if<std::string>(&parameter))
       {

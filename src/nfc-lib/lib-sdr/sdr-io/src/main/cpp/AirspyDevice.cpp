@@ -100,7 +100,7 @@ struct AirspyDevice::Impl
       {
          char buffer[256];
 
-         snprintf(buffer, sizeof(buffer), "airspy://%0llx", devices[i]);
+         snprintf(buffer, sizeof(buffer), "airspy://%0lx", devices[i]);
 
          result.emplace_back(buffer);
       }

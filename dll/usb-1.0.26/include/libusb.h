@@ -2129,7 +2129,7 @@ enum libusb_option {
 	LIBUSB_OPTION_MAX = 3
 };
 
-int __cdecl libusb_set_option(libusb_context *ctx, enum libusb_option option, ...);
+int LIBUSB_CALL libusb_set_option(libusb_context *ctx, enum libusb_option option, ...);
 
 #ifdef _MSC_VER
 #pragma warning(pop)

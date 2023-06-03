@@ -10,6 +10,6 @@ add_library(crapto1 STATIC
 #target_compile_options(crapto1 PRIVATE "-msse2" -DUSE_SSE2)
 
 target_include_directories(crapto1 PUBLIC ${PUBLIC_SOURCE_DIR})
-target_include_directories(crapto1 PRIVATE ${USB_INCLUDE_DIR})
+target_include_directories(crapto1 PRIVATE ${LIBUSB_INCLUDE_DIR})
 
 target_link_libraries(crapto1)
