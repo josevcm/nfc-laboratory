@@ -100,7 +100,7 @@ struct QtApplication::Impl
    }
 };
 
-QtApplication::QtApplication(int argc, char **argv) : QApplication(argc, argv), impl(new Impl)
+QtApplication::QtApplication(int &argc, char **argv) : QApplication(argc, argv), impl(new Impl)
 {
    // initialize application name
    setApplicationName("nfc-lab");

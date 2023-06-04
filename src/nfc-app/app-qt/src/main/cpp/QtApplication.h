@@ -38,7 +38,7 @@ class QtApplication : public QApplication
 
    public:
 
-      QtApplication(int argc, char **argv);
+      QtApplication(int &argc, char **argv);
 
       static void post(QEvent *event, int priority = Qt::NormalEventPriority);
 
