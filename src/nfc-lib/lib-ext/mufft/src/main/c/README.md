@@ -2,7 +2,7 @@
 
 muFFT is a library for doing the fast fourier transform (FFT) in one or two dimensions.
 The FFT has many applications in digital signal processing.
-The main use cases are fast linear convolution and conversion from time domain into receiverFrequency domain and vice versa.
+The main use cases are fast linear convolution and conversion from time domain into frequency domain and vice versa.
 See [The Fast Fourier Transform](@ref FFT) for details on how the algorithm works and how it is implemented in muFFT.
 
 ## Features

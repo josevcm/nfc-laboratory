@@ -48,6 +48,17 @@ extern "C" {
 /// \addtogroup MUFFT_FLAG Planning options
 /// @{
 
+#if MUFFT_BUILD_SIMD_VARIANTS
+// I needed this for simple UB2 builds on macOS
+#if __i386__ || __x86_64__ || defined(_M_IX86) || defined(_M_X64)
+#define MUFFT_HAVE_SSE (1)
+#define MUFFT_HAVE_SSE3 (1)
+#define MUFFT_HAVE_AVX (1)
+#elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
+#define MUFFT_HAVE_AARCH64 (1)
+#endif
+#endif
+
 /// muFFT will use any SIMD instruction set it can if supported by the CPU.
 #define MUFFT_FLAG_CPU_ANY (0)
 /// muFFT will not use any SIMD instruction set.
@@ -58,6 +69,8 @@ extern "C" {
 #define MUFFT_FLAG_CPU_NO_SSE3 (1 << 1)
 /// muFFT will not use the SSE instruction set.
 #define MUFFT_FLAG_CPU_NO_SSE (1 << 2)
+/// muFFT will not use the AARCH64 instruction set.
+#define MUFFT_FLAG_CPU_NO_AARCH64 (1 << 3)
 /// The real-to-complex 1D transform will also output the redundant conjugate values X(N - k) = X(k)*.
 #define MUFFT_FLAG_FULL_R2C (1 << 16)
 /// The second/upper half of the input array is assumed to be 0 and will not be read and memory for the second half of the input array does not have to be allocated.

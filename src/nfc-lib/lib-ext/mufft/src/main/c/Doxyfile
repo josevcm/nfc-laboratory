@@ -1157,7 +1157,7 @@ HTML_INDEX_NUM_ENTRIES = 100
 # OSX 10.5 (Leopard). To create a documentation set, doxygen will generate a
 # Makefile in the HTML output directory. Running make will produce the docset in
 # that directory and running make install will install the docset in
-# ~/Library/Developer/Ref/Documentation/DocSets so that Xcode will find it at
+# ~/Library/Developer/Shared/Documentation/DocSets so that Xcode will find it at
 # startup. See http://developer.apple.com/tools/creatingdocsetswithdoxygen.html
 # for more information.
 # The default value is: NO.

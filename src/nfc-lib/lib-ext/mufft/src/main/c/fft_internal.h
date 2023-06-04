@@ -160,9 +160,13 @@ typedef void (*mufft_r2c_resolve_func)(cfloat * MUFFT_RESTRICT output, const cfl
     FFT_2D_FUNC(radix4_generic_vert, arch) \
     FFT_2D_FUNC(radix2_generic_vert, arch)
 
+#if __i386__ || __x86_64__ || defined(_M_IX86) || defined(_M_X64)
 DECLARE_FFT_CPU(avx)
 DECLARE_FFT_CPU(sse3)
 DECLARE_FFT_CPU(sse)
+#elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
+DECLARE_FFT_CPU(aarch64)
+#endif
 DECLARE_FFT_CPU(c)
 
 /// Internal flag used for choosing FFT routines
@@ -173,6 +177,8 @@ DECLARE_FFT_CPU(c)
 #define MUFFT_FLAG_CPU_SSE3 MUFFT_FLAG_CPU_NO_SSE3
 /// Internal flag used for choosing FFT routines
 #define MUFFT_FLAG_CPU_SSE MUFFT_FLAG_CPU_NO_SSE
+/// Internal flag used for choosing FFT routines
+#define MUFFT_FLAG_CPU_AARCH64 MUFFT_FLAG_CPU_NO_AARCH64
 
 /// \brief Gets a mask of all relevant SIMD features the running CPU supports.
 unsigned mufft_get_cpu_flags(void);

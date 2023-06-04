@@ -30,14 +30,23 @@
 #elif __SSE__
 #include <xmmintrin.h>
 #define MANGLE(x) x ## _sse
+#elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
+#if _MSC_VER
+#include <arm64_neon.h>
 #else
-#error "This file must be built with x86 SSE/AVX support."
+#include <arm_neon.h>
+#endif
+#define MANGLE(x) x ## _aarch64
+#else
+#error "This file must be built with x86 SSE/AVX or ARM64 support."
 #endif
 
 #if __AVX__
 #define MM __m256
 #define VSIZE 4 // Complex numbers per vector
-#define permute_ps(a, x) _mm256_permute_ps(a, x)
+#define permute_ps_2301(a) _mm256_permute_ps(a, _MM_SHUFFLE(2, 3, 0, 1))
+#define permute_ps_2310(a) _mm256_permute_ps(a, _MM_SHUFFLE(2, 3, 1, 0))
+#define permute_ps_1032(a) _mm256_permute_ps(a, _MM_SHUFFLE(1, 0, 3, 2))
 #define moveldup_ps(x) _mm256_moveldup_ps(x)
 #define movehdup_ps(x) _mm256_movehdup_ps(x)
 #define xor_ps(a, b) _mm256_xor_ps(a, b)
@@ -54,10 +63,13 @@
 #define splat_complex(addr) (_mm256_castpd_ps(_mm256_broadcast_sd((const double*)(addr))))
 #define unpacklo_pd(a, b) (_mm256_castpd_ps(_mm256_unpacklo_pd(_mm256_castps_pd(a), _mm256_castps_pd(b))))
 #define unpackhi_pd(a, b) (_mm256_castpd_ps(_mm256_unpackhi_pd(_mm256_castps_pd(a), _mm256_castps_pd(b))))
-#else
+#elif __SSE__
 #define MM __m128
 #define VSIZE 2 // Complex numbers per vector
 #define permute_ps(a, x) _mm_shuffle_ps(a, a, x)
+#define permute_ps_2301(a) _mm_shuffle_ps(a, a, _MM_SHUFFLE(2, 3, 0, 1))
+#define permute_ps_2310(a) _mm_shuffle_ps(a, a, _MM_SHUFFLE(2, 3, 1, 0))
+#define permute_ps_1032(a) _mm_shuffle_ps(a, a, _MM_SHUFFLE(1, 0, 3, 2))
 #define xor_ps(a, b) _mm_xor_ps(a, b)
 #define add_ps(a, b) _mm_add_ps(a, b)
 #define sub_ps(a, b) _mm_sub_ps(a, b)
@@ -98,11 +110,54 @@ static inline __m128 splat_complex(const void *ptr)
 	return _mm_shuffle_ps(reg, reg, _MM_SHUFFLE(1, 0, 1, 0));
 #endif
 }
+
+#elif __ARM_NEON__
+
+#define MM float32x4_t
+#define VSIZE 2 // Complex numbers per vector
+
+static inline MM set_ps(float w, float z, float y, float x)
+{
+    const float __attribute__((aligned(16))) data[4] = {x, y, z, w};
+    return vld1q_f32(data);
+}
+#define moveldup_ps(x) vtrn1q_f32(x, x)
+#define movehdup_ps(x) vtrn2q_f32(x, x)
+#define xor_ps(a, b) veorq_u32(a, b)
+#define add_ps(a, b) vaddq_f32(a, b)
+#define sub_ps(a, b) vsubq_f32(a, b)
+#define mul_ps(a, b) vmulq_f32(a, b)
+#define load_ps(addr) vld1q_f32((const float*)(addr))
+#define loadu_ps(addr) vld1q_f32((const float*)(addr))
+#define store_ps(addr, x) vst1q_f32((float*)(addr), x)
+#define storeu_ps(addr, x) vst1q_f32((float*)(addr), x)
+static inline MM splat_complex(const void *ptr)
+{
+    float32x2_t w = vld1_f32((float*)ptr);
+  	return vcombine_f32(w, w);
+}
+#define splat_const_complex(real, imag) set_ps(imag, real, imag, real)
+#define splat_const_dual_complex(a, b, real, imag) set_ps(imag, real, b, a)
+static inline MM addsub_ps(MM a, MM b)
+{
+    float32x4_t rs = vsubq_f32(a, b);
+    float32x4_t ra = vaddq_f32(a, b);
+    return vtrn2q_f32(vrev64q_f32(rs), ra);
+}
+#define unpacklo_pd(a, b) vzip1q_f64(a, b)
+#define unpackhi_pd(a, b) vzip2q_f64(a, b)
+// #define permute_ps(a, x) _mm_shuffle_ps(a, a, x)
+#define permute_ps_2301(a) vrev64q_f32(a)
+static inline MM permute_ps_2310(MM a)
+{
+    return vcombine_f32(vget_low_f32(a), vrev64_f32(vget_high_f32(a)));
+}
+#define permute_ps_1032(a) vextq_f32(a, a, 2)
 #endif
 
 static inline MM cmul_ps(MM a, MM b)
 {
-    MM r3 = permute_ps(a, _MM_SHUFFLE(2, 3, 0, 1));
+    MM r3 = permute_ps_2301(a); //, _MM_SHUFFLE(2, 3, 0, 1));
     MM r1 = moveldup_ps(b);
     MM R0 = mul_ps(a, r1);
     MM r2 = movehdup_ps(b);
@@ -137,7 +192,7 @@ void MANGLE(mufft_resolve_c2r)(cfloat * MUFFT_RESTRICT output, const cfloat * MU
     {
         MM a = load_ps(&input[i]);
         MM b = loadu_ps(&input[samples - i - (VSIZE - 1)]);
-        b = permute_ps(xor_ps(b, flip_signs), _MM_SHUFFLE(1, 0, 3, 2));
+        b = permute_ps_1032(xor_ps(b, flip_signs)); // , _MM_SHUFFLE(1, 0, 3, 2));
 #if VSIZE == 4
         b = _mm256_permute2f128_ps(b, b, 1);
 #endif
@@ -170,7 +225,7 @@ void MANGLE(mufft_resolve_r2c_full)(cfloat * MUFFT_RESTRICT output, const cfloat
     {
         MM a = load_ps(&input[i]);
         MM b = loadu_ps(&input[samples - i - (VSIZE - 1)]);
-        b = permute_ps(xor_ps(b, flip_signs), _MM_SHUFFLE(1, 0, 3, 2));
+        b = permute_ps_1032(xor_ps(b, flip_signs)); //, _MM_SHUFFLE(1, 0, 3, 2));
 #if VSIZE == 4
         b = _mm256_permute2f128_ps(b, b, 1);
 #endif
@@ -203,7 +258,7 @@ void MANGLE(mufft_resolve_r2c)(cfloat * MUFFT_RESTRICT output, const cfloat * MU
     {
         MM a = load_ps(&input[i]);
         MM b = loadu_ps(&input[samples - i - (VSIZE - 1)]);
-        b = permute_ps(xor_ps(b, flip_signs), _MM_SHUFFLE(1, 0, 3, 2));
+        b = permute_ps_1032(xor_ps(b, flip_signs)); //, _MM_SHUFFLE(1, 0, 3, 2));
 #if VSIZE == 4
         b = _mm256_permute2f128_ps(b, b, 1);
 #endif
@@ -302,7 +357,7 @@ void MANGLE(mufft_ ## direction ## _radix2_p2)(void * MUFFT_RESTRICT output_, co
     { \
         MM a = load_ps(&input[i]); \
         MM b = load_ps(&input[i + half_samples]); \
-        b = xor_ps(permute_ps(b, _MM_SHUFFLE(2, 3, 1, 0)), flip_signs); \
+        b = xor_ps(permute_ps_2310(b), flip_signs); \
  \
         MM r0 = add_ps(a, b); \
         MM r1 = sub_ps(a, b); \
@@ -371,7 +426,7 @@ void MANGLE(mufft_ ## direction ## _radix4_p1)(void * MUFFT_RESTRICT output_, co
     for (unsigned i = 0; i < quarter_samples; i += VSIZE) \
     { \
         RADIX4_LOAD_FIRST_BUTTERFLY; \
-        r3 = xor_ps(permute_ps(r3, _MM_SHUFFLE(2, 3, 0, 1)), flip_signs); \
+        r3 = xor_ps(permute_ps_2301(r3), flip_signs); \
  \
         MM o0 = add_ps(r0, r2); \
         MM o1 = add_ps(r1, r3); \
@@ -500,8 +555,8 @@ void MANGLE(mufft_ ## direction ## _radix8_p1)(void * MUFFT_RESTRICT output_, co
     for (unsigned i = 0; i < octa_samples; i += VSIZE) \
     { \
         RADIX8_LOAD_FIRST_BUTTERFLY; \
-        r5 = xor_ps(permute_ps(r5, _MM_SHUFFLE(2, 3, 0, 1)), flip_signs); \
-        r7 = xor_ps(permute_ps(r7, _MM_SHUFFLE(2, 3, 0, 1)), flip_signs); \
+        r5 = xor_ps(permute_ps_2301(r5), flip_signs); \
+        r7 = xor_ps(permute_ps_2301(r7), flip_signs); \
  \
         a = add_ps(r0, r4); \
         b = add_ps(r1, r5); \
@@ -513,7 +568,7 @@ void MANGLE(mufft_ ## direction ## _radix8_p1)(void * MUFFT_RESTRICT output_, co
         h = sub_ps(r3, r7); \
  \
         f = cmul_ps(f, w_f); \
-        g = xor_ps(permute_ps(g, _MM_SHUFFLE(2, 3, 0, 1)), flip_signs); \
+        g = xor_ps(permute_ps_2301(g), flip_signs); \
         h = cmul_ps(h, w_h); \
  \
         MM o0 = add_ps(a, e); \
@@ -754,7 +809,7 @@ void MANGLE(mufft_ ## direction ## _radix4_p1_vert)(void * MUFFT_RESTRICT output
             MM r1 = sub_ps(a, c); \
             MM r2 = add_ps(b, d); \
             MM r3 = sub_ps(b, d); \
-            r3 = xor_ps(permute_ps(r3, _MM_SHUFFLE(2, 3, 0, 1)), flip_signs); \
+            r3 = xor_ps(permute_ps_2301(r3), flip_signs); \
  \
             a = add_ps(r0, r2); \
             b = add_ps(r1, r3); \
@@ -854,8 +909,8 @@ void MANGLE(mufft_ ## direction ## _radix8_p1_vert)(void * MUFFT_RESTRICT output
             MM r5 = sub_ps(c, g); \
             MM r6 = add_ps(d, h); \
             MM r7 = sub_ps(d, h); \
-            r5 = xor_ps(permute_ps(r5, _MM_SHUFFLE(2, 3, 0, 1)), flip_signs); \
-            r7 = xor_ps(permute_ps(r7, _MM_SHUFFLE(2, 3, 0, 1)), flip_signs); \
+            r5 = xor_ps(permute_ps_2301(r5), flip_signs); \
+            r7 = xor_ps(permute_ps_2301(r7), flip_signs); \
  \
             a = add_ps(r0, r4); \
             b = add_ps(r1, r5); \
@@ -866,7 +921,7 @@ void MANGLE(mufft_ ## direction ## _radix8_p1_vert)(void * MUFFT_RESTRICT output
             g = sub_ps(r2, r6); \
             h = sub_ps(r3, r7); \
             f = cmul_ps(f, w_f); \
-            g = xor_ps(permute_ps(g, _MM_SHUFFLE(2, 3, 0, 1)), flip_signs); \
+            g = xor_ps(permute_ps_2301(g), flip_signs); \
             h = cmul_ps(h, w_h); \
  \
             r0 = add_ps(a, e); \

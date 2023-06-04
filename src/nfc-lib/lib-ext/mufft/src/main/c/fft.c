@@ -190,6 +190,9 @@ static const struct fft_convolve_step convolve_table[] = {
 #ifdef MUFFT_HAVE_SSE
     STAMP_CPU_CONVOLVE(MUFFT_FLAG_CPU_SSE, sse),
 #endif
+#ifdef MUFFT_HAVE_AARCH64
+    STAMP_CPU_CONVOLVE(MUFFT_FLAG_CPU_AARCH64, aarch64),
+#endif
     STAMP_CPU_CONVOLVE(0, c),
 };
 
@@ -211,6 +214,10 @@ static const struct fft_r2c_resolve_step fft_r2c_resolve_table[] = {
 #ifdef MUFFT_HAVE_SSE
     STAMP_CPU_RESOLVE(MUFFT_FLAG_CPU_SSE, sse, 2),
 #endif
+#ifdef MUFFT_HAVE_AARCH64
+    STAMP_CPU_RESOLVE(MUFFT_FLAG_CPU_AARCH64, aarch64, 2),
+#endif
+
     STAMP_CPU_RESOLVE(0, c, 1),
 };
 
@@ -252,6 +259,10 @@ static const struct fft_step_1d fft_1d_table[] = {
 #ifdef MUFFT_HAVE_SSE
     STAMP_CPU_1D(MUFFT_FLAG_CPU_SSE, sse, 2),
 #endif
+#ifdef MUFFT_HAVE_AARCH64
+    STAMP_CPU_1D(MUFFT_FLAG_CPU_AARCH64, aarch64, 2),
+#endif
+
     STAMP_CPU_1D(0, c, 1),
 };
 
@@ -282,6 +293,9 @@ static const struct fft_step_2d fft_2d_table[] = {
 #endif
 #ifdef MUFFT_HAVE_SSE
     STAMP_CPU_2D(MUFFT_FLAG_CPU_SSE, sse, 2),
+#endif
+#ifdef MUFFT_HAVE_AARCH64
+    STAMP_CPU_2D(MUFFT_FLAG_CPU_AARCH64, aarch64, 2),
 #endif
     STAMP_CPU_2D(0, c, 1),
 };

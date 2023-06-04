@@ -22,10 +22,12 @@
 #ifdef _MSC_VER
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#if __i386__ || __x86_64__ || defined(_M_IX86) || defined(_M_X64)
 #include <intrin.h>
 #endif
+#endif
 
-#ifdef MUFFT_HAVE_X86
+#if __i386__ || __x86_64__ || defined(_M_IX86) || defined(_M_X64)
 
 /// \brief Wrapper routine for x86 CPUID
 static void mufft_x86_cpuid(int func, int flags[4])
@@ -112,6 +114,13 @@ unsigned mufft_get_cpu_flags(void)
 
     return cpu;
 }
+
+#elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
+unsigned mufft_get_cpu_flags(void)
+{
+    return MUFFT_FLAG_CPU_AARCH64;
+}
+
 
 #else
 unsigned mufft_get_cpu_flags(void)
