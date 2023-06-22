@@ -1099,11 +1099,14 @@ QtWindow::QtWindow(QSettings &settings, QtMemory *cache) : impl(new Impl(this, s
 
    // configure window properties
    setAttribute(Qt::WA_OpaquePaintEvent, true);
-   setAttribute(Qt::WA_PaintOnScreen, true);
    setAttribute(Qt::WA_DontCreateNativeAncestors, true);
    setAttribute(Qt::WA_NativeWindow, true);
    setAttribute(Qt::WA_NoSystemBackground, true);
    setAutoFillBackground(false);
+
+#ifdef WIN32
+   setAttribute(Qt::WA_PaintOnScreen, true);
+#endif
 
    // and show!
    showNormal();
