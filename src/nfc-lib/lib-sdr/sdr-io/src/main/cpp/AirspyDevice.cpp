@@ -25,6 +25,7 @@
 #include <queue>
 #include <mutex>
 #include <chrono>
+#include <cinttypes>
 
 #include <airspy.h>
 
@@ -100,7 +101,7 @@ struct AirspyDevice::Impl
       {
          char buffer[256];
 
-         snprintf(buffer, sizeof(buffer), "airspy://%0lx", devices[i]);
+         snprintf(buffer, sizeof(buffer), "airspy://%" PRIu64, devices[i]);
 
          result.emplace_back(buffer);
       }
@@ -136,7 +137,7 @@ struct AirspyDevice::Impl
       // standard open mode based on serial number
       {
          // extract serial number
-         uint64_t sn = std::stoull(deviceName.substr(9), nullptr, 16);
+         uint64_t sn = std::stoull(deviceName.substr(9), nullptr, 10);
 
          // open Airspy device
          airspyResult = airspy_open_sn(&handle, sn);
