@@ -133,7 +133,7 @@ struct AdaptiveSamplingTask::Impl : AdaptiveSamplingTask, AbstractTask
             avrg -= buffer[r];
 
          // detect deviation from average
-         float stdev = abs(value - (avrg / float(WINDOW)));
+         float stdev = std::abs(value - (avrg / float(WINDOW)));
 
          // filter values
          if (stdev > filter || (i - c) > 100)
