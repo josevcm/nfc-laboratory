@@ -558,10 +558,10 @@ struct RealtekDevice::Impl
 
 #ifdef _WIN32
       SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-#elif
+#else
       sched_param param {20};
 
-      if (pthread_setschedparam(workerThread.native_handle(), SCHED_MAX, &param))
+      if (pthread_setschedparam(workerThread.native_handle(), SCHED_RR, &param))
          log.warn("error setting logger thread priority: {}", {std::strerror(errno)});
 #endif
 

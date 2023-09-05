@@ -7,9 +7,12 @@ add_library(airspy STATIC
         src/main/c/iqconverter_float.c
         src/main/c/iqconverter_int16.c)
 
-target_compile_options(airspy PRIVATE "-msse2" -DUSE_SSE2)
+# customize CPU architecture options
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
+    target_compile_options(airspy PRIVATE "-msse2" -DUSE_SSE2)
+endif ()
 
 target_include_directories(airspy PUBLIC ${PUBLIC_SOURCE_DIR})
-target_include_directories(airspy PRIVATE ${USB_INCLUDE_DIR})
+target_include_directories(airspy PRIVATE ${LIBUSB_INCLUDE_DIR})
 
-target_link_libraries(airspy ${USB_LIBRARY})
+target_link_libraries(airspy ${LIBUSB_LIBRARY})

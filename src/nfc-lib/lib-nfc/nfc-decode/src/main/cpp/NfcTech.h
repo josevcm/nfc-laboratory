@@ -65,7 +65,13 @@ struct SignalDebug
       struct tm timeinfo {};
 
       std::time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+#ifdef _WIN32
       localtime_s(&timeinfo, &rawTime);
+#else
+      localtime_r(&rawTime, &timeinfo);
+#endif
+
       strftime(file, sizeof(file), "decoder-%Y%m%d%H%M%S.wav", &timeinfo);
 
       recorder = new sdr::RecordDevice(file);

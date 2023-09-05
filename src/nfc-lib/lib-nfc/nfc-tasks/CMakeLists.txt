@@ -12,6 +12,10 @@ add_library(nfc-tasks STATIC
         src/main/cpp/SignalRecorderTask.cpp
         )
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
+    target_compile_options(nfc-tasks PRIVATE "-msse2" -DUSE_SSE2)
+endif ()
+
 #target_compile_options(nfc-tasks PRIVATE "-fopt-info-vec-optimized")
 #target_compile_options(nfc-tasks PRIVATE "-msse2" -DUSE_SSE2)
 

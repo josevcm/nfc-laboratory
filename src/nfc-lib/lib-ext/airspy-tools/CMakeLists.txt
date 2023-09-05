@@ -6,6 +6,6 @@ add_executable(airspy-rx
         src/main/c/airspy_rx.c)
 
 target_include_directories(airspy-rx PUBLIC ${PUBLIC_SOURCE_DIR})
-target_include_directories(airspy-rx PRIVATE ${USB_INCLUDE_DIR})
+target_include_directories(airspy-rx PRIVATE ${LIBUSB_INCLUDE_DIR})
 
-target_link_libraries(airspy-rx airspy ${USB_LIBRARY})
+target_link_libraries(airspy-rx airspy ${LIBUSB_LIBRARY})

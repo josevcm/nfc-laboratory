@@ -11,6 +11,6 @@ add_library(rtlsdr STATIC
         src/main/c/tuner_r82xx.c)
 
 target_include_directories(rtlsdr PUBLIC ${PUBLIC_SOURCE_DIR})
-target_include_directories(rtlsdr PRIVATE ${USB_INCLUDE_DIR})
+target_include_directories(rtlsdr PRIVATE ${LIBUSB_INCLUDE_DIR})
 
-target_link_libraries(rtlsdr ${USB_LIBRARY})
+target_link_libraries(rtlsdr ${LIBUSB_LIBRARY})

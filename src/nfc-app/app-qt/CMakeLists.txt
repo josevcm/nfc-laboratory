@@ -58,16 +58,19 @@ add_executable(nfc-lab WIN32
 
 target_include_directories(nfc-lab PRIVATE ${PRIVATE_SOURCE_DIR})
 target_include_directories(nfc-lab PRIVATE ${AUTOGEN_BUILD_DIR}/include)
-target_include_directories(nfc-lab PRIVATE ${USB_INCLUDE_DIR})
+target_include_directories(nfc-lab PRIVATE ${LIBUSB_INCLUDE_DIR})
+
+if (WIN32)
+    set(PLATFORM_LIBS mingw32 psapi)
+endif (WIN32)
 
 target_link_libraries(nfc-lab
+        ${PLATFORM_LIBS}
         nfc-decode
         nfc-tasks
         sdr-io
         rt-lang
         crapto1
-        mingw32
-        psapi
         Qt5::Core
         Qt5::Widgets
         Qt5::PrintSupport

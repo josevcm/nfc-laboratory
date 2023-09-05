@@ -265,12 +265,13 @@ And it can be compiled with mingw-g64, a minimum version is required to support 
 
 ### Prerequisites
 
-- Qt5 framework 5.x for Windows, see https://www.qt.io/offline-installers
-- A recent mingw-w64 for windows, see https://www.mingw-w64.org/downloads
-- CMake version 3.17 or higher, see http://www.cmake.org/cmake/resources/software.html
-- Git-bash or your preferred client for Windows, see https://gitforwindows.org/ 
+- Qt5 framework 5.x, see https://www.qt.io/offline-installers
+- A recent mingw-w64 for windows build, see https://www.mingw-w64.org/downloads
+- A GCC / G++ for Linux build, version 9.0 or later
+- CMake version 3.16 or higher, see http://www.cmake.org/cmake/resources/software.html
+- Git-bash or your preferred client for Windows build, see https://gitforwindows.org/
 
-### Manual build without IDE
+### Manual build for Windows
 
 Using git-bash, download repository:
 
@@ -331,7 +332,7 @@ Scanning dependencies of target rtlsdr
 [100%] Built target nfc-lab
 ```
 
-### Prepare Qt deployment
+#### Prepare Qt deployment
 
 To run the application correctly it is necessary to deploy the Qt components together with the libraries, fonts and the generated artifact.
 
@@ -387,6 +388,97 @@ Application is ready to use!
 
 If you do not have an SDR receiver, I have included a small capture sample signal in file "wav/capture-424kbps.wav" that
 serves as an example to test demodulation.
+
+### Manual build for Linux
+
+Install dependencies
+
+```
+root@HPWIN11:~# apt install libusb-1.0-0
+...
+root@HPWIN11:~# apt install qt5-default
+```
+
+Download repository:
+
+```
+$ git clone https://github.com/josevcm/nfc-laboratory.git
+Cloning into 'nfc-laboratory'...
+remote: Enumerating objects: 1629, done.
+remote: Counting objects: 100% (1003/1003), done.
+remote: Compressing objects: 100% (776/776), done.
+remote: Total 1629 (delta 188), reused 990 (delta 179), pack-reused 626
+Receiving objects: 100% (1629/1629), 32.09 MiB | 10.60 MiB/s, done.
+Resolving deltas: 100% (312/312), done.
+Updating files: 100% (975/975), done.
+```
+
+Prepare release makefiles, or change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output:
+
+```
+root@HPWIN11:~# cmake -DCMAKE_BUILD_TYPE=Release -S nfc-laboratory -B cmake-build-release
+-- The C compiler identification is GNU 9.4.0
+-- The CXX compiler identification is GNU 9.4.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Build for x86_64
+-- Enabled SSE/SSE3 instruction set
+-- Detected libusb /usr/include/libusb-1.0 /usr/lib/x86_64-linux-gnu/libusb-1.0.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /root/cmake-build-release
+```
+
+Launch build:
+
+```
+root@HPWIN11:~# cmake --build cmake-build-release --target nfc-lab -- -j 6
+Scanning dependencies of target mufft-avx
+Scanning dependencies of target mufft-sse
+Scanning dependencies of target airspy
+Scanning dependencies of target rt-lang
+Scanning dependencies of target mufft-sse3
+Scanning dependencies of target rtlsdr
+[  2%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/airspy.c.o
+[  4%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/c/x86/kernel.sse.c.o
+[  3%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-avx.dir/src/main/c/x86/kernel.avx.c.o
+[  4%] Building CXX object src/nfc-lib/lib-rt/rt-lang/CMakeFiles/rt-lang.dir/src/main/cpp/Executor.cpp.o
+[  4%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse3.dir/src/main/c/x86/kernel.sse3.c.o
+[  5%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/c/librtlsdr.c.o
+[  6%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/iqconverter_float.c.o
+[  7%] Linking C static library libmufft-sse.a
+[  8%] Linking C static library libmufft-sse3.a
+[  8%] Built target mufft-sse
+[  8%] Built target mufft-sse3
+[  9%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/iqconverter_int16.c.o
+[ 10%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/c/tuner_e4k.c.o
+[ 11%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/c/tuner_fc0012.c.o
+....
+[ 93%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/src/main/cpp/styles/StreamStyle.cpp.o
+[ 94%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/src/main/cpp/styles/ParserStyle.cpp.o
+[ 94%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/src/main/cpp/3party/customplot/QCustomPlot.cpp.o
+[ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/nfc-lab_autogen/YC2MJJWI6E/qrc_icons.cpp.o
+[ 96%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/nfc-lab_autogen/ZNUTFHHM5Q/qrc_style.cpp.o
+[ 97%] Linking CXX executable nfc-lab
+[100%] Built target nfc-lab
+```
+
+Copy base configuration file and launch application
+
+```
+root@HPWIN11:~# cp nfc-laboratory/dat/config/nfc-lab.conf .
+root@HPWIN11:~# ./cmake-build-release/src/nfc-app/app-qt/nfc-lab
+```
 
 ### Build from QtCreator
 

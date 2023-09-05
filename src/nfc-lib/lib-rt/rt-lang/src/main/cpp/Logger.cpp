@@ -33,6 +33,7 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 
 #include <rt/Logger.h>
 #include <rt/Format.h>
@@ -133,11 +134,18 @@ struct LogWriter
       auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
       auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
+#ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
+#else
+      localtime_r(&seconds, &timeinfo);
+#endif
+
+      std::ostringstream oss;
+      oss << event->thread;
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      fprintf(stdout, "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      fprintf(stdout, "%s.%03d %s (thread-%s) [%s] %s\n", date, (int)millis, event->level.c_str(), oss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       delete event;
    }
@@ -156,11 +164,18 @@ struct LogWriter
       auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
       auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
+#ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
+#else
+      localtime_r(&seconds, &timeinfo);
+#endif
+
+      std::ostringstream oss;
+      oss << event->thread;
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      fprintf(stderr, "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      fprintf(stderr, "%s.%03d %s (thread-%s) [%s] %s\n", date, (int)millis, event->level.c_str(), oss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       delete event;
    }
@@ -232,17 +247,24 @@ struct LogWriter
 
    void write(LogEvent *event)
    {
-      struct tm timeinfo {};
       char date[32], buffer[4096];
+      struct tm timeinfo {};
 
       auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
       auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
+#ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
+#else
+      localtime_r(&seconds, &timeinfo);
+#endif
+
+      std::ostringstream oss;
+      oss << event->thread;
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      snprintf(buffer, sizeof(buffer), "%s.%03d %s (thread-%d) [%s] %s\n", date, millis, event->level.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      snprintf(buffer, sizeof(buffer), "%s.%03d %s (thread-%s) [%s] %s\n", date, (int) millis, event->level.c_str(), oss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       stream << buffer;
 
@@ -272,15 +294,19 @@ struct Logger::Impl
    }
 };
 
-// loggers map
-static std::map<std::string, std::shared_ptr<Logger::Impl>> loggers;
-
-Logger::Logger(const std::string &name, int level)
+std::shared_ptr<Logger::Impl> putLogger(const std::string &name, int level)
 {
+   static std::map<std::string, std::shared_ptr<Logger::Impl>> loggers;
+
    if (loggers.find(name) == loggers.end())
       loggers[name] = std::make_shared<Logger::Impl>(name, level);
 
-   impl = loggers[name];
+   return loggers[name];
+}
+
+Logger::Logger(const std::string &name, int level)
+{
+   impl = putLogger(name, level);
 }
 
 void Logger::trace(const std::string &format, std::vector<Variant> params) const

@@ -66,8 +66,13 @@ bool FileSystem::createDir(const std::string &path)
    if (isDirectory(path))
       return true;
 
+#ifdef __WIN32
    if (mkdir(path.c_str()) < 0)
       return false;
+#else
+   if (mkdir(path.c_str(), S_IRUSR | S_IWUSR | S_IXUSR) < 0)
+      return false;
+#endif
 
    return true;
 }
