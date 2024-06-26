@@ -626,7 +626,12 @@ the first one.
 
 ![NFCV PPM 2 bit](doc/img/nfcv-ppm2.png?raw=true "NFC-V PPM reader modulation")
 
-Card responses are encoded using manchester OOK with 848 subcarrier as of NFC-A.
+Card responses can be encoded in two different ways depending on the value of bit 0 in the flags field of the request made by VCD. 
+
+If the flags bit 0 = 0, the card will respond using only one subcarrier at fc/32 (423,75 kHz), with OOK modulation, (as in NFC-A). 
+If the flags bit 0 = 1, the card will respond using two subcarriers at fc/32 (423,75 kHz) and fc/28 (484,28 kHz) with 2-FSK modulation. 
+
+NOTE: Currently only the first mode is supported in this software (sorry).
 
 Depending on the encoding, the possible speeds are 26Kbps and 53Kbps, however these cards can be read from greater 
 distances.
