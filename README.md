@@ -224,6 +224,56 @@ The application allows you to read and write files in two different formats:
 
 - JSON: The analyzed signal can be stored in a simple JSON text file or read back from one of them.
 
+```
+{
+   "frames": [
+      {
+         "frameData": "26:01:00:F6:0A",
+         "frameFlags": 0,
+         "framePhase": 2,
+         "frameRate": 26484,
+         "frameType": 2,
+         "sampleEnd": 47596,
+         "sampleStart": 31362,
+         "techType": 4,
+         "timeEnd": 0.0047596,
+         "timeStart": 0.0031362
+      },
+...
+}
+```
+
+- frameData: Data of the frame in hexadecimal format.
+- frameFlags: Flags of the frame, a combination of the following values:
+  - ShortFrame = 0x01
+  - Encrypted = 0x02
+  - Truncated = 0x08
+  - ParityError = 0x10
+  - CrcError = 0x20
+  - SyncError = 0x40
+- framePhase: Phase of the frame, one of the following values:
+  - CarrierFrame = 0
+  - SelectionFrame = 1
+  - ApplicationFrame = 2
+- frameRate: Rate of the frame, one of the following values:
+  - Rate106 = 106
+  - Rate212 = 212
+  - Rate424 = 424
+- frameType: Type of the frame, one of the following values:
+  - CarrierOff = 0,
+  - CarrierOn = 1,
+  - PollFrame = 2,
+  - ListenFrame = 3
+- sampleEnd: End of the frame in samples.
+- sampleStart: Start of the frame in samples.
+- techType: Type of technology, one of the following values:
+  - NFC-A = 1
+  - NFC-B = 2
+  - NFC-F = 3
+  - NFC-V = 4
+- timeEnd: End of the frame in seconds.
+- timeStart: Start of the frame in seconds.
+
 ## Testing files
 
 In the "wav" folder you can find a series of samples of different captures for the NFC-A, NFC-B, NFC-F and NFC-V 
