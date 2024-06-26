@@ -255,10 +255,7 @@ The application allows you to read and write files in two different formats:
   - CarrierFrame = 0
   - SelectionFrame = 1
   - ApplicationFrame = 2
-- frameRate: Rate of the frame, one of the following values:
-  - Rate106 = 106
-  - Rate212 = 212
-  - Rate424 = 424
+- frameRate: Rate of the frame, in bits per second, one of the following values
 - frameType: Type of the frame, one of the following values:
   - CarrierOff = 0,
   - CarrierOn = 1,
