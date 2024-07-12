@@ -162,8 +162,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                   receiver->setCenterFreq(40.68E6);
                   receiver->setSampleRate(10E6);
                   receiver->setGainMode(1);
-                  receiver->setGainValue(4);
-                  receiver->setBiasTee(0);
+                  receiver->setGainValue(3);
                }
                   // default parameters for Rtl SDR
                else if (name.find("rtlsdr") == 0)
