@@ -25,6 +25,8 @@
 #ifndef LANG_EXECUTOR_H
 #define LANG_EXECUTOR_H
 
+#include <memory>
+
 #include <rt/Task.h>
 
 namespace rt {

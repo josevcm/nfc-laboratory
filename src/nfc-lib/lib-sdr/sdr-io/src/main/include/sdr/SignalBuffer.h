@@ -25,6 +25,8 @@
 #ifndef SDR_SIGNALBUFFER_H
 #define SDR_SIGNALBUFFER_H
 
+#include <memory>
+
 #include <rt/Buffer.h>
 
 namespace sdr {

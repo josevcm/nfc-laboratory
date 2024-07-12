@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <memory>
 #include <initializer_list>
 
 #include <rt/Variant.h>
