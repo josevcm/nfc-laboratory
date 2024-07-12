@@ -24,6 +24,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <memory>
 #include <queue>
 #include <list>
 #include <thread>

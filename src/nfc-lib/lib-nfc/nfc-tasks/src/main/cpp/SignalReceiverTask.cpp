@@ -28,6 +28,8 @@
 
 #endif
 
+#include <memory>
+
 #include <rt/Logger.h>
 #include <rt/Format.h>
 #include <rt/BlockingQueue.h>

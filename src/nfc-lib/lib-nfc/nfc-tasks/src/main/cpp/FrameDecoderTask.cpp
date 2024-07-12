@@ -22,7 +22,8 @@
 
 */
 
-#include <rt/Logger.h>
+#include <memory>
+
 #include <rt/BlockingQueue.h>
 #include <rt/Throughput.h>
 

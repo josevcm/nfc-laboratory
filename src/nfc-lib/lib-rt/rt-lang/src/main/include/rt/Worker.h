@@ -26,6 +26,7 @@
 #define LANG_WORKER_H
 
 #include <mutex>
+#include <memory>
 
 #include <rt/Task.h>
 

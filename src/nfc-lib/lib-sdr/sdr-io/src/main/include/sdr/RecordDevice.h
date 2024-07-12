@@ -25,6 +25,7 @@
 #ifndef SDR_RECORDDEVICE_H
 #define SDR_RECORDDEVICE_H
 
+#include <memory>
 #include <vector>
 #include <functional>
 

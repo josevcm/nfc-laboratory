@@ -26,6 +26,7 @@
 #define NFC_NFCDECODER_H
 
 #include <list>
+#include <memory>
 
 #include <rt/FloatBuffer.h>
 
