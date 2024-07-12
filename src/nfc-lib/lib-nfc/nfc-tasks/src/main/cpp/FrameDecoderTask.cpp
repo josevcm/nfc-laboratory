@@ -261,7 +261,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
          command.resolve();
 
-         updateDecoderStatus(status, true);
+         updateDecoderStatus(status);
       }
       else
       {
@@ -300,7 +300,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       }
    }
 
-   void updateDecoderStatus(int value, bool config = false)
+   void updateDecoderStatus(int value, bool config = true)
    {
       status = value;
 
