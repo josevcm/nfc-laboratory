@@ -95,6 +95,8 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          log.info("shutdown device {}", {receiver->name()});
          receiver.reset();
       }
+
+      updateReceiverStatus(SignalReceiverTask::Halt);
    }
 
    bool loop() override

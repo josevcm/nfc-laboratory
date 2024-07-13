@@ -80,10 +80,12 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
    void start() override
    {
+      updateDecoderStatus(FrameDecoderTask::Halt);
    }
 
    void stop() override
    {
+      updateDecoderStatus(FrameDecoderTask::Halt);
    }
 
    bool loop() override
