@@ -10,8 +10,7 @@ find_package(Qt5 COMPONENTS Core Widgets PrintSupport REQUIRED)
 
 configure_file(${PRIVATE_SOURCE_DIR}/QtConfig.h.in ${PRIVATE_SOURCE_DIR}/QtConfig.h)
 
-add_executable(nfc-lab WIN32
-        #add_executable(nfc-lab
+set(SOURCES
         src/main/cpp/main.cpp
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
@@ -55,6 +54,12 @@ add_executable(nfc-lab WIN32
         src/main/assets/theme/dark/style.qrc
         src/main/cpp/3party/customplot/QCustomPlot.cpp
         )
+
+if(${BUILD_PROJECT_VERSION} EQUAL "0.0.0")
+    add_executable(nfc-lab ${SOURCES})
+else()
+    add_executable(nfc-lab WIN32 ${SOURCES})
+endif()
 
 target_include_directories(nfc-lab PRIVATE ${PRIVATE_SOURCE_DIR})
 target_include_directories(nfc-lab PRIVATE ${AUTOGEN_BUILD_DIR}/include)

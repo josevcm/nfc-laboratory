@@ -32,6 +32,7 @@
 #include <rt/ByteBuffer.h>
 
 namespace rt {
+
 typedef std::variant<
       bool,
       char,
@@ -46,11 +47,14 @@ typedef std::variant<
       unsigned long long,
       float,
       double,
-      char*,
-      void*,
+      char *,
+      void *,
       std::string,
       std::thread::id,
-      ByteBuffer> Variant;
+      std::chrono::duration<long long, std::ratio<1, 1000000000>>,
+      Buffer<unsigned char>
+> Variant;
+
 }
 
 #endif //NFC_LAB_VARIANT_H

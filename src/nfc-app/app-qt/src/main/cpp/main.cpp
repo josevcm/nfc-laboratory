@@ -23,6 +23,12 @@
 */
 
 #include <cmath>
+#include <iostream>
+#include <fstream>
+
+#include <QDir>
+#include <QStandardPaths>
+#include <QDebug>
 
 #include <rt/Logger.h>
 #include <rt/Executor.h>
@@ -47,6 +53,7 @@
 
 #include <libusb.h>
 
+#include "QtConfig.h"
 #include "QtApplication.h"
 
 using namespace rt;
@@ -85,7 +92,7 @@ int startApp(int argc, char *argv[])
    Logger log {"main"};
 
    log.info("***********************************************************************");
-   log.info("NFC laboratory, 2022 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("NFC laboratory, 2024 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
 
    for (int i = 0; i < argc; i++)
@@ -95,44 +102,79 @@ int startApp(int argc, char *argv[])
 
    log.info("using libusb version: {}.{}.{}", {lusbv->major, lusbv->minor, lusbv->micro});
 
-   // create executor service
-   Executor executor(128, 10);
-
-   // startup signal resampling task
-   executor.submit(nfc::AdaptiveSamplingTask::construct());
-
-   // startup fourier transform task
-   executor.submit(nfc::FourierProcessTask::construct());
-
-   // startup signal decoder task
-   executor.submit(nfc::FrameDecoderTask::construct());
-
-   // startup frame writer task
-   executor.submit(nfc::FrameStorageTask::construct());
-
-   // startup signal reader task
-   executor.submit(nfc::SignalRecorderTask::construct());
-
-   // startup signal receiver task
-   executor.submit(nfc::SignalReceiverTask::construct());
-
-   // set logging handler
-   qInstallMessageHandler(messageOutput);
-
-   // configure scaling
+   // configure application
+   QtApplication::setApplicationName(NFC_LAB_APPLICATION_NAME);
+   QtApplication::setApplicationVersion(NFC_LAB_VERSION_STRING);
+   QtApplication::setOrganizationName(NFC_LAB_COMPANY_NAME);
+   QtApplication::setOrganizationDomain(NFC_LAB_DOMAIN_NAME);
    QtApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
+   // configure settings location and format
+   QSettings::setDefaultFormat(QSettings::IniFormat);
 
    // initialize QT interface
    QtApplication app(argc, argv);
 
+   // create executor service
+   Executor executor(128, 10);
+
+   executor.submit(nfc::AdaptiveSamplingTask::construct()); // startup signal resampling task
+   executor.submit(nfc::FourierProcessTask::construct()); // startup fourier transform task
+   executor.submit(nfc::FrameDecoderTask::construct()); // startup signal decoder task
+   executor.submit(nfc::FrameStorageTask::construct());
+   executor.submit(nfc::SignalRecorderTask::construct()); // startup signal reader task
+   executor.submit(nfc::SignalReceiverTask::construct()); // startup signal receiver task
+
    // start application
-   return QtApplication::exec();
+   QtApplication::exec();
+
+   log.info("closing application...");
+
+   return 0;
 }
 
 int main(int argc, char *argv[])
 {
+   // initialize logging system
+#if NFC_LAB_VERSION_MAJOR > 0
+   QDir appPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/" + NFC_LAB_COMPANY_NAME + "/" + NFC_LAB_APPLICATION_NAME);
+
+   std::ofstream stream;
+
+   if (appPath.mkpath("log"))
+   {
+      QString logFile = appPath.filePath("log/tracer.log");
+
+      stream.open(logFile.toStdString(), std::ios::out | std::ios::app);
+
+      if (stream.is_open())
+      {
+         Logger::init(stream);
+      }
+      else
+      {
+         std::cerr << "unable to open log file: " << logFile.toStdString() << std::endl;
+
+         Logger::init(std::cout);
+      }
+   }
+   else
+   {
+      std::cerr << "unable to create log path: " << appPath.absolutePath().toStdString() << std::endl;
+
+      Logger::init(std::cout);
+   }
+#else
+   Logger::init(std::cout);
+#endif
+
+   // create QT logger
    qlog = new Logger("QT");
 
+   // set logging handler for QT components
+   qInstallMessageHandler(messageOutput);
+
+   // start application!
    return startApp(argc, argv);
 }
 

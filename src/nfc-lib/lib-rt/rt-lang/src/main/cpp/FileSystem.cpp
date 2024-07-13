@@ -26,6 +26,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include <fstream>
+
 #include <rt/FileSystem.h>
 
 namespace rt {
@@ -61,20 +63,52 @@ bool FileSystem::exists(const std::string &path)
    return stat(path.c_str(), &sb) == 0;
 }
 
-bool FileSystem::createDir(const std::string &path)
+bool FileSystem::createPath(const std::string &path)
 {
    if (isDirectory(path))
       return true;
 
+   // append / at the end if not present
+   std::string create = path.back() == '/' ? path : path + "/";
+
+   size_t pos = 0;
+   std::string stage;
+
+   // create full path
+   while ((pos = create.find_first_of('/', pos)) != std::string::npos)
+   {
+      stage = create.substr(0, pos + 1);
+
+      if (!exists(stage))
+      {
 #ifdef __WIN32
-   if (mkdir(path.c_str()) < 0)
-      return false;
+         if (mkdir(stage.c_str()) < 0)
+            return false;
 #else
-   if (mkdir(path.c_str(), S_IRUSR | S_IWUSR | S_IXUSR) < 0)
-      return false;
+         if (mkdir(stage.c_str(), S_IRUSR | S_IWUSR | S_IXUSR) < 0)
+         return false;
 #endif
+      }
+
+      pos++;
+   }
 
    return true;
+}
+
+bool FileSystem::truncateFile(const std::string &path)
+{
+   if (isDirectory(path))
+      return false;
+
+   int lastSlash = path.find_last_of('/');
+
+   if (lastSlash != std::string::npos)
+      createPath(path.substr(0, lastSlash));
+
+   std::ofstream file(path, std::ios::out | std::ios::binary | std::ios::trunc);
+
+   return file.is_open();
 }
 
 std::list<FileSystem::DirectoryEntry> FileSystem::directoryList(const std::string &path)
@@ -97,6 +131,5 @@ std::list<FileSystem::DirectoryEntry> FileSystem::directoryList(const std::strin
 
    return result;
 }
-
 
 }

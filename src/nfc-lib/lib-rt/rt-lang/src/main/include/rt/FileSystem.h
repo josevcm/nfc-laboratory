@@ -47,7 +47,9 @@ class FileSystem
 
       static bool exists(const std::string &path);
 
-      static bool createDir(const std::string &path);
+      static bool createPath(const std::string &path);
+
+      static bool truncateFile(const std::string &path);
 
       static std::list<DirectoryEntry> directoryList(const std::string &path);
 };

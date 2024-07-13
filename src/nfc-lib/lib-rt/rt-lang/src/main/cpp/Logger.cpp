@@ -40,9 +40,6 @@
 #include <rt/FileSystem.h>
 #include <rt/BlockingQueue.h>
 
-#ifndef LOG_OUTPUT
-#define LOG_OUTPUT 3
-#endif
 namespace rt {
 
 const char *tags[] = {
@@ -79,127 +76,24 @@ struct LogEvent
 };
 
 // threaded logger to console stdout, runs on low priority thread
-#if LOG_OUTPUT == 1
-struct LogWriter
+struct Logger::Writer
 {
-   // writer thread
-   std::thread thread;
-
-   // shutdown flag
-   std::atomic<bool> shutdown;
-
    // events queue
    BlockingQueue<LogEvent *> queue;
-
-   LogWriter() : thread([this] { this->exec(); }), shutdown(false)
-   {
-      sched_param param {0};
-
-      if (pthread_setschedparam(thread.native_handle(), SCHED_OTHER, &param))
-      {
-         printf("error setting logger thread priority: %s\n", std::strerror(errno));
-      }
-   }
-
-   ~LogWriter()
-   {
-      // signal shutdown
-      shutdown = true;
-
-      // wait for thread to finish
-      thread.join();
-   }
-
-   void push(LogEvent *event)
-   {
-      queue.add(event);
-   }
-
-   void exec()
-   {
-      while (!shutdown)
-      {
-         while (auto event = queue.get(50))
-         {
-            write(event.value());
-         }
-      }
-   }
-
-   void write(LogEvent *event)
-   {
-      char date[32];
-      struct tm timeinfo {};
-
-      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
-      auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
-
-#ifdef _WIN32
-      localtime_s(&timeinfo, &seconds);
-#else
-      localtime_r(&seconds, &timeinfo);
-#endif
-
-      std::ostringstream oss;
-      oss << event->thread;
-
-      strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
-
-      fprintf(stdout, "%s.%03d %s (thread-%s) [%s] %s\n", date, (int)millis, event->level.c_str(), oss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
-
-      delete event;
-   }
-
-} writer;
-
-// direct to stderr logger, warning, performance impact! use only for strange debugging when others logger do not work!
-#elif LOG_OUTPUT == 2
-struct LogWriter
-{
-   void push(LogEvent *event)
-   {
-      char date[32];
-      struct tm timeinfo {};
-
-      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
-      auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
-
-#ifdef _WIN32
-      localtime_s(&timeinfo, &seconds);
-#else
-      localtime_r(&seconds, &timeinfo);
-#endif
-
-      std::ostringstream oss;
-      oss << event->thread;
-
-      strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
-
-      fprintf(stderr, "%s.%03d %s (thread-%s) [%s] %s\n", date, (int)millis, event->level.c_str(), oss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
-
-      delete event;
-   }
-
-} writer;
-
-
-// threaded logger to file stream, runs on low priority thread
-#elif LOG_OUTPUT == 3
-struct LogWriter
-{
-   // writer thread
-   std::thread thread;
-
-   // shutdown flag
-   std::atomic<bool> shutdown;
 
    // output file
-   std::ofstream stream;
+   std::ostream &stream;
 
-   // events queue
-   BlockingQueue<LogEvent *> queue;
+   // shutdown flag
+   std::atomic<bool> shutdown;
 
-   LogWriter() : thread([this] { this->exec(); }), shutdown(false)
+   // shutdown flag
+   std::atomic<bool> buffered;
+
+   // writer thread
+   std::thread thread;
+
+   Writer(std::ostream &stream, bool buffered) : stream(stream), shutdown(false), buffered(buffered), thread([this] { this->exec(); })
    {
       sched_param param {0};
 
@@ -209,7 +103,7 @@ struct LogWriter
       }
    }
 
-   ~LogWriter()
+   ~Writer()
    {
       // signal shutdown
       shutdown = true;
@@ -220,34 +114,33 @@ struct LogWriter
 
    void push(LogEvent *event)
    {
-      queue.add(event);
+      if (buffered)
+      {
+         queue.add(event);
+      }
+      else
+      {
+         write(event);
+      }
    }
 
    void exec()
    {
-      rt::FileSystem::createDir("log");
-
-      // open log file
-      stream.open("log/nfc-lab.log", std::ios::out | std::ios::app);
-
       while (!shutdown)
       {
          while (auto event = queue.get(100))
          {
-            if (stream)
+            if (stream.good())
             {
                write(event.value());
             }
          }
       }
-
-      // close file
-      stream.close();
    }
 
    void write(LogEvent *event)
    {
-      char date[32], buffer[4096];
+      char date[32], buffer[65535];
       struct tm timeinfo {};
 
       auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
@@ -264,25 +157,14 @@ struct LogWriter
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      snprintf(buffer, sizeof(buffer), "%s.%03d %s (thread-%s) [%s] %s\n", date, (int) millis, event->level.c_str(), oss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      int size = snprintf(buffer, sizeof(buffer), "%s.%03d %s (thread-%s) [%s] %s\n", date, (int) millis, event->level.c_str(), oss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
-      stream << buffer;
+      stream.write(buffer, size);
 
       delete event;
    }
 
-} writer;
-
-// null logger for discard all messages
-#else
-struct LogWriter
-{
-   void push(LogEvent *event)
-   {
-      delete event;
-   }
-} writer;
-#endif
+};
 
 struct Logger::Impl
 {
@@ -293,6 +175,8 @@ struct Logger::Impl
    {
    }
 };
+
+std::shared_ptr<Logger::Writer> Logger::writer;
 
 std::shared_ptr<Logger::Impl> putLogger(const std::string &name, int level)
 {
@@ -311,43 +195,53 @@ Logger::Logger(const std::string &name, int level)
 
 void Logger::trace(const std::string &format, std::vector<Variant> params) const
 {
-   if (impl->level >= TRACE)
-      writer.push(new LogEvent(tags[TRACE], impl->name, format, std::move(params)));
+   if (writer && impl->level >= TRACE_LEVEL)
+      writer->push(new LogEvent(tags[TRACE_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::debug(const std::string &format, std::vector<Variant> params) const
 {
-   if (impl->level >= DEBUG)
-      writer.push(new LogEvent(tags[DEBUG], impl->name, format, std::move(params)));
+   if (writer && impl->level >= DEBUG_LEVEL)
+      writer->push(new LogEvent(tags[DEBUG_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::info(const std::string &format, std::vector<Variant> params) const
 {
-   if (impl->level >= INFO)
-      writer.push(new LogEvent(tags[INFO], impl->name, format, std::move(params)));
+   if (writer && impl->level >= INFO_LEVEL)
+      writer->push(new LogEvent(tags[INFO_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::warn(const std::string &format, std::vector<Variant> params) const
 {
-   if (impl->level >= WARN)
-      writer.push(new LogEvent(tags[WARN], impl->name, format, std::move(params)));
+   if (writer && impl->level >= WARN_LEVEL)
+      writer->push(new LogEvent(tags[WARN_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::error(const std::string &format, std::vector<Variant> params) const
 {
-   if (impl->level >= ERROR)
-      writer.push(new LogEvent(tags[ERROR], impl->name, format, std::move(params)));
+   if (writer && impl->level >= ERROR_LEVEL)
+      writer->push(new LogEvent(tags[ERROR_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::print(int level, const std::string &format, std::vector<Variant> params) const
 {
-   if (impl->level >= level)
-      writer.push(new LogEvent(tags[level & 0x7], impl->name, format, std::move(params)));
+   if (writer && impl->level >= level)
+      writer->push(new LogEvent(tags[level & 0x7], impl->name, format, std::move(params)));
 }
 
 void Logger::setLevel(int value)
 {
    impl->level = value;
+}
+
+void Logger::init(std::ostream &stream, bool buffered)
+{
+   writer.reset(new Writer(stream, buffered));
+}
+
+void Logger::flush()
+{
+   writer->stream.flush();
 }
 
 }

@@ -128,6 +128,8 @@ void Worker::run()
 {
    std::lock_guard<std::mutex> lock(impl->aliveMutex);
 
+   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
    impl->log.info("started worker for task {}", {impl->name});
 
    // call workert start
@@ -145,9 +147,11 @@ void Worker::run()
    // call worker stop
    this->stop();
 
+   auto duration = std::chrono::steady_clock::now() - start;
+
    impl->terminated = 1;
 
-   impl->log.info("finished worker for task {}", {impl->name});
+   impl->log.info("finished worker for task {}, running time {}", {impl->name, duration});
 }
 
 void Worker::start()

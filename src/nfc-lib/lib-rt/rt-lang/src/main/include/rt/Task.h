@@ -25,8 +25,6 @@
 #ifndef LANG_TASK_H
 #define LANG_TASK_H
 
-#include <string>
-
 namespace rt {
 
 class Task

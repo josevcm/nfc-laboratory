@@ -6,3 +6,6 @@
 #define NFC_LAB_VERSION_PATCH @nfc-lab_VERSION_PATCH@
 #define NFC_LAB_VERSION_STRING "@nfc-lab_VERSION@"
 #define NFC_LAB_VENDOR_STRING "NFC laboratory @nfc-lab_VERSION@ - josevcm@gmail.com"
+#define NFC_LAB_COMPANY_NAME "josevcm"
+#define NFC_LAB_APPLICATION_NAME "nfc-lab"
+#define NFC_LAB_DOMAIN_NAME "josevcm"
