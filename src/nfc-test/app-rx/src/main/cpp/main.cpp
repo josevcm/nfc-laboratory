@@ -114,7 +114,6 @@ struct Main
    std::string receiverStatus = "idle";
 
    bool debugEnabled = false;
-   bool verboseEnabled = false;
 
    Main()
    {
@@ -313,6 +312,18 @@ struct Main
             case 'd':
             {
                debugEnabled = true;
+               break;
+            }
+
+            case 'p':
+            {
+               std::string protocols = optarg;
+
+               nfcaEnabled = protocols.find("nfca") != std::string::npos;
+               nfcbEnabled = protocols.find("nfcb") != std::string::npos;
+               nfcfEnabled = protocols.find("nfcf") != std::string::npos;
+               nfcvEnabled = protocols.find("nfcv") != std::string::npos;
+
                break;
             }
 
