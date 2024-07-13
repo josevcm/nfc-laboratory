@@ -67,6 +67,8 @@ class Logger
 
       void setLevel(int value);
 
+      static void setWriterLevel(int value);
+
       static void init(std::ostream &stream, bool buffered = true);
 
       static void flush();
