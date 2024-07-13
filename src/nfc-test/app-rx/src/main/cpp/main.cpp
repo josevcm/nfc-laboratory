@@ -106,9 +106,9 @@ struct Main
    int biasTee = 0;
 
    bool nfcaEnabled = true;
-   bool nfcbEnabled = false;
-   bool nfcfEnabled = false;
-   bool nfcvEnabled = false;
+   bool nfcbEnabled = true;
+   bool nfcfEnabled = true;
+   bool nfcvEnabled = true;
 
    std::string decoderStatus = "idle";
    std::string receiverStatus = "idle";
