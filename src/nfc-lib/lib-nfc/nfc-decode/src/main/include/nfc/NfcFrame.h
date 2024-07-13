@@ -25,6 +25,8 @@
 #ifndef NFC_NFCFRAME_H
 #define NFC_NFCFRAME_H
 
+#include <memory>
+
 #include <rt/ByteBuffer.h>
 
 namespace nfc {

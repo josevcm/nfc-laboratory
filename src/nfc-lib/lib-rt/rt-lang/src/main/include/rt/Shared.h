@@ -26,6 +26,9 @@
 #define LANG_SHARED_H
 
 #include <atomic>
+#include <functional>
+
+namespace rt {
 
 template<typename T>
 class Shared
@@ -122,5 +125,7 @@ class Shared
          return shared->value;
       }
 };
+
+}
 
 #endif //NFC_LAB_SHARED_H

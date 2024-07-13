@@ -108,7 +108,7 @@ class Subject
       {
          // append observer to list
          auto &observer = observers.emplace_back(observers.size() + 1, next, error, close);
-         log.info("created subscription {} ({}) on subject {}", {observer.index, (void*) &observer, id});
+         log.debug("created subscription {} ({}) on subject {}", {observer.index, (void*) &observer, id});
 
          // emit retained values
          if (retained)
@@ -121,7 +121,7 @@ class Subject
 
          // returns finisher to remove observer when destroyed
          return {[this, &observer]() {
-            log.info("removed subscription {} ({}) from subject {}", {observer.index, (void*) &observer, id});
+            log.debug("removed subscription {} ({}) from subject {}", {observer.index, (void*) &observer, id});
             observers.remove(observer);
          }};
       }
@@ -134,7 +134,7 @@ class Subject
 
          if (subjects.find(name) == subjects.end())
          {
-            log.info("create new subject for name {}", {name});
+            log.debug("create new subject for name {}", {name});
             subjects.emplace(name, name);
          }
 
@@ -143,7 +143,7 @@ class Subject
 
    public:
 
-      Subject(std::string id = std::string()) : id(std::move(id))
+      explicit Subject(std::string id = std::string()) : id(std::move(id))
       {
       }
 

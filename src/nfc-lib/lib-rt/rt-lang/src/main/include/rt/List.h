@@ -30,6 +30,8 @@
 #include <utility>
 #include <optional>
 
+namespace rt {
+
 template<typename T>
 class List
 {
@@ -88,5 +90,7 @@ class List
       std::list<T> list;
       mutable std::mutex mutex;
 };
+
+}
 
 #endif //NFC_LAB_QUEUE_H

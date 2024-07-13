@@ -195,6 +195,21 @@ class Buffer
          return alloc ? state.limit / alloc->stride : 0;
       }
 
+      inline unsigned int stride() const
+      {
+         return alloc ? alloc->stride : 0;
+      }
+
+      inline unsigned int size() const
+      {
+         return alloc ? state.limit * sizeof(T) : 0;
+      }
+
+      inline unsigned int chunk() const
+      {
+         return alloc ? alloc->stride * sizeof(T) : 0;
+      }
+
       virtual inline operator bool() const
       {
          return alloc != nullptr;
@@ -208,16 +223,6 @@ class Buffer
       inline unsigned int type() const
       {
          return alloc ? alloc->type : 0;
-      }
-
-      inline unsigned int stride() const
-      {
-         return alloc ? alloc->stride : 0;
-      }
-
-      inline unsigned int size() const
-      {
-         return alloc ? state.capacity * sizeof(T) : 0;
       }
 
       inline void *context() const

@@ -39,18 +39,19 @@ class Logger
    public:
 
       struct Impl;
+      struct Writer;
 
       enum Level
       {
-         NONE = 0,
-         ERROR = 1,
-         WARN = 2,
-         INFO = 3,
-         DEBUG = 4,
-         TRACE = 5
+         NONE_LEVEL = 0,
+         ERROR_LEVEL = 1,
+         WARN_LEVEL = 2,
+         INFO_LEVEL = 3,
+         DEBUG_LEVEL = 4,
+         TRACE_LEVEL = 5
       };
 
-      explicit Logger(const std::string &name, int level = INFO);
+      explicit Logger(const std::string &name, int level = INFO_LEVEL);
 
       void trace(const std::string &format, std::vector<Variant> params = {}) const;
 
@@ -64,11 +65,21 @@ class Logger
 
       void print(int level, const std::string &format, std::vector<Variant> params = {}) const;
 
+      bool isEnabled(int level) const;
+
       void setLevel(int value);
+
+      static void setWriterLevel(int value);
+
+      static void init(std::ostream &stream, bool buffered = true);
+
+      static void flush();
 
    private:
 
       std::shared_ptr<Impl> impl;
+
+      static std::shared_ptr<Writer> writer;
 };
 
 }

@@ -35,11 +35,13 @@ class ByteBuffer : public Buffer<unsigned char>
 
       ByteBuffer() = default;
 
-      explicit ByteBuffer(int capacity, int type = 0, int stride = sizeof(float), void *context = nullptr) : Buffer<unsigned char>(capacity, type, stride, context)
+      ByteBuffer(const ByteBuffer &other) = default;
+
+      explicit ByteBuffer(unsigned int capacity, int type = 0, int stride = 1, void *context = nullptr) : Buffer<unsigned char>(capacity, type, stride, context)
       {
       }
 
-      explicit ByteBuffer(unsigned char *data, int capacity, int type = 0, int stride = sizeof(float), void *context = nullptr) : Buffer<unsigned char>(data, capacity, type, stride, context)
+      explicit ByteBuffer(unsigned char *data, unsigned int capacity, int type = 0, int stride = 1, void *context = nullptr) : Buffer<unsigned char>(data, capacity, type, stride, context)
       {
       }
 };

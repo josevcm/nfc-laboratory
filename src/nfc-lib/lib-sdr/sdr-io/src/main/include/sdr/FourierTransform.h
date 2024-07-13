@@ -25,6 +25,8 @@
 #ifndef SDR_FOURIERTRANSFORM_H
 #define SDR_FOURIERTRANSFORM_H
 
+#include <memory>
+
 #include <sdr/SignalBuffer.h>
 
 namespace sdr {

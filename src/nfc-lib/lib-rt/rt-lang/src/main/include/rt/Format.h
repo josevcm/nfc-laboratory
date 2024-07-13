@@ -30,14 +30,19 @@
 
 #include <rt/Variant.h>
 
-namespace rt
-{
+namespace rt {
 
 class Format
 {
    public:
 
       static std::string format(const std::string &fmt, const std::vector<Variant> &parameters);
+
+      static std::string ltrim(const std::string &str);
+
+      static std::string rtrim(const std::string &str);
+
+      static std::string trim(const std::string &str);
 };
 
 }

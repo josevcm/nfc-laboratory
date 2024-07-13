@@ -26,6 +26,7 @@
 #define NFC_NFCTECH_H
 
 #include <cmath>
+#include <memory>
 #include <algorithm>
 
 #include <sdr/SignalType.h>

@@ -29,6 +29,8 @@
 #include <mutex>
 #include <optional>
 
+namespace rt {
+
 template<typename T>
 class Queue
 {
@@ -79,10 +81,18 @@ class Queue
          queue.push(item);
       }
 
+      inline T &back()
+      {
+         std::lock_guard<std::mutex> lock(mutex);
+         return queue.back();
+      }
+
    private:
 
       std::queue<T> queue;
       mutable std::mutex mutex;
 };
+
+}
 
 #endif //NFC_LAB_QUEUE_H

@@ -25,6 +25,7 @@
 #define SDR_AIRSPYDEVICE_H
 
 #include <vector>
+#include <memory>
 #include <functional>
 
 #include <rt/FloatBuffer.h>

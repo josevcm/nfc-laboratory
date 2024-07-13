@@ -22,7 +22,8 @@
 
 */
 
-#include <rt/Logger.h>
+#include <memory>
+
 #include <rt/BlockingQueue.h>
 #include <rt/Throughput.h>
 
@@ -79,10 +80,12 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
    void start() override
    {
+      updateDecoderStatus(FrameDecoderTask::Halt);
    }
 
    void stop() override
    {
+      updateDecoderStatus(FrameDecoderTask::Halt);
    }
 
    bool loop() override
@@ -260,7 +263,7 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
          command.resolve();
 
-         updateDecoderStatus(status, true);
+         updateDecoderStatus(status);
       }
       else
       {
@@ -299,15 +302,17 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       }
    }
 
-   void updateDecoderStatus(int value, bool config = false)
+   void updateDecoderStatus(int value, bool config = true)
    {
       status = value;
 
       json data({
-                      {"status",     status == Listen ? "decoding" : "idle"},
-                      {"queueSize",  signalQueue.size()},
-                      {"sampleRate", decoder->sampleRate()},
-                      {"streamTime", decoder->streamTime()}
+                      {"status",              status == Listen ? "decoding" : "idle"},
+                      {"queueSize",           signalQueue.size()},
+                      {"sampleRate",          decoder->sampleRate()},
+                      {"streamTime",          decoder->streamTime()},
+                      {"debugEnabled",        decoder->isDebugEnabled()},
+                      {"powerLevelThreshold", decoder->powerLevelThreshold()}
                 });
 
       if (config)
