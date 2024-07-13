@@ -198,41 +198,46 @@ Logger::Logger(const std::string &name, int level)
 
 void Logger::trace(const std::string &format, std::vector<Variant> params) const
 {
-   if (writer && (impl->level >= TRACE_LEVEL || writer->level >= TRACE_LEVEL))
+   if (isEnabled(TRACE_LEVEL))
       writer->push(new LogEvent(tags[TRACE_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::debug(const std::string &format, std::vector<Variant> params) const
 {
-   if (writer && (impl->level >= DEBUG_LEVEL || writer->level >= DEBUG_LEVEL))
+   if (isEnabled(DEBUG_LEVEL))
       writer->push(new LogEvent(tags[DEBUG_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::info(const std::string &format, std::vector<Variant> params) const
 {
-   if (writer && (impl->level >= INFO_LEVEL || writer->level >= INFO_LEVEL))
+   if (isEnabled(INFO_LEVEL))
       writer->push(new LogEvent(tags[INFO_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::warn(const std::string &format, std::vector<Variant> params) const
 {
-   if (writer && (impl->level >= WARN_LEVEL || writer->level >= WARN_LEVEL))
+   if (isEnabled(WARN_LEVEL))
       writer->push(new LogEvent(tags[WARN_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::error(const std::string &format, std::vector<Variant> params) const
 {
-   if (writer && (impl->level >= ERROR_LEVEL || writer->level >= ERROR_LEVEL))
+   if (isEnabled(ERROR_LEVEL))
       writer->push(new LogEvent(tags[ERROR_LEVEL], impl->name, format, std::move(params)));
 }
 
 void Logger::print(int level, const std::string &format, std::vector<Variant> params) const
 {
-   if (writer && (impl->level >= level || writer->level >= level))
+   if (isEnabled(level))
       writer->push(new LogEvent(tags[level & 0x7], impl->name, format, std::move(params)));
 }
 
-void Logger::setLevel(int level)
+inline bool Logger::isEnabled(int value) const
+{
+   return writer && ((writer->level == -1 && impl->level >= value) || writer->level >= value);
+}
+
+inline void Logger::setLevel(int level)
 {
    impl->level = level;
 }

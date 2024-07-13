@@ -65,6 +65,8 @@ class Logger
 
       void print(int level, const std::string &format, std::vector<Variant> params = {}) const;
 
+      bool isEnabled(int level) const;
+
       void setLevel(int value);
 
       static void setWriterLevel(int value);
