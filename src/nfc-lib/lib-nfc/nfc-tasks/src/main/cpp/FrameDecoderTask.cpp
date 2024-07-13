@@ -305,10 +305,12 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
       status = value;
 
       json data({
-                      {"status",     status == Listen ? "decoding" : "idle"},
-                      {"queueSize",  signalQueue.size()},
-                      {"sampleRate", decoder->sampleRate()},
-                      {"streamTime", decoder->streamTime()}
+                      {"status",              status == Listen ? "decoding" : "idle"},
+                      {"queueSize",           signalQueue.size()},
+                      {"sampleRate",          decoder->sampleRate()},
+                      {"streamTime",          decoder->streamTime()},
+                      {"debugEnabled",        decoder->isDebugEnabled()},
+                      {"powerLevelThreshold", decoder->powerLevelThreshold()}
                 });
 
       if (config)
