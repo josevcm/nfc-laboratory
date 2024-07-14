@@ -237,9 +237,19 @@ inline bool Logger::isEnabled(int value) const
    return writer && ((writer->level == -1 && impl->level >= value) || writer->level >= value);
 }
 
+inline int Logger::getLevel() const
+{
+   return impl->level;
+}
+
 inline void Logger::setLevel(int level)
 {
    impl->level = level;
+}
+
+int Logger::getWriterLevel()
+{
+   return writer->level;
 }
 
 void Logger::setWriterLevel(int level)

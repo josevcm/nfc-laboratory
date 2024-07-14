@@ -67,7 +67,11 @@ class Logger
 
       bool isEnabled(int level) const;
 
+      int getLevel() const;
+
       void setLevel(int value);
+
+      static int getWriterLevel();
 
       static void setWriterLevel(int value);
 
