@@ -128,8 +128,6 @@ struct FrameDecoderTask::Impl : FrameDecoderTask, AbstractTask
 
    void startDecoder(rt::Event &command)
    {
-//      long epoch = (long) std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
       log.info("start frame decoding with {} pending buffers!", {signalQueue.size()});
 
       signalQueue.clear();
