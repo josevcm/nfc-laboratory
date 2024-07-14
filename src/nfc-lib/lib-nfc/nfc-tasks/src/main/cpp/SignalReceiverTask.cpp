@@ -165,6 +165,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                   receiver->setSampleRate(10E6);
                   receiver->setGainMode(1);
                   receiver->setGainValue(3);
+                  receiver->setBiasTee(0);
                }
                   // default parameters for Rtl SDR
                else if (name.find("rtlsdr") == 0)
@@ -320,11 +321,9 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
 
             if (config.contains("gainValue"))
             {
-               if (receiverGainMode > 0)
-               {
-                  receiverGainValue = config["gainValue"];
-                  receiver->setGainValue(receiverGainValue);
-               }
+               receiverGainMode = 1;
+               receiverGainValue = config["gainValue"];
+               receiver->setGainValue(receiverGainValue);
             }
          }
       }
