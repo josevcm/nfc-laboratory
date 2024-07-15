@@ -115,7 +115,7 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
       }
       else if (auto value = std::get_if<std::thread::id>(&parameter))
       {
-         snprintf(buffer, sizeof(buffer), ("%" + opts + (mode.empty() ? "d" : mode)).c_str(), *value);
+         snprintf(buffer, sizeof(buffer), ("0x%" + opts + "x").c_str(), *value);
       }
       else if (auto value = std::get_if<Buffer<unsigned char>>(&parameter))
       {
