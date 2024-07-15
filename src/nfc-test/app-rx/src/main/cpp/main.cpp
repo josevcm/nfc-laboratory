@@ -113,7 +113,6 @@ struct Main
 
    // streams subscriptions
    rt::Subject<rt::Event>::Subscription receiverStatusSubscription;
-   rt::Subject<rt::Event>::Subscription recorderStatusSubscription;
    rt::Subject<rt::Event>::Subscription decoderStatusSubscription;
    rt::Subject<nfc::NfcFrame>::Subscription decoderFrameSubscription;
 
