@@ -115,7 +115,7 @@ struct RealtekDevice::Impl
          char manufact[1024];
          char product[1024];
          char serial[1024];
-         char buffer[1024];
+         char buffer[2048];
 
          if (rtlsdr_get_device_usb_strings(i, manufact, product, serial) == 0)
          {
