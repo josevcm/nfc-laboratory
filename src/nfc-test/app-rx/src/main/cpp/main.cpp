@@ -397,6 +397,10 @@ struct Main
          // wait for signal or timeout
          sync.wait_for(lock, std::chrono::milliseconds(500));
 
+         // check termination flag and exit now
+         if (terminate)
+            break;
+
          // check receiver status
          if (checkReceiverStatus() < 0)
          {
