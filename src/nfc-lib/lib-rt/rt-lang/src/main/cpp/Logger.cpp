@@ -117,6 +117,10 @@ struct Logger::Writer
 
    void push(LogEvent *event)
    {
+      // reject nre events if shutdown is started
+      if (shutdown)
+         return;
+
       if (buffered)
       {
          queue.add(event);
