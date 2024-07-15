@@ -23,9 +23,9 @@
 */
 
 #ifdef __WIN32
-
 #include <windows.h>
-
+#else
+#include <signal.h>
 #endif
 
 #include <unistd.h>
