@@ -234,7 +234,7 @@ void Logger::print(int level, const std::string &format, std::vector<Variant> pa
 
 inline bool Logger::isEnabled(int value) const
 {
-   return writer && ((writer->level == -1 && impl->level >= value) || writer->level >= value);
+   return writer && ((writer->level < NONE_LEVEL && impl->level >= value) || writer->level >= value);
 }
 
 inline int Logger::getLevel() const
