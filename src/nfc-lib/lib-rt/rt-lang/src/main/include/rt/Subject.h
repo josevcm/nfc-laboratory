@@ -120,7 +120,7 @@ class Subject
          }
 
          // returns finisher to remove observer when destroyed
-         return {[this, &observer]() {
+         return Finally {[this, &observer]() {
             log.debug("removed subscription {} ({}) from subject {}", {observer.index, (void*) &observer, id});
             observers.remove(observer);
          }};

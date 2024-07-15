@@ -55,7 +55,7 @@ class Finally
 
    public:
 
-      Finally(std::function<void()> cleanup = nullptr) : impl(new Impl(std::move(cleanup)))
+      explicit Finally(std::function<void()> cleanup = nullptr) : impl(new Impl(std::move(cleanup)))
       {
          impl->references.fetch_add(1);
       }
