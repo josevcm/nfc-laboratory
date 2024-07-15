@@ -123,7 +123,7 @@ struct Main
    json decoderParams {
          {"debugEnabled", false},
          {"nfca",         {{"enabled", true}}},
-         {"nfcb",         {{"enabled", false}}},
+         {"nfcb",         {{"enabled", true}}},
          {"nfcf",         {{"enabled", true}}},
          {"nfcv",         {{"enabled", true}}}
    };
@@ -199,12 +199,21 @@ struct Main
 
    int checkReceiverStatus()
    {
-      std::string name = receiverStatus["name"];
+      // wait until receiver status is available
+      if (receiverStatus.empty())
+         return 0;
 
       // if no receiver detected, finish...
-      if (receiverStatus["status"] == "absent")
+      if (receiverStatus["status"].is_null() || receiverStatus["status"] == "absent")
       {
          log.info("no receiver found!");
+         return -1;
+      }
+
+      // if no receiver name, finish...
+      if (!receiverStatus["name"].is_string())
+      {
+         log.info("no receiver name found!");
          return -1;
       }
 
@@ -215,6 +224,7 @@ struct Main
       // check receiver parameters
       json params;
       json config;
+      std::string name = receiverStatus["name"];
 
       // default parameters for AirSpy
       if (name.find("airspy") == 0)
@@ -250,10 +260,10 @@ struct Main
          receiverCommandStream->next({nfc::SignalReceiverTask::Configure, [=]() { receiverConfigured = true; }, nullptr, {{"data", config.dump()}}});
       }
 
+      // if receiver is configured and idle, start it
       if (receiverConfigured && receiverStatus["status"] == "idle")
       {
-         receiverStatus["status"] = "waiting";
-         receiverCommandStream->next({nfc::SignalReceiverTask::Start});
+         receiverCommandStream->next({nfc::SignalReceiverTask::Start, [=]() { receiverStatus["status"] = "waiting"; }});
       }
 
       return 0;
@@ -261,6 +271,17 @@ struct Main
 
    int checkDecoderStatus()
    {
+      // wait until receiver status is available
+      if (decoderStatus.empty())
+         return 0;
+
+      // check decoder status
+      if (decoderStatus["status"].is_null())
+      {
+         log.info("invalid decoder!");
+         return -1;
+      }
+
       json config;
 
       for (auto &param: decoderParams.items())
@@ -281,10 +302,10 @@ struct Main
          decoderCommandStream->next({nfc::FrameDecoderTask::Configure, [=]() { decoderConfigured = true; }, nullptr, {{"data", config.dump()}}});
       }
 
+      // if decoder is configured and idle, start it
       if (decoderConfigured && decoderStatus["status"] == "idle")
       {
-         decoderStatus["status"] = "waiting";
-         decoderCommandStream->next({nfc::FrameDecoderTask::Start});
+         decoderCommandStream->next({nfc::FrameDecoderTask::Start, [=]() { decoderStatus["status"] = "waiting"; }});
       }
 
       return 0;
@@ -369,27 +390,37 @@ struct Main
       // initialize
       init();
 
-      // wait until capture finished
+      // main loot until capture finished
       while (!terminate)
       {
          std::unique_lock<std::mutex> lock(mutex);
 
+         // wait for signal or timeout
          sync.wait_for(lock, std::chrono::milliseconds(500));
 
+         // check receiver status
+         if (checkReceiverStatus() < 0)
+         {
+            fprintf(stdout, "Finish capture, invalid receiver!\n");
+            finish();
+         }
+
+         // check decoder status
+         if (checkDecoderStatus() < 0)
+         {
+            fprintf(stdout, "Finish capture, invalid decoder!\n");
+            finish();
+         }
+
+         // wait until time limit reached and exit
          if (nsecs > 0 && (std::chrono::steady_clock::now() - start) > std::chrono::seconds(nsecs))
          {
+            fprintf(stdout, "Finish capture, time limit reached!\n");
             finish();
          }
 
-         else if (checkReceiverStatus() < 0)
-         {
-            finish();
-         }
-
-         else if (checkDecoderStatus() < 0)
-         {
-            finish();
-         }
+         // flush console output
+         fflush(stdout);
       }
 
       return 0;
