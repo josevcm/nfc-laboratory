@@ -177,6 +177,12 @@ struct RealtekDevice::Impl
             // configure gain value
             setGainValue(gainValue);
 
+            // configure mixer automatic gain control
+            setMixerAgc(mixerAgc);
+
+            // configure tuner automatic gain control
+            setTunerAgc(tunerAgc);
+
             // configure direct sampling
             setDirectSampling(directSampling);
 
