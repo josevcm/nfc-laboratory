@@ -40,6 +40,7 @@
 #include <rt/Subject.h>
 #include <rt/Event.h>
 #include <rt/Logger.h>
+#include <rt/BlockingQueue.h>
 
 #include <nfc/Nfc.h>
 #include <nfc/NfcFrame.h>
@@ -117,6 +118,9 @@ struct Main
    rt::Subject<rt::Event>::Subscription decoderStatusSubscription;
    rt::Subject<nfc::NfcFrame>::Subscription decoderFrameSubscription;
 
+   // frame stream queue buffer
+   rt::BlockingQueue<nfc::NfcFrame> frameQueue;
+
    // decoder status and default parameters
    bool decoderConfigured = false;
    json decoderStatus {};
@@ -171,36 +175,8 @@ struct Main
 
       // subscribe to decoder frames
       decoderFrameSubscription = decoderFrameStream->subscribe([&](const nfc::NfcFrame &frame) {
-         handleDecoderFrame(frame);
+         frameQueue.add(frame);
       });
-   }
-
-   void handleDecoderFrame(const nfc::NfcFrame &frame)
-   {
-      int offset = 0;
-      char buffer[16384];
-
-      // add datagram time
-      offset += snprintf(buffer + offset, sizeof(buffer), "%010.3f ", frame.timeStart());
-
-      // add frame type
-      offset += snprintf(buffer + offset, sizeof(buffer), "(%s) ", frameType[frame.frameType()].c_str());
-
-      // data frames
-      if (frame.isPollFrame() || frame.isListenFrame())
-      {
-         // add tech type
-         offset += snprintf(buffer + offset, sizeof(buffer), "[%s@%.0f]: ", frameTech[frame.techType()].c_str(), roundf(float(frame.frameRate()) / 1000.0f));
-
-         // add data as HEX string
-         for (int i = 0; i < frame.size(); i++)
-         {
-            offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", (unsigned int) frame[i]);
-         }
-      }
-
-      // send to stdout
-      fprintf(stdout, "%s\n", buffer);
    }
 
    int checkReceiverStatus()
@@ -320,6 +296,34 @@ struct Main
       return 0;
    }
 
+   void printFrame(const nfc::NfcFrame &frame)
+   {
+      int offset = 0;
+      char buffer[16384];
+
+      // add datagram time
+      offset += snprintf(buffer + offset, sizeof(buffer), "%010.3f ", frame.timeStart());
+
+      // add frame type
+      offset += snprintf(buffer + offset, sizeof(buffer), "(%s) ", frameType[frame.frameType()].c_str());
+
+      // data frames
+      if (frame.isPollFrame() || frame.isListenFrame())
+      {
+         // add tech type
+         offset += snprintf(buffer + offset, sizeof(buffer), "[%s@%.0f]: ", frameTech[frame.techType()].c_str(), roundf(float(frame.frameRate()) / 1000.0f));
+
+         // add data as HEX string
+         for (int i = 0; i < frame.size(); i++)
+         {
+            offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", (unsigned int) frame[i]);
+         }
+      }
+
+      // send to stdout
+      fprintf(stdout, "%s\n", buffer);
+   }
+
    void finish()
    {
       // shutdown all tasks
@@ -430,6 +434,12 @@ struct Main
          {
             fprintf(stdout, "Finish capture, time limit reached!\n");
             finish();
+         }
+
+         // process received frames
+         while (auto frame = frameQueue.get())
+         {
+            printFrame(frame.value());
          }
 
          // flush console output
