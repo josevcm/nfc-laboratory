@@ -119,17 +119,7 @@ struct RealtekDevice::Impl
 
          if (rtlsdr_get_device_usb_strings(i, manufact, product, serial) == 0)
          {
-            // 1015 = 1024 - len "rtlsdr://" - 1
-            if (strlen(serial) < 1015)
-            {
-               snprintf(buffer, sizeof(buffer), "rtlsdr://%s", serial);
-
-               result.emplace_back(buffer);
-            }
-            else
-            {
-               fprintf(stderr, "Error: Serial string is too long for device %d\n", i);
-            }
+            snprintf(buffer, sizeof(buffer), "rtlsdr://%s", serial);
          }
       }
 
