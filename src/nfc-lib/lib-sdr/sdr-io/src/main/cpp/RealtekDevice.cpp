@@ -165,17 +165,14 @@ struct RealtekDevice::Impl
             // disable test mode
             setTestMode(testMode);
 
+            // configure direct sampling
+            setDirectSampling(directSampling);
+
             // configure frequency
             setCenterFreq(centerFreq);
 
             // configure samplerate
             setSampleRate(sampleRate);
-
-            // configure gain mode
-            setGainMode(gainMode);
-
-            // configure gain value
-            setGainValue(gainValue);
 
             // configure mixer automatic gain control
             setMixerAgc(mixerAgc);
@@ -183,8 +180,11 @@ struct RealtekDevice::Impl
             // configure tuner automatic gain control
             setTunerAgc(tunerAgc);
 
-            // configure direct sampling
-            setDirectSampling(directSampling);
+            // configure gain mode
+            setGainMode(gainMode);
+
+            // configure gain value
+            setGainValue(gainValue);
 
             log.info("openned rtlsdr device {} width tuner type {}", {deviceName, rtlsdrTuner});
 
@@ -394,9 +394,9 @@ struct RealtekDevice::Impl
 
       if (rtlsdrHandle)
       {
-         log.debug("rtlsdr_set_tuner_gain_mode({})", {!tunerAgc});
+         log.debug("rtlsdr_set_tuner_gain_mode({})", {tunerAgc ? 0 : 1});
 
-         if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtldev(rtlsdrHandle), !tunerAgc)) < 0)
+         if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtldev(rtlsdrHandle), tunerAgc ? 0 : 1)) < 0)
             log.warn("failed rtlsdr_set_tuner_gain_mode: [{}]", {rtlsdrResult});
 
          return rtlsdrResult;
@@ -414,7 +414,7 @@ struct RealtekDevice::Impl
 
       if (rtlsdrHandle)
       {
-         log.debug("rtlsdr_set_tuner_gain_mode({})", {mixerAgc});
+         log.debug("rtlsdr_set_agc_mode({})", {mixerAgc});
 
          if ((rtlsdrResult = rtlsdr_set_agc_mode(rtldev(rtlsdrHandle), mixerAgc)) < 0)
             log.warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
