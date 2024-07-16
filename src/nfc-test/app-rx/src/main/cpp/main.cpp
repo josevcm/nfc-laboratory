@@ -81,22 +81,24 @@ struct Main
          {nfc::RateType::r848k, "848"},
    };
 
-   // default receiver parameters for rtlsdr device
+   // default parameters for rtlsdr device
    json rtlsdrReceiverParams = {
          {"centerFreq", 27120000},
          {"sampleRate", 3200000},
          {"gainMode",   1},
-         {"gainValue",  77},
-         {"mixerAgc",   0}
+         {"gainValue",  77}, // 7.7db
+         {"mixerAgc",   0},
+         {"tunerAgc",   0}
    };
 
-   // default receiver parameters for airspy device
+   // default parameters for airspy device
    json airspyReceiverParams = {
          {"centerFreq", 40680000},
          {"sampleRate", 10000000},
-         {"gainMode",   1},
-         {"gainValue",  3},
-         {"mixerAgc",   0}
+         {"gainMode",   1}, // linearity
+         {"gainValue",  3}, // 3db
+         {"mixerAgc",   0},
+         {"tunerAgc",   0}
    };
 
    std::mutex mutex;
@@ -148,7 +150,7 @@ struct Main
       log.info("NFC laboratory, 2024 Jose Vicente Campos Martinez");
    }
 
-   void init()
+   void initTasks()
    {
       // create processing tasks
       executor.submit(nfc::FrameDecoderTask::construct());
@@ -349,8 +351,11 @@ struct Main
             // enable verbose mode
             case 'v':
             {
+               // first level, INFO
                if (rt::Logger::getWriterLevel() < rt::Logger::INFO_LEVEL)
                   rt::Logger::setWriterLevel(rt::Logger::INFO_LEVEL);
+
+                  // consecutive levels, up tu TRACE
                else if (rt::Logger::getWriterLevel() < rt::Logger::TRACE_LEVEL)
                   rt::Logger::setWriterLevel(rt::Logger::getWriterLevel() + 1);
 
@@ -401,7 +406,7 @@ struct Main
       auto start = std::chrono::steady_clock::now();
 
       // initialize
-      init();
+      initTasks();
 
       // main loot until capture finished
       while (!terminate)
