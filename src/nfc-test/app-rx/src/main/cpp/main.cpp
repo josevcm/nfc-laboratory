@@ -23,7 +23,9 @@
 */
 
 #ifdef __WIN32
+
 #include <windows.h>
+
 #else
 #include <signal.h>
 #endif
@@ -80,11 +82,11 @@ struct Main
 
    // default receiver parameters for rtlsdr device
    json rtlsdrReceiverParams = {
-         {"centerFreq",     27120000},
-         {"sampleRate",     3200000},
-         {"gainMode",       1},
-         {"gainValue",      77},
-         {"directSampling", 0}
+         {"centerFreq", 27120000},
+         {"sampleRate", 3200000},
+         {"gainMode",   1},
+         {"gainValue",  77},
+         {"mixerAgc",   0}
    };
 
    // default receiver parameters for airspy device
@@ -93,8 +95,7 @@ struct Main
          {"sampleRate", 10000000},
          {"gainMode",   1},
          {"gainValue",  3},
-         {"mixerAgc",   0},
-         {"biasTee",    0}
+         {"mixerAgc",   0}
    };
 
    std::mutex mutex;
@@ -116,7 +117,7 @@ struct Main
    rt::Subject<rt::Event>::Subscription decoderStatusSubscription;
    rt::Subject<nfc::NfcFrame>::Subscription decoderFrameSubscription;
 
-   // current decoder status
+   // decoder status and default parameters
    bool decoderConfigured = false;
    json decoderStatus {};
    json decoderParams {
@@ -127,10 +128,16 @@ struct Main
          {"nfcv",         {{"enabled", true}}}
    };
 
-   // current receiver status
+   // receiver status and default parameters
    bool receiverConfigured = false;
    json receiverStatus {};
-   json receiverParams {};
+   json receiverParams {
+         {"centerFreq", 13560000},
+         {"sampleRate", 10000000},
+         {"gainMode",   1},
+         {"gainValue",  1},
+         {"mixerAgc",   0}
+   };
 
    Main()
    {
@@ -217,8 +224,7 @@ struct Main
       }
 
       // update decoder sample rate
-      if (receiverStatus["sampleRate"].is_number())
-         decoderParams["sampleRate"] = receiverStatus["sampleRate"];
+      decoderParams["sampleRate"] = receiverStatus["sampleRate"];
 
       // check receiver parameters
       json params;
@@ -280,6 +286,10 @@ struct Main
          log.info("invalid decoder!");
          return -1;
       }
+
+      // wait until samplerate is configured
+      if (decoderParams["sampleRate"].is_null())
+         return 0;
 
       json config;
 
@@ -441,12 +451,14 @@ struct Main
 } *app;
 
 #ifdef __WIN32
+
 WINBOOL intHandler(DWORD sig)
 {
    fprintf(stderr, "Terminate on signal %lu\n", sig);
    app->finish();
    return true;
 }
+
 #else
 void intHandler(int sig)
 {
