@@ -166,6 +166,7 @@ int main(int argc, char *argv[])
    }
 #else
    Logger::init(std::cout);
+   Logger::setWriterLevel(rt::Logger::DEBUG_LEVEL);
 #endif
 
    // create QT logger
