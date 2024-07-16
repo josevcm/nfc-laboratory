@@ -108,7 +108,7 @@ struct RealtekDevice::Impl
    {
       std::vector<std::string> result;
 
-      int count = rtlsdr_get_device_count();
+      unsigned int count = rtlsdr_get_device_count();
 
       for (int i = 0; i < count; i++)
       {
@@ -120,6 +120,8 @@ struct RealtekDevice::Impl
          if (rtlsdr_get_device_usb_strings(i, manufact, product, serial) == 0)
          {
             snprintf(buffer, sizeof(buffer), "rtlsdr://%s", serial);
+
+            result.emplace_back(buffer);
          }
       }
 
