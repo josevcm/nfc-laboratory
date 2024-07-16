@@ -45,10 +45,10 @@ std::vector<std::string> DeviceFactory::deviceList()
 
 RadioDevice *DeviceFactory::newInstance(const std::string &name)
 {
-   if (name.rfind("airspy://", 0) == 0)
+   if (name.find("airspy://") == 0)
       return new AirspyDevice(name);
 
-   if (name.rfind("rtlsdr://", 0) == 0)
+   if (name.find("rtlsdr://") == 0)
       return new RealtekDevice(name);
 
    //   if (name.startsWith("lime://"))
