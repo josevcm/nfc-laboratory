@@ -438,14 +438,14 @@ struct Main
       printf("\tt: stop capture after number of seconds\n");
    }
 
-} app;
+} *app;
 
 #ifdef __WIN32
 
 WINBOOL intHandler(DWORD sig)
 {
    fprintf(stderr, "Terminate on signal %lu\n", sig);
-   app.finish();
+   app->finish();
    return true;
 }
 
@@ -453,7 +453,7 @@ WINBOOL intHandler(DWORD sig)
 void intHandler(int sig)
 {
    fprintf(stderr, "Terminate on signal %d\n", sig);
-   app.finish();
+   app->finish();
 }
 #endif
 
@@ -473,7 +473,13 @@ int main(int argc, char *argv[])
    signal(SIGTERM, intHandler);
 #endif
 
+   // create main object
+   Main main;
+
+   // set global pointer for signal handlers
+   app = &main;
+
    // and run
-   return app.run(argc, argv);
+   return main.run(argc, argv);
 }
 
