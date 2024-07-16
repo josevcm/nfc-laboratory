@@ -69,10 +69,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
    std::chrono::time_point<std::chrono::steady_clock> lastSearch;
 
    // current receiver gain mode
-   int receiverGainMode = -1;
-
-   // current receiver gain value
-   int receiverGainValue = 0;
+   bool receiverGainAuto = false;
 
    // last control offset
    unsigned int receiverGainChange = 0;
@@ -236,7 +233,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          // read current gain mode and value
          receiverGainChange = 0;
 
-         log.info("gain mode {} gain value {}", {receiverGainMode, receiverGainValue});
+         log.info("gain mode {} gain value {}", {receiver->gainMode(), receiver->gainValue()});
 
          // start receiving
          receiver->start([this](sdr::SignalBuffer &buffer) {
@@ -304,25 +301,20 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                receiver->setDirectSampling(config["directSampling"]);
 
             if (config.contains("gainValue"))
-            {
-               receiverGainMode = 1;
-               receiverGainValue = config["gainValue"];
-               receiver->setGainValue(receiverGainValue);
-            }
+               receiver->setGainValue(config["gainValue"]);
 
             if (config.contains("gainMode"))
             {
-               receiverGainMode = config["gainMode"];
+               receiverGainAuto = config["gainMode"] == 0;
 
-               if (receiverGainMode > 0)
+               if (receiverGainAuto)
                {
-                  receiver->setGainMode(receiverGainMode);
+                  receiver->setGainMode(1);
+                  receiver->setGainValue(0);
                }
                else
                {
-                  receiverGainValue = 0;
-                  receiver->setGainMode(1);
-                  receiver->setGainValue(receiverGainValue);
+                  receiver->setGainMode(config["gainMode"]);
                }
             }
          }
@@ -501,22 +493,22 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
          signalRvStream->next(result);
 
          // if automatic gain control is engaged adjust gain dynamically
-         if (receiverGainMode == 0 && buffer.offset() > receiverGainChange)
+         if (receiverGainAuto && buffer.offset() > receiverGainChange)
          {
             // for weak signals, increase receiver gain
-            if (avrg < LOWER_GAIN_THRESHOLD && receiverGainValue < 6)
+            if (avrg < LOWER_GAIN_THRESHOLD && receiver->gainValue() < 6)
             {
                receiverGainChange = buffer.offset() + buffer.elements();
-               receiver->setGainValue(++receiverGainValue);
-               log.info("increase gain {}", {receiverGainValue});
+               receiver->setGainValue(receiver->gainValue() + 1);
+               log.info("increase gain {}", {receiver->gainValue()});
             }
 
             // for strong signals, decrease receiver gain
-            if (avrg > UPPER_GAIN_THRESHOLD && receiverGainValue > 0)
+            if (avrg > UPPER_GAIN_THRESHOLD && receiver->gainValue() > 0)
             {
                receiverGainChange = buffer.offset() + buffer.elements();
-               receiver->setGainValue(--receiverGainValue);
-               log.info("decrease gain {}", {receiverGainValue});
+               receiver->setGainValue(receiver->gainValue() - 1);
+               log.info("decrease gain {}", {receiver->gainValue()});
             }
          }
       }
