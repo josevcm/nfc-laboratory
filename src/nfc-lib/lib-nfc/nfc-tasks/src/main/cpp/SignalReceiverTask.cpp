@@ -69,7 +69,7 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
    std::chrono::time_point<std::chrono::steady_clock> lastSearch;
 
    // current receiver gain mode
-   int receiverGainMode = 0;
+   int receiverGainMode = -1;
 
    // current receiver gain value
    int receiverGainValue = 0;
@@ -303,6 +303,13 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
             if (config.contains("directSampling"))
                receiver->setDirectSampling(config["directSampling"]);
 
+            if (config.contains("gainValue"))
+            {
+               receiverGainMode = 1;
+               receiverGainValue = config["gainValue"];
+               receiver->setGainValue(receiverGainValue);
+            }
+
             if (config.contains("gainMode"))
             {
                receiverGainMode = config["gainMode"];
@@ -317,13 +324,6 @@ struct SignalReceiverTask::Impl : SignalReceiverTask, AbstractTask
                   receiver->setGainMode(1);
                   receiver->setGainValue(receiverGainValue);
                }
-            }
-
-            if (config.contains("gainValue"))
-            {
-               receiverGainMode = 1;
-               receiverGainValue = config["gainValue"];
-               receiver->setGainValue(receiverGainValue);
             }
          }
       }
