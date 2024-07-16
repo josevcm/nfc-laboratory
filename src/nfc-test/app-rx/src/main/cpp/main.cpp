@@ -441,14 +441,12 @@ struct Main
 } *app;
 
 #ifdef __WIN32
-
 WINBOOL intHandler(DWORD sig)
 {
    fprintf(stderr, "Terminate on signal %lu\n", sig);
    app->finish();
    return true;
 }
-
 #else
 void intHandler(int sig)
 {
@@ -465,7 +463,7 @@ int main(int argc, char *argv[])
    // disable logging at all (can be enabled with -v option)
    rt::Logger::setWriterLevel(rt::Logger::NONE_LEVEL);
 
-   // register signals
+   // register signals handlers
 #ifdef __WIN32
    SetConsoleCtrlHandler(intHandler, TRUE);
 #else
