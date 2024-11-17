@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>LicenseDialog</class>
+    <widget class="QDialog" name="LicenseDialog">
+        <property name="windowModality">
+            <enum>Qt::WindowModality::ApplicationModal</enum>
+        </property>
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>500</width>
+                <height>120</height>
+            </rect>
+        </property>
+        <property name="contextMenuPolicy">
+            <enum>Qt::ContextMenuPolicy::NoContextMenu</enum>
+        </property>
+        <property name="windowTitle">
+            <string>License Setup</string>
+        </property>
+        <property name="sizeGripEnabled">
+            <bool>false</bool>
+        </property>
+        <property name="modal">
+            <bool>false</bool>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout">
+            <property name="topMargin">
+                <number>6</number>
+            </property>
+            <property name="bottomMargin">
+                <number>6</number>
+            </property>
+            <item>
+                <widget class="QFrame" name="licenseForm">
+                    <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                        </sizepolicy>
+                    </property>
+                    <property name="visible">
+                        <bool>false</bool>
+                    </property>
+                    <layout class="QFormLayout" name="formLayout">
+                        <property name="horizontalSpacing">
+                            <number>0</number>
+                        </property>
+                        <property name="verticalSpacing">
+                            <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                            <number>6</number>
+                        </property>
+                        <item row="0" column="0">
+                            <widget class="QLabel" name="expiryDateLabel">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Verdana</family>
+                                        <pointsize>10</pointsize>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>Active until:</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="0" column="1">
+                            <widget class="QLabel" name="expiryDate">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Verdana</family>
+                                        <pointsize>10</pointsize>
+                                    </font>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="1" column="0">
+                            <widget class="QLabel" name="licenseNameLabel">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Verdana</family>
+                                        <pointsize>10</pointsize>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>Licensed to:</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="1" column="1">
+                            <widget class="QLabel" name="licenseName">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Verdana</family>
+                                        <pointsize>10</pointsize>
+                                    </font>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="2" column="0">
+                            <widget class="QLabel" name="licenseIdLabel">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Verdana</family>
+                                        <pointsize>10</pointsize>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>License ID:</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="2" column="1">
+                            <widget class="QLabel" name="licenseId">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Verdana</family>
+                                        <pointsize>10</pointsize>
+                                    </font>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="3" column="0">
+                            <widget class="QLabel" name="machineIdLabel">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Verdana</family>
+                                        <pointsize>10</pointsize>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>Machine ID:</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="3" column="1">
+                            <widget class="QLabel" name="machineId">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <family>Verdana</family>
+                                        <pointsize>10</pointsize>
+                                    </font>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                </widget>
+            </item>
+            <item>
+                <layout class="QHBoxLayout" name="infoLayout">
+                    <item>
+                        <widget class="QLabel" name="infoLabel">
+                            <property name="sizePolicy">
+                                <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                                    <horstretch>0</horstretch>
+                                    <verstretch>0</verstretch>
+                                </sizepolicy>
+                            </property>
+                            <property name="font">
+                                <font>
+                                    <family>Verdana</family>
+                                    <pointsize>10</pointsize>
+                                </font>
+                            </property>
+                            <property name="visible">
+                                <bool>true</bool>
+                            </property>
+                        </widget>
+                    </item>
+                </layout>
+            </item>
+            <item>
+                <layout class="QHBoxLayout" name="buttonsLayout">
+                    <property name="spacing">
+                        <number>10</number>
+                    </property>
+                    <property name="sizeConstraint">
+                        <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
+                    </property>
+                    <property name="leftMargin">
+                        <number>5</number>
+                    </property>
+                    <property name="topMargin">
+                        <number>5</number>
+                    </property>
+                    <property name="rightMargin">
+                        <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                        <number>5</number>
+                    </property>
+                    <item>
+                        <widget class="QPushButton" name="activateButton">
+                            <property name="minimumSize">
+                                <size>
+                                    <width>120</width>
+                                    <height>35</height>
+                                </size>
+                            </property>
+                            <property name="text">
+                                <string>Activate License</string>
+                            </property>
+                        </widget>
+                    </item>
+                    <item>
+                        <widget class="QPushButton" name="removeButton">
+                            <property name="minimumSize">
+                                <size>
+                                    <width>120</width>
+                                    <height>35</height>
+                                </size>
+                            </property>
+                            <property name="visible">
+                                <bool>false</bool>
+                            </property>
+                            <property name="text">
+                                <string>Remove License</string>
+                            </property>
+                        </widget>
+                    </item>
+                    <item>
+                        <spacer name="horizontalSpacer">
+                            <property name="orientation">
+                                <enum>Qt::Orientation::Horizontal</enum>
+                            </property>
+                            <property name="sizeHint" stdset="0">
+                                <size>
+                                    <width>40</width>
+                                    <height>20</height>
+                                </size>
+                            </property>
+                        </spacer>
+                    </item>
+                    <item>
+                        <widget class="QPushButton" name="cancelButton">
+                            <property name="minimumSize">
+                                <size>
+                                    <width>120</width>
+                                    <height>35</height>
+                                </size>
+                            </property>
+                            <property name="text">
+                                <string>Cancel</string>
+                            </property>
+                        </widget>
+                    </item>
+                </layout>
+            </item>
+        </layout>
+    </widget>
+    <resources/>
+    <connections>
+        <connection>
+            <sender>cancelButton</sender>
+            <signal>clicked()</signal>
+            <receiver>LicenseDialog</receiver>
+            <slot>reject()</slot>
+            <hints>
+                <hint type="sourcelabel">
+                    <x>354</x>
+                    <y>81</y>
+                </hint>
+                <hint type="destinationlabel">
+                    <x>202</x>
+                    <y>55</y>
+                </hint>
+            </hints>
+        </connection>
+    </connections>
+</ui>

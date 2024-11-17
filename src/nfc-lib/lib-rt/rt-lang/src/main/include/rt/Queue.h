@@ -1,29 +1,26 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#ifndef LANG_QUEUE_H
-#define LANG_QUEUE_H
+#ifndef RT_QUEUE_H
+#define RT_QUEUE_H
 
 #include <queue>
 #include <mutex>
@@ -31,39 +28,39 @@
 
 namespace rt {
 
-template<typename T>
+template <typename T>
 class Queue
 {
    public:
 
       Queue() = default;
 
-      Queue(const Queue<T> &) = delete;
+      Queue(const Queue &) = delete;
 
-      Queue &operator=(const Queue<T> &) = delete;
+      Queue &operator=(const Queue &) = delete;
 
-      Queue(Queue<T> &other)
+      Queue(Queue &other)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
          queue = std::move(other.queue);
       }
 
       virtual ~Queue() = default;
 
-      inline long size() const
+      long size() const
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
          return queue.size();
       }
 
-      inline bool empty() const
+      bool empty() const
       {
          return size() == 0;
       }
 
-      inline std::optional<T> pop()
+      std::optional<T> pop()
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          if (!queue.empty())
          {
@@ -75,15 +72,15 @@ class Queue
          return {};
       }
 
-      inline void push(const T &item)
+      void push(const T &item)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
          queue.push(item);
       }
 
-      inline T &back()
+      T &back()
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
          return queue.back();
       }
 
@@ -95,4 +92,4 @@ class Queue
 
 }
 
-#endif //NFC_LAB_QUEUE_H
+#endif

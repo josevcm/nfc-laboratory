@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -30,7 +27,7 @@ struct ProtocolFrame::Impl
    int flags;
 
    // underline frame
-   nfc::NfcFrame frame;
+   lab::RawFrame frame;
 
    // parent frame node
    ProtocolFrame *parent;
@@ -45,7 +42,7 @@ struct ProtocolFrame::Impl
    int start;
    int end;
 
-   Impl(int flags, const QVector<QVariant> &data, const nfc::NfcFrame &frame) : flags(flags), frame(frame), parent(nullptr), data(data), start(0), end(frame.limit())
+   Impl(int flags, const QVector<QVariant> &data, const lab::RawFrame &frame) : flags(flags), frame(frame), parent(nullptr), data(data), start(0), end(frame.limit())
    {
    }
 
@@ -59,13 +56,13 @@ struct ProtocolFrame::Impl
    }
 };
 
-ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, const nfc::NfcFrame &frame) :
-      QObject(nullptr), impl(new Impl(flags, data, frame))
+ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, const lab::RawFrame &frame) :
+   QObject(nullptr), impl(new Impl(flags, data, frame))
 {
 }
 
 ProtocolFrame::ProtocolFrame(const QVector<QVariant> &data, int flags, ProtocolFrame *parent, int start, int end) :
-      QObject(parent), impl(new Impl(flags, data, parent, start, end))
+   QObject(parent), impl(new Impl(flags, data, parent, start, end))
 {
 }
 
@@ -120,7 +117,7 @@ ProtocolFrame *ProtocolFrame::prependChild(ProtocolFrame *item)
    return item;
 }
 
-bool ProtocolFrame::insertChilds(int position, int count, int columns)
+bool ProtocolFrame::insertChild(int position, int count, int columns)
 {
    if (position < 0 || position > impl->childs.size())
       return false;
@@ -135,7 +132,7 @@ bool ProtocolFrame::insertChilds(int position, int count, int columns)
    return true;
 }
 
-nfc::NfcFrame &ProtocolFrame::frame() const
+lab::RawFrame &ProtocolFrame::frame() const
 {
    if (impl->frame.isValid())
       return impl->frame;
@@ -181,37 +178,47 @@ int ProtocolFrame::rangeEnd() const
    return impl->end;
 }
 
+bool ProtocolFrame::isStartupFrame() const
+{
+   return impl->flags & StartupFrame || (impl->parent && impl->parent->isStartupFrame());
+}
+
 bool ProtocolFrame::isRequestFrame() const
 {
-   return impl->flags & Flags::RequestFrame || (impl->parent && impl->parent->isRequestFrame());
+   return impl->flags & RequestFrame || (impl->parent && impl->parent->isRequestFrame());
 }
 
 bool ProtocolFrame::isResponseFrame() const
 {
-   return impl->flags & Flags::ResponseFrame || (impl->parent && impl->parent->isResponseFrame());
+   return impl->flags & ResponseFrame || (impl->parent && impl->parent->isResponseFrame());
+}
+
+bool ProtocolFrame::isExchangeFrame() const
+{
+   return (impl->flags & (RequestFrame | ResponseFrame)) == (RequestFrame | ResponseFrame) || (impl->parent && impl->parent->isExchangeFrame());
 }
 
 bool ProtocolFrame::isFrameField() const
 {
-   return impl->flags & Flags::FrameField;
+   return impl->flags & FrameField;
 }
 
 bool ProtocolFrame::isFieldInfo() const
 {
-   return impl->flags & Flags::FieldInfo;
+   return impl->flags & FieldInfo;
 }
 
 bool ProtocolFrame::hasParityError() const
 {
-   return impl->flags & Flags::ParityError;
+   return impl->flags & ParityError;
 }
 
 bool ProtocolFrame::hasCrcError() const
 {
-   return impl->flags & Flags::CrcError;
+   return impl->flags & CrcError;
 }
 
 bool ProtocolFrame::hasSyncError() const
 {
-   return impl->flags & Flags::SyncError;
+   return impl->flags & SyncError;
 }

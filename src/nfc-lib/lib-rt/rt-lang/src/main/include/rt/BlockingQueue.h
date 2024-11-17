@@ -1,29 +1,26 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#ifndef LANG_BLOCKINGQUEUE_H
-#define LANG_BLOCKINGQUEUE_H
+#ifndef RT_BLOCKINGQUEUE_H
+#define RT_BLOCKINGQUEUE_H
 
 #include <list>
 #include <mutex>
@@ -32,7 +29,7 @@
 
 namespace rt {
 
-template<typename T>
+template <typename T>
 class BlockingQueue
 {
    public:
@@ -43,28 +40,28 @@ class BlockingQueue
 
          typename std::list<T>::iterator it;
 
-         inline Iterator(typename std::list<T>::iterator it, std::mutex &mutex) : it(it), mutex(mutex)
+         Iterator(typename std::list<T>::iterator it, std::mutex &mutex) : it(it), mutex(mutex)
          {
          }
 
-         inline T *operator->()
+         T *operator->()
          {
             return it.operator->();
          }
 
-         inline T &operator*()
+         T &operator*()
          {
             return it.operator*();
          }
 
-         inline bool operator!=(const Iterator &other)
+         bool operator!=(const Iterator &other)
          {
             return it != other.it;
          }
 
-         inline Iterator &operator++()
+         Iterator &operator++()
          {
-            it++;
+            ++it;
 
             return *this;
          }
@@ -74,9 +71,9 @@ class BlockingQueue
 
       BlockingQueue() = default;
 
-      inline void add(T e)
+      void add(T e)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          // add element to list
          queue.push_back(e);
@@ -85,10 +82,10 @@ class BlockingQueue
          sync.notify_all();
       }
 
-      template<typename... A>
-      inline void add(A &&... args)
+      template <typename... A>
+      void add(A &&... args)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          // add element to list
          queue.emplace_back(std::forward<A>(args)...);
@@ -97,11 +94,11 @@ class BlockingQueue
          sync.notify_all();
       }
 
-      inline std::optional<T> get(int milliseconds = 0)
+      std::optional<T> get(int milliseconds = 0)
       {
-         std::unique_lock<std::mutex> lock(mutex);
+         std::unique_lock lock(mutex);
 
-         auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(milliseconds);
+         const auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(milliseconds);
 
          while (queue.empty())
          {
@@ -125,33 +122,33 @@ class BlockingQueue
          return value;
       }
 
-      inline void remove(const T &e)
+      void remove(const T &e)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          queue.remove(e);
       }
 
-      inline void clear()
+      void clear()
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          return queue.clear();
       }
 
-      inline int size() const
+      int size() const
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          return queue.size();
       }
 
-      inline Iterator begin()
+      Iterator begin()
       {
          return {queue.begin(), mutex};
       }
 
-      inline Iterator end()
+      Iterator end()
       {
          return {queue.end(), mutex};
       }
@@ -170,4 +167,4 @@ class BlockingQueue
 
 }
 
-#endif //NFC_LAB_BLOCKINGQUEUE_H
+#endif

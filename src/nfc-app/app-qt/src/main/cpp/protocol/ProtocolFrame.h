@@ -1,57 +1,58 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
 #ifndef APP_PROTOCOLFRAME_H
 #define APP_PROTOCOLFRAME_H
 
-#include <QObject>
-#include <QList>
 #include <QVector>
 #include <QVariant>
 #include <QSharedPointer>
 
-#include <nfc/NfcFrame.h>
+#include <lab/data/RawFrame.h>
 
 class ProtocolFrame : public QObject
 {
-      struct Impl;
+   struct Impl;
 
    public:
 
       enum Flags
       {
-         RequestFrame = 0x0001,
-         ResponseFrame = 0x0002,
-         SenseFrame = 0x0004,
-         SelectionFrame = 0x0008,
-         ApplicationFrame = 0x0010,
-         AuthFrame = 0x0020,
-         FrameField = 0x040,
-         FieldInfo = 0x0080,
-         ParityError = 0x0100,
-         CrcError = 0x0200,
-         SyncError = 0x0200
+         // field bits
+         FrameField = 0x0001,
+         FieldInfo = 0x0002,
+
+         // type bits
+         RequestFrame = 0x0100,
+         ResponseFrame = 0x0200,
+         SenseFrame = 0x0400,
+         SelectionFrame = 0x0800,
+         ApplicationFrame = 0x1000,
+         AuthFrame = 0x2000,
+         StartupFrame = 0x8000,
+
+         // errors bits
+         ParityError = 0x010000,
+         CrcError = 0x020000,
+         SyncError = 0x020000
       };
 
       enum Fields
@@ -63,7 +64,7 @@ class ProtocolFrame : public QObject
 
    public:
 
-      ProtocolFrame(const QVector<QVariant> &data, int flags, const nfc::NfcFrame &frame);
+      ProtocolFrame(const QVector<QVariant> &data, int flags, const lab::RawFrame &frame);
 
       ProtocolFrame(const QVector<QVariant> &data, int flags, ProtocolFrame *parent, int start = -1, int end = -1);
 
@@ -83,9 +84,9 @@ class ProtocolFrame : public QObject
 
       ProtocolFrame *prependChild(ProtocolFrame *child);
 
-      bool insertChilds(int position, int count, int columns);
+      bool insertChild(int position, int count, int columns);
 
-      nfc::NfcFrame &frame() const;
+      lab::RawFrame &frame() const;
 
       QVariant data(int column) const;
 
@@ -109,8 +110,20 @@ class ProtocolFrame : public QObject
       int rangeEnd() const;
 
       /*
-       * frame phase
+       * frame type
        */
+
+      /*
+       * information type
+       */
+      bool isStartupFrame() const;
+
+      bool isRequestFrame() const;
+
+      bool isResponseFrame() const;
+
+      bool isExchangeFrame() const;
+
       bool isSenseFrame() const;
 
       bool isSelectionFrame() const;
@@ -120,16 +133,15 @@ class ProtocolFrame : public QObject
       bool isAuthFrame() const;
 
       /*
-       * information type
+       * field type
        */
-      bool isRequestFrame() const;
-
-      bool isResponseFrame() const;
-
       bool isFrameField() const;
 
       bool isFieldInfo() const;
 
+      /*
+       * frame errors
+       */
       bool hasParityError() const;
 
       bool hasCrcError() const;

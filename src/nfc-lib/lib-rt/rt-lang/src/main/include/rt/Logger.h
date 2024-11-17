@@ -1,34 +1,29 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#ifndef LANG_LOGGER_H
-#define LANG_LOGGER_H
+#ifndef RT_LOGGER_H
+#define RT_LOGGER_H
 
-#include <cstdio>
 #include <string>
 #include <vector>
-#include <initializer_list>
 
 #include <rt/Variant.h>
 
@@ -36,10 +31,13 @@ namespace rt {
 
 class Logger
 {
-   public:
+   private:
 
-      struct Impl;
-      struct Writer;
+      Logger(std::string name, int level);
+
+      Logger(const Logger &other);
+
+   public:
 
       enum Level
       {
@@ -50,8 +48,6 @@ class Logger
          DEBUG_LEVEL = 4,
          TRACE_LEVEL = 5
       };
-
-      explicit Logger(const std::string &name, int level = INFO_LEVEL);
 
       void trace(const std::string &format, std::vector<Variant> params = {}) const;
 
@@ -65,26 +61,42 @@ class Logger
 
       void print(int level, const std::string &format, std::vector<Variant> params = {}) const;
 
-      bool isEnabled(int level) const;
-
       int getLevel() const;
 
       void setLevel(int value);
 
-      static int getWriterLevel();
+      void setLevel(const std::string &level);
 
-      static void setWriterLevel(int value);
+      bool isEnabled(int level) const;
 
-      static void init(std::ostream &stream, bool buffered = true);
+      bool isTraceEnabled() const;
+
+      bool isDebugEnabled() const;
+
+      bool isInfoEnabled() const;
+
+   public: // static methods
+
+      static void init(std::ostream &stream, int level = WARN_LEVEL, bool buffered = true);
 
       static void flush();
 
+      static int getRootLevel();
+
+      static void setRootLevel(int level);
+
+      static void setRootLevel(const std::string &name);
+
+      static Logger *getLogger(const std::string &name, int level = WARN_LEVEL);
+
+      static std::map<std::string, std::shared_ptr<Logger>> &loggers();
+
    private:
 
-      std::shared_ptr<Impl> impl;
+      int level;
 
-      static std::shared_ptr<Writer> writer;
+      std::string name;
 };
 
 }
-#endif //LAB_LOGGING_LOGGER_H
+#endif

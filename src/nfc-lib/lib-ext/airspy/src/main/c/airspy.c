@@ -870,7 +870,7 @@ extern "C"
 		return AIRSPY_SUCCESS;
 	}
 
-int airspy_list_devices(uint64_t *serials, int count)
+   int airspy_list_devices(uint64_t *serials, int count)
 {
 	libusb_device_handle* libusb_dev_handle;
 	struct libusb_context *context;
@@ -1286,7 +1286,6 @@ int airspy_list_devices(uint64_t *serials, int count)
 			return AIRSPY_SUCCESS;
 		}
 	}
-
 
 	int ADDCALL airspy_gpiodir_read(airspy_device_t* device, airspy_gpio_port_t port, airspy_gpio_pin_t pin, uint8_t* value)
 	{

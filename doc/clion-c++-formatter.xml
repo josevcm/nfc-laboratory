@@ -1,0 +1,58 @@
+<code_scheme name="Project" version="173">
+  <Objective-C>
+    <option name="INDENT_NAMESPACE_MEMBERS" value="0" />
+    <option name="INDENT_C_STRUCT_MEMBERS" value="3" />
+    <option name="INDENT_CLASS_MEMBERS" value="6" />
+    <option name="INDENT_VISIBILITY_KEYWORDS" value="3" />
+    <option name="INDENT_INSIDE_CODE_BLOCK" value="3" />
+    <option name="KEEP_NESTED_NAMESPACES_IN_ONE_LINE" value="true" />
+    <option name="FUNCTION_BRACE_PLACEMENT" value="2" />
+    <option name="FUNCTION_NON_TOP_AFTER_RETURN_TYPE_WRAP" value="0" />
+    <option name="FUNCTION_TOP_AFTER_RETURN_TYPE_WRAP" value="0" />
+    <option name="FUNCTION_PARAMETERS_WRAP" value="0" />
+    <option name="FUNCTION_CALL_ARGUMENTS_WRAP" value="0" />
+    <option name="CLASS_CONSTRUCTOR_INIT_LIST_NEW_LINE_BEFORE_COLON" value="0" />
+    <option name="SUPERCLASS_LIST_WRAP" value="0" />
+    <option name="SUPERCLASS_LIST_BEFORE_COLON" value="0" />
+    <option name="SPACE_BEFORE_INIT_LIST" value="true" />
+  </Objective-C>
+  <RiderCodeStyleSettings>
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/INDENT_SIZE/@EntryValue" value="3" type="long" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_BEFORE_PTR_IN_DATA_MEMBER/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_AFTER_PTR_IN_DATA_MEMBER/@EntryValue" value="false" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/ANONYMOUS_METHOD_DECLARATION_BRACES/@EntryValue" value="END_OF_LINE" type="string" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_BEFORE_PTR_IN_METHOD/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_AFTER_PTR_IN_METHOD/@EntryValue" value="false" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_BEFORE_REF_IN_DATA_MEMBER/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_AFTER_REF_IN_DATA_MEMBER/@EntryValue" value="false" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_BEFORE_REF_IN_METHOD/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_AFTER_REF_IN_METHOD/@EntryValue" value="false" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/INDENT_ACCESS_SPECIFIERS_FROM_CLASS/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/INDENT_CLASS_MEMBERS_FROM_ACCESS_SPECIFIERS/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/INDENT_CASE_FROM_SWITCH/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/CASE_BLOCK_BRACES/@EntryValue" value="NEXT_LINE" type="string" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/BLANK_LINES_AFTER_ACCESS_SPECIFIER/@EntryValue" value="1" type="long" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/WRAP_LIMIT/@EntryValue" value="300" type="long" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_BEFORE_FOR_COLON/@EntryValue" value="false" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/NAMESPACE_DECLARATION_BRACES/@EntryValue" value="END_OF_LINE" type="string" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/TAB_WIDTH/@EntryValue" value="3" type="long" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/PLACE_NAMESPACE_DEFINITIONS_ON_SAME_LINE/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/KEEP_BLANK_LINES_IN_DECLARATIONS/@EntryValue" value="1" type="long" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/KEEP_BLANK_LINES_IN_CODE/@EntryValue" value="1" type="long" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/WRAP_LINES/@EntryValue" value="false" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/MAX_ENUM_MEMBERS_ON_LINE/@EntryValue" value="5" type="long" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/NAMESPACE_INDENTATION/@EntryValue" value="None" type="string" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/BLANK_LINES_AROUND_FUNCTION_DECLARATION/@EntryValue" value="1" type="long" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_BEFORE_PTR_IN_ABSTRACT_DECL/@EntryValue" value="true" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/REMOVE_BLANK_LINES_NEAR_BRACES_IN_DECLARATIONS/@EntryValue" value="false" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/REMOVE_BLANK_LINES_NEAR_BRACES_IN_CODE/@EntryValue" value="false" type="bool" />
+    <option name="/Default/CodeStyle/CodeFormatting/CppFormatting/SPACE_BEFORE_INITIALIZER_BRACES/@EntryValue" value="true" type="bool" />
+  </RiderCodeStyleSettings>
+  <codeStyleSettings language="ObjectiveC">
+    <indentOptions>
+      <option name="INDENT_SIZE" value="3" />
+      <option name="CONTINUATION_INDENT_SIZE" value="6" />
+      <option name="TAB_SIZE" value="3" />
+    </indentOptions>
+  </codeStyleSettings>
+</code_scheme>

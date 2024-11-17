@@ -1,38 +1,36 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
 #ifndef NFC_LAB_FRAMESWIDGET_H
 #define NFC_LAB_FRAMESWIDGET_H
 
-#include <QWidget>
-#include <QSharedPointer>
+#include "AbstractPlotWidget.h"
 
-namespace nfc {
-class NfcFrame;
+namespace lab {
+class RawFrame;
 }
 
-class FramesWidget : public QWidget
+class StreamModel;
+
+class FramesWidget : public AbstractPlotWidget
 {
    Q_OBJECT
 
@@ -40,42 +38,82 @@ class FramesWidget : public QWidget
 
    public:
 
-      explicit FramesWidget(QWidget *parent = nullptr);
+      enum Channel
+      {
+         Nfc,
+         Iso
+      };
 
-      void setRange(double lower, double upper);
+      enum Protocol
+      {
+         NfcA,
+         NfcB,
+         NfcF,
+         NfcV,
+         ISO7816
+      };
 
-      void setCenter(double value);
+      enum Type
+      {
+         // NFC frame types
+         NfcSilence,
+         NfcCarrier,
+         NfcARequest,
+         NfcAResponse,
+         NfcBRequest,
+         NfcBResponse,
+         NfcFRequest,
+         NfcFResponse,
+         NfcVRequest,
+         NfcVResponse,
 
-      void append(const nfc::NfcFrame &frame);
-
-      void select(double from, double to);
-
-      void refresh();
-
-      void clear();
-
-      double minimumRange() const;
-
-      double maximumRange() const;
-
-   protected:
-
-      void enterEvent(QEvent *event) override;
-
-      void leaveEvent(QEvent *event) override;
-
-      void keyPressEvent(QKeyEvent *event) override;
-
-      void keyReleaseEvent(QKeyEvent *event) override;
+         // ISO frame types
+         IsoSilence,
+         IsoVccOff,
+         IsoResetOn,
+         IsoStartup,
+         IsoRequest,
+         IsoResponse,
+         IsoExchange
+      };
 
    public:
 
-      Q_SIGNAL void selectionChanged(float from, float to);
+      explicit FramesWidget(QWidget *parent = nullptr);
+
+      void setModel(StreamModel *streamModel);
+
+      void refresh() override;
+
+      void clear() override;
+
+      void setChannel(Channel channel, bool enabled);
+
+      void setProtocol(Protocol proto, bool enabled);
+
+      bool hasProtocol(Protocol proto);
+
+   signals:
+
+      void toggleChannel(Channel channel, bool enabled);
+
+      void toggleProtocol(Protocol proto, bool enabled);
+
+   protected:
+
+      QCPRange selectByUser() override;
+
+      QCPRange selectByRect(const QRect &rect) override;
+
+      QCPRange rangeFilter(const QCPRange &newRange) override;
+
+      QCPRange scaleFilter(const QCPRange &newScale) override;
 
    private:
 
       QSharedPointer<Impl> impl;
+
 };
 
 
-#endif //NFC_LAB_FRAMESWIDGET_H
+#endif

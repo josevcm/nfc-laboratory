@@ -1,2 +1,2 @@
-add_subdirectory(app-rx)
-add_subdirectory(app-test)
+add_subdirectory(test-dio)
+add_subdirectory(test-sdr)

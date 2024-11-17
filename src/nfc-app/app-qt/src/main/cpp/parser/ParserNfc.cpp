@@ -1,35 +1,34 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#include <lab/nfc/Nfc.h>
+
 #include <parser/ParserNfc.h>
 
-ProtocolFrame *ParserNfc::parse(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfc::parse(const lab::RawFrame &frame)
 {
-   if (frame.isPollFrame())
+   if (frame.frameType() == lab::FrameType::NfcPollFrame)
       return parseRequestUnknown(frame);
 
-   if (frame.isListenFrame())
+   if (frame.frameType() == lab::FrameType::NfcListenFrame)
       return parseResponseUnknown(frame);
 
    return nullptr;
@@ -40,19 +39,19 @@ void ParserNfc::reset()
    lastCommand = 0;
 }
 
-ProtocolFrame *ParserNfc::parseRequestUnknown(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfc::parseRequestUnknown(const lab::RawFrame &frame)
 {
    return buildRootInfo("(unk)", frame, 0);
 }
 
-ProtocolFrame *ParserNfc::parseResponseUnknown(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfc::parseResponseUnknown(const lab::RawFrame &frame)
 {
    return buildRootInfo("", frame, 0);
 }
 
-ProtocolFrame *ParserNfc::parseAPDU(const QString &name, const nfc::NfcFrame &frame, int start, int length)
+ProtocolFrame *ParserNfc::parseAPDU(const QString &name, const lab::RawFrame &frame, int start, int length)
 {
-   int lc = (unsigned char) frame[start + 4];
+   int lc = (unsigned char)frame[start + 4];
 
    ProtocolFrame *info = buildChildInfo(name, frame, start, length);
 
@@ -69,56 +68,6 @@ ProtocolFrame *ParserNfc::parseAPDU(const QString &name, const nfc::NfcFrame &fr
       info->appendChild(buildChildInfo("DATA", frame, start + 5, lc));
 
    return info;
-}
-
-ProtocolFrame *ParserNfc::buildRootInfo(const QString &name, const nfc::NfcFrame &frame, int flags)
-{
-   QVector<QVariant> values;
-
-   flags |= frame.isPollFrame() ? ProtocolFrame::Flags::RequestFrame : 0;
-   flags |= frame.isListenFrame() ? ProtocolFrame::Flags::ResponseFrame : 0;
-   flags |= frame.hasCrcError() ? ProtocolFrame::Flags::CrcError : 0;
-   flags |= frame.hasParityError() ? ProtocolFrame::Flags::ParityError : 0;
-
-   // frame number
-   values << QVariant::fromValue(name);
-   values << QVariant::fromValue(flags);
-   values << QVariant::fromValue(toByteArray(frame));
-
-   return new ProtocolFrame(values, flags, frame);
-}
-
-ProtocolFrame *ParserNfc::buildChildInfo(const QVariant &info)
-{
-   return buildChildInfo("", info, ProtocolFrame::FieldInfo, -1, 0);
-}
-
-ProtocolFrame *ParserNfc::buildChildInfo(const QString &name, const QVariant &info)
-{
-   return buildChildInfo(name, info, ProtocolFrame::FieldInfo, -1, 0);
-}
-
-ProtocolFrame *ParserNfc::buildChildInfo(const QString &name, const nfc::NfcFrame &frame, int start, int length)
-{
-   int from = start < 0 ? frame.limit() + start : start;
-
-   return buildChildInfo(name, toByteArray(frame, from, length), ProtocolFrame::FrameField, from, length);
-}
-
-ProtocolFrame *ParserNfc::buildChildInfo(const QString &name, const QVariant &info, int start, int length)
-{
-   return buildChildInfo(name, info, ProtocolFrame::FrameField, start, length);
-}
-
-ProtocolFrame *ParserNfc::buildChildInfo(const QString &name, const QVariant &info, int flags, int start, int length)
-{
-   QVector<QVariant> values;
-
-   values << QVariant::fromValue(name);
-   values << QVariant::fromValue(flags);
-   values << info;
-
-   return new ProtocolFrame(values, flags, nullptr, start, start + length - 1);
 }
 
 bool ParserNfc::isApdu(const QByteArray &apdu)
@@ -141,60 +90,20 @@ bool ParserNfc::isApdu(const QByteArray &apdu)
    return true;
 }
 
-QByteArray ParserNfc::toByteArray(const nfc::NfcFrame &frame, int from, int length)
-{
-   QByteArray data;
-
-   if (length > frame.limit())
-      length = frame.limit();
-
-   if (from >= 0)
-   {
-      for (int i = from; i < frame.limit() && length > 0; i++, length--)
-      {
-         data.append(frame[i]);
-      }
-   }
-   else
-   {
-      for (int i = frame.limit() + from; i < frame.limit() && length > 0; i++, length--)
-      {
-         data.append(frame[i]);
-      }
-   }
-
-   return data;
-}
-
-QString ParserNfc::toString(const QByteArray &array)
-{
-   QString text;
-
-   for (unsigned char value: array)
-   {
-      if (value >= 0x20 && value <= 0x7f)
-         text.append(value);
-      else
-         text.append(".");
-   }
-
-   return "[" + text + "]";
-}
-
 void ParserNfcIsoDep::reset()
 {
    ParserNfc::reset();
 }
 
-ProtocolFrame *ParserNfcIsoDep::parse(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcIsoDep::parse(const lab::RawFrame &frame)
 {
    ProtocolFrame *info = nullptr;
 
-   if (frame.isPollFrame() || frame.isListenFrame())
+   if (frame.frameType() == lab::FrameType::NfcPollFrame || frame.frameType() == lab::FrameType::NfcListenFrame)
    {
       do
       {
-         if (!frame.isEncrypted())
+         if (!frame.hasFrameFlags(lab::FrameFlags::Encrypted))
          {
             // ISO-DEP protocol I-Block
             if ((info = parseIBlock(frame)))
@@ -212,13 +121,14 @@ ProtocolFrame *ParserNfcIsoDep::parse(const nfc::NfcFrame &frame)
          // Unknown frame...
          info = ParserNfc::parse(frame);
 
-      } while (false);
+      }
+      while (false);
    }
 
    return info;
 }
 
-ProtocolFrame *ParserNfcIsoDep::parseIBlock(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcIsoDep::parseIBlock(const lab::RawFrame &frame)
 {
    int pcb = frame[0], offset = 1;
 
@@ -283,7 +193,7 @@ ProtocolFrame *ParserNfcIsoDep::parseIBlock(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcIsoDep::parseRBlock(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcIsoDep::parseRBlock(const lab::RawFrame &frame)
 {
    int pcb = frame[0], offset = 1;
 
@@ -311,10 +221,7 @@ ProtocolFrame *ParserNfcIsoDep::parseRBlock(const nfc::NfcFrame &frame)
       else
          pcbf->appendChild(buildChildInfo("[....1...] CID following"));
 
-      if ((pcb & 0x01) == 0x00)
-         pcbf->appendChild(buildChildInfo("[.......0] Block number"));
-      else
-         pcbf->appendChild(buildChildInfo("[.......1] Block number"));
+      pcbf->appendChild(buildChildInfo(QString("[......%1] Sequence number, %2").arg(pcb & 1, 1, 2, QChar('0')).arg(pcb & 1)));
    }
 
    if (pcb & 0x08)
@@ -331,7 +238,7 @@ ProtocolFrame *ParserNfcIsoDep::parseRBlock(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcIsoDep::parseSBlock(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcIsoDep::parseSBlock(const lab::RawFrame &frame)
 {
    int pcb = frame[0], offset = 1;
 
@@ -347,7 +254,7 @@ ProtocolFrame *ParserNfcIsoDep::parseSBlock(const nfc::NfcFrame &frame)
       if ((pcb & 0x30) == 0x00)
          pcbf->appendChild(buildChildInfo("[..00....] DESELECT"));
       else if ((pcb & 0x30) == 0x30)
-         pcbf->appendChild(buildChildInfo("[..11....] WTX"));
+         pcbf->appendChild(buildChildInfo("[..11....] WTX (waiting time extension block)"));
 
       if ((pcb & 0x08) == 0x00)
          pcbf->appendChild(buildChildInfo("[....0...] NO CID following"));

@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -28,24 +25,30 @@
 #include <QSettings>
 #include <QPointer>
 #include <QThreadPool>
+#include <QStyleFactory>
+#include <QSplashScreen>
 
 #include "QtDecoder.h"
-#include "QtMemory.h"
 #include "QtWindow.h"
+
+#include "styles/IconStyle.h"
+#include "styles/Theme.h"
 
 #include "events/SystemStartupEvent.h"
 #include "events/SystemShutdownEvent.h"
 #include "events/DecoderControlEvent.h"
 
+#include "dialogs/LicenseDialog.h"
+
 #include "QtApplication.h"
 
 struct QtApplication::Impl
 {
-   // Configuracion
-   QSettings settings;
+   // app reference
+   QtApplication *app;
 
-   // interface control
-   QPointer<QtMemory> memory;
+   // global settings
+   QSettings settings;
 
    // interface control
    QPointer<QtWindow> window;
@@ -53,23 +56,61 @@ struct QtApplication::Impl
    // decoder control
    QPointer<QtDecoder> decoder;
 
-   Impl() : settings("nfc-lab.conf", QSettings::IniFormat)
+   // splash screen
+   QSplashScreen splash;
+
+   // signal connections
+   QMetaObject::Connection applicationShutdownConnection;
+   QMetaObject::Connection splashScreenCloseConnection;
+   QMetaObject::Connection windowReloadConnection;
+
+   explicit Impl(QtApplication *app) : app(app), splash(QPixmap(":/app/app-splash"), Qt::WindowStaysOnTopHint)
    {
-      // create signal cache
-      memory = new QtMemory(settings);
+      // show splash screen
+      showSplash(settings.value("settings/splashScreen", "2500").toInt());
 
       // create user interface window
-      window = new QtWindow(settings, memory);
+      window = new QtWindow();
 
       // create decoder control interface
-      decoder = new QtDecoder(settings, memory);
+      decoder = new QtDecoder();
+
+      // connect shutdown signal
+      applicationShutdownConnection = connect(app, &QtApplication::aboutToQuit, app, &QtApplication::shutdown);
+
+      // connect window show signal
+      splashScreenCloseConnection = connect(window, &QtWindow::ready, &splash, &QSplashScreen::close);
+
+      // connect reload signal
+      windowReloadConnection = connect(window, &QtWindow::reload, [=] { reload(); });
+   }
+
+   ~Impl()
+   {
+      disconnect(windowReloadConnection);
+      disconnect(splashScreenCloseConnection);
+      disconnect(applicationShutdownConnection);
    }
 
    void startup()
    {
       qInfo() << "startup QT Interface";
 
-      QApplication::postEvent(QApplication::instance(), new SystemStartupEvent());
+      selectTheme();
+
+      QMap<QString, QString> meta;
+
+      meta["devices"] = ".*";
+      meta["features"] = "FeatureMenu|RadioDevice|LogicDevice|RadioDecode|LogicDecode|RadioSpectrum";
+
+      qDebug() << "features fields:" << (meta.isEmpty() ? "none" : "");
+
+      for (const QString &entry: meta.keys())
+      {
+         qDebug().noquote().nospace() << "\t" << entry << ":" << meta[entry];
+      }
+
+      postEvent(instance(), new SystemStartupEvent(meta));
 
       if (arguments().size() > 1)
       {
@@ -79,54 +120,93 @@ struct QtApplication::Impl
 
          if (file.exists())
          {
-            QtApplication::post(new DecoderControlEvent(DecoderControlEvent::ReadFile, {
-                  {"fileName", file.fileName()}
-            }));
+            post(new DecoderControlEvent(DecoderControlEvent::ReadFile, {
+                                            {"fileName", file.fileName()}
+                                         }));
          }
       }
+
+      // open main window in dark mode
+      Theme::showInDarkMode(window);
+   }
+
+   void reload()
+   {
+      qInfo() << "reload QT Interface";
+
+      // hide window
+      window->hide();
+
+      // restart interface
+      startup();
    }
 
    void shutdown()
    {
-      QApplication::postEvent(QApplication::instance(), new SystemShutdownEvent);
-
       qInfo() << "shutdown QT Interface";
+
+      postEvent(instance(), new SystemShutdownEvent);
    }
 
-   void handleEvent(QEvent *event)
+   void showSplash(int timeout)
+   {
+      if (timeout > 0)
+      {
+         // show splash screen
+         splash.show();
+
+         // note, window is not valid until full initialization is completed! and execute event loop
+         QTimer::singleShot(timeout, &splash, &QSplashScreen::close);
+      }
+   }
+
+   void selectTheme() const
+   {
+      //      QString style = settings.value("settings/style", "Fusion").toString();
+      QString theme = settings.value("settings/theme", "dark").toString();
+
+      //      qInfo() << "selected style:" << style;
+      qInfo().noquote() << "selected theme:" << theme;
+
+      // set style: NOTE, this is not working properly, it seems that the IconStyle is not being applied correctly
+      //      if (QStyleFactory::keys().contains(style))
+      //      {
+      //         setStyle(style);
+      //      }
+      //      else
+      //      {
+      //         qWarning() << "style" << style << "not found, available list:" << QStyleFactory::keys();
+      //      }
+
+      // configure stylesheet
+      QFile styleFile(":qdarkstyle/" + theme + "/style.qss");
+
+      if (styleFile.open(QFile::ReadOnly | QFile::Text))
+      {
+         app->setStyleSheet(QTextStream(&styleFile).readAll());
+      }
+      else
+      {
+         qWarning() << "unable to set stylesheet, file not found: " << styleFile.fileName();
+      }
+
+      QIcon::setThemeName(theme);
+   }
+
+   void handleEvent(QEvent *event) const
    {
       window->handleEvent(event);
       decoder->handleEvent(event);
    }
 };
 
-QtApplication::QtApplication(int &argc, char **argv) : QApplication(argc, argv), impl(new Impl)
+QtApplication::QtApplication(int &argc, char **argv) : QApplication(argc, argv), impl(new Impl(this))
 {
-   // initialize application name
-   setApplicationName("nfc-lab");
-
    // setup thread pool
    QThreadPool::globalInstance()->setMaxThreadCount(8);
 
-   // connect startup signal
-   QTimer::singleShot(0, this, &QtApplication::startup);
-
-   // connect shutdown signal
-   QObject::connect(this, &QtApplication::aboutToQuit, this, &QtApplication::shutdown);
-
-   // configure stylesheet
-   QFile style(":qdarkstyle/dark/style.qss");
-
-   if (style.exists())
-   {
-      style.open(QFile::ReadOnly | QFile::Text);
-      QTextStream ts(&style);
-      setStyleSheet(ts.readAll());
-   }
-   else
-   {
-      qDebug() << "Unable to set stylesheet, file not found";
-   }
+   // startup interface
+   QTimer::singleShot(0, this, [=]() { startup(); });
 }
 
 void QtApplication::startup()
@@ -141,11 +221,10 @@ void QtApplication::shutdown()
 
 void QtApplication::post(QEvent *event, int priority)
 {
-   QApplication::postEvent(QApplication::instance(), event, priority);
+   postEvent(instance(), event, priority);
 }
 
 void QtApplication::customEvent(QEvent *event)
 {
    impl->handleEvent(event);
 }
-

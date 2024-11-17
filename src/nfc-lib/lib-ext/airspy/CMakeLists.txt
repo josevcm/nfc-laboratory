@@ -13,6 +13,5 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
 endif ()
 
 target_include_directories(airspy PUBLIC ${PUBLIC_SOURCE_DIR})
-target_include_directories(airspy PRIVATE ${LIBUSB_INCLUDE_DIR})
 
 target_link_libraries(airspy ${LIBUSB_LIBRARY})

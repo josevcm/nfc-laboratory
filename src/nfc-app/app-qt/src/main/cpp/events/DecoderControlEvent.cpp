@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -26,38 +23,32 @@
 
 #include <utility>
 
-int DecoderControlEvent::Type = QEvent::registerEventType();
+int DecoderControlEvent::Type = registerEventType();
 
-DecoderControlEvent::DecoderControlEvent(int command) :
-      QEvent(QEvent::Type(Type)), mCommand(command)
+DecoderControlEvent::DecoderControlEvent(int command) : QEvent(static_cast<QEvent::Type>(Type)), mCommand(command)
 {
 }
 
-DecoderControlEvent::DecoderControlEvent(int command, QMap<QString, QVariant> parameters) :
-      QEvent(QEvent::Type(Type)), mCommand(command), mParameters(std::move(parameters))
+DecoderControlEvent::DecoderControlEvent(int command, QMap<QString, QVariant> parameters) : QEvent(static_cast<QEvent::Type>(Type)), mCommand(command), mParameters(std::move(parameters))
 {
 }
 
-DecoderControlEvent::DecoderControlEvent(int command, const QString &name, int value) :
-      QEvent(QEvent::Type(Type)), mCommand(command)
+DecoderControlEvent::DecoderControlEvent(int command, const QString &name, int value) : QEvent(static_cast<QEvent::Type>(Type)), mCommand(command)
 {
    mParameters[name] = value;
 }
 
-DecoderControlEvent::DecoderControlEvent(int command, const QString &name, float value) :
-      QEvent(QEvent::Type(Type)), mCommand(command)
+DecoderControlEvent::DecoderControlEvent(int command, const QString &name, float value) : QEvent(static_cast<QEvent::Type>(Type)), mCommand(command)
 {
    mParameters[name] = value;
 }
 
-DecoderControlEvent::DecoderControlEvent(int command, const QString &name, bool value) :
-      QEvent(QEvent::Type(Type)), mCommand(command)
+DecoderControlEvent::DecoderControlEvent(int command, const QString &name, bool value) : QEvent(static_cast<QEvent::Type>(Type)), mCommand(command)
 {
    mParameters[name] = value;
 }
 
-DecoderControlEvent::DecoderControlEvent(int command, const QString &name, const QString &value) :
-      QEvent(QEvent::Type(Type)), mCommand(command)
+DecoderControlEvent::DecoderControlEvent(int command, const QString &name, const QString &value) : QEvent(static_cast<QEvent::Type>(Type)), mCommand(command)
 {
    mParameters[name] = value;
 }
@@ -67,34 +58,14 @@ int DecoderControlEvent::command() const
    return mCommand;
 }
 
-bool DecoderControlEvent::isStartCommand() const
-{
-   return mCommand == Command::Start;
-}
-
-bool DecoderControlEvent::isStopCommand() const
-{
-   return mCommand == Command::Stop;
-}
-
-bool DecoderControlEvent::isRecordCommand() const
-{
-   return mCommand == Command::Record;
-}
-
-bool DecoderControlEvent::isChangeCommand() const
-{
-   return mCommand == Command::Change;
-}
-
-bool DecoderControlEvent::isClearCommand() const
-{
-   return mCommand == Command::Clear;
-}
-
 bool DecoderControlEvent::contains(const QString &name) const
 {
    return mParameters.contains(name);
+}
+
+const QMap<QString, QVariant> &DecoderControlEvent::parameters() const
+{
+   return mParameters;
 }
 
 DecoderControlEvent *DecoderControlEvent::setInteger(const QString &name, int value)
@@ -104,8 +75,11 @@ DecoderControlEvent *DecoderControlEvent::setInteger(const QString &name, int va
    return this;
 }
 
-int DecoderControlEvent::getInteger(const QString &name) const
+int DecoderControlEvent::getInteger(const QString &name, int defVal) const
 {
+   if (!mParameters.contains(name))
+      return defVal;
+
    return mParameters[name].toInt();
 }
 
@@ -116,9 +90,27 @@ DecoderControlEvent *DecoderControlEvent::setFloat(const QString &name, float va
    return this;
 }
 
-float DecoderControlEvent::getFloat(const QString &name) const
+float DecoderControlEvent::getFloat(const QString &name, float defVal) const
 {
+   if (!mParameters.contains(name))
+      return defVal;
+
    return mParameters[name].toFloat();
+}
+
+DecoderControlEvent *DecoderControlEvent::setDouble(const QString &name, double value)
+{
+   mParameters[name] = value;
+
+   return this;
+}
+
+double DecoderControlEvent::getDouble(const QString &name, double defVal) const
+{
+   if (!mParameters.contains(name))
+      return defVal;
+
+   return mParameters[name].toDouble();
 }
 
 DecoderControlEvent *DecoderControlEvent::setBoolean(const QString &name, bool value)
@@ -128,8 +120,11 @@ DecoderControlEvent *DecoderControlEvent::setBoolean(const QString &name, bool v
    return this;
 }
 
-bool DecoderControlEvent::getBoolean(const QString &name) const
+bool DecoderControlEvent::getBoolean(const QString &name, bool defVal) const
 {
+   if (!mParameters.contains(name))
+      return defVal;
+
    return mParameters[name].toBool();
 }
 
@@ -140,8 +135,11 @@ DecoderControlEvent *DecoderControlEvent::setString(const QString &name, const Q
    return this;
 }
 
-QString DecoderControlEvent::getString(const QString &name) const
+QString DecoderControlEvent::getString(const QString &name, const QString &defVal) const
 {
+   if (!mParameters.contains(name))
+      return defVal;
+
    return mParameters[name].toString();
 }
 

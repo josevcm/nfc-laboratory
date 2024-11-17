@@ -1,11 +1,30 @@
 /*
- * Auto-generated file
- */
-#define NFC_LAB_VERSION_MAJOR @nfc-lab_VERSION_MAJOR@
-#define NFC_LAB_VERSION_MINOR @nfc-lab_VERSION_MINOR@
-#define NFC_LAB_VERSION_PATCH @nfc-lab_VERSION_PATCH@
-#define NFC_LAB_VERSION_STRING "@nfc-lab_VERSION@"
-#define NFC_LAB_VENDOR_STRING "NFC laboratory @nfc-lab_VERSION@ - josevcm@gmail.com"
+
+  This file is part of NFC-LABORATORY.
+
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
+
+*/
+
+#define NFC_LAB_VERSION_MAJOR @nfc-spy_VERSION_MAJOR@
+#define NFC_LAB_VERSION_MINOR @nfc-spy_VERSION_MINOR@
+#define NFC_LAB_VERSION_PATCH @nfc-spy_VERSION_PATCH@
+#define NFC_LAB_VERSION_STRING "@nfc-spy_VERSION@"
+#define NFC_LAB_VENDOR_STRING "josevcm@gmail.com nfc-spy @nfc-spy_VERSION@"
 #define NFC_LAB_COMPANY_NAME "josevcm"
-#define NFC_LAB_APPLICATION_NAME "nfc-lab"
+#define NFC_LAB_APPLICATION_NAME "nfc-spy"
 #define NFC_LAB_DOMAIN_NAME "josevcm"
+

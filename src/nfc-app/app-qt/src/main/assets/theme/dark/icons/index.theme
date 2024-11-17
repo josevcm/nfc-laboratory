@@ -1,0 +1,34 @@
+[Icon Theme]
+Name=Icon Theme
+Comment=Icon Theme
+
+# Directory list
+Directories=scalable
+
+[arrows/scalable]
+Size=48
+Context=Misc
+MinSize=16
+MaxSize=512
+Type=Scalable
+
+[filter/scalable]
+Size=48
+Context=Misc
+MinSize=16
+MaxSize=512
+Type=Scalable
+
+[actions/scalable]
+Size=48
+Context=Misc
+MinSize=16
+MaxSize=512
+Type=Scalable
+
+[flags/scalable]
+Size=16
+Context=Flags
+MinSize=16
+MaxSize=512
+Type=Scalable

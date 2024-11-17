@@ -1,29 +1,26 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#ifndef LANG_SUBJECT_H
-#define LANG_SUBJECT_H
+#ifndef RT_SUBJECT_H
+#define RT_SUBJECT_H
 
 #include <functional>
 #include <list>
@@ -37,7 +34,7 @@
 
 namespace rt {
 
-template<typename T>
+template <typename T>
 class Subject
 {
    public:
@@ -58,7 +55,7 @@ class Subject
          {
          }
 
-         bool operator==(const struct Observer &other) const
+         bool operator==(const Observer &other) const
          {
             return this == &other;
          }
@@ -66,9 +63,9 @@ class Subject
 
       ~Subject() = default;
 
-      inline void next(const T &value, bool retain = false)
+      void next(const T &value, bool retain = false)
       {
-         for (auto observer = observers.begin(); observer != observers.end(); observer++)
+         for (auto observer = observers.begin(); observer != observers.end(); ++observer)
          {
             if (observer->next)
             {
@@ -82,9 +79,9 @@ class Subject
          }
       }
 
-      inline void error(int error, const std::string &message)
+      void error(int error, const std::string &message)
       {
-         for (auto observer = observers.begin(); observer != observers.end(); observer++)
+         for (auto observer = observers.begin(); observer != observers.end(); ++observer)
          {
             if (observer->error)
             {
@@ -93,9 +90,9 @@ class Subject
          }
       }
 
-      inline void close()
+      void close()
       {
-         for (auto observer = observers.begin(); observer != observers.end(); observer++)
+         for (auto observer = observers.begin(); observer != observers.end(); ++observer)
          {
             if (observer->close)
             {
@@ -104,11 +101,11 @@ class Subject
          }
       }
 
-      inline Subscription subscribe(NextHandler next, ErrorHandler error = nullptr, CloseHandler close = nullptr)
+      Subscription subscribe(NextHandler next, ErrorHandler error = nullptr, CloseHandler close = nullptr)
       {
          // append observer to list
          auto &observer = observers.emplace_back(observers.size() + 1, next, error, close);
-         log.debug("created subscription {} ({}) on subject {}", {observer.index, (void *) &observer, id});
+         log->debug("created subscription {} ({}) on subject {}", {observer.index, static_cast<void *>(&observer), id});
 
          // emit retained values
          if (retained)
@@ -120,28 +117,26 @@ class Subject
          }
 
          // returns finisher to remove observer when destroyed
-         return Finally {[this, &observer]() {
-            log.debug("removed subscription {} ({}) from subject {}", {observer.index, (void *) &observer, id});
-            observers.remove(observer);
-         }};
+         return {
+            [this, &observer] {
+               log->debug("removed subscription {} ({}) from subject {}", {observer.index, static_cast<void *>(&observer), id});
+               observers.remove(observer);
+            }
+         };
       }
 
-   public:
-
-      static Subject<T> *name(const std::string &name)
+      static Subject *name(const std::string &name)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          if (subjects.find(name) == subjects.end())
          {
-            log.debug("create new subject for name {}", {name});
+            log->debug("create new subject for name {}", {name});
             subjects.emplace(name, name);
          }
 
          return &subjects[name];
       }
-
-   public:
 
       explicit Subject(std::string id = std::string()) : id(std::move(id))
       {
@@ -150,13 +145,13 @@ class Subject
    private:
 
       // subject logger
-      static Logger log;
+      static Logger *log;
 
-      // attach / detach mutex
+      // attach / dettach mutex
       static std::mutex mutex;
 
       // named subjects
-      static std::map<std::string, Subject<T>> subjects;
+      static std::map<std::string, Subject> subjects;
 
       // subject name id
       std::string id;
@@ -168,15 +163,15 @@ class Subject
       std::shared_ptr<T> retained;
 };
 
-template<typename T>
-Logger Subject<T>::log {"Subject"};
+template <typename T>
+Logger *Subject<T>::log = Logger::getLogger("rt.Subject");
 
-template<typename T>
+template <typename T>
 std::mutex Subject<T>::mutex;
 
-template<typename T>
+template <typename T>
 std::map<std::string, Subject<T>> Subject<T>::subjects;
 
 }
 
-#endif //NFCLAB_SUBJECT_H
+#endif

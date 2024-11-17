@@ -1,0 +1,26 @@
+[Icon Theme]
+Name=Tracer Theme
+Comment=Tracer Theme
+
+# Directory list
+Directories=actions/24,actions/48,arrows/16
+
+[arrows/16]
+Size=16
+Context=Arrows
+Type=Fixed
+
+[actions/24]
+Size=24
+Context=Actions
+Type=Fixed
+
+[actions/48]
+Size=48
+Context=Actions
+Type=Fixed
+
+[flags/16]
+Size=16
+Context=Flags
+Type=Fixed
