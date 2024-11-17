@@ -1,64 +1,53 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
 #include <cmath>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 #include <QDir>
+#include <QLocale>
+#include <QSslSocket>
 #include <QStandardPaths>
-#include <QDebug>
 
 #include <rt/Logger.h>
 #include <rt/Executor.h>
-#include <rt/Subject.h>
-#include <rt/Event.h>
-#include <rt/BlockingQueue.h>
 
-#include <sdr/SignalType.h>
-#include <sdr/RecordDevice.h>
-#include <sdr/AirspyDevice.h>
-#include <sdr/RealtekDevice.h>
+#include <lab/tasks/FourierProcessTask.h>
+#include <lab/tasks/LogicDecoderTask.h>
+#include <lab/tasks/LogicDeviceTask.h>
+#include <lab/tasks/RadioDecoderTask.h>
+#include <lab/tasks/RadioDeviceTask.h>
+#include <lab/tasks/SignalResamplingTask.h>
+#include <lab/tasks/SignalStorageTask.h>
+#include <lab/tasks/TraceStorageTask.h>
 
-#include <nfc/AdaptiveSamplingTask.h>
-#include <nfc/FourierProcessTask.h>
-#include <nfc/FrameDecoderTask.h>
-#include <nfc/FrameStorageTask.h>
-#include <nfc/SignalReceiverTask.h>
-#include <nfc/SignalRecorderTask.h>
-
-#include <nfc/NfcFrame.h>
-#include <nfc/NfcDecoder.h>
+#include <styles/IconStyle.h>
 
 #include <libusb.h>
 
 #include "QtConfig.h"
 #include "QtApplication.h"
 
-using namespace rt;
-
-Logger *qlog = nullptr;
+rt::Logger *qlog = nullptr;
 
 void messageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
@@ -89,87 +78,111 @@ void messageOutput(QtMsgType type, const QMessageLogContext &context, const QStr
 
 int startApp(int argc, char *argv[])
 {
-   Logger log {"main"};
+   rt::Logger *log = rt::Logger::getLogger("app.main", rt::Logger::INFO_LEVEL);
 
-   log.info("***********************************************************************");
-   log.info("NFC laboratory, 2024 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
-   log.info("***********************************************************************");
+   log->info("***********************************************************************");
+   log->info("NFC-SPY {}", {NFC_LAB_VERSION_STRING});
+   log->info("***********************************************************************");
 
-   for (int i = 0; i < argc; i++)
-      log.info("\t{}", {argv[i]});
+   if (argc > 1)
+   {
+      log->info("command line arguments:");
 
-   const struct libusb_version *lusbv = libusb_get_version();
+      for (int i = 1; i < argc; i++)
+         log->info("\t{}", {argv[i]});
+   }
 
-   log.info("using libusb version: {}.{}.{}", {lusbv->major, lusbv->minor, lusbv->micro});
+   const libusb_version *lusbv = libusb_get_version();
+
+   log->info("using usb library: {}.{}.{}", {lusbv->major, lusbv->minor, lusbv->micro});
+   log->info("using ssl library: {}", {QSslSocket::sslLibraryBuildVersionString().toStdString()});
+   log->info("using locale: {}", {QLocale().name().toStdString()});
+
+   // override icons styles
+   QtApplication::setStyle(new IconStyle());
 
    // configure application
    QtApplication::setApplicationName(NFC_LAB_APPLICATION_NAME);
    QtApplication::setApplicationVersion(NFC_LAB_VERSION_STRING);
    QtApplication::setOrganizationName(NFC_LAB_COMPANY_NAME);
    QtApplication::setOrganizationDomain(NFC_LAB_DOMAIN_NAME);
-   QtApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
    // configure settings location and format
    QSettings::setDefaultFormat(QSettings::IniFormat);
+   //   QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 
-   // initialize QT interface
-   QtApplication app(argc, argv);
+   // configure loggers
+   QSettings settings;
+
+   settings.beginGroup("logger");
+
+   for (const auto &key: settings.childKeys())
+   {
+      if (key == "root")
+         rt::Logger::setRootLevel(settings.value(key).toString().toStdString());
+      else
+         rt::Logger::getLogger(key.toStdString())->setLevel(settings.value(key).toString().toStdString());
+   }
+
+   settings.endGroup();
 
    // create executor service
-   Executor executor(128, 10);
+   rt::Executor executor(128, 10);
 
-   executor.submit(nfc::AdaptiveSamplingTask::construct()); // startup signal resampling task
-   executor.submit(nfc::FourierProcessTask::construct()); // startup fourier transform task
-   executor.submit(nfc::FrameDecoderTask::construct()); // startup signal decoder task
-   executor.submit(nfc::FrameStorageTask::construct());
-   executor.submit(nfc::SignalRecorderTask::construct()); // startup signal reader task
-   executor.submit(nfc::SignalReceiverTask::construct()); // startup signal receiver task
+   executor.submit(lab::FourierProcessTask::construct()); // startup fourier transform
+   executor.submit(lab::LogicDecoderTask::construct()); // startup logic decoder
+   executor.submit(lab::LogicDeviceTask::construct()); // startup logic receiver
+   executor.submit(lab::RadioDecoderTask::construct()); // startup radio decoder
+   executor.submit(lab::RadioDeviceTask::construct()); // startup signal receiver
+   executor.submit(lab::TraceStorageTask::construct()); // startup frame writer
+   executor.submit(lab::SignalStorageTask::construct()); // startup signal reader
+   executor.submit(lab::SignalResamplingTask::construct()); // startup signal resampling
+
+   // initialize application
+   QtApplication app(argc, argv);
 
    // start application
-   QtApplication::exec();
-
-   log.info("closing application...");
-
-   return 0;
+   return QtApplication::exec();
 }
 
 int main(int argc, char *argv[])
 {
    // initialize logging system
-#if NFC_LAB_VERSION_MAJOR > 0
+#ifdef ENABLE_CONSOLE_LOGGING
+   rt::Logger::init(std::cout);
+#else
+
    QDir appPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/" + NFC_LAB_COMPANY_NAME + "/" + NFC_LAB_APPLICATION_NAME);
 
    std::ofstream stream;
 
    if (appPath.mkpath("log"))
    {
-      QString logFile = appPath.filePath("log/tracer.log");
+      QString logFile = appPath.filePath(QString("log/") + NFC_LAB_APPLICATION_NAME + ".log");
 
       stream.open(logFile.toStdString(), std::ios::out | std::ios::app);
 
       if (stream.is_open())
       {
-         Logger::init(stream);
+         rt::Logger::init(stream);
       }
       else
       {
          std::cerr << "unable to open log file: " << logFile.toStdString() << std::endl;
 
-         Logger::init(std::cout);
+         rt::Logger::init(std::cout);
       }
    }
    else
    {
       std::cerr << "unable to create log path: " << appPath.absolutePath().toStdString() << std::endl;
 
-      Logger::init(std::cout);
+      rt::Logger::init(std::cout);
    }
-#else
-   Logger::init(std::cout);
 #endif
 
    // create QT logger
-   qlog = new Logger("QT");
+   qlog = rt::Logger::getLogger("app.qt");
 
    // set logging handler for QT components
    qInstallMessageHandler(messageOutput);
@@ -177,4 +190,3 @@ int main(int argc, char *argv[])
    // start application!
    return startApp(argc, argv);
 }
-

@@ -1,35 +1,37 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
 #include <QVBoxLayout>
 #include <QTreeView>
+#include <QMouseEvent>
 
-#include <nfc/NfcFrame.h>
+#include <QtConfig.h>
+
+#include <lab/data/RawFrame.h>
 
 #include <model/ParserModel.h>
 
-#include <styles/ParserStyle.h>
+#include <styles/Theme.h>
+
+#include <widgets/ParserDelegate.h>
 
 #include "ui_InspectDialog.h"
 
@@ -55,8 +57,11 @@ struct InspectDialog::Impl
       // setup protocol view model
       ui->infoView->setModel(parserModel);
       ui->infoView->setColumnWidth(ParserModel::Name, 120);
-      ui->infoView->setColumnWidth(ParserModel::Flags, 32);
-      ui->infoView->setItemDelegate(new ParserStyle(ui->infoView));
+      ui->infoView->setColumnWidth(ParserModel::Flags, 60);
+      ui->infoView->setItemDelegate(new ParserDelegate(ui->infoView));
+
+      // update window caption
+      dialog->setWindowTitle(NFC_LAB_VENDOR_STRING);
 
       // connect selection signal from frame model
       QObject::connect(ui->infoView->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &selected, const QItemSelection &deselected) {
@@ -80,7 +85,7 @@ struct InspectDialog::Impl
       }
    }
 
-   QByteArray toByteArray(const nfc::NfcFrame &frame)
+   QByteArray toByteArray(const lab::RawFrame &frame)
    {
       QByteArray data;
 
@@ -93,7 +98,7 @@ struct InspectDialog::Impl
    }
 };
 
-InspectDialog::InspectDialog(QWidget *parent) : QDialog(parent), impl(new Impl(this))
+InspectDialog::InspectDialog(QWidget *parent) : QDialog(parent, Qt::WindowCloseButtonHint | Qt::WindowTitleHint), impl(new Impl(this))
 {
 }
 
@@ -102,9 +107,14 @@ void InspectDialog::clear()
    impl->parserModel->resetModel();
 }
 
-void InspectDialog::addFrame(const nfc::NfcFrame &frame)
+void InspectDialog::addFrame(const lab::RawFrame &frame)
 {
    impl->parserModel->append(frame);
 
    impl->ui->infoView->expandAll();
+}
+
+int InspectDialog::showModal()
+{
+   return Theme::showModalInDarkMode(this);
 }

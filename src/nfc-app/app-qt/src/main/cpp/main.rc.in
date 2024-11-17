@@ -1,0 +1,38 @@
+
+IDI_ICON1 ICON DISCARDABLE "${ICON_FILE_PATH}"
+
+# if defined(UNDER_CE)
+#  include <winbase.h>
+# else
+#  include <winver.h>
+# endif
+
+#define VER ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION VER
+    PRODUCTVERSION VER
+    FILEFLAGSMASK 0x3fL
+    FILEFLAGS 0x0L
+    FILEOS VOS_NT_WINDOWS32
+    FILETYPE VFT_APP
+    FILESUBTYPE 0x0L
+    BEGIN
+        BLOCK "StringFileInfo"
+        BEGIN
+            BLOCK "040904B0"
+            BEGIN
+                VALUE "CompanyName", "${COMPANY}\0"
+                VALUE "FileDescription", "${PROGRAM_NAME} Executable\0"
+                VALUE "FileVersion", "${PROJECT_VERSION}.0\0"
+                VALUE "LegalCopyright", "Copyright (C) ${YEAR} ${COMPANY}\0"
+                VALUE "OriginalFilename", "${PROGRAM_NAME}.exe\0"
+                VALUE "ProductName", "${PROGRAM_NAME}\0"
+                VALUE "ProductVersion", "${PROJECT_VERSION}.0\0"
+            END
+        END
+        BLOCK "VarFileInfo"
+        BEGIN
+            VALUE "Translation", 0x409, 1200
+        END
+    END

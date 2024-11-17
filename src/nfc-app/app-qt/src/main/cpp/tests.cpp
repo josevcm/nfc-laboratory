@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -30,20 +27,21 @@
 #include <rt/Event.h>
 #include <rt/BlockingQueue.h>
 
-#include <sdr/SignalType.h>
-#include <sdr/RecordDevice.h>
-#include <sdr/AirspyDevice.h>
-#include <sdr/RealtekDevice.h>
+#include <hw/SignalType.h>
+#include <hw/RecordDevice.h>
 
-#include <nfc/AdaptiveSamplingTask.h>
-#include <nfc/FourierProcessTask.h>
-#include <nfc/FrameDecoderTask.h>
-#include <nfc/FrameStorageTask.h>
-#include <nfc/SignalReceiverTask.h>
-#include <nfc/SignalRecorderTask.h>
+#include <hw/radio/AirspyDevice.h>
+#include <hw/radio/RealtekDevice.h>
 
-#include <nfc/NfcFrame.h>
-#include <nfc/NfcDecoder.h>
+#include <lab/data/RawFrame.h>
+#include <lab/nfc/NfcDecoder.h>
+
+#include <lab/tasks/FrameStorageTask.h>
+#include <lab/tasks/FourierProcessTask.h>
+#include <lab/tasks/RadioDecoderTask.h>
+#include <lab/tasks/RadioReceiverTask.h>
+#include <lab/tasks/SignalResamplingTask.h>
+#include <lab/tasks/SignalStorageTask.h>
 
 #include <libusb.h>
 
@@ -89,32 +87,32 @@ int startTest1(int argc, char *argv[])
    log.info("NFC laboratory, 2022 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log.info("***********************************************************************");
 
-   nfc::NfcDecoder decoder;
+   lab::NfcDecoder decoder;
 
    decoder.setEnableNfcA(false);
    decoder.setEnableNfcB(false);
    decoder.setEnableNfcF(true);
    decoder.setEnableNfcV(false);
 
-   sdr::RecordDevice source(argv[1]);
+   hw::RecordDevice source(argv[1]);
 
-   if (source.open(sdr::RecordDevice::OpenMode::Read))
+   if (source.open(hw::RecordDevice::OpenMode::Read))
    {
       while (!source.isEof())
       {
-         sdr::SignalBuffer samples(65536 * source.channelCount(), source.channelCount(), source.sampleRate(), 0, 0, sdr::SignalType::SAMPLE_REAL);
+         hw::SignalBuffer samples(65536 * source.channelCount(), source.channelCount(), source.sampleRate(), 0, 0, hw::SignalType::SIGNAL_TYPE_RAW_REAL);
 
          if (source.read(samples) > 0)
          {
-            std::list<nfc::NfcFrame> frames = decoder.nextFrames(samples);
+            std::list<lab::RawFrame> frames = decoder.nextFrames(samples);
 
-            for (const nfc::NfcFrame &frame: frames)
+            for (const lab::RawFrame &frame: frames)
             {
-               if (frame.isPollFrame())
+               if (frame.frameType() == lab::FrameType::PollFrame)
                {
                   log.info("frame at {} -> {}: TX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
                }
-               else if (frame.isListenFrame())
+               else if (frame.frameType() == lab::FrameType::ListenFrame)
                {
                   log.info("frame at {} -> {}: RX {}", {frame.sampleStart(), frame.sampleEnd(), frame});
                }
@@ -151,10 +149,10 @@ int startTest2(int argc, char *argv[])
    strftime(file, sizeof(file), "record-%Y%m%d%H%M%S.wav", &timeinfo);
 
    // open first available receiver
-   for (const auto &name: sdr::AirspyDevice::listDevices())
+   for (const auto &name: hw::AirspyDevice::listDevices())
    {
       // create receiver
-      sdr::AirspyDevice receiver(name);
+      hw::AirspyDevice receiver(name);
 
       // default parameters
       receiver.setCenterFreq(40.68E6);
@@ -165,26 +163,26 @@ int startTest2(int argc, char *argv[])
       receiver.setTunerAgc(0);
 
       // try to open Airspy
-      if (receiver.open(sdr::SignalDevice::Read))
+      if (receiver.open(hw::SignalDevice::Read))
       {
          log.info("device {} connected!", {name});
 
-         sdr::RecordDevice recorder(file);
+         hw::RecordDevice recorder(file);
 
          recorder.setChannelCount(3);
          recorder.setSampleRate(receiver.sampleRate());
-         recorder.open(sdr::RecordDevice::Write);
+         recorder.open(hw::RecordDevice::Write);
 
          // open recorder
-         if (recorder.open(sdr::RecordDevice::OpenMode::Write))
+         if (recorder.open(hw::RecordDevice::OpenMode::Write))
          {
             log.info("start streaming for device {}", {receiver.name()});
 
             // signal stream queue buffer
-            rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
+            rt::BlockingQueue<hw::SignalBuffer> signalQueue;
 
             // start receive stream
-            receiver.start([&signalQueue](sdr::SignalBuffer &buffer) {
+            receiver.start([&signalQueue](hw::SignalBuffer &buffer) {
                signalQueue.add(buffer);
             });
 
@@ -202,11 +200,11 @@ int startTest2(int argc, char *argv[])
                   int samples = buffer->elements() / buffer->stride();
 
                   // convert I/Q samples to Real sample
-                  sdr::SignalBuffer result(samples * 3, 3, buffer->sampleRate(), 0, 0, 0);
+                  hw::SignalBuffer result(samples * 3, 3, buffer->sampleRate(), 0, 0, 0);
 
                   switch (buffer->type())
                   {
-                     case sdr::SignalType::SAMPLE_IQ:
+                     case hw::SignalType::SIGNAL_TYPE_RAW_IQ:
                      {
                         buffer->stream([&result](const float *value, int stride) {
                            result.put(value[0]).put(value[1]).put(sqrtf(value[0] * value[0] + value[1] * value[1]));
@@ -214,7 +212,7 @@ int startTest2(int argc, char *argv[])
                         break;
                      }
 
-                     case sdr::SignalType::SAMPLE_REAL:
+                     case hw::SignalType::SIGNAL_TYPE_RAW_REAL:
                      {
                         buffer->stream([&result](const float *value, int stride) {
                            result.put(value[0]).put(0.0f).put(0.0f);
@@ -266,22 +264,22 @@ int startTest3(int argc, char *argv[])
    strftime(file, sizeof(file), "record-%Y%m%d%H%M%S.wav", &timeinfo);
 
    // open first available receiver
-   for (const auto &name: sdr::RealtekDevice::listDevices())
+   for (const auto &name: hw::RealtekDevice::listDevices())
    {
       // create receiver
-      sdr::RealtekDevice receiver(name);
+      hw::RealtekDevice receiver(name);
 
       // default parameters
       receiver.setCenterFreq(27.12E6);
       receiver.setSampleRate(2400000);
-      receiver.setGainMode(sdr::RealtekDevice::Manual);
+      receiver.setGainMode(hw::RealtekDevice::Manual);
       receiver.setGainValue(77);
       receiver.setMixerAgc(0);
       receiver.setTunerAgc(0);
       receiver.setTestMode(0);
 
       // try to open Realtek
-      if (receiver.open(sdr::SignalDevice::Read))
+      if (receiver.open(hw::SignalDevice::Read))
       {
          log.info("device {} connected!", {name});
 
@@ -295,22 +293,22 @@ int startTest3(int argc, char *argv[])
             log.info("available gain {} = {}", {gain.first, gain.second});
          }
 
-         sdr::RecordDevice recorder(file);
+         hw::RecordDevice recorder(file);
 
          recorder.setChannelCount(3);
          recorder.setSampleRate(receiver.sampleRate());
-         recorder.open(sdr::RecordDevice::Write);
+         recorder.open(hw::RecordDevice::Write);
 
          // open recorder
-         if (recorder.open(sdr::RecordDevice::OpenMode::Write))
+         if (recorder.open(hw::RecordDevice::OpenMode::Write))
          {
             log.info("start streaming for device {}", {receiver.name()});
 
             // signal stream queue buffer
-            rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
+            rt::BlockingQueue<hw::SignalBuffer> signalQueue;
 
             // start receive stream
-            receiver.start([&signalQueue](sdr::SignalBuffer &buffer) {
+            receiver.start([&signalQueue](hw::SignalBuffer &buffer) {
                signalQueue.add(buffer);
             });
 
@@ -328,11 +326,11 @@ int startTest3(int argc, char *argv[])
                   int samples = buffer->elements() / buffer->stride();
 
                   // convert I/Q samples to Real sample
-                  sdr::SignalBuffer result(samples * 3, 3, buffer->sampleRate(), 0, 0, 0);
+                  hw::SignalBuffer result(samples * 3, 3, buffer->sampleRate(), 0, 0, 0);
 
                   switch (buffer->type())
                   {
-                     case sdr::SignalType::SAMPLE_IQ:
+                     case hw::SignalType::SIGNAL_TYPE_RAW_IQ:
                      {
                         buffer->stream([&result](const float *value, int stride) {
                            result.put(value[0]).put(value[1]).put(sqrtf(value[0] * value[0] + value[1] * value[1]));
@@ -340,7 +338,7 @@ int startTest3(int argc, char *argv[])
                         break;
                      }
 
-                     case sdr::SignalType::SAMPLE_REAL:
+                     case hw::SignalType::SIGNAL_TYPE_RAW_REAL:
                      {
                         buffer->stream([&result](const float *value, int stride) {
                            result.put(value[0]).put(0.0f).put(0.0f);

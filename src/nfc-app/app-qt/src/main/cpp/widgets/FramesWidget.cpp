@@ -1,38 +1,37 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include <QDebug>
-#include <QMouseEvent>
-#include <QVBoxLayout>
-
-#include <nfc/Nfc.h>
-#include <nfc/NfcFrame.h>
-
 #include <3party/customplot/QCustomPlot.h>
 
-#include <graph/QCPAxisRangeMarker.h>
-#include <graph/QCPAxisCursorMarker.h>
+#include <lab/nfc/Nfc.h>
+#include <lab/data/RawFrame.h>
+
+#include <model/StreamModel.h>
+
+#include <graph/FrameData.h>
+#include <graph/FrameGraph.h>
+
+#include <styles/Theme.h>
+
+#include <format/DataFormat.h>
 
 #include "FramesWidget.h"
 
@@ -42,439 +41,599 @@ struct FramesWidget::Impl
 
    QCustomPlot *plot = nullptr;
 
-   QSharedPointer<QCPAxisCursorMarker> cursorMarker;
-   QSharedPointer<QCPAxisRangeMarker> selectedFrames;
+   // FrameGraph *frameGraph = nullptr;
+   // QSharedPointer<QCPDigitalDataContainer> frameData;
 
-   double minimumRange = +INT32_MAX;
-   double maximumRange = -INT32_MAX;
+   QMap<unsigned int, FrameGraph *> channels;
 
-   double lastCarrierValue = 0;
+   QSharedPointer<QCPAxisTickerText> frameTicker;
 
-   explicit Impl(FramesWidget *parent) : widget(parent), plot(new QCustomPlot(parent))
+   StreamModel *streamModel = nullptr;
+
+   QMap<int, bool> enabledChannels;
+   QMap<int, bool> enabledProtocols;
+
+   QMetaObject::Connection rowsInsertedConnection;
+   QMetaObject::Connection modelResetConnection;
+   QMetaObject::Connection nfcLegendClickConnection;
+   QMetaObject::Connection isoLegendClickConnection;
+
+   explicit Impl(FramesWidget *parent) : widget(parent), plot(widget->plot()), frameTicker(new QCPAxisTickerText)
    {
-      setup();
-      clear();
+      // set ticker for y-axis
+      frameTicker->addTick(1, "NFC");
+      frameTicker->addTick(2, "ICC");
+
+      // set cursor formatter
+      widget->setCursorFormatter(DataFormat::time);
+      widget->setRangeFormatter(DataFormat::timeRange);
+
+      // override default axis labels
+      widget->plot()->xAxis->grid()->setSubGridVisible(true);
+      widget->plot()->yAxis->grid()->setPen(Qt::NoPen);
+      widget->plot()->yAxis->setTicker(frameTicker);
+
+      // set space for legend
+      widget->plot()->legend->setIconSize(500, 20);
+
+      // setup NFC channel
+      channels[Nfc] = new FrameGraph(plot->xAxis, plot->yAxis);
+      channels[Nfc]->setOffset(1);
+      channels[Nfc]->setSelectable(QCP::stDataRange);
+      channels[Nfc]->setSelectionDecorator(nullptr);
+      channels[Nfc]->setLegend(NfcA, "NFC-A", NfcARequest);
+      channels[Nfc]->setLegend(NfcB, "NFC-B", NfcBRequest);
+      channels[Nfc]->setLegend(NfcF, "NFC-F", NfcFRequest);
+      channels[Nfc]->setLegend(NfcV, "NFC-V", NfcVRequest);
+      channels[Nfc]->setMapper([=](const FrameData &data) { return nfcValue(data); }, [=](int key) { return nfcStyle(key); });
+      channels[Nfc]->setOffset(static_cast<double>(channels.size()));
+
+      // set channel ticker
+      frameTicker->addTick(static_cast<double>(channels.size()), "NFC");
+
+      // setup ISO channel
+      channels[Iso] = new FrameGraph(plot->xAxis, plot->yAxis);
+      channels[Iso]->setSelectable(QCP::stDataRange);
+      channels[Iso]->setSelectionDecorator(nullptr);
+      channels[Iso]->setLegend(ISO7816, "ISO-7816", IsoRequest);
+      channels[Iso]->setMapper([=](const FrameData &data) { return isoValue(data); }, [=](int key) { return isoStyle(key); });
+      channels[Iso]->setOffset(static_cast<double>(channels.size()));
+
+      // set channel ticker
+      frameTicker->addTick(static_cast<double>(channels.size()), "ICC");
+
+      // connect NFC legend click
+      nfcLegendClickConnection = connect(channels[Nfc], &FrameGraph::legendClicked, [=](int key) {
+         toggleProtocol(key);
+      });
+
+      // connect ISO legend click
+      isoLegendClickConnection = connect(channels[Iso], &FrameGraph::legendClicked, [=](int key) {
+         toggleProtocol(key);
+      });
+
+      // update scale
+      widget->setDataScale(0, static_cast<double>(channels.size()) + 1);
+      widget->setViewScale(0, static_cast<double>(channels.size()) + 1);
    }
 
-   void setup()
+   ~Impl()
    {
-      // selection pend and brush
-      QPen selectPen(QColor(0, 128, 255, 255));
-      QBrush selectBrush(QColor(0, 128, 255, 128));
+      disconnect(rowsInsertedConnection);
+      disconnect(modelResetConnection);
+      disconnect(nfcLegendClickConnection);
+      disconnect(isoLegendClickConnection);
+   }
 
-      // create pen an brush
-      QPen channelPen[3] = {
-            {QColor(220, 220, 32, 255)},  // RF signal pen
-            {QColor(0, 200, 128, 255)},   // SELECT frames pen
-            {QColor(200, 200, 200, 255)}  // DATA frames pen
-      };
-
-      QBrush channelBrush[3] = {
-            {QColor(128, 128, 16, 64)},   // RF signal brush
-            {QColor(0, 200, 128, 64)},    // SELECT frames brush
-            {QColor(128, 128, 128, 64)}   // DATA frames brush
-      };
-
-      // enable opengl
-//      plot->setOpenGl(true);
-
-      // data label for Y-axis
-      QSharedPointer<QCPAxisTickerText> textTicker(new QCPAxisTickerText);
-
-      textTicker->addTick(1, "RF");
-      textTicker->addTick(2, "SEL");
-      textTicker->addTick(3, "APP");
-
-      // disable aliasing to increase performance
-      plot->setNoAntialiasingOnDrag(true);
-
-      // configure plot
-      plot->setMouseTracking(true);
-      plot->setBackground(Qt::NoBrush);
-      plot->setInteraction(QCP::iRangeDrag, true); // enable graph drag
-      plot->setInteraction(QCP::iRangeZoom, true); // enable graph zoom
-      plot->setInteraction(QCP::iSelectPlottables, true); // enable graph selection
-      plot->setInteraction(QCP::iMultiSelect, true); // enable graph multiple selection
-      plot->axisRect()->setRangeDrag(Qt::Horizontal); // only drag horizontal axis
-      plot->axisRect()->setRangeZoom(Qt::Horizontal); // only zoom horizontal axis
-
-      // setup time axis
-      plot->xAxis->setBasePen(QPen(Qt::white));
-      plot->xAxis->setTickPen(QPen(Qt::white));
-      plot->xAxis->setTickLabelColor(Qt::white);
-      plot->xAxis->setSubTickPen(QPen(Qt::white));
-      plot->xAxis->setSubTicks(true);
-      plot->xAxis->setRange(0, 1);
-
-      // setup Y axis
-      plot->yAxis->setBasePen(QPen(Qt::white));
-      plot->yAxis->setTickPen(QPen(Qt::white));
-      plot->yAxis->setTickLabelColor(Qt::white);
-      plot->yAxis->setSubTickPen(QPen(Qt::white));
-      plot->yAxis->setTicker(textTicker);
-      plot->yAxis->setRange(0, 4);
-
-      // create channels
-      for (int i = 0; i < 3; i++)
+   QString nfcValue(const FrameData &data) const
+   {
+      switch (data.type)
       {
-         // create upper and lower data graph
-         auto upper = plot->addGraph();
-         auto lower = plot->addGraph();
-
-         upper->setPen(channelPen[i]);
-         upper->setBrush(channelBrush[i]);
-         upper->setSelectable(QCP::stDataRange);
-         upper->selectionDecorator()->setPen(selectPen);
-         upper->selectionDecorator()->setBrush(selectBrush);
-         upper->setChannelFillGraph(lower);
-
-         lower->setPen(channelPen[i]);
-         lower->setSelectable(QCP::stDataRange);
-         lower->selectionDecorator()->setPen(selectPen);
-      }
-
-      // create range marker
-      selectedFrames.reset(new QCPAxisRangeMarker(plot->graph(0)->keyAxis()));
-
-      // create cursor marker
-      cursorMarker.reset(new QCPAxisCursorMarker(plot->graph(0)->keyAxis()));
-
-      // prepare layout
-      auto *layout = new QVBoxLayout(widget);
-
-      layout->setSpacing(0);
-      layout->setContentsMargins(0, 0, 0, 0);
-      layout->addWidget(plot);
-
-      // connect graph signals
-      QObject::connect(plot, &QCustomPlot::mouseMove, [=](QMouseEvent *event) {
-         mouseMove(event);
-      });
-
-      QObject::connect(plot, &QCustomPlot::mousePress, [=](QMouseEvent *event) {
-         mousePress(event);
-      });
-
-      QObject::connect(plot, &QCustomPlot::selectionChangedByUser, [=]() {
-         selectionChanged();
-      });
-
-      QObject::connect(plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), [=](const QCPRange &newRange) {
-         rangeChanged(newRange);
-      });
-   }
-
-   void setRange(double lower, double upper)
-   {
-      plot->xAxis->setRange(lower, upper);
-      plot->replot();
-   }
-
-   void setCenter(double center) const
-   {
-      QCPRange currentRange = plot->xAxis->range();
-
-      float length = float(currentRange.upper - currentRange.lower);
-
-      plot->xAxis->setRange(center - length / 2, center + length / 2);
-   }
-
-   void append(const nfc::NfcFrame &frame)
-   {
-      // update signal ranges
-      if (minimumRange > frame.timeStart())
-         minimumRange = frame.timeStart();
-
-      if (maximumRange < frame.timeEnd())
-         maximumRange = frame.timeEnd();
-
-      // update view range
-      plot->xAxis->setRange(minimumRange, maximumRange);
-
-      switch (frame.frameType())
-      {
-         case nfc::FrameType::CarrierOn:
-            addCarrier(frame.framePhase(), frame.timeStart(), 0.25f);
-            break;
-         case nfc::FrameType::CarrierOff:
-            addCarrier(frame.framePhase(), frame.timeStart(), 0.0);
-            break;
-         case nfc::FrameType::PollFrame:
-            addFrame(frame.framePhase(), frame.timeStart(), frame.timeEnd(), 0.25f);
-            break;
-         case nfc::FrameType::ListenFrame:
-            addFrame(frame.framePhase(), frame.timeStart(), frame.timeEnd(), 0.15f);
-            break;
+         case NfcSilence:
+            return {};
+         case NfcCarrier:
+            return tr("Carrier");
+         default:
+            return data.data.toHex(' ').toUpper();
       }
    }
 
-   void addCarrier(int channel, double eventTime, float value)
+   ChannelStyle nfcStyle(int key) const
    {
-      int upperGraph = channel * 2 + 0;
-      int lowerGraph = channel * 2 + 1;
-      double graphOffset = 1 + channel;
-
-      // draw upper shape
-      plot->graph(upperGraph)->addData(eventTime, graphOffset + lastCarrierValue);
-      plot->graph(upperGraph)->addData(eventTime + 2.5E-6, graphOffset + value);
-
-      // draw lower shape
-      plot->graph(lowerGraph)->addData(eventTime, graphOffset - lastCarrierValue);
-      plot->graph(lowerGraph)->addData(eventTime + 2.5E-6, graphOffset - value);
-
-      lastCarrierValue = value;
-   }
-
-   void addFrame(int channel, double timeStart, double timeEnd, float value)
-   {
-      int upperGraph = channel * 2 + 0;
-      int lowerGraph = channel * 2 + 1;
-      double graphOffset = 1 + channel;
-
-      // draw upper shape
-      plot->graph(upperGraph)->addData(timeStart, graphOffset);
-      plot->graph(upperGraph)->addData(timeStart + 2.5E-6, graphOffset + value);
-      plot->graph(upperGraph)->addData(timeEnd - 2.5E-6, graphOffset + value);
-      plot->graph(upperGraph)->addData(timeEnd, graphOffset);
-
-      // draw lower shape
-      plot->graph(lowerGraph)->addData(timeStart, graphOffset);
-      plot->graph(lowerGraph)->addData(timeStart + 2.5E-6, graphOffset - value);
-      plot->graph(lowerGraph)->addData(timeEnd - 2.5E-6, graphOffset - value);
-      plot->graph(lowerGraph)->addData(timeEnd, graphOffset);
-   }
-
-   void select(double from, double to)
-   {
-      for (int i = 0; i < plot->graphCount(); i++)
+      // set channel styles
+      switch (key)
       {
-         QCPDataSelection selection;
+         case NfcSilence:
+            return {Theme::defaultCarrierPen, Theme::defaultCarrierPen, Theme::defaultCarrierBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
 
-         QCPGraph *graph = plot->graph(i);
+         case NfcCarrier:
+            return {Theme::defaultCarrierPen, Theme::defaultCarrierPen, Theme::defaultCarrierBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
 
-         int begin = graph->findBegin(from, false);
-         int end = graph->findEnd(to, false);
+         case NfcARequest:
+            return {Theme::defaultNfcAPen, Theme::defaultNfcAPen, Theme::defaultNfcABrush, Theme::defaultTextPen, Theme::monospaceTextFont};
 
-         selection.addDataRange(QCPDataRange(begin, end));
+         case NfcAResponse:
+            return {Theme::defaultNfcAPen, Theme::defaultNfcAPen, Theme::responseNfcABrush, Theme::defaultTextPen, Theme::monospaceTextFont};
 
-         graph->setSelection(selection);
+         case NfcBRequest:
+            return {Theme::defaultNfcBPen, Theme::defaultNfcBPen, Theme::defaultNfcBBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case NfcBResponse:
+            return {Theme::defaultNfcBPen, Theme::defaultNfcBPen, Theme::responseNfcBBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case NfcFRequest:
+            return {Theme::defaultNfcFPen, Theme::defaultNfcFPen, Theme::defaultNfcFBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case NfcFResponse:
+            return {Theme::defaultNfcFPen, Theme::defaultNfcFPen, Theme::responseNfcFBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case NfcVRequest:
+            return {Theme::defaultNfcVPen, Theme::defaultNfcVPen, Theme::defaultNfcVBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case NfcVResponse:
+            return {Theme::defaultNfcVPen, Theme::defaultNfcVPen, Theme::responseNfcVBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
       }
 
-      selectionChanged();
+      return {};
+   }
+
+   QString isoValue(const FrameData &data) const
+   {
+      switch (data.type)
+      {
+         default:
+            return data.data.toHex(' ').toUpper();
+      }
+   }
+
+   ChannelStyle isoStyle(int key) const
+   {
+      // set channel styles
+      switch (key)
+      {
+         case IsoSilence:
+            return {Theme::defaultCarrierPen, Theme::defaultCarrierPen, Theme::defaultCarrierBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case IsoVccOff:
+            return {Theme::defaultCarrierPen, Theme::defaultCarrierPen, Theme::defaultCarrierBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case IsoResetOn:
+            return {Theme::defaultCarrierPen, Theme::defaultCarrierPen, Theme::defaultCarrierBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case IsoStartup:
+            return {Theme::defaultNfcFPen, Theme::defaultNfcFPen, Theme::defaultNfcFBrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case IsoRequest:
+            return {Theme::defaultNfcAPen, Theme::defaultNfcAPen, Theme::defaultNfcABrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case IsoResponse:
+            return {Theme::defaultNfcAPen, Theme::defaultNfcAPen, Theme::responseNfcABrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+
+         case IsoExchange:
+            return {Theme::defaultNfcAPen, Theme::defaultNfcAPen, Theme::defaultNfcABrush, Theme::defaultTextPen, Theme::monospaceTextFont};
+      }
+
+      return {};
+   }
+
+   void toggleChannel(int key)
+   {
+      setChannel(static_cast<Channel>(key), !enabledChannels[key]);
+
+      widget->toggleChannel(static_cast<Channel>(key), enabledChannels[key]);
+   }
+
+   void toggleProtocol(int key)
+   {
+      setProtocol(static_cast<Protocol>(key), !enabledProtocols[key]);
+
+      widget->toggleProtocol(static_cast<Protocol>(key), enabledProtocols[key]);
+   }
+
+   void changeModel(StreamModel *model)
+   {
+      streamModel = model;
+
+      if (streamModel)
+      {
+         disconnect(rowsInsertedConnection);
+         disconnect(modelResetConnection);
+
+         rowsInsertedConnection = connect(streamModel, &QAbstractItemModel::rowsInserted, [=](const QModelIndex &parent, int first, int last) {
+            rowsInserted(parent, first, last);
+         });
+
+         modelResetConnection = connect(streamModel, &QAbstractItemModel::modelReset, [=]() {
+            modelReset();
+         });
+      }
    }
 
    void clear()
    {
-      minimumRange = +INT32_MAX;
-      maximumRange = -INT32_MAX;
-
-      for (int i = 0; i < plot->graphCount(); i++)
+      for (auto channels: channels)
       {
-         plot->graph(i)->data()->clear();
-         plot->graph(i)->setSelection(QCPDataSelection());
-      }
-
-      plot->xAxis->setRange(0, 1);
-
-      selectedFrames->setVisible(false);
-
-      plot->replot();
-   }
-
-   void refresh() const
-   {
-      // fix range if current value is out
-      rangeChanged(plot->xAxis->range());
-
-      // refresh graph
-      plot->replot();
-   }
-
-   void mouseEnter() const
-   {
-      widget->setFocus(Qt::MouseFocusReason);
-      plot->replot();
-   }
-
-   void mouseLeave() const
-   {
-      widget->setFocus(Qt::NoFocusReason);
-      plot->replot();
-   }
-
-   void mouseMove(QMouseEvent *event) const
-   {
-      double time = plot->xAxis->pixelToCoord(event->pos().x());
-      cursorMarker->setPosition(time, QString("%1 s").arg(time, 10, 'f', 6));
-      plot->replot();
-   }
-
-   void mousePress(QMouseEvent *event) const
-   {
-      Qt::KeyboardModifiers keyModifiers = QGuiApplication::queryKeyboardModifiers();
-
-      if (keyModifiers & Qt::ControlModifier)
-      {
-         plot->setSelectionRectMode(QCP::srmSelect);
-      }
-      else
-      {
-         plot->setSelectionRectMode(QCP::srmNone);
+         channels->data()->clear();
+         channels->selection().clear();
       }
    }
 
-   void keyPress(QKeyEvent *event)
+   void refresh()
    {
-      cursorMarker->setVisible(event->modifiers() & Qt::AltModifier);
-
-      plot->replot();
    }
 
-   void keyRelease(QKeyEvent *event)
+   void rowsInserted(const QModelIndex &parent, int first, int last)
    {
-      cursorMarker->setVisible(event->modifiers() & Qt::AltModifier);
-
-      plot->replot();
-   }
-
-   void selectionChanged() const
-   {
-      QList<QCPGraph *> selectedGraphs = plot->selectedGraphs();
-
-      double startTime = 0;
-      double endTime = 0;
-
-      selectedFrames->setVisible(false);
-
-      if (!selectedGraphs.empty())
+      for (int row = first; row <= last; row++)
       {
-         QList<QCPGraph *>::Iterator itGraph = selectedGraphs.begin();
+         QModelIndex index = streamModel->index(row, 0, parent);
 
-         while (itGraph != selectedGraphs.end())
+         if (const lab::RawFrame *frame = streamModel->frame(index))
          {
-            QCPGraph *graph = *itGraph++;
-
-            QCPDataSelection selection = graph->selection();
-
-            for (int i = 0; i < selection.dataRangeCount(); i++)
+            switch (frame->techType())
             {
-               QCPDataRange range = selection.dataRange(i);
+               case lab::NfcNoneTech:
+               case lab::NfcATech:
+               case lab::NfcBTech:
+               case lab::NfcFTech:
+               case lab::NfcVTech:
+                  addNfcFrame(frame);
+                  break;
 
-               QCPGraphDataContainer::const_iterator data = graph->data()->at(range.begin());
-               QCPGraphDataContainer::const_iterator end = graph->data()->at(range.end());
+               case lab::IsoNoneTech:
+               case lab::Iso7816Tech:
+                  addIsoFrame(frame);
+                  break;
+            }
+         }
+      }
 
-               while (data != end)
-               {
-                  double timestamp = data->key;
+      // update graph
+      double rangeStart = qInf();
+      double rangeEnd = qInf();
 
-                  if (startTime == 0 || timestamp < startTime)
-                     startTime = timestamp;
+      for (auto channel: channels)
+      {
+         if (channel->data()->size() > 0)
+         {
+            if (rangeStart == qInf() || rangeStart > channel->data()->at(0)->start)
+               rangeStart = channel->data()->at(0)->start;
 
-                  if (endTime == 0 || timestamp > endTime)
-                     endTime = timestamp;
+            if (rangeEnd == qInf() || rangeEnd < channel->data()->at(channel->data()->size() - 1)->end)
+               rangeEnd = channel->data()->at(channel->data()->size() - 1)->end;
+         }
+      }
 
-                  data++;
-               }
+      if (rangeStart != qInf() && rangeEnd != qInf())
+         widget->setDataRange(rangeStart, rangeEnd);
+   }
+
+   void addNfcFrame(const lab::RawFrame *frame)
+   {
+      QSharedPointer<QCPDigitalDataContainer> frameData = channels[Nfc]->data();
+
+      QCPDigitalDataContainer::iterator previous = frameData->end();
+
+      if (previous != frameData->begin())
+         --previous;
+
+      // add carrier / silence segment
+      if (frame->frameType() == lab::FrameType::NfcCarrierOn || frame->frameType() == lab::FrameType::NfcCarrierOff)
+      {
+         if (frame->frameType() == lab::FrameType::NfcCarrierOn)
+         {
+            // initialize first carrier segment
+            if (previous == frameData->end())
+            {
+               frameData->add(FrameData(NfcCarrier, NfcCarrier, frame->timeStart(), frame->timeEnd(), 20));
+            }
+
+            // add previous carrier segment
+            else if (previous->type >= NfcARequest)
+            {
+               frameData->add(FrameData(NfcCarrier, NfcCarrier, previous->end, frame->timeStart(), 20));
+            }
+
+            // update previous carrier segment
+            else
+            {
+               previous->end = frame->timeStart();
+
+               // mark new carrier segment
+               frameData->add(FrameData(NfcCarrier, NfcCarrier, frame->timeStart(), frame->timeEnd(), 20));
+            }
+         }
+         else
+         {
+            // add first event as silence
+            if (previous == frameData->end())
+            {
+               frameData->add(FrameData(NfcSilence, NfcSilence, frame->timeStart(), frame->timeEnd(), 0));
+            }
+
+            // add previous carrier segment
+            else if (previous->type >= NfcARequest)
+            {
+               frameData->add(FrameData(NfcCarrier, NfcCarrier, previous->end, frame->timeStart(), 20));
+
+               // mark new silence segment
+               frameData->add(FrameData(NfcSilence, NfcSilence, frame->timeStart(), frame->timeEnd(), 0));
+            }
+
+            // update previous silence / carrier segment
+            else
+            {
+               previous->end = frame->timeStart();
+
+               // mark new silence segment
+               frameData->add(FrameData(NfcSilence, NfcSilence, frame->timeStart(), frame->timeEnd(), 0));
+            }
+         }
+      }
+
+      // add NFC frame
+      else if (frame->frameType() == lab::FrameType::NfcPollFrame || frame->frameType() == lab::FrameType::NfcListenFrame)
+      {
+         int type = -1;
+
+         switch (frame->techType())
+         {
+            case lab::FrameTech::NfcATech:
+               type = frame->frameType() == lab::FrameType::NfcPollFrame ? NfcARequest : NfcAResponse;
+               break;
+            case lab::FrameTech::NfcBTech:
+               type = frame->frameType() == lab::FrameType::NfcPollFrame ? NfcBRequest : NfcBResponse;
+               break;
+            case lab::FrameTech::NfcFTech:
+               type = frame->frameType() == lab::FrameType::NfcPollFrame ? NfcFRequest : NfcFResponse;
+               break;
+            case lab::FrameTech::NfcVTech:
+               type = frame->frameType() == lab::FrameType::NfcPollFrame ? NfcVRequest : NfcVResponse;
+               break;
+         }
+
+         // update previous carrier segment
+         if (previous != frameData->end())
+         {
+            if (previous->type >= NfcARequest)
+            {
+               frameData->add(FrameData(NfcCarrier, NfcCarrier, previous->end, frame->timeStart(), 20));
+            }
+            else
+            {
+               previous->end = frame->timeStart();
             }
          }
 
-         if (startTime > 0 && startTime < endTime)
-         {
-            // show timing marker
-            selectedFrames->setPositionStart(startTime);
-            selectedFrames->setPositionEnd(endTime);
-            selectedFrames->setVisible(true);
-         }
+         // add new frame
+         frameData->add(FrameData(type, type, frame->timeStart(), frame->timeEnd(), 24, toByteArray(*frame)));
       }
-
-      // refresh graph
-      plot->replot();
-
-      // trigger selection changed signal
-      widget->selectionChanged(startTime, endTime);
    }
 
-   void rangeChanged(const QCPRange &newRange) const
+   void addIsoFrame(const lab::RawFrame *frame)
    {
-      QCPRange fixRange = newRange;
+      QSharedPointer<QCPDigitalDataContainer> frameData = channels[Iso]->data();
 
-      if (newRange.lower < minimumRange || newRange.lower > maximumRange)
-         fixRange.lower = minimumRange < +INT32_MAX ? minimumRange : 0;
+      // add first event as silence
+      if (frameData->isEmpty())
+         frameData->add(FrameData(IsoSilence, IsoSilence, 0, 0, 0));
 
-      if (newRange.upper > maximumRange || newRange.upper < minimumRange)
-         fixRange.upper = maximumRange > -INT32_MAX ? maximumRange : 1;
+      QCPDigitalDataContainer::iterator previous = frameData->end();
 
-      if (newRange != fixRange)
+      // get previous segment
+      if (previous != frameData->begin())
+         --previous;
+
+      // if previous segment is not silence, add new silence segment between frames
+      if (previous->type >= IsoStartup)
+         frameData->add(FrameData(IsoSilence, IsoSilence, previous->end, frame->timeStart(), 0));
+
+         // or increase previous silence segment
+      else
+         previous->end = frame->timeStart();
+
+      switch (frame->frameType())
       {
-         plot->xAxis->blockSignals(true);
-         plot->xAxis->setRange(fixRange);
-         plot->xAxis->blockSignals(false);
+         case lab::FrameType::IsoATRFrame:
+            frameData->add(FrameData(IsoStartup, IsoStartup, frame->timeStart(), frame->timeEnd(), 24, toByteArray(*frame)));
+            break;
+
+         case lab::FrameType::IsoRequestFrame:
+            frameData->add(FrameData(IsoRequest, IsoRequest, frame->timeStart(), frame->timeEnd(), 24, toByteArray(*frame)));
+            break;
+
+         case lab::FrameType::IsoResponseFrame:
+            frameData->add(FrameData(IsoResponse, IsoResponse, frame->timeStart(), frame->timeEnd(), 24, toByteArray(*frame)));
+            break;
+
+         case lab::FrameType::IsoExchangeFrame:
+            frameData->add(FrameData(IsoExchange, IsoExchange, frame->timeStart(), frame->timeEnd(), 24, toByteArray(*frame)));
+            break;
       }
+
+      // add new frame
+   }
+
+   void modelReset() const
+   {
+      widget->clear();
+   }
+
+   QCPRange selectByUser() const
+   {
+      // get current selection on any channel
+      for (auto channel: channels)
+      {
+         QCPDataSelection selection = channel->selection();
+
+         // for empty selection no further action
+         if (selection.isEmpty())
+            continue;
+
+         double startTime = channel->data()->at(selection.span().begin())->start;
+         double endTime = channel->data()->at(selection.span().end() - 1)->end;
+
+         return {startTime, endTime};
+      }
+
+      return {};
+   }
+
+   QCPRange selectByRect(const QRect &rect) const
+   {
+      // get current selection pn any channel
+      for (auto channel: channels)
+      {
+         // clear current selection
+         channel->setSelection(QCPDataSelection());
+
+         if (rect.isEmpty())
+            continue;
+
+         // transport rect start / end to start / end in plot coordinates
+         double rectStart = widget->plot()->xAxis->pixelToCoord(rect.left());
+         double rectEnd = widget->plot()->xAxis->pixelToCoord(rect.right());
+
+         // get start / end index of data to be selected
+         int startIndex = static_cast<int>(channel->data()->findBegin(rectStart, false) - channel->data()->constBegin());
+         int endIndex = static_cast<int>(channel->data()->findEnd(rectEnd, false) - channel->data()->constBegin() - 1);
+
+         // only select events fully contained inside rect selection
+         if (startIndex >= endIndex)
+            return {};
+
+         // finally get start / end for final selection
+         double startTime = channel->data()->at(startIndex)->start;
+         double endTime = channel->data()->at(endIndex - 1)->end;
+
+         // select data in graph
+         channel->setSelection(QCPDataSelection({startIndex, endIndex}));
+
+         return {startTime, endTime};
+      }
+
+      return {};
+   }
+
+   QCPRange rangeFilter(const QCPRange &newRange) const
+   {
+      return newRange;
+   }
+
+   QCPRange scaleFilter(const QCPRange &newScale) const
+   {
+      // return {0, static_cast<double>(channels.size()) + 1};
+      return {0, 3};
+   }
+
+   static QByteArray toByteArray(const lab::RawFrame &frame)
+   {
+      QByteArray buffer;
+
+      for (int i = 0; i < frame.limit(); i++)
+      {
+         buffer.append(frame[i]);
+      }
+
+      return buffer;
+   }
+
+   void setChannel(Channel channel, bool enabled)
+   {
+      enabledChannels[channel] = enabled;
+
+      switch (channel)
+      {
+         case Nfc:
+            channels[Nfc]->setLegend(NfcA, "NFC-A", enabled ? NfcARequest : NfcSilence);
+            channels[Nfc]->setLegend(NfcB, "NFC-B", enabled ? NfcBRequest : NfcSilence);
+            channels[Nfc]->setLegend(NfcF, "NFC-F", enabled ? NfcFRequest : NfcSilence);
+            channels[Nfc]->setLegend(NfcV, "NFC-V", enabled ? NfcVRequest : NfcSilence);
+            break;
+      }
+   }
+
+   void setProtocol(Protocol proto, bool enabled)
+   {
+      enabledProtocols[proto] = enabled;
+
+      switch (proto)
+      {
+         case NfcA:
+            channels[Nfc]->setLegend(NfcA, "NFC-A", enabled ? NfcARequest : NfcSilence);
+            break;
+         case NfcB:
+            channels[Nfc]->setLegend(NfcB, "NFC-B", enabled ? NfcBRequest : NfcSilence);
+            break;
+         case NfcF:
+            channels[Nfc]->setLegend(NfcF, "NFC-F", enabled ? NfcFRequest : NfcSilence);
+            break;
+         case NfcV:
+            channels[Nfc]->setLegend(NfcV, "NFC-V", enabled ? NfcVRequest : NfcSilence);
+            break;
+         case ISO7816:
+            channels[Iso]->setLegend(ISO7816, "ISO-7816", enabled ? IsoRequest : IsoSilence);
+         break;
+      }
+
+      widget->plot()->replot();
    }
 };
 
-FramesWidget::FramesWidget(QWidget *parent) : QWidget(parent), impl(new Impl(this))
+FramesWidget::FramesWidget(QWidget *parent) : AbstractPlotWidget(parent), impl(new Impl(this))
 {
 }
 
-void FramesWidget::setRange(double lower, double upper)
+void FramesWidget::setModel(StreamModel *model)
 {
-   impl->setRange(lower, upper);
-}
-
-void FramesWidget::setCenter(double value)
-{
-   impl->setCenter(value);
-}
-
-void FramesWidget::append(const nfc::NfcFrame &frame)
-{
-   impl->append(frame);
-}
-
-void FramesWidget::select(double from, double to)
-{
-   impl->select(from, to);
-}
-
-void FramesWidget::refresh()
-{
-   impl->refresh();
+   impl->changeModel(model);
 }
 
 void FramesWidget::clear()
 {
    impl->clear();
+
+   AbstractPlotWidget::clear();
 }
 
-double FramesWidget::minimumRange() const
+void FramesWidget::refresh()
 {
-   return impl->minimumRange;
+   impl->refresh();
+
+   AbstractPlotWidget::refresh();
 }
 
-double FramesWidget::maximumRange() const
+QCPRange FramesWidget::selectByUser()
 {
-   return impl->maximumRange;
+   return impl->selectByUser();
 }
 
-void FramesWidget::enterEvent(QEvent *event)
+QCPRange FramesWidget::selectByRect(const QRect &rect)
 {
-   impl->mouseEnter();
+   return impl->selectByRect(rect);
 }
 
-void FramesWidget::leaveEvent(QEvent *event)
+QCPRange FramesWidget::rangeFilter(const QCPRange &newRange)
 {
-   impl->mouseLeave();
+   return AbstractPlotWidget::rangeFilter(newRange);
 }
 
-void FramesWidget::keyPressEvent(QKeyEvent *event)
+QCPRange FramesWidget::scaleFilter(const QCPRange &newScale)
 {
-   impl->keyPress(event);
+   return impl->scaleFilter(newScale);
 }
 
-void FramesWidget::keyReleaseEvent(QKeyEvent *event)
+void FramesWidget::setChannel(Channel channel, bool enabled)
 {
-   impl->keyRelease(event);
+   impl->setChannel(channel, enabled);
 }
 
+void FramesWidget::setProtocol(Protocol proto, bool enabled)
+{
+   impl->setProtocol(proto, enabled);
+}
 
+bool FramesWidget::hasProtocol(Protocol proto)
+{
+   return impl->enabledProtocols[proto];
+}

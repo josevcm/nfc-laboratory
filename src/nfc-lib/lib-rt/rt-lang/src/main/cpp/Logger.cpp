@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -26,6 +23,7 @@
 #include <pthread.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <fstream>
 #include <cmath>
@@ -34,6 +32,7 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 #include <rt/Logger.h>
 #include <rt/Format.h>
@@ -53,10 +52,28 @@ const char *tags[] = {
       "" // 7
 };
 
-// log event for store debugging information
-struct LogEvent
+int getLevelIndex(std::string name)
 {
-   std::string level;
+   // convert tu uppercase (as TAGs are uppercase)
+   std::transform(name.begin(), name.end(), name.begin(), toupper);
+
+   // search for level in tags
+   for (int i = 0; i < std::size(tags); i++)
+   {
+      if (name == tags[i])
+      {
+         return i;
+      }
+   }
+
+   return -1;
+}
+
+// log event for store debugging information
+struct Log
+{
+   int level;
+   std::string tag;
    std::string logger;
    std::string format;
    std::vector<Variant> params;
@@ -64,8 +81,9 @@ struct LogEvent
    std::thread::id thread;
    std::chrono::time_point<std::chrono::system_clock> time;
 
-   LogEvent(std::string level, std::string logger, std::string format, std::vector<Variant> params) :
-         level(std::move(level)),
+   Log(int level, std::string logger, std::string format, std::vector<Variant> params) :
+         level(level),
+         tag(tags[level]),
          logger(std::move(logger)),
          format(std::move(format)),
          params(std::move(params)),
@@ -75,11 +93,14 @@ struct LogEvent
    }
 };
 
-// threaded logger to console stdout, runs on low priority thread
-struct Logger::Writer
+// threaded appender
+struct Appender
 {
+   // global writer level (disabled by default)
+   int level = -1;
+
    // events queue
-   BlockingQueue<LogEvent *> queue;
+   BlockingQueue<Log *> queue;
 
    // output file
    std::ostream &stream;
@@ -93,12 +114,9 @@ struct Logger::Writer
    // writer thread
    std::thread thread;
 
-   // global writer level (disabled by default)
-   int level = -1;
-
-   Writer(std::ostream &stream, bool buffered) : stream(stream), shutdown(false), buffered(buffered), thread([this] { this->exec(); })
+   Appender(std::ostream &stream, int level, bool buffered) : level(level), stream(stream), shutdown(false), buffered(buffered), thread([this] { this->exec(); })
    {
-      sched_param param {0};
+      constexpr sched_param param {};
 
       if (pthread_setschedparam(thread.native_handle(), SCHED_OTHER, &param))
       {
@@ -106,7 +124,7 @@ struct Logger::Writer
       }
    }
 
-   ~Writer()
+   ~Appender()
    {
       // signal shutdown
       shutdown = true;
@@ -115,20 +133,12 @@ struct Logger::Writer
       thread.join();
    }
 
-   void push(LogEvent *event)
+   void push(Log *event)
    {
-      // reject nre events if shutdown is started
-      if (shutdown)
-         return;
-
       if (buffered)
-      {
          queue.add(event);
-      }
       else
-      {
          write(event);
-      }
    }
 
    void exec()
@@ -145,13 +155,13 @@ struct Logger::Writer
       }
    }
 
-   void write(LogEvent *event)
+   void write(const Log *event) const
    {
+      tm timeinfo {};
       char date[32], buffer[65535];
-      struct tm timeinfo {};
 
-      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
-      auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
+      const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
+      const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
 #ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
@@ -159,116 +169,140 @@ struct Logger::Writer
       localtime_r(&seconds, &timeinfo);
 #endif
 
-      std::ostringstream oss;
-      oss << event->thread;
-
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      int size = snprintf(buffer, sizeof(buffer), "%s.%03d %s (thread-%s) [%s] %s\n", date, (int) millis, event->level.c_str(), oss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      const int size = snprintf(buffer, sizeof(buffer), "%s.%03d %s [%02d] (%s) %s\n", date, static_cast<int>(millis), event->tag.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       stream.write(buffer, size);
 
       delete event;
    }
-
 };
 
-struct Logger::Impl
+// global appender instance
+std::shared_ptr<Appender> appender;
+
+// logger implementation
+Logger::Logger(std::string name, int level) : level(level), name(std::move(name))
 {
-   int level;
-   std::string name;
-
-   Impl(std::string name, int level) : name(std::move(name)), level(level)
-   {
-   }
-};
-
-std::shared_ptr<Logger::Writer> Logger::writer;
-
-std::shared_ptr<Logger::Impl> putLogger(const std::string &name, int level)
-{
-   static std::map<std::string, std::shared_ptr<Logger::Impl>> loggers;
-
-   if (loggers.find(name) == loggers.end())
-      loggers[name] = std::make_shared<Logger::Impl>(name, level);
-
-   return loggers[name];
-}
-
-Logger::Logger(const std::string &name, int level)
-{
-   impl = putLogger(name, level);
 }
 
 void Logger::trace(const std::string &format, std::vector<Variant> params) const
 {
    if (isEnabled(TRACE_LEVEL))
-      writer->push(new LogEvent(tags[TRACE_LEVEL], impl->name, format, std::move(params)));
+      appender->push(new Log(TRACE_LEVEL, name, format, std::move(params)));
 }
 
 void Logger::debug(const std::string &format, std::vector<Variant> params) const
 {
    if (isEnabled(DEBUG_LEVEL))
-      writer->push(new LogEvent(tags[DEBUG_LEVEL], impl->name, format, std::move(params)));
+      appender->push(new Log(DEBUG_LEVEL, name, format, std::move(params)));
 }
 
 void Logger::info(const std::string &format, std::vector<Variant> params) const
 {
    if (isEnabled(INFO_LEVEL))
-      writer->push(new LogEvent(tags[INFO_LEVEL], impl->name, format, std::move(params)));
+      appender->push(new Log(INFO_LEVEL, name, format, std::move(params)));
 }
 
 void Logger::warn(const std::string &format, std::vector<Variant> params) const
 {
    if (isEnabled(WARN_LEVEL))
-      writer->push(new LogEvent(tags[WARN_LEVEL], impl->name, format, std::move(params)));
+      appender->push(new Log(WARN_LEVEL, name, format, std::move(params)));
 }
 
 void Logger::error(const std::string &format, std::vector<Variant> params) const
 {
    if (isEnabled(ERROR_LEVEL))
-      writer->push(new LogEvent(tags[ERROR_LEVEL], impl->name, format, std::move(params)));
+      appender->push(new Log(ERROR_LEVEL, name, format, std::move(params)));
 }
 
 void Logger::print(int level, const std::string &format, std::vector<Variant> params) const
 {
    if (isEnabled(level))
-      writer->push(new LogEvent(tags[level & 0x7], impl->name, format, std::move(params)));
+      appender->push(new Log(level & 0x7, name, format, std::move(params)));
 }
 
-inline bool Logger::isEnabled(int value) const
+bool Logger::isEnabled(int value) const
 {
-   return writer && ((writer->level < NONE_LEVEL && impl->level >= value) || writer->level >= value);
+   return appender && (level >= value || appender->level >= value);
 }
 
-inline int Logger::getLevel() const
+bool Logger::isTraceEnabled() const
 {
-   return impl->level;
+   return isEnabled(TRACE_LEVEL);
 }
 
-inline void Logger::setLevel(int level)
+bool Logger::isDebugEnabled() const
 {
-   impl->level = level;
+   return isEnabled(DEBUG_LEVEL);
 }
 
-int Logger::getWriterLevel()
+bool Logger::isInfoEnabled() const
 {
-   return writer->level;
+   return isEnabled(INFO_LEVEL);
 }
 
-void Logger::setWriterLevel(int level)
+int Logger::getLevel() const
 {
-   writer->level = level;
+   return level;
 }
 
-void Logger::init(std::ostream &stream, bool buffered)
+void Logger::setLevel(int level)
 {
-   writer.reset(new Writer(stream, buffered));
+   this->level = level;
+}
+
+void Logger::setLevel(const std::string &level)
+{
+   this->level = getLevelIndex(level);
+}
+
+Logger *Logger::getLogger(const std::string &name, int level)
+{
+   static std::mutex mutex;
+
+   std::lock_guard lock(mutex);
+
+   // insert logger if not found in instances
+   if (loggers().find(name) == loggers().end())
+      loggers().insert(std::make_pair(name, std::shared_ptr<Logger>(new Logger(name, level))));
+
+   // return logger instance
+   return loggers()[name].get();
+}
+
+std::map<std::string, std::shared_ptr<Logger>> &Logger::loggers()
+{
+   static std::map<std::string, std::shared_ptr<Logger>> instances;
+
+   return instances;
+}
+
+int Logger::getRootLevel()
+{
+   return appender->level;
+}
+
+void Logger::setRootLevel(int level)
+{
+   appender->level = level;
+}
+
+void Logger::setRootLevel(const std::string &name)
+{
+   appender->level = getLevelIndex(name);
+}
+
+void Logger::init(std::ostream &stream, int level, bool buffered)
+{
+   appender = std::make_shared<Appender>(stream, level, buffered);
 }
 
 void Logger::flush()
 {
-   writer->stream.flush();
+   if (appender)
+      appender->stream.flush();
 }
 
 }

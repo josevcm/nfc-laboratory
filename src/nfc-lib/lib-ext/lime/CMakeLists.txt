@@ -7,8 +7,6 @@ file(GLOB LMS7002M_SOURCES "${PUBLIC_SOURCE_DIR}/LMS7002M_*.c")
 
 add_library(lms7002m STATIC ${LMS7002M_SOURCES})
 
-#target_compile_options(lms7002m PRIVATE "-msse2" -DUSE_SSE2)
-
 target_include_directories(lms7002m PUBLIC ${PUBLIC_SOURCE_DIR})
 target_include_directories(lms7002m PRIVATE ${PUBLIC_INCLUDE_DIR})
 

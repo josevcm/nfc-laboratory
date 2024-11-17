@@ -1,29 +1,26 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#ifndef LANG_BUFFER_H
-#define LANG_BUFFER_H
+#ifndef RT_BUFFER_H
+#define RT_BUFFER_H
 
 #include <atomic>
 #include <cstring>
@@ -37,24 +34,23 @@ namespace rt {
 template<class T>
 class Buffer
 {
-   private:
-
-      struct Alloc
+   struct Alloc
       {
          T *data = nullptr; // aligned payload data pointer
          void *block = nullptr;  // raw memory block pointer
-         void *context = nullptr; // custom context payload
-         unsigned int type = 0; // custom data type
-         unsigned int stride = 0; // custom data stride
+         void *context = nullptr; // context payload
+         unsigned int type = 0; // data type
+         unsigned int stride = 0; // data stride, how many data has in one chunk for all channels
+         unsigned int interleave = 0; // data interleave, how many consecutive data has per channel
          std::atomic<int> references; // block reference count
 
-         Alloc(unsigned int type, unsigned int capacity, unsigned int stride, void *context) : data(nullptr), type(type), references(1), stride(stride), context(context)
+         Alloc(unsigned int type, unsigned int capacity, unsigned int stride, unsigned int interleave, void *context) : data(nullptr), type(type), references(1), stride(stride), interleave(interleave), context(context)
          {
             // allocate raw memory including alignment space
             block = malloc(capacity * sizeof(T) + BUFFER_ALIGNMENT);
 
             // align data buffer
-            data = (T *) ((((uintptr_t) block) + BUFFER_ALIGNMENT) & ~(BUFFER_ALIGNMENT - 1));
+            data = (T *) ((reinterpret_cast<uintptr_t>(block) + BUFFER_ALIGNMENT) & ~(BUFFER_ALIGNMENT - 1));
          }
 
          ~Alloc()
@@ -63,17 +59,17 @@ class Buffer
             free(block);
          }
 
-         inline int attach()
+         int attach()
          {
             return ++references;
          }
 
-         inline int detach()
+         int detach()
          {
             return --references;
          }
 
-      } *alloc;
+      } *alloc {};
 
       struct State
       {
@@ -89,23 +85,23 @@ class Buffer
 
    public:
 
-      Buffer() : state(0, 0, 0), alloc(nullptr)
+      Buffer() : alloc(nullptr), state(0, 0, 0)
       {
       }
 
-      Buffer(const Buffer &other) : state(other.state), alloc(other.alloc)
+      Buffer(const Buffer &other) : alloc(other.alloc), state(other.state)
       {
          if (alloc)
             alloc->attach();
       }
 
-      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, void *context = nullptr) : state(0, capacity, capacity), alloc(new Alloc(type, capacity, stride, context))
+      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state(0, capacity, capacity), alloc(new Alloc(type, capacity, stride, interleave, context))
       {
          if (data && capacity)
             put(data, capacity).flip();
       }
 
-      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, void *context = nullptr) : state(0, capacity, capacity), alloc(new Alloc(type, capacity, stride, context))
+      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state(0, capacity, capacity), alloc(new Alloc(type, capacity, stride, interleave, context))
       {
       }
 
@@ -115,7 +111,7 @@ class Buffer
             delete alloc;
       }
 
-      inline Buffer &operator=(const Buffer &other)
+      Buffer &operator=(const Buffer &other)
       {
          if (&other == this)
             return *this;
@@ -132,7 +128,7 @@ class Buffer
          return *this;
       }
 
-      inline bool operator==(const Buffer &other) const
+      bool operator==(const Buffer &other) const
       {
          if (this == &other)
             return true;
@@ -146,12 +142,12 @@ class Buffer
          return std::memcmp(alloc->data + state.position, other.alloc->data + state.position, state.limit) == 0;
       }
 
-      inline bool operator!=(const Buffer &other) const
+      bool operator!=(const Buffer &other) const
       {
          return !operator==(other);
       }
 
-      inline void reset()
+      void reset()
       {
          if (alloc && alloc->detach() == 0)
             delete alloc;
@@ -160,82 +156,87 @@ class Buffer
          alloc = {nullptr};
       }
 
-      inline bool isValid() const
+      bool isValid() const
       {
          return alloc;
       }
 
-      inline bool isEmpty() const
+      bool isEmpty() const
       {
          return state.position == state.limit;
       }
 
-      inline unsigned int position() const
+      unsigned int position() const
       {
          return state.position;
       }
 
-      inline unsigned int limit() const
+      unsigned int limit() const
       {
          return state.limit;
       }
 
-      inline unsigned int capacity() const
+      unsigned int capacity() const
       {
          return state.capacity;
       }
 
-      inline unsigned int available() const
+      unsigned int available() const
       {
          return state.limit - state.position;
       }
 
-      inline unsigned int elements() const
+      unsigned int elements() const
       {
-         return alloc ? state.limit / alloc->stride : 0;
+         return alloc ? state.limit * alloc->interleave / alloc->stride : 0;
       }
 
-      inline unsigned int stride() const
+      unsigned int stride() const
       {
          return alloc ? alloc->stride : 0;
       }
 
-      inline unsigned int size() const
+      unsigned int interleave() const
+      {
+         return alloc ? alloc->interleave : 0;
+      }
+
+      unsigned int size() const
       {
          return alloc ? state.limit * sizeof(T) : 0;
       }
 
-      inline unsigned int chunk() const
+      unsigned int chunk() const
       {
          return alloc ? alloc->stride * sizeof(T) : 0;
       }
 
-      virtual inline operator bool() const
+      operator bool() const
       {
-         return alloc != nullptr;
+         return isValid();
       }
 
-      inline unsigned int references() const
+      unsigned int references() const
       {
-         return alloc ? (unsigned int) alloc->references : 0;
+         return alloc ? static_cast<unsigned int>(alloc->references) : 0;
       }
 
-      inline unsigned int type() const
+      unsigned int type() const
       {
          return alloc ? alloc->type : 0;
       }
 
-      inline void *context() const
+      void *context() const
       {
          return alloc ? alloc->context : nullptr;
       }
 
-      inline T *data() const
+      T *data() const
       {
          return alloc ? alloc->data : nullptr;
       }
 
-      inline T *pull(unsigned int size)
+      T *pull(unsigned int size)
       {
          if (alloc && state.position + size <= state.capacity)
          {
@@ -249,7 +250,7 @@ class Buffer
          return nullptr;
       }
 
-      inline Buffer<T> &resize(unsigned int newCapacity)
+      Buffer &resize(unsigned int newCapacity)
       {
          if (alloc)
          {
@@ -270,7 +271,7 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &clear()
+      Buffer &clear()
       {
          if (alloc)
          {
@@ -281,7 +282,7 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &flip()
+      Buffer &flip()
       {
          if (alloc)
          {
@@ -292,7 +293,7 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &rewind()
+      Buffer &rewind()
       {
          if (alloc)
          {
@@ -302,7 +303,7 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &get(T *data)
+      Buffer &get(T *data)
       {
          if (alloc && state.position < state.limit)
          {
@@ -312,7 +313,7 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &put(const T *data)
+      Buffer &put(const T *data)
       {
          if (alloc && state.position < state.limit)
          {
@@ -322,7 +323,7 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &get(T &value)
+      Buffer &get(T &value)
       {
          if (alloc && state.position < state.limit)
          {
@@ -332,7 +333,7 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &put(const T &value)
+      Buffer &put(const T &value)
       {
          if (alloc && state.position < state.limit)
          {
@@ -342,11 +343,11 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &get(T *data, unsigned int size)
+      Buffer &get(T *data, unsigned int size)
       {
          if (alloc)
          {
-            for (int i = 0; state.position < state.limit && i < size; i++, state.position++)
+            for (int i = 0; state.position < state.limit && i < size; ++i, ++state.position)
             {
                data[i] = alloc->data[state.position];
             }
@@ -355,11 +356,11 @@ class Buffer
          return *this;
       }
 
-      inline Buffer<T> &put(const T *data, unsigned int size)
+      Buffer &put(const T *data, unsigned int size)
       {
          if (alloc)
          {
-            for (int i = 0; i < size && state.position < state.limit; i++, state.position++)
+            for (int i = 0; i < size && state.position < state.limit; ++i, ++state.position)
             {
                alloc->data[state.position] = data[i];
             }
@@ -369,11 +370,11 @@ class Buffer
       }
 
       template<typename E>
-      inline E reduce(E value, const std::function<E(E, T)> &handler) const
+      E reduce(E value, const std::function<E(E, T)> &handler) const
       {
          if (alloc)
          {
-            for (int i = state.position; i < state.limit; i++)
+            for (int i = state.position; i < state.limit; ++i)
             {
                value = handler(value, alloc->data[i]);
             }
@@ -382,7 +383,7 @@ class Buffer
          return value;
       }
 
-      inline void stream(const std::function<void(const T *, unsigned int)> &handler) const
+      void stream(const std::function<void(const T *, unsigned int)> &handler) const
       {
          if (alloc)
          {
@@ -393,12 +394,12 @@ class Buffer
          }
       }
 
-      inline T &operator[](unsigned int index)
+      T &operator[](unsigned int index)
       {
          return alloc->data[index];
       }
 
-      inline const T &operator[](unsigned int index) const
+      const T &operator[](unsigned int index) const
       {
          return alloc->data[index];
       }

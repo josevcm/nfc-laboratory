@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -27,29 +24,24 @@
 
 #include "StorageStatusEvent.h"
 
-const int StorageStatusEvent::Type = QEvent::registerEventType();
+const int StorageStatusEvent::Type = registerEventType();
 
-const QString StorageStatusEvent::Idle = "idle";
 const QString StorageStatusEvent::Reading = "reading";
 const QString StorageStatusEvent::Writing = "writing";
+const QString StorageStatusEvent::Progress = "progress";
+const QString StorageStatusEvent::Complete = "complete";
+const QString StorageStatusEvent::Error = "error";
 
-StorageStatusEvent::StorageStatusEvent() :
-      QEvent(QEvent::Type(Type))
+StorageStatusEvent::StorageStatusEvent() : QEvent(static_cast<QEvent::Type>(Type))
 {
 }
 
-StorageStatusEvent::StorageStatusEvent(int status) :
-      QEvent(QEvent::Type(Type))
+StorageStatusEvent::StorageStatusEvent(int status) : QEvent(static_cast<QEvent::Type>(Type))
 {
 }
 
-StorageStatusEvent::StorageStatusEvent(QJsonObject data) : QEvent(QEvent::Type(Type)), data(std::move(data))
+StorageStatusEvent::StorageStatusEvent(QJsonObject data) : QEvent(static_cast<QEvent::Type>(Type)), data(std::move(data))
 {
-}
-
-bool StorageStatusEvent::isIdle() const
-{
-   return hasStatus() && status() == Idle;
 }
 
 bool StorageStatusEvent::isReading() const
@@ -60,6 +52,21 @@ bool StorageStatusEvent::isReading() const
 bool StorageStatusEvent::isWriting() const
 {
    return hasStatus() && status() == Writing;
+}
+
+bool StorageStatusEvent::isProgress() const
+{
+   return hasStatus() && status() == Progress;
+}
+
+bool StorageStatusEvent::isComplete() const
+{
+   return hasStatus() && status() == Complete;
+}
+
+bool StorageStatusEvent::isError() const
+{
+   return hasStatus() && status() == Error;
 }
 
 bool StorageStatusEvent::hasStatus() const
@@ -112,6 +119,16 @@ long StorageStatusEvent::streamTime() const
    return data["streamTime"].toInt();
 }
 
+bool StorageStatusEvent::hasMessage() const
+{
+   return data.contains("message");
+}
+
+QString StorageStatusEvent::message() const
+{
+   return data["message"].toString();
+}
+
 StorageStatusEvent *StorageStatusEvent::create()
 {
    return new StorageStatusEvent();
@@ -121,6 +138,3 @@ StorageStatusEvent *StorageStatusEvent::create(const QJsonObject &data)
 {
    return new StorageStatusEvent(data);
 }
-
-
-

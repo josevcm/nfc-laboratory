@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -243,9 +240,9 @@ void HexViewWidget::setData(const QByteArray &data)
 
 void HexViewWidget::setCursor(int position)
 {
-   if (impl->data.count() > 0)
+   if (impl->data.size() > 0)
    {
-      impl->cursorPosition = std::clamp(position, 0, impl->data.count() - 1);
+      impl->cursorPosition = std::clamp(position, 0, (int) impl->data.size() - 1);
       impl->cursorVisible = true;
 
       impl->blinkTimer->start(500);
@@ -256,10 +253,10 @@ void HexViewWidget::setCursor(int position)
 
 void HexViewWidget::setSelection(int start, int end)
 {
-   if (start >= 0 && end >= start && impl->data.count() > 0)
+   if (start >= 0 && end >= start && impl->data.size() > 0)
    {
-      impl->selectionStart = std::clamp(start, 0, impl->data.count() - 1);
-      impl->selectionEnd = std::clamp(end, 0, impl->data.count() - 1);
+      impl->selectionStart = std::clamp(start, 0, (int) impl->data.size() - 1);
+      impl->selectionEnd = std::clamp(end, 0, (int) impl->data.size() - 1);
 
       QClipboard *clipboard = QApplication::clipboard();
 

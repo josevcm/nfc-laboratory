@@ -1,35 +1,34 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
 #ifndef NFC_LAB_PARSERNFC_H
 #define NFC_LAB_PARSERNFC_H
 
-#include <nfc/NfcFrame.h>
+#include <lab/data/RawFrame.h>
 
 #include <protocol/ProtocolFrame.h>
 
-struct ParserNfc
+#include <parser/Parser.h>
+
+struct ParserNfc : Parser
 {
    enum Caps
    {
@@ -40,44 +39,28 @@ struct ParserNfc
 
    virtual void reset();
 
-   virtual ProtocolFrame *parse(const nfc::NfcFrame &frame);
+   virtual ProtocolFrame *parse(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestUnknown(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestUnknown(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseUnknown(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseUnknown(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseAPDU(const QString &name, const nfc::NfcFrame &frame, int start, int length);
-
-   ProtocolFrame *buildRootInfo(const QString &name, const nfc::NfcFrame &frame, int flags);
-
-   ProtocolFrame *buildChildInfo(const QVariant &info);
-
-   ProtocolFrame *buildChildInfo(const QString &name, const QVariant &info);
-
-   ProtocolFrame *buildChildInfo(const QString &name, const QVariant &info, int start, int length);
-
-   ProtocolFrame *buildChildInfo(const QString &name, const nfc::NfcFrame &frame, int start, int length);
-
-   ProtocolFrame *buildChildInfo(const QString &name, const QVariant &info, int flags, int start, int length);
+   ProtocolFrame *parseAPDU(const QString &name, const lab::RawFrame &frame, int start, int length);
 
    bool isApdu(const QByteArray &apdu);
-
-   QByteArray toByteArray(const nfc::NfcFrame &frame, int from = 0, int length = INT32_MAX);
-
-   QString toString(const QByteArray &array);
 };
 
 struct ParserNfcIsoDep : ParserNfc
 {
    void reset() override;
 
-   ProtocolFrame *parse(const nfc::NfcFrame &frame) override;
+   ProtocolFrame *parse(const lab::RawFrame &frame) override;
 
-   ProtocolFrame *parseIBlock(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseIBlock(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRBlock(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRBlock(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseSBlock(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseSBlock(const lab::RawFrame &frame);
 };
 
 #endif //NFC_LAB_PARSERNFC_H

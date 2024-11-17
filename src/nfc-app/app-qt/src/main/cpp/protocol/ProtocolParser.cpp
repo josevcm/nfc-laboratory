@@ -1,34 +1,29 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include <QDebug>
-
-#include <parser/ParserNfc.h>
 #include <parser/ParserNfcA.h>
 #include <parser/ParserNfcB.h>
 #include <parser/ParserNfcF.h>
 #include <parser/ParserNfcV.h>
+#include <parser/ParserISO7816.h>
 
 #include "ProtocolParser.h"
 
@@ -42,9 +37,11 @@ struct ProtocolParser::Impl
 
    ParserNfcV nfcv;
 
+   ParserISO7816 iso7816;
+
    unsigned int frameCount;
 
-   nfc::NfcFrame lastFrame;
+   lab::RawFrame lastFrame;
 
    Impl() : frameCount(1)
    {
@@ -58,30 +55,31 @@ struct ProtocolParser::Impl
       nfcb.reset();
       nfcf.reset();
       nfcv.reset();
+      iso7816.reset();
    }
 
-   ProtocolFrame *parse(const nfc::NfcFrame &frame)
+   ProtocolFrame *parse(const lab::RawFrame &frame)
    {
-      ProtocolFrame *info = nullptr;
+      switch (frame.techType())
+      {
+         case lab::FrameTech::NfcATech:
+            return nfca.parse(frame);
 
-      if (frame.isNfcA())
-      {
-         info = nfca.parse(frame);
-      }
-      else if (frame.isNfcB())
-      {
-         info = nfcb.parse(frame);
-      }
-      else if (frame.isNfcF())
-      {
-         info = nfcf.parse(frame);
-      }
-      else if (frame.isNfcV())
-      {
-         info = nfcv.parse(frame);
-      }
+         case lab::FrameTech::NfcBTech:
+            return nfcb.parse(frame);
 
-      return info;
+         case lab::FrameTech::NfcFTech:
+            return nfcf.parse(frame);
+
+         case lab::FrameTech::NfcVTech:
+            return nfcv.parse(frame);
+
+         case lab::FrameTech::Iso7816Tech:
+            return iso7816.parse(frame);
+
+         default:
+            return nullptr;
+      }
    }
 };
 
@@ -96,8 +94,7 @@ void ProtocolParser::reset()
    impl->reset();
 }
 
-ProtocolFrame *ProtocolParser::parse(const nfc::NfcFrame &frame)
+ProtocolFrame *ProtocolParser::parse(const lab::RawFrame &frame)
 {
    return impl->parse(frame);
 }
-

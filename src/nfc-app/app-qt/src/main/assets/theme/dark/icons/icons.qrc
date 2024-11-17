@@ -1,0 +1,50 @@
+<RCC>
+    <!-- https://tabler-icons.io/ -->
+    <!-- https://www.svgrepo.com/collections/monocolor/ -->
+    <!-- https://boxy-svg.com/app -->
+    <qresource prefix="/icons/dark">
+        <file>index.theme</file>
+        <file>actions/scalable/action-about.svg</file>
+        <file>actions/scalable/action-clear.svg</file>
+        <file>actions/scalable/action-decoder.svg</file>
+        <file>actions/scalable/action-filter.svg</file>
+        <file>actions/scalable/action-follow.svg</file>
+        <file>actions/scalable/action-help.svg</file>
+        <file>actions/scalable/action-listen.svg</file>
+        <file>actions/scalable/action-logic.svg</file>
+        <file>actions/scalable/action-open.svg</file>
+        <file>actions/scalable/action-radio.svg</file>
+        <file>actions/scalable/action-record.svg</file>
+        <file>actions/scalable/action-refresh.svg</file>
+        <file>actions/scalable/action-register.svg</file>
+        <file>actions/scalable/action-save.svg</file>
+        <file>actions/scalable/action-selected.svg</file>
+        <file>actions/scalable/action-setup.svg</file>
+        <file>actions/scalable/action-spectrum.svg</file>
+        <file>actions/scalable/action-stop.svg</file>
+        <file>actions/scalable/action-stream.svg</file>
+        <file>actions/scalable/action-time.svg</file>
+        <file>actions/scalable/action-wide.svg</file>
+        <file>actions/scalable/action-zoom.svg</file>
+        <file>arrows/scalable/frame-startup.svg</file>
+        <file>arrows/scalable/frame-request.svg</file>
+        <file>arrows/scalable/frame-response.svg</file>
+        <file>arrows/scalable/frame-exchange.svg</file>
+        <file>arrows/scalable/caret-down-filled.svg</file>
+        <file>arrows/scalable/caret-up-filled.svg</file>
+        <file>arrows/scalable/caret-up-down-filled.svg</file>
+        <file>arrows/scalable/carrier-off.svg</file>
+        <file>arrows/scalable/carrier-on.svg</file>
+        <file>filter/scalable/filter-empty.svg</file>
+        <file>filter/scalable/filter-filled-void.svg</file>
+        <file>filter/scalable/filter-filled.svg</file>
+        <file>filter/scalable/filter-off.svg</file>
+        <file>filter/scalable/match-bytes.svg</file>
+        <file>filter/scalable/match-regex.svg</file>
+        <file>filter/scalable/math-greater.svg</file>
+        <file>filter/scalable/math-lower.svg</file>
+        <file>flags/scalable/alert-circle-filled.svg</file>
+        <file>flags/scalable/alert-triangle-filled.svg</file>
+        <file>flags/scalable/lock-flag-filled.svg</file>
+    </qresource>
+</RCC>

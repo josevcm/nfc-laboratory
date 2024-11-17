@@ -1,1087 +1,1390 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>QtWindow</class>
- <widget class="QMainWindow" name="mainWindow">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>1024</width>
-    <height>723</height>
-   </rect>
-  </property>
-  <property name="windowIcon">
-   <iconset>
-    <normalon>:/app_icons/app-icon</normalon>
-   </iconset>
-  </property>
-  <property name="autoFillBackground">
-   <bool>false</bool>
-  </property>
-  <widget class="QToolBar" name="toolBar">
-   <property name="windowTitle">
-    <string>toolBar</string>
-   </property>
-   <property name="movable">
-    <bool>false</bool>
-   </property>
-   <property name="orientation">
-    <enum>Qt::Horizontal</enum>
-   </property>
-   <property name="floatable">
-    <bool>false</bool>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-   <addaction name="actionOpen"/>
-   <addaction name="actionSave"/>
-   <addaction name="actionClear"/>
-   <addaction name="separator"/>
-   <addaction name="actionTime"/>
-   <addaction name="actionFollow"/>
-   <addaction name="actionFilter"/>
-   <addaction name="separator"/>
-   <addaction name="actionSetup"/>
-   <addaction name="separator"/>
-   <addaction name="actionNfcA"/>
-   <addaction name="actionNfcB"/>
-   <addaction name="actionNfcF"/>
-   <addaction name="actionNfcV"/>
-  </widget>
-  <widget class="QSplitter" name="workbench">
-   <property name="orientation">
-    <enum>Qt::Vertical</enum>
-   </property>
-   <property name="handleWidth">
-    <number>0</number>
-   </property>
-   <widget class="QWidget" name="upperSplit" native="true">
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>0</width>
-      <height>0</height>
-     </size>
-    </property>
-    <layout class="QVBoxLayout" name="verticalLayout_3">
-     <property name="spacing">
-      <number>0</number>
-     </property>
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
-      <number>0</number>
-     </property>
-     <item>
-      <widget class="QWidget" name="buttonsWidget" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout21">
-        <property name="leftMargin">
-         <number>5</number>
+    <class>QtWindow</class>
+    <widget class="QMainWindow" name="mainWindow">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>1024</width>
+                <height>723</height>
+            </rect>
         </property>
-        <property name="topMargin">
-         <number>5</number>
+        <property name="windowIcon">
+            <iconset>
+                <normalon>:/app/app-icon</normalon>
+            </iconset>
         </property>
-        <property name="rightMargin">
-         <number>5</number>
+        <property name="autoFillBackground">
+            <bool>false</bool>
         </property>
-        <property name="bottomMargin">
-         <number>0</number>
-        </property>
-        <item>
-         <widget class="QPushButton" name="listenButton">
-          <property name="minimumSize">
-           <size>
-            <width>100</width>
-            <height>36</height>
-           </size>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>9</pointsize>
-           </font>
-          </property>
-          <property name="accessibleName">
-           <string>ok</string>
-          </property>
-          <property name="styleSheet">
-           <string notr="true"/>
-          </property>
-          <property name="text">
-           <string>Live</string>
-          </property>
-          <property name="icon">
-           <iconset>
-            <normalon>:/app_icons/listen-icon</normalon>
-            <disabledon>:/app_icons/listen-icon-disabled</disabledon>
-           </iconset>
-          </property>
-          <property name="iconSize">
-           <size>
-            <width>24</width>
-            <height>24</height>
-           </size>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="recordButton">
-          <property name="minimumSize">
-           <size>
-            <width>100</width>
-            <height>36</height>
-           </size>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>9</pointsize>
-           </font>
-          </property>
-          <property name="accessibleName">
-           <string>info</string>
-          </property>
-          <property name="text">
-           <string>Record</string>
-          </property>
-          <property name="icon">
-           <iconset>
-            <normalon>:/app_icons/record-icon</normalon>
-            <disabledon>:/app_icons/record-icon-disabled</disabledon>
-           </iconset>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="stopButton">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>100</width>
-            <height>36</height>
-           </size>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>9</pointsize>
-           </font>
-          </property>
-          <property name="accessibleName">
-           <string>cancel</string>
-          </property>
-          <property name="text">
-           <string>Stop</string>
-          </property>
-          <property name="icon">
-           <iconset>
-            <normalon>:/app_icons/stop-icon</normalon>
-            <disabledon>:/app_icons/stop-icon-disabled</disabledon>
-           </iconset>
-          </property>
-          <property name="iconSize">
-           <size>
-            <width>24</width>
-            <height>24</height>
-           </size>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QLabel" name="headerLabel">
-          <property name="font">
-           <font>
-            <family>Verdana</family>
-            <pointsize>13</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="iconLabel">
-          <property name="text">
-           <string/>
-          </property>
-          <property name="pixmap">
-           <pixmap>:/app_icons/logo</pixmap>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item>
-      <widget class="QWidget" name="searchWidget" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout31">
-        <property name="leftMargin">
-         <number>5</number>
-        </property>
-        <property name="topMargin">
-         <number>5</number>
-        </property>
-        <property name="rightMargin">
-         <number>5</number>
-        </property>
-        <property name="bottomMargin">
-         <number>0</number>
-        </property>
-        <item>
-         <widget class="QLabel" name="filterLabel">
-          <property name="font">
-           <font>
-            <family>Verdana</family>
-            <pointsize>11</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Filter:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="filterEdit">
-          <property name="font">
-           <font>
-            <family>Courier</family>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item>
-      <widget class="QWidget" name="streamWidget" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <layout class="QHBoxLayout" name="verticalLayout41">
-        <property name="leftMargin">
-         <number>5</number>
-        </property>
-        <property name="topMargin">
-         <number>5</number>
-        </property>
-        <property name="rightMargin">
-         <number>5</number>
-        </property>
-        <property name="bottomMargin">
-         <number>5</number>
-        </property>
-        <item>
-         <widget class="QTableView" name="streamView">
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="font">
-           <font>
-            <family>Courier</family>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="autoScroll">
-           <bool>true</bool>
-          </property>
-          <property name="alternatingRowColors">
-           <bool>false</bool>
-          </property>
-          <property name="selectionMode">
-           <enum>QAbstractItemView::ExtendedSelection</enum>
-          </property>
-          <property name="selectionBehavior">
-           <enum>QAbstractItemView::SelectRows</enum>
-          </property>
-          <property name="showGrid">
-           <bool>false</bool>
-          </property>
-          <property name="wordWrap">
-           <bool>false</bool>
-          </property>
-          <property name="cornerButtonEnabled">
-           <bool>false</bool>
-          </property>
-          <attribute name="horizontalHeaderStretchLastSection">
-           <bool>true</bool>
-          </attribute>
-          <attribute name="verticalHeaderVisible">
-           <bool>false</bool>
-          </attribute>
-          <attribute name="verticalHeaderMinimumSectionSize">
-           <number>20</number>
-          </attribute>
-          <attribute name="verticalHeaderDefaultSectionSize">
-           <number>20</number>
-          </attribute>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="lowerSplit" native="true">
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>0</width>
-      <height>0</height>
-     </size>
-    </property>
-    <layout class="QHBoxLayout" name="horizontalLayout51">
-     <property name="leftMargin">
-      <number>5</number>
-     </property>
-     <property name="topMargin">
-      <number>5</number>
-     </property>
-     <property name="rightMargin">
-      <number>5</number>
-     </property>
-     <property name="bottomMargin">
-      <number>0</number>
-     </property>
-     <item>
-      <widget class="QTabWidget" name="statusTabs">
-       <property name="font">
-        <font>
-         <family>Verdana</family>
-         <pointsize>8</pointsize>
-        </font>
-       </property>
-       <property name="currentIndex">
-        <number>0</number>
-       </property>
-       <property name="tabBarAutoHide">
-        <bool>true</bool>
-       </property>
-       <widget class="QWidget" name="parserTab">
-        <attribute name="title">
-         <string>Protocol</string>
-        </attribute>
-        <layout class="QHBoxLayout" name="horizontalLayout52">
-         <property name="spacing">
-          <number>2</number>
-         </property>
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QTreeView" name="parserView">
-           <property name="font">
-            <font>
-             <family>Courier</family>
-             <pointsize>10</pointsize>
-            </font>
-           </property>
-           <property name="frameShape">
-            <enum>QFrame::NoFrame</enum>
-           </property>
-           <property name="lineWidth">
-            <number>0</number>
-           </property>
-           <property name="selectionMode">
-            <enum>QAbstractItemView::SingleSelection</enum>
-           </property>
-           <property name="selectionBehavior">
-            <enum>QAbstractItemView::SelectRows</enum>
-           </property>
-           <property name="rootIsDecorated">
-            <bool>true</bool>
-           </property>
-           <property name="headerHidden">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="HexViewWidget" name="hexView" native="true">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="framesTab">
-        <attribute name="title">
-         <string>Frames</string>
-        </attribute>
-        <layout class="QHBoxLayout" name="horizontalLayout_21">
-         <property name="spacing">
-          <number>0</number>
-         </property>
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="FramesWidget" name="framesView" native="true"/>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="signalTab">
-        <attribute name="title">
-         <string>Signal</string>
-        </attribute>
-        <layout class="QVBoxLayout" name="verticalLayout_20">
-         <property name="spacing">
-          <number>0</number>
-         </property>
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="SignalWidget" name="signalView" native="true">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QScrollBar" name="signalScroll">
-           <property name="maximum">
-            <number>0</number>
-           </property>
-           <property name="singleStep">
-            <number>1</number>
-           </property>
-           <property name="pageStep">
-            <number>1</number>
-           </property>
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="receiverTab">
-        <attribute name="title">
-         <string>Receiver</string>
-        </attribute>
-        <layout class="QHBoxLayout" name="horizontalLayout_22">
-         <property name="spacing">
-          <number>0</number>
-         </property>
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="FourierWidget" name="frequencyView" native="true">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QWidget" name="widget" native="true">
-           <property name="minimumSize">
-            <size>
-             <width>100</width>
-             <height>0</height>
-            </size>
-           </property>
-           <layout class="QVBoxLayout" name="verticalLayout_4">
-            <property name="leftMargin">
-             <number>10</number>
+        <widget class="QSplitter" name="workbench">
+            <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
             </property>
-            <property name="topMargin">
-             <number>10</number>
+            <property name="handleWidth">
+                <number>0</number>
             </property>
-            <property name="rightMargin">
-             <number>10</number>
-            </property>
-            <property name="bottomMargin">
-             <number>10</number>
-            </property>
-            <item>
-             <widget class="QComboBox" name="gainMode">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_5">
-              <item>
-               <widget class="QSlider" name="gainValue">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
+            <widget class="QWidget" name="upperView" native="true">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                    </sizepolicy>
                 </property>
                 <property name="minimumSize">
-                 <size>
-                  <width>24</width>
-                  <height>0</height>
-                 </size>
+                    <size>
+                        <width>0</width>
+                        <height>0</height>
+                    </size>
                 </property>
-                <property name="tracking">
-                 <bool>false</bool>
+                <layout class="QVBoxLayout" name="upperViewLayout">
+                    <property name="spacing">
+                        <number>0</number>
+                    </property>
+                    <property name="leftMargin">
+                        <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                        <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                        <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                        <number>0</number>
+                    </property>
+                    <item>
+                        <widget class="QTabWidget" name="upperTabs">
+                            <property name="font">
+                                <font>
+                                    <family>Verdana</family>
+                                    <pointsize>8</pointsize>
+                                    <bold>false</bold>
+                                </font>
+                            </property>
+                            <property name="tabPosition">
+                                <enum>QTabWidget::TabPosition::West</enum>
+                            </property>
+                            <property name="currentIndex">
+                                <number>0</number>
+                            </property>
+                            <property name="elideMode">
+                                <enum>Qt::TextElideMode::ElideNone</enum>
+                            </property>
+                            <property name="usesScrollButtons">
+                                <bool>true</bool>
+                            </property>
+                            <property name="documentMode">
+                                <bool>true</bool>
+                            </property>
+                            <widget class="QWidget" name="framesTab">
+                                <attribute name="title">
+                                    <string>Frames</string>
+                                </attribute>
+                                <layout class="QVBoxLayout" name="framesTabLayout">
+                                    <property name="spacing">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="leftMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="topMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="rightMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="bottomMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <item>
+                                        <widget class="FramesWidget" name="framesView" native="true"/>
+                                    </item>
+                                    <item>
+                                        <widget class="QScrollBar" name="framesScroll">
+                                            <property name="maximum">
+                                                <number>0</number>
+                                            </property>
+                                            <property name="singleStep">
+                                                <number>1</number>
+                                            </property>
+                                            <property name="pageStep">
+                                                <number>1</number>
+                                            </property>
+                                            <property name="orientation">
+                                                <enum>Qt::Orientation::Horizontal</enum>
+                                            </property>
+                                        </widget>
+                                    </item>
+                                </layout>
+                            </widget>
+                            <widget class="QWidget" name="signalTab">
+                                <attribute name="title">
+                                    <string>Signal</string>
+                                </attribute>
+                                <layout class="QVBoxLayout" name="signalTabLayout">
+                                    <property name="spacing">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="leftMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="topMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="rightMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="bottomMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <item>
+                                        <widget class="QLabel" name="signalLabel" native="true">
+                                            <property name="text">
+                                                <string>Start acquisition or open a trace file</string>
+                                            </property>
+                                            <property name="font">
+                                                <font>
+                                                    <family>Courier</family>
+                                                    <pointsize>12</pointsize>
+                                                    <bold>true</bold>
+                                                </font>
+                                            </property>
+                                            <property name="alignment">
+                                                <set>Qt::AlignmentFlag::AlignCenter</set>
+                                            </property>
+                                            <property name="sizePolicy">
+                                                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                                                    <horstretch>0</horstretch>
+                                                    <verstretch>0</verstretch>
+                                                </sizepolicy>
+                                            </property>
+                                        </widget>
+                                    </item>
+                                    <item>
+                                        <widget class="LogicWidget" name="logicView" native="true">
+                                            <property name="sizePolicy">
+                                                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                    <horstretch>0</horstretch>
+                                                    <verstretch>0</verstretch>
+                                                </sizepolicy>
+                                            </property>
+                                        </widget>
+                                    </item>
+                                    <item>
+                                        <widget class="RadioWidget" name="radioView" native="true">
+                                            <property name="sizePolicy">
+                                                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                    <horstretch>0</horstretch>
+                                                    <verstretch>0</verstretch>
+                                                </sizepolicy>
+                                            </property>
+                                        </widget>
+                                    </item>
+                                    <item>
+                                        <widget class="QScrollBar" name="signalScroll">
+                                            <property name="maximum">
+                                                <number>0</number>
+                                            </property>
+                                            <property name="singleStep">
+                                                <number>1</number>
+                                            </property>
+                                            <property name="pageStep">
+                                                <number>1</number>
+                                            </property>
+                                            <property name="orientation">
+                                                <enum>Qt::Orientation::Horizontal</enum>
+                                            </property>
+                                        </widget>
+                                    </item>
+                                </layout>
+                            </widget>
+                            <widget class="QWidget" name="spectrumTab">
+                                <attribute name="title">
+                                    <string>Receiver</string>
+                                </attribute>
+                                <layout class="QHBoxLayout" name="receiverTabLayout">
+                                    <property name="spacing">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="leftMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="topMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="rightMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="bottomMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <item>
+                                        <widget class="FrequencyWidget" name="frequencyView" native="true">
+                                            <property name="sizePolicy">
+                                                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                    <horstretch>0</horstretch>
+                                                    <verstretch>0</verstretch>
+                                                </sizepolicy>
+                                            </property>
+                                        </widget>
+                                    </item>
+                                    <item>
+                                        <layout class="QVBoxLayout" name="gainLayout">
+                                            <property name="spacing">
+                                                <number>10</number>
+                                            </property>
+                                            <property name="leftMargin">
+                                                <number>10</number>
+                                            </property>
+                                            <property name="topMargin">
+                                                <number>10</number>
+                                            </property>
+                                            <property name="rightMargin">
+                                                <number>10</number>
+                                            </property>
+                                            <property name="bottomMargin">
+                                                <number>10</number>
+                                            </property>
+                                            <item>
+                                                <widget class="QLabel" name="gainText">
+                                                    <property name="text">
+                                                        <string>Gain</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QSlider" name="gainValue">
+                                                    <property name="enabled">
+                                                        <bool>false</bool>
+                                                    </property>
+                                                    <property name="sizePolicy">
+                                                        <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+                                                            <horstretch>0</horstretch>
+                                                            <verstretch>0</verstretch>
+                                                        </sizepolicy>
+                                                    </property>
+                                                    <property name="minimumSize">
+                                                        <size>
+                                                            <width>24</width>
+                                                            <height>0</height>
+                                                        </size>
+                                                    </property>
+                                                    <property name="tracking">
+                                                        <bool>false</bool>
+                                                    </property>
+                                                    <property name="orientation">
+                                                        <enum>Qt::Orientation::Vertical</enum>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QLabel" name="gainLabel">
+                                                    <property name="text">
+                                                        <string>0.0</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                        </layout>
+                                    </item>
+                                </layout>
+                            </widget>
+                        </widget>
+                    </item>
+                </layout>
+            </widget>
+            <widget class="QWidget" name="lowerView">
+                <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                    </sizepolicy>
                 </property>
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                <property name="minimumSize">
+                    <size>
+                        <width>0</width>
+                        <height>0</height>
+                    </size>
                 </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QProgressBar" name="signalStrength">
-                <property name="enabled">
-                 <bool>true</bool>
+                <layout class="QHBoxLayout" name="lowerViewLayout">
+                    <property name="spacing">
+                        <number>0</number>
+                    </property>
+                    <property name="leftMargin">
+                        <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                        <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                        <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                        <number>0</number>
+                    </property>
+                    <item>
+                        <widget class="QTabWidget" name="lowerTabs">
+                            <property name="font">
+                                <font>
+                                    <family>Verdana</family>
+                                    <pointsize>8</pointsize>
+                                    <bold>false</bold>
+                                </font>
+                            </property>
+                            <property name="tabPosition">
+                                <enum>QTabWidget::TabPosition::North</enum>
+                            </property>
+                            <property name="currentIndex">
+                                <number>0</number>
+                            </property>
+                            <property name="elideMode">
+                                <enum>Qt::TextElideMode::ElideNone</enum>
+                            </property>
+                            <property name="usesScrollButtons">
+                                <bool>true</bool>
+                            </property>
+                            <property name="documentMode">
+                                <bool>true</bool>
+                            </property>
+                            <widget class="QWidget" name="decoderView">
+                                <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                </property>
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>0</height>
+                                    </size>
+                                </property>
+                                <attribute name="title">
+                                    <string>Frames</string>
+                                </attribute>
+                                <layout class="QVBoxLayout" name="decoderViewLayout">
+                                    <property name="spacing">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="leftMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="topMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="rightMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="bottomMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <item>
+                                        <layout class="QVBoxLayout" name="decoderToolBarLayout">
+                                            <property name="spacing">
+                                                <number>0</number>
+                                            </property>
+                                            <property name="leftMargin">
+                                                <number>0</number>
+                                            </property>
+                                            <property name="topMargin">
+                                                <number>0</number>
+                                            </property>
+                                            <property name="rightMargin">
+                                                <number>0</number>
+                                            </property>
+                                            <property name="bottomMargin">
+                                                <number>1</number>
+                                            </property>
+                                            <item>
+                                                <widget class="QToolBar" name="decoderToolBar">
+                                                    <property name="movable">
+                                                        <bool>false</bool>
+                                                    </property>
+                                                    <property name="orientation">
+                                                        <enum>Qt::Orientation::Horizontal</enum>
+                                                    </property>
+                                                    <property name="floatable">
+                                                        <bool>false</bool>
+                                                    </property>
+                                                    <addaction name="actionFollow"/>
+                                                    <addaction name="actionTime"/>
+                                                    <addaction name="actionFilter"/>
+                                                    <addaction name="actionReset"/>
+                                                </widget>
+                                            </item>
+                                        </layout>
+                                    </item>
+                                    <item>
+                                        <widget class="QSplitter" name="decoding">
+                                            <property name="sizePolicy">
+                                                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                                                    <horstretch>0</horstretch>
+                                                    <verstretch>0</verstretch>
+                                                </sizepolicy>
+                                            </property>
+                                            <property name="orientation">
+                                                <enum>Qt::Orientation::Horizontal</enum>
+                                            </property>
+                                            <property name="handleWidth">
+                                                <number>0</number>
+                                            </property>
+                                            <widget class="StreamWidget" name="decodeView">
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                                                        <horstretch>0</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>0</height>
+                                                    </size>
+                                                </property>
+                                                <property name="font">
+                                                    <font>
+                                                        <family>Courier</family>
+                                                        <pointsize>10</pointsize>
+                                                        <bold>false</bold>
+                                                    </font>
+                                                </property>
+                                                <property name="horizontalScrollBarPolicy">
+                                                    <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
+                                                </property>
+                                                <property name="autoScroll">
+                                                    <bool>true</bool>
+                                                </property>
+                                                <property name="alternatingRowColors">
+                                                    <bool>false</bool>
+                                                </property>
+                                                <property name="selectionMode">
+                                                    <enum>QAbstractItemView::SelectionMode::ContiguousSelection</enum>
+                                                </property>
+                                                <property name="selectionBehavior">
+                                                    <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+                                                </property>
+                                                <property name="showGrid">
+                                                    <bool>false</bool>
+                                                </property>
+                                                <property name="wordWrap">
+                                                    <bool>false</bool>
+                                                </property>
+                                                <property name="cornerButtonEnabled">
+                                                    <bool>false</bool>
+                                                </property>
+                                                <attribute name="horizontalHeaderStretchLastSection">
+                                                    <bool>true</bool>
+                                                </attribute>
+                                                <attribute name="verticalHeaderVisible">
+                                                    <bool>false</bool>
+                                                </attribute>
+                                                <attribute name="verticalHeaderMinimumSectionSize">
+                                                    <number>20</number>
+                                                </attribute>
+                                                <attribute name="verticalHeaderDefaultSectionSize">
+                                                    <number>20</number>
+                                                </attribute>
+                                            </widget>
+                                            <widget class="QWidget" name="parserWidget">
+                                                <layout class="QVBoxLayout" name="parserViewLayout">
+                                                    <property name="spacing">
+                                                        <number>0</number>
+                                                    </property>
+                                                    <property name="leftMargin">
+                                                        <number>0</number>
+                                                    </property>
+                                                    <property name="topMargin">
+                                                        <number>0</number>
+                                                    </property>
+                                                    <property name="rightMargin">
+                                                        <number>0</number>
+                                                    </property>
+                                                    <property name="bottomMargin">
+                                                        <number>0</number>
+                                                    </property>
+                                                    <item>
+                                                        <widget class="ParserWidget" name="parserView">
+                                                            <property name="sizePolicy">
+                                                                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                                                                    <horstretch>0</horstretch>
+                                                                    <verstretch>0</verstretch>
+                                                                </sizepolicy>
+                                                            </property>
+                                                            <property name="font">
+                                                                <font>
+                                                                    <family>Courier</family>
+                                                                    <pointsize>10</pointsize>
+                                                                    <bold>false</bold>
+                                                                </font>
+                                                            </property>
+                                                            <property name="frameShape">
+                                                                <enum>QFrame::Shape::NoFrame</enum>
+                                                            </property>
+                                                            <property name="lineWidth">
+                                                                <number>0</number>
+                                                            </property>
+                                                            <property name="horizontalScrollBarPolicy">
+                                                                <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
+                                                            </property>
+                                                            <property name="selectionMode">
+                                                                <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+                                                            </property>
+                                                            <property name="selectionBehavior">
+                                                                <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+                                                            </property>
+                                                            <property name="rootIsDecorated">
+                                                                <bool>true</bool>
+                                                            </property>
+                                                            <property name="headerHidden">
+                                                                <bool>false</bool>
+                                                            </property>
+                                                            <property name="wordWrap">
+                                                                <bool>true</bool>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                    <item>
+                                                        <widget class="HexViewWidget" name="dataView" native="true">
+                                                            <property name="sizePolicy">
+                                                                <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+                                                                    <horstretch>0</horstretch>
+                                                                    <verstretch>0</verstretch>
+                                                                </sizepolicy>
+                                                            </property>
+                                                            <property name="minimumSize">
+                                                                <size>
+                                                                    <width>0</width>
+                                                                    <height>80</height>
+                                                                </size>
+                                                            </property>
+                                                            <property name="maximumSize">
+                                                                <size>
+                                                                    <width>16777215</width>
+                                                                    <height>80</height>
+                                                                </size>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                </layout>
+                                            </widget>
+                                        </widget>
+                                    </item>
+                                </layout>
+                            </widget>
+                            <widget class="QWidget" name="eventsTab">
+                                <attribute name="title">
+                                    <string>Events</string>
+                                </attribute>
+                                <layout class="QHBoxLayout" name="eventsTabLayout">
+                                    <property name="spacing">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="leftMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="topMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="rightMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <property name="bottomMargin">
+                                        <number>0</number>
+                                    </property>
+                                    <item>
+                                        <widget class="QTextEdit" name="eventsLog">
+                                            <property name="font">
+                                                <font>
+                                                    <family>Verdana</family>
+                                                    <pointsize>8</pointsize>
+                                                    <bold>false</bold>
+                                                </font>
+                                            </property>
+                                        </widget>
+                                    </item>
+                                </layout>
+                            </widget>
+                        </widget>
+                    </item>
+                </layout>
+            </widget>
+        </widget>
+        <widget class="QMenuBar" name="menuBar">
+            <property name="geometry">
+                <rect>
+                    <x>0</x>
+                    <y>0</y>
+                    <width>1024</width>
+                    <height>33</height>
+                </rect>
+            </property>
+            <widget class="QMenu" name="menuFile">
+                <property name="title">
+                    <string>File</string>
                 </property>
-                <property name="value">
-                 <number>0</number>
+                <addaction name="actionOpen"/>
+                <addaction name="actionSave"/>
+                <addaction name="actionExport"/>
+            </widget>
+            <widget class="QMenu" name="menuDevice">
+                <property name="title">
+                    <string>Acquisition</string>
                 </property>
-                <property name="textVisible">
-                 <bool>false</bool>
+                <addaction name="actionListen"/>
+                <addaction name="actionRecord"/>
+                <addaction name="actionStop"/>
+            </widget>
+            <widget class="QMenu" name="menuView">
+                <property name="title">
+                    <string>View</string>
                 </property>
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                <addaction name="actionFollow"/>
+                <addaction name="actionTime"/>
+                <addaction name="actionZoom"/>
+                <addaction name="actionWide"/>
+            </widget>
+            <widget class="QMenu" name="menuProtocol">
+                <property name="title">
+                    <string>Protocol</string>
                 </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <widget class="QLabel" name="gainLabel">
-              <property name="text">
-               <string>Gain: </string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="eventsTab">
-        <attribute name="title">
-         <string>Events</string>
-        </attribute>
-        <layout class="QHBoxLayout" name="horizontalLayout_23">
-         <property name="spacing">
-          <number>0</number>
-         </property>
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QTextEdit" name="eventsLog">
-           <property name="font">
-            <font>
-             <family>Verdana</family>
-             <pointsize>8</pointsize>
-            </font>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QStatusBar" name="statusBar"/>
-  <action name="actionOpen">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/app_icons/action-open</normaloff>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Open</string>
-   </property>
-   <property name="toolTip">
-    <string>Open</string>
-   </property>
-  </action>
-  <action name="actionSave">
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>:/app_icons/action-save</normaloff>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Record</string>
-   </property>
-   <property name="toolTip">
-    <string>Record</string>
-   </property>
-  </action>
-  <action name="actionFollow">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <activeon>:/app_icons/action-follow</activeon>
-     <activeoff>:/app_icons/action-follow</activeoff>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Follow</string>
-   </property>
-   <property name="text">
-    <string>Follow</string>
-   </property>
-  </action>
-  <action name="actionFilter">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <activeon>:/app_icons/action-filter</activeon>
-     <activeoff>:/app_icons/action-filter</activeoff>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Filter</string>
-   </property>
-   <property name="toolTip">
-    <string>Filter</string>
-   </property>
-  </action>
-  <action name="actionTime">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <activeon>:/app_icons/action-time</activeon>
-     <activeoff>:/app_icons/action-time</activeoff>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Time</string>
-   </property>
-   <property name="toolTip">
-    <string>Time</string>
-   </property>
-  </action>
-  <action name="actionSetup">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/app_icons/action-setup</normaloff>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Setup</string>
-   </property>
-   <property name="toolTip">
-    <string>Setup</string>
-   </property>
-  </action>
-  <action name="actionClear">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/app_icons/action-clear</normaloff>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Clear</string>
-   </property>
-   <property name="toolTip">
-    <string>Clear</string>
-   </property>
-  </action>
-  <action name="actionNfcA">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>NfcA</string>
-   </property>
-   <property name="toolTip">
-    <string>NfcA</string>
-   </property>
-   <property name="font">
-    <font>
-     <family>Verdana</family>
-     <bold>false</bold>
-    </font>
-   </property>
-  </action>
-  <action name="actionNfcB">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>NfcB</string>
-   </property>
-   <property name="toolTip">
-    <string>NfcB</string>
-   </property>
-   <property name="font">
-    <font>
-     <family>Verdana</family>
-     <bold>false</bold>
-    </font>
-   </property>
-  </action>
-  <action name="actionNfcF">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>NfcF</string>
-   </property>
-   <property name="toolTip">
-    <string>NfcF</string>
-   </property>
-   <property name="font">
-    <font>
-     <family>Verdana</family>
-     <bold>false</bold>
-    </font>
-   </property>
-  </action>
-  <action name="actionNfcV">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>NfcV</string>
-   </property>
-   <property name="toolTip">
-    <string>NfcV</string>
-   </property>
-   <property name="font">
-    <font>
-     <family>Verdana</family>
-     <bold>false</bold>
-    </font>
-   </property>
-  </action>
- </widget>
- <customwidgets>
-  <customwidget>
-   <class>HexViewWidget</class>
-   <extends>QWidget</extends>
-   <header>widgets/HexViewWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>FourierWidget</class>
-   <extends>QWidget</extends>
-   <header>widgets/FourierWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>FramesWidget</class>
-   <extends>QWidget</extends>
-   <header>widgets/FramesWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>SignalWidget</class>
-   <extends>QWidget</extends>
-   <header>widgets/SignalWidget.h</header>
-  </customwidget>
- </customwidgets>
- <resources>
-  <include location="../../assets/icons/icons.qrc"/>
-  <include location="../resources/icons/icons.qrc"/>
- </resources>
- <connections>
-  <connection>
-   <sender>actionOpen</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>openFile()</slot>
-  </connection>
-  <connection>
-   <sender>actionSave</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>saveFile()</slot>
-  </connection>
-  <connection>
-   <sender>actionClear</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>clearView()</slot>
-  </connection>
-  <connection>
-   <sender>actionTime</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleTime()</slot>
-  </connection>
-  <connection>
-   <sender>actionFollow</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleFollow()</slot>
-  </connection>
-  <connection>
-   <sender>actionFilter</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleFilter()</slot>
-  </connection>
-  <connection>
-   <sender>actionSetup</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>openConfig()</slot>
-  </connection>
-  <connection>
-   <sender>actionNfcA</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleNfcA()</slot>
-  </connection>
-  <connection>
-   <sender>actionNfcB</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleNfcB()</slot>
-  </connection>
-  <connection>
-   <sender>actionNfcF</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleNfcF()</slot>
-  </connection>
-  <connection>
-   <sender>actionNfcV</sender>
-   <signal>triggered()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleNfcV()</slot>
-  </connection>
-  <connection>
-   <sender>listenButton</sender>
-   <signal>clicked()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleListen()</slot>
-  </connection>
-  <connection>
-   <sender>recordButton</sender>
-   <signal>clicked()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleRecord()</slot>
-  </connection>
-  <connection>
-   <sender>stopButton</sender>
-   <signal>clicked()</signal>
-   <receiver>mainWindow</receiver>
-   <slot>toggleStop()</slot>
-  </connection>
-  <connection>
-   <sender>filterEdit</sender>
-   <signal>textChanged(QString)</signal>
-   <receiver>mainWindow</receiver>
-   <slot>changeFilter(QString)</slot>
-  </connection>
-  <connection>
-   <sender>gainMode</sender>
-   <signal>currentIndexChanged(int)</signal>
-   <receiver>mainWindow</receiver>
-   <slot>changeGainMode(int)</slot>
-  </connection>
-  <connection>
-   <sender>gainValue</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>mainWindow</receiver>
-   <slot>changeGainValue(int)</slot>
-  </connection>
-  <connection>
-   <sender>gainValue</sender>
-   <signal>sliderMoved(int)</signal>
-   <receiver>mainWindow</receiver>
-   <slot>trackGainValue(int)</slot>
-  </connection>
- </connections>
- <slots>
-  <slot>openFile()</slot>
-  <slot>selectionChanged(QItemSelection,QItemSelection)</slot>
-  <slot>changeGainMode(int)</slot>
-  <slot>changeGainValue(int)</slot>
-  <slot>changeFilter(QString)</slot>
-  <slot>trackGainValue(int)</slot>
-  <slot>openConfig()</slot>
-  <slot>saveFile()</slot>
-  <slot>clearView()</slot>
-  <slot>toggleTime()</slot>
-  <slot>toggleFilter()</slot>
-  <slot>toggleFollow()</slot>
-  <slot>toggleLive()</slot>
-  <slot>toggleListen()</slot>
-  <slot>toggleRecord()</slot>
-  <slot>toggleStop()</slot>
-  <slot>toggleNfcA()</slot>
-  <slot>toggleNfcB()</slot>
-  <slot>toggleNfcF()</slot>
-  <slot>toggleNfcV()</slot>
-  <slot>toggleTunerAgc(bool)</slot>
-  <slot>toggleMixerAgc(bool)</slot>
- </slots>
+                <addaction name="protocolISO14443A"/>
+                <addaction name="protocolISO14443B"/>
+                <addaction name="protocolISO18092"/>
+                <addaction name="protocolISO15693"/>
+                <addaction name="separator"/>
+                <addaction name="protocolISO7816"/>
+            </widget>
+            <widget class="QMenu" name="menuFeatures">
+                <property name="title">
+                    <string>Features</string>
+                </property>
+                <addaction name="featureRadioAcquire"/>
+                <addaction name="featureRadioDecoder"/>
+                <addaction name="featureRadioSpectrum"/>
+                <addaction name="separator"/>
+                <addaction name="featureLogicAcquire"/>
+                <addaction name="featureLogicDecoder"/>
+            </widget>
+            <widget class="QMenu" name="menuHelp">
+                <property name="title">
+                    <string>Help</string>
+                </property>
+                <addaction name="actionHelp"/>
+                <addaction name="separator"/>
+                <addaction name="actionAbout"/>
+            </widget>
+            <addaction name="menuFile"/>
+            <addaction name="menuDevice"/>
+            <addaction name="menuView"/>
+            <addaction name="menuProtocol"/>
+            <addaction name="menuFeatures"/>
+            <addaction name="menuHelp"/>
+        </widget>
+        <widget class="QToolBar" name="mainToolBar">
+            <property name="windowTitle">
+                <string>toolBar</string>
+            </property>
+            <property name="movable">
+                <bool>false</bool>
+            </property>
+            <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="floatable">
+                <bool>false</bool>
+            </property>
+            <attribute name="toolBarArea">
+                <enum>TopToolBarArea</enum>
+            </attribute>
+            <attribute name="toolBarBreak">
+                <bool>false</bool>
+            </attribute>
+            <addaction name="actionOpen"/>
+            <addaction name="actionSave"/>
+            <addaction name="actionExport"/>
+            <addaction name="actionClear"/>
+            <addaction name="actionZoom"/>
+            <addaction name="actionWide"/>
+            <addaction name="separator"/>
+            <addaction name="actionListen"/>
+            <addaction name="actionRecord"/>
+            <addaction name="actionStop"/>
+            <addaction name="separator"/>
+            <addaction name="actionInfo"/>
+        </widget>
+        <widget class="QStatusBar" name="statusBar"/>
+        <action name="actionListen">
+            <property name="icon">
+                <iconset theme="action-listen"/>
+            </property>
+            <property name="text">
+                <string>Start</string>
+            </property>
+            <property name="toolTip">
+                <string>Start acquisition</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+A</string>
+            </property>
+        </action>
+        <action name="actionRecord">
+            <property name="icon">
+                <iconset theme="action-record"/>
+            </property>
+            <property name="text">
+                <string>Record</string>
+            </property>
+            <property name="toolTip">
+                <string>Start recording</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+W</string>
+            </property>
+        </action>
+        <action name="actionStop">
+            <property name="icon">
+                <iconset theme="action-stop"/>
+            </property>
+            <property name="text">
+                <string>Stop</string>
+            </property>
+            <property name="toolTip">
+                <string>Stop acquisition</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+Q</string>
+            </property>
+        </action>
+        <action name="actionOpen">
+            <property name="icon">
+                <iconset theme="action-open"/>
+            </property>
+            <property name="text">
+                <string>Open Trace</string>
+            </property>
+            <property name="toolTip">
+                <string>Open Trace From File</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+O</string>
+            </property>
+        </action>
+        <action name="actionSave">
+            <property name="icon">
+                <iconset theme="action-save"/>
+            </property>
+            <property name="text">
+                <string>Save Trace</string>
+            </property>
+            <property name="toolTip">
+                <string>Save Trace To File</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+S</string>
+            </property>
+        </action>
+        <action name="actionExport">
+            <property name="icon">
+                <iconset theme="action-selected"/>
+            </property>
+            <property name="text">
+                <string>Save Selected</string>
+            </property>
+            <property name="toolTip">
+                <string>Save Selected Trace To File</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+E</string>
+            </property>
+        </action>
+        <action name="actionSetup">
+            <property name="icon">
+                <iconset theme="action-setup"/>
+            </property>
+            <property name="text">
+                <string>Open Settings</string>
+            </property>
+            <property name="toolTip">
+                <string>Settings</string>
+            </property>
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <bold>false</bold>
+                </font>
+            </property>
+        </action>
+        <action name="actionZoom">
+            <property name="icon">
+                <iconset theme="action-zoom"/>
+            </property>
+            <property name="text">
+                <string>Fit Zoom to Selection</string>
+            </property>
+            <property name="toolTip">
+                <string>Fit Zoom to Selection</string>
+            </property>
+        </action>
+        <action name="actionWide">
+            <property name="icon">
+                <iconset theme="action-wide"/>
+            </property>
+            <property name="text">
+                <string>Reset Zoom</string>
+            </property>
+            <property name="toolTip">
+                <string>Reset Zoom, See All</string>
+            </property>
+        </action>
+        <action name="actionClear">
+            <property name="icon">
+                <iconset theme="action-clear"/>
+            </property>
+            <property name="text">
+                <string>Clear All Events</string>
+            </property>
+            <property name="toolTip">
+                <string>Clear Events</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+D</string>
+            </property>
+        </action>
+        <action name="actionAbout">
+            <property name="icon">
+                <iconset theme="action-about"/>
+            </property>
+            <property name="text">
+                <string>About...</string>
+            </property>
+            <property name="toolTip">
+                <string>About...</string>
+            </property>
+        </action>
+        <action name="actionHelp">
+            <property name="icon">
+                <iconset theme="action-help"/>
+            </property>
+            <property name="text">
+                <string>Contents...</string>
+            </property>
+            <property name="toolTip">
+                <string>Contents...</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+H</string>
+            </property>
+        </action>
+        <action name="actionInfo">
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <pointsize>10</pointsize>
+                    <bold>false</bold>
+                </font>
+            </property>
+        </action>
+        <action name="actionTime">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="icon">
+                <iconset theme="action-time"/>
+            </property>
+            <property name="text">
+                <string>Toggle Time Format</string>
+            </property>
+            <property name="toolTip">
+                <string>Toggle Time Format</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+T</string>
+            </property>
+        </action>
+        <action name="actionFollow">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>true</bool>
+            </property>
+            <property name="icon">
+                <iconset theme="action-follow"/>
+            </property>
+            <property name="text">
+                <string>Go To Last Event</string>
+            </property>
+            <property name="toolTip">
+                <string>Display Latest Events</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+L</string>
+            </property>
+        </action>
+        <action name="actionFilter">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="icon">
+                <iconset theme="action-filter"/>
+            </property>
+            <property name="text">
+                <string>Activate Filter</string>
+            </property>
+            <property name="toolTip">
+                <string>Activate Filter</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+F</string>
+            </property>
+        </action>
+        <action name="actionReset">
+            <property name="checkable">
+                <bool>false</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="icon">
+                <iconset theme="action-refresh"/>
+            </property>
+            <property name="text">
+                <string>Reset View</string>
+            </property>
+            <property name="toolTip">
+                <string>Reset View</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+R</string>
+            </property>
+        </action>
+        <action name="featureLogicAcquire">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="text">
+                <string>Logic Acquire</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable Logic Acquire</string>
+            </property>
+        </action>
+        <action name="featureLogicDecoder">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="text">
+                <string>Logic Decoder</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable Logic Decoder</string>
+            </property>
+        </action>
+        <action name="featureRadioAcquire">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="text">
+                <string>NFC Acquire</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable NFC Acquire</string>
+            </property>
+        </action>
+        <action name="featureRadioDecoder">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="text">
+                <string>NFC Decoder</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable NFC Decoder</string>
+            </property>
+        </action>
+        <action name="featureRadioSpectrum">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="text">
+                <string>NFC Spectrum</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable NFC Spectrum</string>
+            </property>
+        </action>
+        <action name="protocolISO14443A">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>true</bool>
+            </property>
+            <property name="text">
+                <string>ISO14443A (Nfc-A)</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable ISO14443-A (Nfc-A) decoder</string>
+            </property>
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <bold>false</bold>
+                </font>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+1</string>
+            </property>
+        </action>
+        <action name="protocolISO14443B">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>true</bool>
+            </property>
+            <property name="text">
+                <string>ISO14443B (Nfc-B)</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable ISO14443-B (Nfc-B) decoder</string>
+            </property>
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <bold>false</bold>
+                </font>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+2</string>
+            </property>
+        </action>
+        <action name="protocolISO18092">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>true</bool>
+            </property>
+            <property name="text">
+                <string>ISO18092 (Nfc-F)</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable ISO18092 (Nfc-F) decoder</string>
+            </property>
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <bold>false</bold>
+                </font>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+3</string>
+            </property>
+        </action>
+        <action name="protocolISO15693">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>true</bool>
+            </property>
+            <property name="text">
+                <string>ISO15693 (Nfc-V)</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable ISO15693 (Nfc-V) decoder</string>
+            </property>
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <bold>false</bold>
+                </font>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+4</string>
+            </property>
+        </action>
+        <action name="protocolISO7816">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>true</bool>
+            </property>
+            <property name="text">
+                <string>ISO7816 (UICC)</string>
+            </property>
+            <property name="toolTip">
+                <string>Enable ISO7816 (UICC) decoder</string>
+            </property>
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <bold>false</bold>
+                </font>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+5</string>
+            </property>
+        </action>
+    </widget>
+    <customwidgets>
+        <customwidget>
+            <class>FramesWidget</class>
+            <extends>QWidget</extends>
+            <header>widgets/FramesWidget.h</header>
+        </customwidget>
+        <customwidget>
+            <class>LogicWidget</class>
+            <extends>QWidget</extends>
+            <header>widgets/LogicWidget.h</header>
+        </customwidget>
+        <customwidget>
+            <class>RadioWidget</class>
+            <extends>QWidget</extends>
+            <header>widgets/RadioWidget.h</header>
+        </customwidget>
+        <customwidget>
+            <class>FrequencyWidget</class>
+            <extends>QWidget</extends>
+            <header>widgets/FrequencyWidget.h</header>
+        </customwidget>
+        <customwidget>
+            <class>ParserWidget</class>
+            <extends>QTreeView</extends>
+            <header>widgets/ParserWidget.h</header>
+        </customwidget>
+        <customwidget>
+            <class>StreamWidget</class>
+            <extends>QTableView</extends>
+            <header>widgets/StreamWidget.h</header>
+        </customwidget>
+        <customwidget>
+            <class>HexViewWidget</class>
+            <extends>QWidget</extends>
+            <header>widgets/HexViewWidget.h</header>
+        </customwidget>
+    </customwidgets>
+    <resources>
+        <include location="../assets/app/app.qrc"/>
+        <include location="../assets/theme/light/icons/icons.qrc"/>
+        <include location="../assets/theme/light/style/style.qrc"/>
+    </resources>
+    <connections>
+        <connection>
+            <sender>actionListen</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleListen()</slot>
+        </connection>
+        <connection>
+            <sender>actionRecord</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleRecord()</slot>
+        </connection>
+        <connection>
+            <sender>actionStop</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleStop()</slot>
+        </connection>
+        <connection>
+            <sender>actionOpen</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>openFile()</slot>
+        </connection>
+        <connection>
+            <sender>actionSave</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>saveFile()</slot>
+        </connection>
+        <connection>
+            <sender>actionExport</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>saveSelection()</slot>
+        </connection>
+        <connection>
+            <sender>actionClear</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>clearView()</slot>
+        </connection>
+        <connection>
+            <sender>actionTime</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleTime()</slot>
+        </connection>
+        <connection>
+            <sender>actionFollow</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleFollow()</slot>
+        </connection>
+        <connection>
+            <sender>actionFilter</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleFilter()</slot>
+        </connection>
+        <connection>
+            <sender>actionZoom</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>zoomSelection()</slot>
+        </connection>
+        <connection>
+            <sender>actionWide</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>zoomReset()</slot>
+        </connection>
+        <connection>
+            <sender>actionSetup</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>openConfig()</slot>
+        </connection>
+        <connection>
+            <sender>actionReset</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>resetView()</slot>
+        </connection>
+        <connection>
+            <sender>actionAbout</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>showAboutInfo()</slot>
+        </connection>
+        <connection>
+            <sender>actionHelp</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>showHelpInfo()</slot>
+        </connection>
+        <connection>
+            <sender>featureLogicAcquire</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleFeature()</slot>
+        </connection>
+        <connection>
+            <sender>featureLogicDecoder</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleFeature()</slot>
+        </connection>
+        <connection>
+            <sender>featureRadioAcquire</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleFeature()</slot>
+        </connection>
+        <connection>
+            <sender>featureRadioDecoder</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleFeature()</slot>
+        </connection>
+        <connection>
+            <sender>featureRadioSpectrum</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleFeature()</slot>
+        </connection>
+        <connection>
+            <sender>protocolISO14443A</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleProtocol()</slot>
+        </connection>
+        <connection>
+            <sender>protocolISO14443B</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleProtocol()</slot>
+        </connection>
+        <connection>
+            <sender>protocolISO18092</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleProtocol()</slot>
+        </connection>
+        <connection>
+            <sender>protocolISO15693</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleProtocol()</slot>
+        </connection>
+        <connection>
+            <sender>protocolISO7816</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>toggleProtocol()</slot>
+        </connection>
+        <connection>
+            <sender>gainValue</sender>
+            <signal>valueChanged(int)</signal>
+            <receiver>mainWindow</receiver>
+            <slot>changeGainValue(int)</slot>
+        </connection>
+        <connection>
+            <sender>gainValue</sender>
+            <signal>sliderMoved(int)</signal>
+            <receiver>mainWindow</receiver>
+            <slot>trackGainValue(int)</slot>
+        </connection>
+    </connections>
+    <slots>
+        <slot>selectionChanged(QItemSelection,QItemSelection)</slot>
+        <slot>openFile()</slot>
+        <slot>saveFile()</slot>
+        <slot>saveSelection()</slot>
+        <slot>openConfig()</slot>
+        <slot>toggleListen()</slot>
+        <slot>toggleRecord()</slot>
+        <slot>toggleStop()</slot>
+        <slot>toggleTime()</slot>
+        <slot>toggleFollow()</slot>
+        <slot>toggleFilter()</slot>
+        <slot>toggleFeature()</slot>
+        <slot>toggleProtocol()</slot>
+        <slot>licenseRegister()</slot>
+        <slot>showAboutInfo()</slot>
+        <slot>showHelpInfo()</slot>
+        <slot>changeGainValue(int)</slot>
+        <slot>trackGainValue(int)</slot>
+        <slot>clearView()</slot>
+        <slot>resetView()</slot>
+        <slot>zoomReset()</slot>
+        <slot>zoomSelection()</slot>
+    </slots>
 </ui>

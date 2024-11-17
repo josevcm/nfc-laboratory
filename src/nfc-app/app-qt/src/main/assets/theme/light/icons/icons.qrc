@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/icons/light">
+        <file>index.theme</file>
+        <file>actions/48/action-open.png</file>
+        <file>actions/48/action-save.png</file>
+        <file>actions/48/action-time.png</file>
+        <file>actions/48/action-follow.png</file>
+        <file>actions/48/action-filter.png</file>
+        <file>actions/48/action-clear.png</file>
+        <file>actions/48/action-setup.png</file>
+        <file>actions/24/action-listen.png</file>
+        <file>actions/24/action-record.png</file>
+        <file>actions/24/action-stop.png</file>
+        <file>arrows/16/arrow-green.png</file>
+        <file>arrows/16/arrow-red.png</file>
+        <file>arrows/16/arrow-blue.png</file>
+        <file>status/16/warning-flag.png</file>
+        <file>status/16/encrypted-flag.png</file>
+    </qresource>
+</RCC>

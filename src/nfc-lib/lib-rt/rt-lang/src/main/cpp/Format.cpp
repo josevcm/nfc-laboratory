@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -31,7 +28,7 @@ const char *ws = " \t\n\r\f\v";
 
 std::string rt::Format::format(const std::string &fmt, const std::vector<Variant> &parameters)
 {
-   std::regex token(R"(\{([\.0-9]*)?([xX])?\})");
+   std::regex token(R"(\{(['-+]?\.?[0-9]*)?([xX])?\})");
 
    std::string content = fmt;
 
@@ -91,15 +88,15 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
       }
       else if (auto value = std::get_if<unsigned long long>(&parameter))
       {
-         snprintf(buffer, sizeof(buffer), ("%" + opts + (mode.empty() ? "ll" : mode)).c_str(), *value);
+         snprintf(buffer, sizeof(buffer), ("%" + opts + (mode.empty() ? "llu" : mode)).c_str(), *value);
       }
       else if (auto value = std::get_if<float>(&parameter))
       {
-         snprintf(buffer, sizeof(buffer), ("%" + opts + "f").c_str(), *value);
+         snprintf(buffer, sizeof(buffer), ("%'" + opts + "f").c_str(), *value);
       }
       else if (auto value = std::get_if<double>(&parameter))
       {
-         snprintf(buffer, sizeof(buffer), ("%" + opts + "f").c_str(), *value);
+         snprintf(buffer, sizeof(buffer), ("%'" + opts + "f").c_str(), *value);
       }
       else if (auto value = std::get_if<char *>(&parameter))
       {
@@ -115,7 +112,22 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
       }
       else if (auto value = std::get_if<std::thread::id>(&parameter))
       {
-         snprintf(buffer, sizeof(buffer), ("0x%" + opts + "x").c_str(), *value);
+         snprintf(buffer, sizeof(buffer), ("%" + opts + (mode.empty() ? "d" : mode)).c_str(), *value);
+      }
+      else if (auto value = std::get_if<std::vector<int>>(&parameter))
+      {
+         // format as: {n, n, .... n}
+         snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "{");
+
+         for (int i = 0; i < value->size(); i++)
+         {
+            if (i > 0)
+               snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), ", ");
+
+            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%d", value->at(i));
+         }
+
+         snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "}");
       }
       else if (auto value = std::get_if<Buffer<unsigned char>>(&parameter))
       {
@@ -129,7 +141,7 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
             for (int j = 0; j < 16; j++)
             {
                if (i + j < value->size())
-                  offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", (unsigned int) value->data()[i + j]);
+                  offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", (unsigned int)value->data()[i + j]);
                else
                   offset += snprintf(buffer + offset, sizeof(buffer) - offset, "   ");
             }
@@ -161,16 +173,16 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
       else if (auto value = std::get_if<std::chrono::duration<long long, std::ratio<1, 1000000000>>>(&parameter))
       {
          // get duration horus
-         int hours = (int) std::chrono::duration_cast<std::chrono::hours>(*value).count();
+         int hours = (int)std::chrono::duration_cast<std::chrono::hours>(*value).count();
 
          // get duration minutes
-         int minutes = (int) std::chrono::duration_cast<std::chrono::minutes>(*value).count() % 60;
+         int minutes = (int)std::chrono::duration_cast<std::chrono::minutes>(*value).count() % 60;
 
          // get duration seconds
-         int seconds = (int) std::chrono::duration_cast<std::chrono::seconds>(*value).count() % 60;
+         int seconds = (int)std::chrono::duration_cast<std::chrono::seconds>(*value).count() % 60;
 
          // get duration milliseconds
-         int milliseconds = (int) std::chrono::duration_cast<std::chrono::milliseconds>(*value).count() % 1000;
+         int milliseconds = (int)std::chrono::duration_cast<std::chrono::milliseconds>(*value).count() % 1000;
 
          // format as HH:MM:SS.mmm
          sprintf(buffer, "%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);

@@ -13,7 +13,7 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|AMD64|X86|x86|i386|i686")
     add_library(mufft-avx STATIC src/main/c/x86/kernel.avx.c)
     add_library(mufft-sse STATIC src/main/c/x86/kernel.sse.c)
     add_library(mufft-sse3 STATIC src/main/c/x86/kernel.sse3.c)
-    
+
     target_compile_options(mufft PRIVATE -Wall -Wextra -DMUFFT_HAVE_X86)
     target_compile_options(mufft-sse PRIVATE -Wall -Wextra -msse -mno-sse3 -mno-avx -DMUFFT_HAVE_SSE)
     target_compile_options(mufft-sse3 PRIVATE -Wall -Wextra -msse -msse3 -mno-avx -DMUFFT_HAVE_SSE3)

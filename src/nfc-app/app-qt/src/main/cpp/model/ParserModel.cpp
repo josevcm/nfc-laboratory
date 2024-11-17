@@ -1,32 +1,25 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include <QFont>
-#include <QLabel>
-#include <QDebug>
-
-#include <nfc/NfcFrame.h>
+#include <lab/data/RawFrame.h>
 
 #include <protocol/ProtocolParser.h>
 #include <protocol/ProtocolFrame.h>
@@ -51,7 +44,7 @@ struct ParserModel::Impl
    {
       QVector<QVariant> rootData;
 
-      rootData << "Name" << "" << "Data";
+      rootData << tr("Name") << "" << tr("Data");
 
       // root data
       root = new ProtocolFrame(rootData, 0, nullptr);
@@ -102,7 +95,7 @@ ParserModel::ParserModel(QObject *parent) : QAbstractItemModel(parent), impl(new
 QVariant ParserModel::data(const QModelIndex &index, int role) const
 {
    if (!index.isValid())
-      return QVariant();
+      return {};
 
    int col = index.column();
 
@@ -121,27 +114,25 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
          case Columns::Data:
             return frame->data(ProtocolFrame::Data);
       }
+
+      return {};
    }
 
-   else if (role == Qt::DisplayRole)
+   if (role == Qt::DisplayRole)
    {
       switch (col)
       {
          case Columns::Name:
-         {
             return frame->data(ProtocolFrame::Name);
-         }
 
          case Columns::Flags:
-         {
             return frame->data(ProtocolFrame::Flags);
-         }
 
          case Columns::Data:
          {
             QVariant info = frame->data(ProtocolFrame::Data);
 
-            if (info.type() == QVariant::ByteArray)
+            if (info.typeId() == QMetaType::QByteArray)
             {
                QString flags;
 
@@ -160,9 +151,11 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
             return impl->padding(frame->childDeep(), info);
          }
       }
+
+      return {};
    }
 
-   else if (role == Qt::FontRole)
+   if (role == Qt::FontRole)
    {
       switch (col)
       {
@@ -192,9 +185,16 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
             }
          }
       }
+
+      return {};
    }
 
-   return QVariant();
+   if (role == Qt::SizeHintRole)
+   {
+      return QSize(0, 20);
+   }
+
+   return {};
 }
 
 int ParserModel::columnCount(const QModelIndex &parent) const
@@ -218,13 +218,13 @@ QVariant ParserModel::headerData(int section, Qt::Orientation orientation, int r
    if (orientation == Qt::Horizontal && role == Qt::DisplayRole)
       return impl->root->data(section);
 
-   return QVariant();
+   return {};
 }
 
 QModelIndex ParserModel::index(int row, int column, const QModelIndex &parent) const
 {
    if (!hasIndex(row, column, parent))
-      return QModelIndex();
+      return {};
 
    auto parentFrame = !parent.isValid() ? impl->root : static_cast<ProtocolFrame *>(parent.internalPointer());
 
@@ -233,13 +233,13 @@ QModelIndex ParserModel::index(int row, int column, const QModelIndex &parent) c
       return createIndex(row, column, childFrame);
    }
 
-   return QModelIndex();
+   return {};
 }
 
 QModelIndex ParserModel::parent(const QModelIndex &index) const
 {
    if (!index.isValid())
-      return QModelIndex();
+      return {};
 
    // get current frame for given index
    auto indexFrame = static_cast<ProtocolFrame *>(index.internalPointer());
@@ -250,7 +250,7 @@ QModelIndex ParserModel::parent(const QModelIndex &index) const
       return createIndex(parentFrame->row(), 0, parentFrame);
    }
 
-   return QModelIndex();
+   return {};
 }
 
 bool ParserModel::hasChildren(const QModelIndex &parent) const
@@ -274,7 +274,7 @@ bool ParserModel::insertRows(int position, int rows, const QModelIndex &parent)
    auto parentFrame = !parent.isValid() ? impl->root : static_cast<ProtocolFrame *>(parent.internalPointer());
 
    beginInsertRows(parent, position, position + rows - 1);
-   bool success = parentFrame->insertChilds(position, rows, impl->root->columnCount());
+   bool success = parentFrame->insertChild(position, rows, impl->root->columnCount());
    endInsertRows();
 
    return success;
@@ -287,7 +287,7 @@ void ParserModel::resetModel()
    endResetModel();
 }
 
-void ParserModel::append(const nfc::NfcFrame &frame)
+void ParserModel::append(const lab::RawFrame &frame)
 {
    if (auto child = impl->parser->parse(frame))
    {
@@ -304,4 +304,3 @@ ProtocolFrame *ParserModel::entry(const QModelIndex &index) const
 
    return static_cast<ProtocolFrame *>(index.internalPointer());
 }
-

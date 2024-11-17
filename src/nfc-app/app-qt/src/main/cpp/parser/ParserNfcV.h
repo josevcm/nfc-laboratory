@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -31,79 +28,79 @@ struct ParserNfcV : ParserNfc
 {
    void reset() override;
 
-   ProtocolFrame *parse(const nfc::NfcFrame &frame) override;
+   ProtocolFrame *parse(const lab::RawFrame &frame) override;
 
-   ProtocolFrame *parseRequestInventory(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestInventory(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseInventory(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseInventory(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestStayQuiet(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestStayQuiet(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseStayQuiet(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseStayQuiet(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestReadSingle(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestReadSingle(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseReadSingle(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseReadSingle(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestWriteSingle(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestWriteSingle(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseWriteSingle(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseWriteSingle(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestLockBlock(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestLockBlock(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseLockBlock(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseLockBlock(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestReadMultiple(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestReadMultiple(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseReadMultiple(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseReadMultiple(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestWriteMultiple(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestWriteMultiple(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseWriteMultiple(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseWriteMultiple(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestSelect(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestSelect(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseSelect(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseSelect(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestResetReady(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestResetReady(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseResetReady(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseResetReady(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestWriteAFI(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestWriteAFI(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseWriteAFI(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseWriteAFI(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestLockAFI(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestLockAFI(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseLockAFI(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseLockAFI(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestWriteDSFID(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestWriteDSFID(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseWriteDSFID(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseWriteDSFID(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestLockDSFID(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestLockDSFID(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseLockDSFID(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseLockDSFID(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestSysInfo(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestSysInfo(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseSysInfo(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseSysInfo(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestGetSecurity(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestGetSecurity(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseGetSecurity(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseGetSecurity(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestGeneric(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestGeneric(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseGeneric(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseGeneric(const lab::RawFrame &frame);
 
-   ProtocolFrame *buildRequestFlags(const nfc::NfcFrame &frame, int offset);
+   ProtocolFrame *buildRequestFlags(const lab::RawFrame &frame, int offset);
 
-   ProtocolFrame *buildResponseFlags(const nfc::NfcFrame &frame, int offset);
+   ProtocolFrame *buildResponseFlags(const lab::RawFrame &frame, int offset);
 
-   ProtocolFrame *buildResponseError(const nfc::NfcFrame &frame, int offset);
+   ProtocolFrame *buildResponseError(const lab::RawFrame &frame, int offset);
 
-   ProtocolFrame *buildApplicationFamily(const nfc::NfcFrame &frame, int offset);
+   ProtocolFrame *buildApplicationFamily(const lab::RawFrame &frame, int offset);
 };
 
 

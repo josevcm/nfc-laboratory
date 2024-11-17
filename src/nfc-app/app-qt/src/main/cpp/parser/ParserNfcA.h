@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -33,35 +30,39 @@ struct ParserNfcA : ParserNfcIsoDep
 
    void reset() override;
 
-   ProtocolFrame *parse(const nfc::NfcFrame &frame) override;
+   ProtocolFrame *parse(const lab::RawFrame &frame) override;
 
-   ProtocolFrame *parseRequestREQA(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestREQA(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseREQA(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseREQA(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestWUPA(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestWUPA(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseWUPA(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseWUPA(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestSELn(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestSELn(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseSELn(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseSELn(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestRATS(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestRATS(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseRATS(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseRATS(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestHLTA(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestHLTA(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseHLTA(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseHLTA(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestPPSr(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestPPSr(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponsePPSr(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponsePPSr(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseRequestAUTH(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseRequestAUTH(const lab::RawFrame &frame);
 
-   ProtocolFrame *parseResponseAUTH(const nfc::NfcFrame &frame);
+   ProtocolFrame *parseResponseAUTH(const lab::RawFrame &frame);
+
+   ProtocolFrame *parseRequestVASUP(const lab::RawFrame &frame);
+
+   ProtocolFrame *parseResponseVASUP(const lab::RawFrame &frame);
 };
 
 

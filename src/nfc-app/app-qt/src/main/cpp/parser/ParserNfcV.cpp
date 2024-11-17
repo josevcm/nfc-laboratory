@@ -1,28 +1,25 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include <nfc/Nfc.h>
+#include <lab/nfc/Nfc.h>
 
 #include <parser/ParserNfcV.h>
 
@@ -31,11 +28,11 @@ void ParserNfcV::reset()
    ParserNfc::reset();
 }
 
-ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parse(const lab::RawFrame &frame)
 {
    ProtocolFrame *info = nullptr;
 
-   if (frame.isPollFrame())
+   if (frame.frameType() == lab::FrameType::NfcPollFrame)
    {
       do
       {
@@ -180,7 +177,7 @@ ProtocolFrame *ParserNfcV::parse(const nfc::NfcFrame &frame)
  * Command code = 0x01
  * When receiving the Inventory request, the VICC shall perform the anticollision sequence
  */
-ProtocolFrame *ParserNfcV::parseRequestInventory(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestInventory(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x01)
       return nullptr;
@@ -214,7 +211,7 @@ ProtocolFrame *ParserNfcV::parseRequestInventory(const nfc::NfcFrame &frame)
 /*
  * Inventory response
  */
-ProtocolFrame *ParserNfcV::parseResponseInventory(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseInventory(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x01)
       return nullptr;
@@ -233,7 +230,7 @@ ProtocolFrame *ParserNfcV::parseResponseInventory(const nfc::NfcFrame &frame)
  * Stay quiet command
  * When receiving the VICC shall enter the quiet state and shall NOT send back a response. There is NO response to the Stay quiet command
  */
-ProtocolFrame *ParserNfcV::parseRequestStayQuiet(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestStayQuiet(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x02)
       return nullptr;
@@ -253,7 +250,7 @@ ProtocolFrame *ParserNfcV::parseRequestStayQuiet(const nfc::NfcFrame &frame)
 /*
  * There is NO response to the Stay quiet command.
  */
-ProtocolFrame *ParserNfcV::parseResponseStayQuiet(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseStayQuiet(const lab::RawFrame &frame)
 {
    return nullptr;
 }
@@ -263,7 +260,7 @@ ProtocolFrame *ParserNfcV::parseResponseStayQuiet(const nfc::NfcFrame &frame)
  * Command code = 0x20
  * When receiving the Read single block command, the VICC shall read the requested block and send back its value in the response.
  */
-ProtocolFrame *ParserNfcV::parseRequestReadSingle(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestReadSingle(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x20)
       return nullptr;
@@ -290,7 +287,7 @@ ProtocolFrame *ParserNfcV::parseRequestReadSingle(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseReadSingle(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseReadSingle(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x20)
       return nullptr;
@@ -316,7 +313,7 @@ ProtocolFrame *ParserNfcV::parseResponseReadSingle(const nfc::NfcFrame &frame)
  * Command code = 0x21
  * When receiving the Write single block command, the VICC shall write the requested block with the data contained in the request and report the success of the operation in the response.
  */
-ProtocolFrame *ParserNfcV::parseRequestWriteSingle(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestWriteSingle(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x21)
       return nullptr;
@@ -344,7 +341,7 @@ ProtocolFrame *ParserNfcV::parseRequestWriteSingle(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseWriteSingle(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseWriteSingle(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x21)
       return nullptr;
@@ -367,7 +364,7 @@ ProtocolFrame *ParserNfcV::parseResponseWriteSingle(const nfc::NfcFrame &frame)
  * Command code = 0x22
  * When receiving the Lock block command, the VICC shall lock permanently the requested block.
  */
-ProtocolFrame *ParserNfcV::parseRequestLockBlock(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestLockBlock(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x22)
       return nullptr;
@@ -395,7 +392,7 @@ ProtocolFrame *ParserNfcV::parseRequestLockBlock(const nfc::NfcFrame &frame)
 
 }
 
-ProtocolFrame *ParserNfcV::parseResponseLockBlock(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseLockBlock(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x22)
       return nullptr;
@@ -419,7 +416,7 @@ ProtocolFrame *ParserNfcV::parseResponseLockBlock(const nfc::NfcFrame &frame)
  * Command code = 0x23
  * When receiving the Read multiple block command, the VICC shall read the requested block(s) and send back their value in the response.
  */
-ProtocolFrame *ParserNfcV::parseRequestReadMultiple(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestReadMultiple(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x23)
       return nullptr;
@@ -447,7 +444,7 @@ ProtocolFrame *ParserNfcV::parseRequestReadMultiple(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseReadMultiple(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseReadMultiple(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x23)
       return nullptr;
@@ -473,7 +470,7 @@ ProtocolFrame *ParserNfcV::parseResponseReadMultiple(const nfc::NfcFrame &frame)
  * Command code = 0x24
  * When receiving the Write multiple single block command, the VICC shall write the requested block(s) with the data contained in the request and report the success of the operation in the response
  */
-ProtocolFrame *ParserNfcV::parseRequestWriteMultiple(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestWriteMultiple(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x24)
       return nullptr;
@@ -502,7 +499,7 @@ ProtocolFrame *ParserNfcV::parseRequestWriteMultiple(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseWriteMultiple(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseWriteMultiple(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x24)
       return nullptr;
@@ -528,7 +525,7 @@ ProtocolFrame *ParserNfcV::parseResponseWriteMultiple(const nfc::NfcFrame &frame
  *   - if the UID is equal to its own UID, the VICC shall enter the selected state and shall send a response.
  *   - if it is different, the VICC shall return to the Ready state and shall not send a response.
  */
-ProtocolFrame *ParserNfcV::parseRequestSelect(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestSelect(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x25)
       return nullptr;
@@ -545,7 +542,7 @@ ProtocolFrame *ParserNfcV::parseRequestSelect(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseSelect(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseSelect(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x25)
       return nullptr;
@@ -564,7 +561,7 @@ ProtocolFrame *ParserNfcV::parseResponseSelect(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseRequestResetReady(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestResetReady(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x26)
       return nullptr;
@@ -581,7 +578,7 @@ ProtocolFrame *ParserNfcV::parseRequestResetReady(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseResetReady(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseResetReady(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x26)
       return nullptr;
@@ -605,7 +602,7 @@ ProtocolFrame *ParserNfcV::parseResponseResetReady(const nfc::NfcFrame &frame)
  * Command code = 0x27
  * When receiving the Write AFI request, the VICC shall write the AFI value into its memory.
  */
-ProtocolFrame *ParserNfcV::parseRequestWriteAFI(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestWriteAFI(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x27)
       return nullptr;
@@ -633,7 +630,7 @@ ProtocolFrame *ParserNfcV::parseRequestWriteAFI(const nfc::NfcFrame &frame)
 
 }
 
-ProtocolFrame *ParserNfcV::parseResponseWriteAFI(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseWriteAFI(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x27)
       return nullptr;
@@ -657,7 +654,7 @@ ProtocolFrame *ParserNfcV::parseResponseWriteAFI(const nfc::NfcFrame &frame)
  * Command code = 0x28
  * When receiving the Lock AFI request, the VICC shall lock the AFI value permanently into its memory.
  */
-ProtocolFrame *ParserNfcV::parseRequestLockAFI(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestLockAFI(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x28)
       return nullptr;
@@ -684,7 +681,7 @@ ProtocolFrame *ParserNfcV::parseRequestLockAFI(const nfc::NfcFrame &frame)
 
 }
 
-ProtocolFrame *ParserNfcV::parseResponseLockAFI(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseLockAFI(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x28)
       return nullptr;
@@ -708,7 +705,7 @@ ProtocolFrame *ParserNfcV::parseResponseLockAFI(const nfc::NfcFrame &frame)
  * Command code = 0x29
  * When receiving the Write DSFID request, the VICC shall write the DSFID value into its memory
  */
-ProtocolFrame *ParserNfcV::parseRequestWriteDSFID(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestWriteDSFID(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x29)
       return nullptr;
@@ -736,7 +733,7 @@ ProtocolFrame *ParserNfcV::parseRequestWriteDSFID(const nfc::NfcFrame &frame)
 
 }
 
-ProtocolFrame *ParserNfcV::parseResponseWriteDSFID(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseWriteDSFID(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x29)
       return nullptr;
@@ -760,7 +757,7 @@ ProtocolFrame *ParserNfcV::parseResponseWriteDSFID(const nfc::NfcFrame &frame)
  * Command code = 0x28
  * When receiving the Lock AFI request, the VICC shall lock the AFI value permanently into its memory.
  */
-ProtocolFrame *ParserNfcV::parseRequestLockDSFID(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestLockDSFID(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x2A)
       return nullptr;
@@ -786,7 +783,7 @@ ProtocolFrame *ParserNfcV::parseRequestLockDSFID(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseLockDSFID(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseLockDSFID(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x2A)
       return nullptr;
@@ -810,7 +807,7 @@ ProtocolFrame *ParserNfcV::parseResponseLockDSFID(const nfc::NfcFrame &frame)
  * Command code = 0x2B
  * This command allows for retrieving the system information value from the VICC.
  */
-ProtocolFrame *ParserNfcV::parseRequestSysInfo(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestSysInfo(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x2B)
       return nullptr;
@@ -836,7 +833,7 @@ ProtocolFrame *ParserNfcV::parseRequestSysInfo(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseSysInfo(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x2B)
       return nullptr;
@@ -917,7 +914,7 @@ ProtocolFrame *ParserNfcV::parseResponseSysInfo(const nfc::NfcFrame &frame)
  * Command code = 0x2C
  * When receiving the Get multiple block security status command, the VICC shall send back the block security status.
  */
-ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const lab::RawFrame &frame)
 {
    if (frame[1] != 0x2C)
       return nullptr;
@@ -944,7 +941,7 @@ ProtocolFrame *ParserNfcV::parseRequestGetSecurity(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseGetSecurity(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseGetSecurity(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x2C)
       return nullptr;
@@ -960,7 +957,7 @@ ProtocolFrame *ParserNfcV::parseResponseGetSecurity(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseRequestGeneric(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseRequestGeneric(const lab::RawFrame &frame)
 {
    int cmd = frame[1]; // frame command
 
@@ -975,7 +972,7 @@ ProtocolFrame *ParserNfcV::parseRequestGeneric(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::parseResponseGeneric(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcV::parseResponseGeneric(const lab::RawFrame &frame)
 {
    int flags = frame[0];
 
@@ -993,7 +990,7 @@ ProtocolFrame *ParserNfcV::parseResponseGeneric(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcV::buildRequestFlags(const nfc::NfcFrame &frame, int offset)
+ProtocolFrame *ParserNfcV::buildRequestFlags(const lab::RawFrame &frame, int offset)
 {
    int flags = frame[offset];
 
@@ -1048,7 +1045,7 @@ ProtocolFrame *ParserNfcV::buildRequestFlags(const nfc::NfcFrame &frame, int off
    return afrf;
 }
 
-ProtocolFrame *ParserNfcV::buildResponseFlags(const nfc::NfcFrame &frame, int offset)
+ProtocolFrame *ParserNfcV::buildResponseFlags(const lab::RawFrame &frame, int offset)
 {
    int flags = frame[offset];
 
@@ -1071,7 +1068,7 @@ ProtocolFrame *ParserNfcV::buildResponseFlags(const nfc::NfcFrame &frame, int of
    return afrf;
 }
 
-ProtocolFrame *ParserNfcV::buildResponseError(const nfc::NfcFrame &frame, int offset)
+ProtocolFrame *ParserNfcV::buildResponseError(const lab::RawFrame &frame, int offset)
 {
    int error = frame[offset];
 
@@ -1099,7 +1096,7 @@ ProtocolFrame *ParserNfcV::buildResponseError(const nfc::NfcFrame &frame, int of
    return aerr;
 }
 
-ProtocolFrame *ParserNfcV::buildApplicationFamily(const nfc::NfcFrame &frame, int offset)
+ProtocolFrame *ParserNfcV::buildApplicationFamily(const lab::RawFrame &frame, int offset)
 {
    int afi = frame[offset];
 

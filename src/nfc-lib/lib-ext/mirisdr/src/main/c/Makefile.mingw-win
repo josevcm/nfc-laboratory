@@ -1,0 +1,37 @@
+WCC	=C:\mingw\bin\mingw32-gcc
+WCC64   = x86_64-w64-mingw32-gcc
+
+CFW     = -c -g -O2 -m32 -Wreturn-type -Wformat -Wunused -Wcomment \
+-Wchar-subscripts -Wshadow -Wuninitialized -Wparentheses \
+-Wstrict-prototypes -Werror -ffast-math -Wundef -fomit-frame-pointer \
+-I../include -o
+
+CFW64   = -c -g -O2 -m64 -Wreturn-type -Wformat -Wunused -Wcomment \
+-Wchar-subscripts -Wshadow -Wuninitialized -Wparentheses \
+-Wstrict-prototypes -Werror -ffast-math -Wundef -fomit-frame-pointer \
+-I../include -o
+
+
+all: Makefile.mingw libmirisdr.a mirisdr.dll x64/mirisdr.dll
+
+libmirisdr.a: libmirisdr.o Makefile.mingw
+	ar rs libmirisdr.a libmirisdr.o
+	C:\mingw\bin\ranlib libmirisdr.a
+
+mirisdr.dll: libmirisdr.o Makefile.mingw
+	$(WCC) libmirisdr.o libusb-1.0.dll libgcc_s_sjlj-1.dll -shared -o mirisdr.dll
+	
+x64/mirisdr.dll: libmirisdr.oy Makefile.mingw
+	$(WCC64) libmirisdr.oy x64/libusb-1.0.dll -shared -o x64/mirisdr.dll 
+	
+libmirisdr.o: Makefile.mingw libmirisdr.c async.c reg.c adc.c convert/base.c \
+devices.c gain.c hard.c streaming.c soft.c sync.c ../include/mirisdr.h \
+ ../include/mirisdr_export.h
+	$(WCC) libmirisdr.c $(CFW) libmirisdr.o
+
+libmirisdr.oy: Makefile.mingw libmirisdr.c async.c reg.c adc.c convert/base.c \
+devices.c gain.c hard.c streaming.c soft.c sync.c ../include/mirisdr.h \
+ ../include/mirisdr_export.h
+	$(WCC64) libmirisdr.c $(CFW64) libmirisdr.oy
+
+

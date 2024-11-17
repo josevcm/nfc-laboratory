@@ -1,24 +1,21 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -35,7 +32,7 @@ namespace rt {
 
 struct Worker::Impl
 {
-   Logger log;
+   Logger *log = Logger::getLogger("rt.Worker");
 
    // worker name
    std::string name;
@@ -55,7 +52,7 @@ struct Worker::Impl
    // terminate flag
    std::atomic<int> terminated {0};
 
-   explicit Impl(const std::string &name, int interval) : log(name), name(name), interval(interval)
+   explicit Impl(std::string name, int interval) : name(std::move(name)), interval(interval)
    {
    }
 
@@ -65,9 +62,9 @@ struct Worker::Impl
    }
 
    // wait and wait for notification
-   inline void wait(int milliseconds)
+   void wait(int milliseconds)
    {
-      std::unique_lock<std::mutex> lock(sleepMutex);
+      std::unique_lock lock(sleepMutex);
 
       if (milliseconds > 0)
          sync.wait_for(lock, std::chrono::milliseconds(milliseconds));
@@ -75,13 +72,13 @@ struct Worker::Impl
          sync.wait(lock);
    }
 
-   inline void notify()
+   void notify()
    {
       sync.notify_one();
    }
 
    // signal termination
-   inline void terminate()
+   void terminate()
    {
       // set terminate flag
       if (!terminated.fetch_add(1))
@@ -90,7 +87,7 @@ struct Worker::Impl
          sync.notify_one();
 
          // wait until worker finish
-         std::lock_guard<std::mutex> lock(aliveMutex);
+         std::lock_guard lock(aliveMutex);
       }
    }
 };
@@ -104,12 +101,12 @@ std::string Worker::name()
    return impl->name;
 }
 
-bool Worker::alive()
+bool Worker::alive() const
 {
    return !impl->terminated;
 }
 
-void Worker::wait(int milliseconds)
+void Worker::wait(int milliseconds) const
 {
    impl->wait(milliseconds);
 }
@@ -126,11 +123,11 @@ void Worker::terminate()
 
 void Worker::run()
 {
-   std::lock_guard<std::mutex> lock(impl->aliveMutex);
+   std::lock_guard lock(impl->aliveMutex);
 
-   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+   const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
-   impl->log.info("started worker for task {}", {impl->name});
+   impl->log->info("started worker {}", {impl->name});
 
    // call workert start
    this->start();
@@ -151,7 +148,7 @@ void Worker::run()
 
    impl->terminated = 1;
 
-   impl->log.info("finished worker for task {}, running time {}", {impl->name, duration});
+   impl->log->info("finished worker {}, running time {}", {impl->name, duration});
 }
 
 void Worker::start()

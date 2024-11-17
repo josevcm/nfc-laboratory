@@ -1,85 +1,115 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
 #include <QDebug>
 
-#include <sdr/SignalBuffer.h>
+#include <lab/data/RawFrame.h>
+
+#include <hw/SignalBuffer.h>
 
 #include "QtMemory.h"
 
 struct QtMemory::Impl
 {
    // configuration
-   QSettings &settings;
+   QSettings settings;
+
+   // frame vector
+   QVector<lab::RawFrame> frameCache;
 
    // buffer vector
-   QVector<sdr::SignalBuffer> signalBufferCache;
+   QVector<hw::SignalBuffer> signalCache;
 
    // total currentMemoryUsage
-   long currentBufferSamples;
+   long signalSamples;
 
    // maximum allowed memory usage
-   long maximumBufferSamples;
+   long maximumSamples;
 
-   explicit Impl(QSettings &settings) : settings(settings)
+   explicit Impl() : signalSamples(0), maximumSamples(512 * 1024 * 1024 >> 2)
    {
-      maximumBufferSamples = 512 * 1024 * 1024 >> 2;
    };
 };
 
-QtMemory::QtMemory(QSettings &settings) : impl(new Impl(settings))
+QtMemory::QtMemory() : impl(new Impl())
 {
 }
 
-void QtMemory::append(const sdr::SignalBuffer &buffer)
+void QtMemory::append(const lab::RawFrame &frame)
 {
-   impl->signalBufferCache.append(buffer);
-   impl->currentBufferSamples += buffer.elements();
+   impl->frameCache.append(frame);
+}
 
-   while (impl->currentBufferSamples > impl->maximumBufferSamples)
+void QtMemory::append(const hw::SignalBuffer &buffer)
+{
+   impl->signalCache.append(buffer);
+   impl->signalSamples += buffer.elements();
+
+   while (impl->signalSamples > impl->maximumSamples)
    {
-      impl->currentBufferSamples -= impl->signalBufferCache.takeFirst().elements();
+      impl->signalSamples -= impl->signalCache.takeFirst().elements();
    }
+
+   int timeMean = 0;
+   int timeLast = 0;
+
+   int valueMean = 0;
+   int valueLast = 0;
+
+   // sample scale to float
+   float scale = 1 << (8 * 2 - 1);
+
+   for (int i = 0; i < buffer.limit(); i += buffer.stride())
+   {
+      int time = int(buffer[i + 1]);
+      int value = int(scale * buffer[i]);
+
+      valueMean += value - valueLast;
+      valueLast = value;
+
+      timeMean += time - timeLast;
+      timeLast = time;
+   }
+
+   qInfo() << "time mean interval: " << timeMean / buffer.elements() << "value mean interval: " << valueMean / buffer.elements();
 }
 
 void QtMemory::clear()
 {
-   impl->currentBufferSamples = 0;
-   impl->signalBufferCache.clear();
+   qInfo() << "clearing memory cache:";
+   qInfo() << "\t" << impl->signalSamples << "samples in the cache";
+   qInfo() << "\t" << impl->frameCache.size() << "frames in the cache";
+   qInfo() << "\t" << impl->signalCache.size() << "buffers in the cache";
+
+   impl->frameCache.clear();
+   impl->signalCache.clear();
+   impl->signalSamples = 0;
 }
 
-long QtMemory::length() const
+long QtMemory::frames() const
 {
-   return impl->signalBufferCache.length();
+   return impl->frameCache.size();
 }
 
 long QtMemory::samples() const
 {
-   return impl->currentBufferSamples;
-}
-
-long QtMemory::size() const
-{
-   return impl->currentBufferSamples * sizeof(float);
+   return impl->signalSamples;
 }

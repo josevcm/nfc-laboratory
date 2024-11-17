@@ -1,28 +1,25 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include <nfc/Nfc.h>
+#include <lab/nfc/Nfc.h>
 
 #include <parser/ParserNfcA.h>
 
@@ -33,17 +30,17 @@ void ParserNfcA::reset()
    frameChain = 0;
 }
 
-ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parse(const lab::RawFrame &frame)
 {
    ProtocolFrame *info = nullptr;
 
-   if (frame.isPollFrame())
+   if (frame.frameType() == lab::FrameType::NfcPollFrame)
    {
       if (frameChain == 0)
       {
          do
          {
-            if (!frame.isEncrypted())
+            if (!frame.hasFrameFlags(lab::FrameFlags::Encrypted))
             {
                // Request Command, Type A
                if ((info = parseRequestREQA(frame)))
@@ -72,6 +69,10 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
                // Mifare AUTH
                if ((info = parseRequestAUTH(frame)))
                   break;
+
+               // VASUP-A
+               if ((info = parseRequestVASUP(frame)))
+                  break;
             }
 
             // Unknown frame... try isoDep
@@ -89,7 +90,7 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
    {
       do
       {
-         if (!frame.isEncrypted())
+         if (!frame.hasFrameFlags(lab::FrameFlags::Encrypted))
          {
             // Request Command, Type A
             if ((info = parseResponseREQA(frame)))
@@ -118,6 +119,10 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
             // Mifare AUTH
             if ((info = parseResponseAUTH(frame)))
                break;
+
+            // VASUP-A
+            if ((info = parseResponseVASUP(frame)))
+               break;
          }
 
          // Unknown frame... try isoDep
@@ -131,7 +136,7 @@ ProtocolFrame *ParserNfcA::parse(const nfc::NfcFrame &frame)
    return info;
 }
 
-ProtocolFrame *ParserNfcA::parseRequestREQA(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseRequestREQA(const lab::RawFrame &frame)
 {
    if (frame[0] != 0x26 || frame.limit() != 1)
       return nullptr;
@@ -141,7 +146,7 @@ ProtocolFrame *ParserNfcA::parseRequestREQA(const nfc::NfcFrame &frame)
    return buildRootInfo("REQA", frame, ProtocolFrame::SenseFrame);
 }
 
-ProtocolFrame *ParserNfcA::parseResponseREQA(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseResponseREQA(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x26 && lastCommand != 0x52)
       return nullptr;
@@ -152,8 +157,8 @@ ProtocolFrame *ParserNfcA::parseResponseREQA(const nfc::NfcFrame &frame)
 
    if (ProtocolFrame *atqa = root->appendChild(buildChildInfo("ATQA", QString("%1 [%2]").arg(atqv, 4, 16, QChar('0')).arg(atqv, 16, 2, QChar('0')), 0, 2)))
    {
-      // propietary TYPE
-      atqa->appendChild(buildChildInfo(QString("  [....%1........] propietary type %2").arg((atqv >> 8) & 0x0F, 4, 2, QChar('0')).arg((atqv >> 8) & 0x0F, 1, 16, QChar('0'))));
+      // proprietary TYPE
+      atqa->appendChild(buildChildInfo(QString("  [....%1........] proprietary type %2").arg((atqv >> 8) & 0x0F, 4, 2, QChar('0')).arg((atqv >> 8) & 0x0F, 1, 16, QChar('0'))));
 
       // check UID size
       if ((atqv & 0xC0) == 0x00)
@@ -183,7 +188,7 @@ ProtocolFrame *ParserNfcA::parseResponseREQA(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcA::parseRequestWUPA(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseRequestWUPA(const lab::RawFrame &frame)
 {
    if (frame[0] != 0x52 || frame.limit() != 1)
       return nullptr;
@@ -193,12 +198,12 @@ ProtocolFrame *ParserNfcA::parseRequestWUPA(const nfc::NfcFrame &frame)
    return buildRootInfo("WUPA", frame, ProtocolFrame::SenseFrame);
 }
 
-ProtocolFrame *ParserNfcA::parseResponseWUPA(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseResponseWUPA(const lab::RawFrame &frame)
 {
    return parseResponseREQA(frame);
 }
 
-ProtocolFrame *ParserNfcA::parseRequestSELn(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseRequestSELn(const lab::RawFrame &frame)
 {
    int cmd = frame[0];
 
@@ -246,7 +251,7 @@ ProtocolFrame *ParserNfcA::parseRequestSELn(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcA::parseResponseSELn(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseResponseSELn(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x93 && lastCommand != 0x95 && lastCommand != 0x97)
       return nullptr;
@@ -295,7 +300,7 @@ ProtocolFrame *ParserNfcA::parseResponseSELn(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcA::parseRequestRATS(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseRequestRATS(const lab::RawFrame &frame)
 {
    if (frame[0] != 0xE0 || frame.limit() != 4)
       return nullptr;
@@ -310,7 +315,7 @@ ProtocolFrame *ParserNfcA::parseRequestRATS(const nfc::NfcFrame &frame)
 
    if (ProtocolFrame *param = root->appendChild(buildChildInfo("PARAM", QString("%1 [%2]").arg(par, 2, 16, QChar('0')).arg(par, 8, 2, QChar('0')), 0, 1)))
    {
-      param->appendChild(buildChildInfo(QString("[%1....] FSD max frame size %2").arg(fsdi, 4, 2, QChar('0')).arg(nfc::NFC_FDS_TABLE[fsdi])));
+      param->appendChild(buildChildInfo(QString("[%1....] FSD max frame size %2").arg(fsdi, 4, 2, QChar('0')).arg(lab::NFC_FDS_TABLE[fsdi])));
       param->appendChild(buildChildInfo(QString("[....%1] CDI logical channel %2").arg(cdi, 4, 2, QChar('0')).arg(cdi)));
    }
 
@@ -319,7 +324,7 @@ ProtocolFrame *ParserNfcA::parseRequestRATS(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseResponseRATS(const lab::RawFrame &frame)
 {
    if (lastCommand != 0xE0)
       return nullptr;
@@ -340,7 +345,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
 
          if (ProtocolFrame *t0f = ats->appendChild(buildChildInfo("T0", QString("%1 [%2]").arg(t0, 2, 16, QChar('0')).arg(t0, 8, 2, QChar('0')), offset - 1, 1)))
          {
-            t0f->appendChild(buildChildInfo(QString("[....%1] max frame size %2").arg(fsci, 4, 2, QChar('0')).arg(nfc::NFC_FDS_TABLE[fsci])));
+            t0f->appendChild(buildChildInfo(QString("[....%1] max frame size %2").arg(fsci, 4, 2, QChar('0')).arg(lab::NFC_FDS_TABLE[fsci])));
 
             // TA is transmitted, if bit 4 is set to 1
             if (t0 & 0x10)
@@ -391,8 +396,8 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
                   int fwi = (tb >> 4) & 0x0f;
                   int sfgi = (tb & 0x0f);
 
-                  float fwt = nfc::NFC_FWT_TABLE[fwi] / nfc::NFC_FC;
-                  float sfgt = nfc::NFC_SFGT_TABLE[sfgi] / nfc::NFC_FC;
+                  float fwt = lab::NFC_FWT_TABLE[fwi] / lab::NFC_FC;
+                  float sfgt = lab::NFC_SFGT_TABLE[sfgi] / lab::NFC_FC;
 
                   tbf->appendChild(buildChildInfo(QString("[%1....] frame waiting time FWT = %2 ms").arg(fwi, 4, 2, QChar('0')).arg(1E3 * fwt, 0, 'f', 2)));
                   tbf->appendChild(buildChildInfo(QString("[....%1] start-up frame guard time SFGT = %2 ms").arg(sfgi, 4, 2, QChar('0')).arg(1E3 * sfgt, 0, 'f', 2)));
@@ -429,7 +434,7 @@ ProtocolFrame *ParserNfcA::parseResponseRATS(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcA::parseRequestHLTA(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseRequestHLTA(const lab::RawFrame &frame)
 {
    if (frame[0] != 0x50 || frame.limit() != 4)
       return nullptr;
@@ -443,7 +448,7 @@ ProtocolFrame *ParserNfcA::parseRequestHLTA(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcA::parseResponseHLTA(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseResponseHLTA(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x50)
       return nullptr;
@@ -451,7 +456,7 @@ ProtocolFrame *ParserNfcA::parseResponseHLTA(const nfc::NfcFrame &frame)
    return buildRootInfo("", frame, ProtocolFrame::SenseFrame);
 }
 
-ProtocolFrame *ParserNfcA::parseRequestPPSr(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseRequestPPSr(const lab::RawFrame &frame)
 {
    int pps = frame[0];
 
@@ -498,7 +503,7 @@ ProtocolFrame *ParserNfcA::parseRequestPPSr(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcA::parseResponsePPSr(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseResponsePPSr(const lab::RawFrame &frame)
 {
    if ((lastCommand & 0xF0) != 0xD0)
       return nullptr;
@@ -506,7 +511,7 @@ ProtocolFrame *ParserNfcA::parseResponsePPSr(const nfc::NfcFrame &frame)
    return buildRootInfo("", frame, ProtocolFrame::SelectionFrame);
 }
 
-ProtocolFrame *ParserNfcA::parseRequestAUTH(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseRequestAUTH(const lab::RawFrame &frame)
 {
    if ((frame[0] != 0x60 && frame[0] != 0x61) || frame.limit() != 4)
       return nullptr;
@@ -537,11 +542,154 @@ ProtocolFrame *ParserNfcA::parseRequestAUTH(const nfc::NfcFrame &frame)
    return root;
 }
 
-ProtocolFrame *ParserNfcA::parseResponseAUTH(const nfc::NfcFrame &frame)
+ProtocolFrame *ParserNfcA::parseResponseAUTH(const lab::RawFrame &frame)
 {
    if (lastCommand != 0x60 && lastCommand != 0x61)
       return nullptr;
 
    return buildRootInfo("", frame, ProtocolFrame::AuthFrame);
+}
+
+ProtocolFrame *ParserNfcA::parseRequestVASUP(const lab::RawFrame &frame)
+{
+   if (frame[0] != 0x6A)
+      return nullptr;
+
+   lastCommand = frame[0];
+
+   int format = frame[1];
+
+   ProtocolFrame *root = buildRootInfo("VASUP-A", frame, ProtocolFrame::SenseFrame);
+
+   root->appendChild(buildChildInfo("Format", format));
+
+   if (format == 1)
+   {
+      int type = frame[2];
+      int mode = frame[4];
+
+      if (ProtocolFrame *tf = root->appendChild(buildChildInfo("Terminal Type", frame, 2, 1)))
+      {
+         if ((type & 0x80) == 0x00)
+            tf->appendChild(buildChildInfo("[0.......] VAS Supported"));
+         else
+            tf->appendChild(buildChildInfo("[1.......] VAS Not Supported"));
+
+         if ((type & 0x40) == 0x00)
+            tf->appendChild(buildChildInfo("[.0......] User Auth Requested"));
+         else
+            tf->appendChild(buildChildInfo("[.1......] User Auth Not Requested"));
+
+         if ((type & 0x30) == 0x00)
+            tf->appendChild(buildChildInfo("[..00....] Shall be set to 0"));
+         else
+            tf->appendChild(buildChildInfo(QString("[..%1....] Unknown value %2, shall be set to 0!").arg((type >> 4) & 0x3, 2, 2, QChar('0')).arg((type >> 4) & 0x3)));
+
+         if ((type & 0x0f) == 0x00)
+            tf->appendChild(buildChildInfo("[....0000] Payment Terminal"));
+         else if ((type & 0x0f) == 0x01)
+            tf->appendChild(buildChildInfo("[....0001] Transit Terminal (deprecated - use Format Version 2)"));
+         else if ((type & 0x0f) == 0x02)
+            tf->appendChild(buildChildInfo("[....0010] Access Terminal (deprecated - use Format Version 2)"));
+         else if ((type & 0x0f) == 0x03)
+            tf->appendChild(buildChildInfo("[....0011] GymKit Handoff Terminal"));
+         else if ((type & 0x0f) == 0x0f)
+            tf->appendChild(buildChildInfo("[....1111] Other Terminal"));
+         else
+            tf->appendChild(buildChildInfo(QString("[....%1] Unknown terminal type %2").arg(type & 0xf, 4, 2, QChar('0')).arg(type & 0xf)));
+      }
+
+      root->appendChild(buildChildInfo("RFU", frame, 3, 1));
+
+      if (ProtocolFrame *tm = root->appendChild(buildChildInfo("Terminal Mode", frame, 4, 1)))
+      {
+         if ((mode & 0xfc) != 0x00)
+            tm->appendChild(buildChildInfo(QString("[%1..] Unknown value %2, shall be set to 0!").arg((mode >> 2) & 0x3f, 6, 2, QChar('0')).arg((mode >> 2) & 0x3f)));
+
+         if ((mode & 0x03) == 0x00)
+            tm->appendChild(buildChildInfo("[......00] Terminal in VAS App OR Payment Mode"));
+         else if ((mode & 0x03) == 0x01)
+            tm->appendChild(buildChildInfo("[......01] Terminal in VAS App AND Payment Mode"));
+         else if ((mode & 0x03) == 0x02)
+            tm->appendChild(buildChildInfo("[......10] Terminal in VAS App Only Mode"));
+         else if ((mode & 0x03) == 0x03)
+            tm->appendChild(buildChildInfo("[......11] Terminal in Payment Mode Only"));
+      }
+   }
+   else if (format == 2)
+   {
+      int info = frame[2];
+
+      if (ProtocolFrame *ti = root->appendChild(buildChildInfo("Terminal Info", frame, 2, 1)))
+      {
+         if ((info & 0x80) == 0x00)
+            ti->appendChild(buildChildInfo("[0.......] VAS Supported"));
+         else
+            ti->appendChild(buildChildInfo("[1.......] VAS Not Supported"));
+
+         if ((info & 0x40) == 0x00)
+            ti->appendChild(buildChildInfo("[.0......] User Auth Requested"));
+         else
+            ti->appendChild(buildChildInfo("[.1......] User Auth Not Requested"));
+
+         if ((info & 0x30) != 0x00)
+            ti->appendChild(buildChildInfo(QString("[..%1....] Unknown value %2, shall be set to 0!").arg((info >> 4) & 0x3, 2, 2, QChar('0')).arg((info >> 4) & 0x3)));
+
+         ti->appendChild(buildChildInfo(QString("[....%1] Length of Terminal Type Data field: %2").arg(info & 0xf, 4, 2, QChar('0')).arg(info & 0xf)));
+      }
+
+      root->appendChild(buildChildInfo("Terminal Type", frame, 3, 2));
+      root->appendChild(buildChildInfo("Terminal Data", frame, 4, frame.limit() - 7));
+   }
+   else
+   {
+      root->appendChild(buildChildInfo("DATA", frame, 2, frame.limit() - 4));
+   }
+
+   root->appendChild(buildChildInfo("CRC", frame, -2, 2));
+
+   return root;
+}
+
+ProtocolFrame *ParserNfcA::parseResponseVASUP(const lab::RawFrame &frame)
+{
+   if (lastCommand != 0x6A)
+      return nullptr;
+
+   int atv = frame[1] << 8 | frame[0];
+
+   ProtocolFrame *root = buildRootInfo("", frame, ProtocolFrame::SenseFrame);
+
+   if (ProtocolFrame *atf = root->appendChild(buildChildInfo("ATV-A", QString("%1 [%2]").arg(atv, 4, 16, QChar('0')).arg(atv, 16, 2, QChar('0')), 0, 2)))
+   {
+      // proprietary TYPE
+      atf->appendChild(buildChildInfo(QString("  [....%1........] proprietary type %2").arg((atv >> 8) & 0x0F, 4, 2, QChar('0')).arg((atv >> 8) & 0x0F, 1, 16, QChar('0'))));
+
+      // check UID size
+      if ((atv & 0xC0) == 0x00)
+         atf->appendChild(buildChildInfo("  [........00......] single size UID"));
+      else if ((atv & 0xC0) == 0x40)
+         atf->appendChild(buildChildInfo("  [........01......] double size UID"));
+      else if ((atv & 0xC0) == 0x80)
+         atf->appendChild(buildChildInfo("  [........10......] triple size UID"));
+      else if ((atv & 0xC0) == 0xC0)
+         atf->appendChild(buildChildInfo("  [........11......] unknown UID size (reserved)"));
+
+      // check SSD bit
+      if ((atv & 0x1F) == 0x00)
+         atf->appendChild(buildChildInfo("  [...........00000] bit frame anticollision (Type 1 Tag)"));
+      else if ((atv & 0x1F) == 0x01)
+         atf->appendChild(buildChildInfo("  [...........00001] bit frame anticollision"));
+      else if ((atv & 0x1F) == 0x02)
+         atf->appendChild(buildChildInfo("  [...........00010] bit frame anticollision"));
+      else if ((atv & 0x1F) == 0x04)
+         atf->appendChild(buildChildInfo("  [...........00100] bit frame anticollision"));
+      else if ((atv & 0x1F) == 0x08)
+         atf->appendChild(buildChildInfo("  [...........01000] bit frame anticollision"));
+      else if ((atv & 0x1F) == 0x10)
+         atf->appendChild(buildChildInfo("  [...........10000] bit frame anticollision"));
+   }
+
+   return root;
 }
 

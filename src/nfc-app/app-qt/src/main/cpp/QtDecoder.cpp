@@ -1,133 +1,229 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#include <filesystem>
+
 #include <QDebug>
-#include <QDateTime>
 
 #include <QJsonDocument>
-#include <QJsonObject>
-#include <utility>
+#include <QJsonArray>
 
 #include <rt/Event.h>
 #include <rt/Subject.h>
 
-#include <sdr/SignalBuffer.h>
+#include <hw/SignalBuffer.h>
 
-#include <nfc/NfcFrame.h>
+#include <lab/data/RawFrame.h>
 
-#include <nfc/FrameDecoderTask.h>
-#include <nfc/FrameStorageTask.h>
-#include <nfc/SignalReceiverTask.h>
-#include <nfc/SignalRecorderTask.h>
+#include <lab/tasks/FourierProcessTask.h>
+#include <lab/tasks/LogicDecoderTask.h>
+#include <lab/tasks/LogicDeviceTask.h>
+#include <lab/tasks/RadioDecoderTask.h>
+#include <lab/tasks/RadioDeviceTask.h>
+#include <lab/tasks/SignalStorageTask.h>
+#include <lab/tasks/TraceStorageTask.h>
 
 #include <events/DecoderControlEvent.h>
-#include <events/DecoderStatusEvent.h>
-#include <events/StreamFrameEvent.h>
-#include <events/SystemStartupEvent.h>
-#include <events/SystemShutdownEvent.h>
-#include <events/ReceiverStatusEvent.h>
-#include <events/StorageStatusEvent.h>
+#include <events/FourierStatusEvent.h>
+#include <events/LogicDecoderStatusEvent.h>
+#include <events/LogicDeviceStatusEvent.h>
+#include <events/RadioDecoderStatusEvent.h>
+#include <events/RadioDeviceStatusEvent.h>
 #include <events/SignalBufferEvent.h>
+#include <events/StorageStatusEvent.h>
+#include <events/StreamFrameEvent.h>
+#include <events/SystemShutdownEvent.h>
+#include <events/SystemStartupEvent.h>
+
+#include <features/Caps.h>
 
 #include "QtApplication.h"
 
-#include "QtMemory.h"
 #include "QtDecoder.h"
 
 struct QtDecoder::Impl
 {
    // configuration
-   QSettings &settings;
-
-   // signal memory cache
-   QtMemory *cache;
-
-   // current device name
-   QString currentDevice;
+   QSettings settings;
 
    // status subjects
-   rt::Subject<rt::Event> *decoderStatusStream = nullptr;
+   rt::Subject<rt::Event> *logicDecoderStatusStream = nullptr;
+   rt::Subject<rt::Event> *logicDeviceStatusStream = nullptr;
+   rt::Subject<rt::Event> *radioDecoderStatusStream = nullptr;
+   rt::Subject<rt::Event> *radioDeviceStatusStream = nullptr;
+   rt::Subject<rt::Event> *fourierStatusStream = nullptr;
    rt::Subject<rt::Event> *recorderStatusStream = nullptr;
    rt::Subject<rt::Event> *storageStatusStream = nullptr;
-   rt::Subject<rt::Event> *receiverStatusStream = nullptr;
 
    // command subjects
-   rt::Subject<rt::Event> *decoderCommandStream = nullptr;
+   rt::Subject<rt::Event> *logicDecoderCommandStream = nullptr;
+   rt::Subject<rt::Event> *logicDeviceCommandStream = nullptr;
+   rt::Subject<rt::Event> *radioDecoderCommandStream = nullptr;
+   rt::Subject<rt::Event> *radioDeviceCommandStream = nullptr;
+   rt::Subject<rt::Event> *fourierCommandStream = nullptr;
    rt::Subject<rt::Event> *recorderCommandStream = nullptr;
    rt::Subject<rt::Event> *storageCommandStream = nullptr;
-   rt::Subject<rt::Event> *receiverCommandStream = nullptr;
 
    // frame data subjects
-   rt::Subject<nfc::NfcFrame> *decoderFrameStream = nullptr;
-   rt::Subject<nfc::NfcFrame> *storageFrameStream = nullptr;
+   rt::Subject<lab::RawFrame> *logicDecoderFrameStream = nullptr;
+   rt::Subject<lab::RawFrame> *radioDecoderFrameStream = nullptr;
+   rt::Subject<lab::RawFrame> *storageFrameStream = nullptr;
 
    // signal data subjects
-   rt::Subject<sdr::SignalBuffer> *signalStream = nullptr;
+   rt::Subject<hw::SignalBuffer> *adaptiveSignalStream = nullptr;
+   rt::Subject<hw::SignalBuffer> *storageSignalStream = nullptr;
 
-   // subscriptions
-   rt::Subject<rt::Event>::Subscription decoderStatusSubscription;
+   // status subscriptions
+   rt::Subject<rt::Event>::Subscription logicDecoderStatusSubscription;
+   rt::Subject<rt::Event>::Subscription radioDecoderStatusSubscription;
    rt::Subject<rt::Event>::Subscription recorderStatusSubscription;
    rt::Subject<rt::Event>::Subscription storageStatusSubscription;
-   rt::Subject<rt::Event>::Subscription receiverStatusSubscription;
+   rt::Subject<rt::Event>::Subscription logicDeviceStatusSubscription;
+   rt::Subject<rt::Event>::Subscription radioDeviceStatusSubscription;
+   rt::Subject<rt::Event>::Subscription fourierStatusSubscription;
 
-   // frame stream subscription
-   rt::Subject<nfc::NfcFrame>::Subscription decoderFrameSubscription;
-   rt::Subject<nfc::NfcFrame>::Subscription storageFrameSubscription;
+   // frame stream subscriptions
+   rt::Subject<lab::RawFrame>::Subscription logicDecoderFrameSubscription;
+   rt::Subject<lab::RawFrame>::Subscription radioDecoderFrameSubscription;
+   rt::Subject<lab::RawFrame>::Subscription storageFrameSubscription;
 
-   // signal stream subscription
-   rt::Subject<sdr::SignalBuffer>::Subscription signalSubscription;
+   // signal stream subscriptions
+   rt::Subject<hw::SignalBuffer>::Subscription adaptiveSignalSubscription;
+   rt::Subject<hw::SignalBuffer>::Subscription storageSignalSubscription;
 
-   explicit Impl(QSettings &settings, QtMemory *cache) : settings(settings), cache(cache)
+   // device names and type
+   QString logicDeviceName;
+   QString logicDeviceType;
+   QString radioDeviceName;
+   QString radioDeviceType;
+
+   // default parameters for receivers
+   QJsonObject defaultDeviceConfig = {
+      {
+         "radio.airspy", QJsonObject({
+            {"enabled", true},
+            {"centerFreq", 40680000},
+            {"sampleRate", 10000000},
+            {"gainMode", 1}, // linearity
+            {"gainValue", 4}, // 4db
+            {"mixerAgc", 0},
+            {"tunerAgc", 0},
+            {"biasTee", 0},
+            {"directSampling", 0}
+         })
+      },
+      {
+         "radio.rtlsdr", QJsonObject({
+            {"enabled", true},
+            {"centerFreq", 27120000},
+            {"sampleRate", 3200000},
+            {"gainMode", 1}, // manual
+            {"gainValue", 77}, // 7.7db
+            {"mixerAgc", 0},
+            {"tunerAgc", 0},
+            {"biasTee", 0},
+            {"directSampling", 0}
+         })
+      },
+      {
+         "radio.miri", QJsonObject({
+            {"enabled", true},
+            {"centerFreq", 13560000},
+            {"sampleRate", 10000000},
+            {"gainMode", 1}, // manual
+            {"gainValue", 0}, // 0db
+            {"mixerAgc", 0},
+            {"tunerAgc", 0},
+            {"biasTee", 0},
+            {"directSampling", 0}
+         })
+      },
+      {
+         "logic.dslogic", QJsonObject({
+            {"enabled", true},
+            {"sampleRate", 10000000},
+            {"vThreshold", 1.0},
+            {"channels", QJsonArray {0, 2, 3}}
+         })
+      }
+   };
+
+   explicit Impl()
    {
       // create status subjects
-      decoderStatusStream = rt::Subject<rt::Event>::name("decoder.status");
+      logicDecoderStatusStream = rt::Subject<rt::Event>::name("logic.decoder.status");
+      logicDeviceStatusStream = rt::Subject<rt::Event>::name("logic.receiver.status");
+      radioDecoderStatusStream = rt::Subject<rt::Event>::name("radio.decoder.status");
+      radioDeviceStatusStream = rt::Subject<rt::Event>::name("radio.receiver.status");
+      fourierStatusStream = rt::Subject<rt::Event>::name("fourier.status");
       recorderStatusStream = rt::Subject<rt::Event>::name("recorder.status");
       storageStatusStream = rt::Subject<rt::Event>::name("storage.status");
-      receiverStatusStream = rt::Subject<rt::Event>::name("receiver.status");
 
       // create decoder control subject
-      decoderCommandStream = rt::Subject<rt::Event>::name("decoder.command");
+      logicDecoderCommandStream = rt::Subject<rt::Event>::name("logic.decoder.command");
+      logicDeviceCommandStream = rt::Subject<rt::Event>::name("logic.receiver.command");
+      radioDecoderCommandStream = rt::Subject<rt::Event>::name("radio.decoder.command");
+      radioDeviceCommandStream = rt::Subject<rt::Event>::name("radio.receiver.command");
       recorderCommandStream = rt::Subject<rt::Event>::name("recorder.command");
       storageCommandStream = rt::Subject<rt::Event>::name("storage.command");
-      receiverCommandStream = rt::Subject<rt::Event>::name("receiver.command");
+      fourierCommandStream = rt::Subject<rt::Event>::name("fourier.command");
 
       // create frame subject
-      decoderFrameStream = rt::Subject<nfc::NfcFrame>::name("decoder.frame");
-      storageFrameStream = rt::Subject<nfc::NfcFrame>::name("storage.frame");
+      logicDecoderFrameStream = rt::Subject<lab::RawFrame>::name("logic.decoder.frame");
+      radioDecoderFrameStream = rt::Subject<lab::RawFrame>::name("radio.decoder.frame");
+      storageFrameStream = rt::Subject<lab::RawFrame>::name("storage.frame");
 
       // create signal subject
-      signalStream = rt::Subject<sdr::SignalBuffer>::name("signal.adp");
+      adaptiveSignalStream = rt::Subject<hw::SignalBuffer>::name("adaptive.signal");
+      storageSignalStream = rt::Subject<hw::SignalBuffer>::name("storage.signal");
    }
 
    /*
     * system event executed after startup
     */
-   void systemStartup(SystemStartupEvent *event)
+   void systemStartupEvent(SystemStartupEvent *event)
    {
       // subscribe to status events
-      decoderStatusSubscription = decoderStatusStream->subscribe([this](const rt::Event &params) {
-         decoderStatusChange(params);
+      logicDeviceStatusSubscription = logicDeviceStatusStream->subscribe([this](const rt::Event &params) {
+         logicDeviceStatusChange(params);
+      });
+
+      logicDecoderStatusSubscription = logicDecoderStatusStream->subscribe([this](const rt::Event &params) {
+         logicDecoderStatusChange(params);
+      });
+
+      logicDecoderFrameSubscription = logicDecoderFrameStream->subscribe([this](const lab::RawFrame &frame) {
+         logicDecoderFrameEvent(frame);
+      });
+
+      radioDeviceStatusSubscription = radioDeviceStatusStream->subscribe([this](const rt::Event &params) {
+         radioDeviceStatusChange(params);
+      });
+
+      radioDecoderStatusSubscription = radioDecoderStatusStream->subscribe([this](const rt::Event &params) {
+         radioDecoderStatusChange(params);
+      });
+
+      radioDecoderFrameSubscription = radioDecoderFrameStream->subscribe([this](const lab::RawFrame &frame) {
+         radioDecoderFrameEvent(frame);
       });
 
       recorderStatusSubscription = recorderStatusStream->subscribe([this](const rt::Event &params) {
@@ -138,136 +234,70 @@ struct QtDecoder::Impl
          storageStatusChange(params);
       });
 
-      receiverStatusSubscription = receiverStatusStream->subscribe([this](const rt::Event &params) {
-         receiverStatusChange(params);
+      fourierStatusSubscription = fourierStatusStream->subscribe([this](const rt::Event &params) {
+         fourierStatusChange(params);
       });
 
-      decoderFrameSubscription = decoderFrameStream->subscribe([this](const nfc::NfcFrame &frame) {
-         frameEvent(frame);
+      storageFrameSubscription = storageFrameStream->subscribe([this](const lab::RawFrame &frame) {
+         radioDecoderFrameEvent(frame);
       });
 
-      storageFrameSubscription = storageFrameStream->subscribe([this](const nfc::NfcFrame &frame) {
-         frameEvent(frame);
+      adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+         signalBufferEvent(buffer);
       });
 
-      signalSubscription = signalStream->subscribe([this](const sdr::SignalBuffer &buffer) {
-         bufferEvent(buffer);
+      storageSignalSubscription = storageSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+         signalBufferEvent(buffer);
       });
 
-      // enquire status of receiver task
-      taskReceiverQuery();
+      if (event->meta.contains("features"))
+      {
+         const QRegularExpression allowedFeatures(event->meta["features"]);
 
-      // restore decoder configuration from .ini file
-      readDecoderConfig();
+         if (allowedFeatures.match(Caps::LOGIC_DEVICE).hasMatch())
+            logicDeviceInitialize();
+
+         if (allowedFeatures.match(Caps::LOGIC_DECODE).hasMatch())
+            logicDecoderInitialize();
+
+         if (allowedFeatures.match(Caps::RADIO_DEVICE).hasMatch())
+            radioDeviceInitialize();
+
+         if (allowedFeatures.match(Caps::RADIO_DECODE).hasMatch())
+            radioDecoderInitialize();
+
+         if (allowedFeatures.match(Caps::RADIO_SPECTRUM).hasMatch())
+            fourierInitialize();
+      }
    }
 
    /*
     * system event executed before shutdown
     */
-   void systemShutdown(SystemShutdownEvent *event)
+   void systemShutdownEvent(SystemShutdownEvent *event)
    {
    }
 
    /*
-    * read decoder parameters from settings file
-    */
-   void readDecoderConfig()
-   {
-      auto *decoderConfigEvent = new DecoderControlEvent(DecoderControlEvent::DecoderConfig);
-
-      for (QString &group: settings.childGroups())
-      {
-         if (group.startsWith("decoder"))
-         {
-            settings.beginGroup(group);
-
-            int sep = group.indexOf(".");
-
-            for (QString &key: settings.childKeys())
-            {
-               if (sep > 0)
-               {
-                  QString nfc = group.mid(sep + 1);
-
-                  if (key.toLower().contains("enabled"))
-                     decoderConfigEvent->setBoolean(nfc + "/" + key, settings.value(key).toBool());
-                  else
-                     decoderConfigEvent->setFloat(nfc + "/" + key, settings.value(key).toFloat());
-               }
-               else
-               {
-                  if (key.toLower().contains("enabled"))
-                     decoderConfigEvent->setBoolean(key, settings.value(key).toBool());
-                  else
-                     decoderConfigEvent->setFloat(key, settings.value(key).toFloat());
-               }
-            }
-
-            settings.endGroup();
-         }
-      }
-
-      QtApplication::post(decoderConfigEvent);
-   }
-
-   /*
-    * save decoder parameters to settings file
-    */
-   void saveDecoderConfig(const QJsonObject &status)
-   {
-      QStringList list = {"nfca", "nfcb", "nfcf", "nfcv"};
-
-      for (QString &name: list)
-      {
-         if (status.contains(name))
-         {
-            QJsonObject config = status[name].toObject();
-
-            settings.beginGroup("decoder." + name);
-
-            for (QString &entry: config.keys())
-            {
-               QVariant newValue = config.value(entry).toVariant();
-
-               if (settings.value(entry) != newValue)
-                  settings.setValue(entry, newValue);
-            }
-
-            settings.endGroup();
-         }
-      }
-   }
-
-   /*
-    * process decoder control event
-    */
-   void decoderControl(DecoderControlEvent *event)
+   * process decoder control event
+   */
+   void decoderControlEvent(DecoderControlEvent *event)
    {
       switch (event->command())
       {
-         case DecoderControlEvent::ReceiverDecode:
+         case DecoderControlEvent::Start:
          {
-            doReceiverDecode(event);
+            doStartDecode(event);
             break;
          }
-         case DecoderControlEvent::ReceiverRecord:
-         {
-            doReceiverRecord(event);
-            break;
-         }
-         case DecoderControlEvent::ReceiverConfig:
-         {
-            doReceiverConfig(event);
-            break;
-         }
-         case DecoderControlEvent::StopDecode:
+         case DecoderControlEvent::Stop:
          {
             doStopDecode(event);
             break;
          }
-         case DecoderControlEvent::DecoderConfig:
+         case DecoderControlEvent::Clear:
          {
-            doDecoderConfig(event);
+            doClearBuffers(event);
             break;
          }
          case DecoderControlEvent::ReadFile:
@@ -280,134 +310,98 @@ struct QtDecoder::Impl
             doWriteFile(event);
             break;
          }
-      }
-   }
-
-   /*
-    * process decoder status event
-    */
-   void decoderStatusChange(const rt::Event &event)
-   {
-      if (auto data = event.get<std::string>("data"))
-      {
-         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
-
-         QtApplication::post(DecoderStatusEvent::create(status));
-
-         saveDecoderConfig(status);
-      }
-   }
-
-   /*
-    * process recorder status event
-    */
-   void recorderStatusChange(const rt::Event &event)
-   {
-      if (auto data = event.get<std::string>("data"))
-      {
-         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
-
-         QtApplication::post(StorageStatusEvent::create(status));
-
-         // forward streamTime to decoder
-         if (status.contains("streamTime"))
+         case DecoderControlEvent::LogicDeviceConfig:
          {
-            taskDecoderConfig({{"streamTime", status["streamTime"].toInt()}});
+            doLogicDeviceConfig(event);
+            break;
+         }
+         case DecoderControlEvent::LogicDecoderConfig:
+         {
+            doLogicDecoderConfig(event);
+            break;
+         }
+         case DecoderControlEvent::RadioDeviceConfig:
+         {
+            doRadioDeviceConfig(event);
+            break;
+         }
+         case DecoderControlEvent::RadioDecoderConfig:
+         {
+            doRadioDecoderConfig(event);
+            break;
+         }
+         case DecoderControlEvent::FourierConfig:
+         {
+            doFourierConfig(event);
+            break;
          }
       }
-   }
-
-   /*
-    * process receiver status event
-    */
-   void receiverStatusChange(const rt::Event &event)
-   {
-      if (auto data = event.get<std::string>("data"))
-      {
-         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
-
-         QtApplication::post(ReceiverStatusEvent::create(status));
-
-         // forward streamTime to decoder
-         if (status.contains("streamTime"))
-         {
-            taskDecoderConfig({{"streamTime", status["streamTime"].toInt()}});
-         }
-      }
-   }
-
-   /*
-    * process storage status event
-    */
-   void storageStatusChange(const rt::Event &event)
-   {
-      if (auto data = event.get<std::string>("data"))
-      {
-         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
-
-         QtApplication::post(StorageStatusEvent::create(status));
-      }
-   }
-
-   /*
-    * process new received frame
-    */
-   void frameEvent(const nfc::NfcFrame &frame)
-   {
-      QtApplication::post(new StreamFrameEvent(frame), Qt::HighEventPriority);
-   }
-
-   /*
-    * process new received buffer
-    */
-   void bufferEvent(const sdr::SignalBuffer &buffer)
-   {
-//      cache->append(buffer);
-      QtApplication::post(new SignalBufferEvent(buffer), Qt::LowEventPriority);
    }
 
    /*
     * start decoder and receiver task
     */
-   void doReceiverDecode(DecoderControlEvent *event) const
+   void doStartDecode(DecoderControlEvent *event) const
    {
-      // clear signal cache
-      cache->clear();
+      // if event contains file name and sample rate start recorder
+      if (event->contains("storagePath"))
+      {
+         QJsonObject command {{"storagePath", event->getString("storagePath")}};
 
-      // clear storage queue
-      taskStorageClear([=] {
-         // start decoder and...
-         taskDecoderStart([=] {
-            // enable receiver
-            taskReceiverStart();
-         });
-      });
-   }
+         // clear storage queue
+         taskStorageClear([=] {
 
-   /*
-    * start decoder, receiver and write data to file
-    */
-   void doReceiverRecord(DecoderControlEvent *event) const
-   {
-      QJsonObject json;
+            // start recorder and...
+            taskRecorderWrite(command, [=] {
 
-      json["fileName"] = event->getString("fileName");
-      json["sampleRate"] = event->getInteger("sampleRate");
+               if (!logicDeviceType.isEmpty())
+               {
+                  // start decoder and...
+                  taskLogicDecoderStart([=] {
+                                           taskLogicDeviceStart();
+                                        }, [=](int, const std::string &) {
+                                           taskLogicDeviceStart();
+                                        });
+               }
 
-      // clear signal cache
-      cache->clear();
-
-      // clear storage queue
-      taskStorageClear([=] {
-         // start recorder and...
-         taskRecorderWrite(json, [=] {
-            // start decoder and...
-            taskDecoderStart([=] {
-               // enable receiver
-               taskReceiverStart();
+               if (!radioDeviceType.isEmpty())
+               {
+                  // start decoder and...
+                  taskRadioDecoderStart([=] {
+                                           taskRadioDeviceStart();
+                                        }, [=](int, const std::string &) {
+                                           taskRadioDeviceStart();
+                                        });
+               }
             });
          });
-      });
+      }
+      else
+      {
+         // clear storage queue
+         taskStorageClear([=] {
+
+            if (!logicDeviceType.isEmpty())
+            {
+               // start decoder and...
+               taskLogicDecoderStart([=] {
+                                        taskLogicDeviceStart();
+                                     }, [=](int, const std::string &) {
+                                        taskLogicDeviceStart();
+                                     });
+            }
+
+            if (!radioDeviceType.isEmpty())
+            {
+               // start decoder and...
+               taskRadioDecoderStart([=] {
+                                        taskRadioDeviceStart();
+                                     }, [=](int, const std::string &) {
+                                        taskRadioDeviceStart();
+                                     });
+            }
+         });
+      }
    }
 
    /*
@@ -415,126 +409,242 @@ struct QtDecoder::Impl
     */
    void doStopDecode(DecoderControlEvent *event) const
    {
-      // stop receiver task
-      taskReceiverStop([=] {
-         // stop recorder task
-         taskRecorderStop([=] {
-            // stop decoder task
-            taskDecoderStop();
-         });
-      });
+      // stop radio receiver task
+      if (!logicDeviceType.isEmpty())
+      {
+         taskLogicDeviceStop();
+      }
+
+      // stop radio receiver task
+      if (!radioDeviceType.isEmpty())
+      {
+         taskRadioDeviceStop();
+      }
    }
 
    /*
-    * reconfigure decoder parameters
+    * reconfigure logic parameters
     */
-   void doDecoderConfig(DecoderControlEvent *event) const
+   void doLogicDeviceConfig(DecoderControlEvent *event)
    {
-      QJsonObject json;
+      QJsonObject config;
+
+      if (event->contains("enabled"))
+         config["enabled"] = event->getBoolean("enabled");
+
+      // update logic config
+      if (!config.isEmpty())
+      {
+         logicDeviceConfigure(config);
+      }
+   }
+
+   /*
+    * reconfigure logic decoder parameters
+    */
+   void doLogicDecoderConfig(DecoderControlEvent *event)
+   {
+      QJsonObject config;
+      QJsonObject iso7816;
+
+      // logic decoder parameters
+      if (event->contains("enabled"))
+         config["enabled"] = event->getBoolean("enabled");
+
+      if (event->contains("sampleRate"))
+         config["sampleRate"] = event->getInteger("sampleRate");
+
+      if (event->contains("streamTime"))
+         config["streamTime"] = event->getInteger("streamTime");
+
+      if (event->contains("debugEnabled"))
+         config["debugEnabled"] = event->getBoolean("debugEnabled");
+
+      // NFC-A parameters
+      if (event->contains("protocol/iso7816/enabled"))
+         iso7816["enabled"] = event->getBoolean("protocol/iso7816/enabled");
+
+      // set radio protocol configuration
+      if (!iso7816.isEmpty())
+      {
+         QJsonObject proto;
+
+         // add logic protocols
+         if (!iso7816.isEmpty())
+            proto["iso7816"] = iso7816;
+
+         config["protocol"] = proto;
+      }
+
+      // update decoder config
+      if (!config.isEmpty())
+      {
+         logicDecoderConfigure(config);
+      }
+   }
+
+   /*
+    * reconfigure radio parameters
+    */
+   void doRadioDeviceConfig(DecoderControlEvent *event)
+   {
+      QJsonObject config;
+
+      if (event->contains("enabled"))
+         config["enabled"] = event->getBoolean("enabled");
+
+      if (event->contains("centerFreq"))
+         config["centerFreq"] = event->getInteger("centerFreq");
+
+      if (event->contains("sampleRate"))
+         config["sampleRate"] = event->getInteger("sampleRate");
+
+      if (event->contains("gainMode"))
+         config["gainMode"] = event->getInteger("gainMode");
+
+      if (event->contains("gainValue"))
+         config["gainValue"] = event->getInteger("gainValue");
+
+      if (event->contains("mixerAgc"))
+         config["mixerAgc"] = event->getInteger("mixerAgc");
+
+      if (event->contains("tunerAgc"))
+         config["tunerAgc"] = event->getInteger("tunerAgc");
+
+      if (event->contains("biasTee"))
+         config["biasTee"] = event->getInteger("biasTee");
+
+      if (event->contains("directSampling"))
+         config["directSampling"] = event->getInteger("directSampling");
+
+      // update radio config
+      if (!config.isEmpty())
+      {
+         radioDeviceConfigure(config);
+      }
+   }
+
+   /*
+   * reconfigure radio decoder parameters
+   */
+   void doRadioDecoderConfig(DecoderControlEvent *event)
+   {
+      QJsonObject config;
       QJsonObject nfca;
       QJsonObject nfcb;
       QJsonObject nfcf;
       QJsonObject nfcv;
 
+      // radio decoder parameters
+      if (event->contains("enabled"))
+         config["enabled"] = event->getBoolean("enabled");
+
       if (event->contains("sampleRate"))
-         json["sampleRate"] = event->getInteger("sampleRate");
+         config["sampleRate"] = event->getInteger("sampleRate");
 
       if (event->contains("streamTime"))
-         json["streamTime"] = event->getInteger("streamTime");
+         config["streamTime"] = event->getInteger("streamTime");
 
       if (event->contains("debugEnabled"))
-         json["debugEnabled"] = event->getBoolean("debugEnabled");
+         config["debugEnabled"] = event->getBoolean("debugEnabled");
 
       if (event->contains("powerLevelThreshold"))
-         json["powerLevelThreshold"] = event->getFloat("powerLevelThreshold");
+         config["powerLevelThreshold"] = event->getFloat("powerLevelThreshold");
 
       // NFC-A parameters
-      if (event->contains("nfca/enabled"))
-         nfca["enabled"] = event->getBoolean("nfca/enabled");
+      if (event->contains("protocol/nfca/enabled"))
+         nfca["enabled"] = event->getBoolean("protocol/nfca/enabled");
 
-      if (event->contains("nfca/minimumModulationDeep"))
-         nfca["minimumModulationDeep"] = event->getFloat("nfca/minimumModulationDeep");
+      if (event->contains("protocol/nfca/correlationThreshold"))
+         nfca["correlationThreshold"] = event->getFloat("protocol/nfca/correlationThreshold");
 
-      if (event->contains("nfca/maximumModulationDeep"))
-         nfca["maximumModulationDeep"] = event->getFloat("nfca/maximumModulationDeep");
+      if (event->contains("protocol/nfca/minimumModulationDeep"))
+         nfca["minimumModulationDeep"] = event->getFloat("protocol/nfca/minimumModulationDeep");
+
+      if (event->contains("protocol/nfca/maximumModulationDeep"))
+         nfca["maximumModulationDeep"] = event->getFloat("protocol/nfca/maximumModulationDeep");
 
       // NFC-B parameters
-      if (event->contains("nfcb/enabled"))
-         nfcb["enabled"] = event->getBoolean("nfcb/enabled");
+      if (event->contains("protocol/nfcb/enabled"))
+         nfcb["enabled"] = event->getBoolean("protocol/nfcb/enabled");
 
-      if (event->contains("nfcb/minimumModulationDeep"))
-         nfcb["minimumModulationDeep"] = event->getFloat("nfcb/minimumModulationDeep");
+      if (event->contains("protocol/nfcb/correlationThreshold"))
+         nfcb["correlationThreshold"] = event->getFloat("protocol/nfcb/correlationThreshold");
 
-      if (event->contains("nfcb/maximumModulationDeep"))
-         nfcb["maximumModulationDeep"] = event->getFloat("nfcb/maximumModulationDeep");
+      if (event->contains("protocol/nfcb/minimumModulationDeep"))
+         nfcb["minimumModulationDeep"] = event->getFloat("protocol/nfcb/minimumModulationDeep");
+
+      if (event->contains("protocol/nfcb/maximumModulationDeep"))
+         nfcb["maximumModulationDeep"] = event->getFloat("protocol/nfcb/maximumModulationDeep");
 
       // NFC-F parameters
-      if (event->contains("nfcf/enabled"))
-         nfcf["enabled"] = event->getBoolean("nfcf/enabled");
+      if (event->contains("protocol/nfcf/enabled"))
+         nfcf["enabled"] = event->getBoolean("protocol/nfcf/enabled");
 
-      if (event->contains("nfcf/minimumModulationDeep"))
-         nfcf["minimumModulationDeep"] = event->getFloat("nfcf/minimumModulationDeep");
+      if (event->contains("protocol/nfcf/correlationThreshold"))
+         nfcf["correlationThreshold"] = event->getFloat("protocol/nfcf/correlationThreshold");
 
-      if (event->contains("nfcf/maximumModulationDeep"))
-         nfcf["maximumModulationDeep"] = event->getFloat("nfcf/maximumModulationDeep");
+      if (event->contains("protocol/nfcf/minimumModulationDeep"))
+         nfcf["minimumModulationDeep"] = event->getFloat("protocol/nfcf/minimumModulationDeep");
+
+      if (event->contains("protocol/nfcf/maximumModulationDeep"))
+         nfcf["maximumModulationDeep"] = event->getFloat("protocol/nfcf/maximumModulationDeep");
 
       // NFC-V parameters
-      if (event->contains("nfcv/enabled"))
-         nfcv["enabled"] = event->getBoolean("nfcv/enabled");
+      if (event->contains("protocol/nfcv/enabled"))
+         nfcv["enabled"] = event->getBoolean("protocol/nfcv/enabled");
 
-      if (event->contains("nfcv/minimumModulationDeep"))
-         nfcv["minimumModulationDeep"] = event->getFloat("nfcv/minimumModulationDeep");
+      if (event->contains("protocol/nfcv/correlationThreshold"))
+         nfcv["correlationThreshold"] = event->getFloat("protocol/nfcv/correlationThreshold");
 
-      if (event->contains("nfcv/maximumModulationDeep"))
-         nfcv["maximumModulationDeep"] = event->getFloat("nfcv/maximumModulationDeep");
+      if (event->contains("protocol/nfcv/minimumModulationDeep"))
+         nfcv["minimumModulationDeep"] = event->getFloat("protocol/nfcv/minimumModulationDeep");
 
-      if (!nfca.isEmpty())
-         json["nfca"] = nfca;
+      if (event->contains("protocol/nfcv/maximumModulationDeep"))
+         nfcv["maximumModulationDeep"] = event->getFloat("protocol/nfcv/maximumModulationDeep");
 
-      if (!nfcb.isEmpty())
-         json["nfcb"] = nfcb;
+      // set radio protocol configuration
+      if (!nfca.isEmpty() || !nfcb.isEmpty() || !nfcf.isEmpty() || !nfcv.isEmpty())
+      {
+         QJsonObject proto;
 
-      if (!nfcf.isEmpty())
-         json["nfcf"] = nfcf;
+         // add radio protocols
+         if (!nfca.isEmpty())
+            proto["nfca"] = nfca;
 
-      if (!nfcv.isEmpty())
-         json["nfcv"] = nfcv;
+         if (!nfcb.isEmpty())
+            proto["nfcb"] = nfcb;
 
-      taskDecoderConfig(json);
+         if (!nfcf.isEmpty())
+            proto["nfcf"] = nfcf;
+
+         if (!nfcv.isEmpty())
+            proto["nfcv"] = nfcv;
+
+         config["protocol"] = proto;
+      }
+
+      // update decoder config
+      if (!config.isEmpty())
+      {
+         radioDecoderConfigure(config);
+      }
    }
 
    /*
-    * reconfigure receiver parameters
+    * reconfigure fourier parameters
     */
-   void doReceiverConfig(DecoderControlEvent *event) const
+   void doFourierConfig(DecoderControlEvent *event)
    {
-      QJsonObject json;
+      QJsonObject config;
 
-      if (event->contains("centerFreq"))
-         json["centerFreq"] = event->getInteger("centerFreq");
+      if (event->contains("enabled"))
+         config["enabled"] = event->getBoolean("enabled");
 
-      if (event->contains("sampleRate"))
-         json["sampleRate"] = event->getInteger("sampleRate");
-
-      if (event->contains("gainMode"))
-         json["gainMode"] = event->getInteger("gainMode");
-
-      if (event->contains("gainValue"))
-         json["gainValue"] = event->getInteger("gainValue");
-
-      if (event->contains("mixerAgc"))
-         json["mixerAgc"] = event->getInteger("mixerAgc");
-
-      if (event->contains("tunerAgc"))
-         json["tunerAgc"] = event->getInteger("tunerAgc");
-
-      if (event->contains("biasTee"))
-         json["biasTee"] = event->getInteger("biasTee");
-
-      if (event->contains("directSampling"))
-         json["directSampling"] = event->getInteger("directSampling");
-
-      taskReceiverConfig(json);
+      if (!config.isEmpty())
+      {
+         taskFourierConfig(config);
+      }
    }
 
    /*
@@ -542,29 +652,38 @@ struct QtDecoder::Impl
     */
    void doReadFile(DecoderControlEvent *event) const
    {
-      QJsonObject json;
+      const QString fileName = event->getString("fileName");
+      const std::filesystem::path path(fileName.toStdString());
+      const QJsonObject command {{"fileName", fileName}};
 
-      QString fileName = event->getString("fileName");
-
-      json["fileName"] = fileName;
-
-      if (fileName.endsWith(".wav"))
-      {
-         // clear storage queue
-         taskStorageClear([=] {
-            // start decoder and...
-            taskDecoderStart([=] {
-               // read file
-               taskRecorderRead(json);
-            });
-         });
-      }
-      else if (fileName.endsWith(".xml") || fileName.endsWith(".json"))
+      if (path.extension() == ".trz")
       {
          // clear storage queue
          taskStorageClear([=] {
             // start XML file read
-            taskStorageRead(json);
+            taskStorageRead(command);
+         });
+      }
+      else if (path.extension() == ".wav")
+      {
+         // clear storage queue
+         taskStorageClear([=] {
+
+            // if file starts with logic... trigger logic decoder start
+            if (path.filename().string().rfind("logic", 0) == 0)
+            {
+               taskLogicDecoderStart([=] {
+                  taskRecorderRead(command);
+               });
+            }
+
+            // if file starts with radio... trigger radio decoder start
+            if (path.filename().string().rfind("radio", 0) == 0)
+            {
+               taskRadioDecoderStart([=] {
+                  taskRecorderRead(command);
+               });
+            }
          });
       }
    }
@@ -574,151 +693,705 @@ struct QtDecoder::Impl
     */
    void doWriteFile(DecoderControlEvent *event) const
    {
-      QJsonObject json;
-
       QString fileName = event->getString("fileName");
+      double timeStart = event->getDouble("timeStart", 0);
+      double timeEnd = event->getDouble("timeEnd", 0);
 
-      json["fileName"] = fileName;
+      QJsonObject command {
+         {"fileName", fileName},
+         {"timeStart", timeStart},
+         {"timeEnd", timeEnd}
+      };
 
-      if (fileName.endsWith(".wav"))
+      if (fileName.endsWith(".trz"))
       {
+         taskStorageWrite(command);
       }
-      else if (fileName.endsWith(".xml") || fileName.endsWith(".json"))
+   }
+
+   /*
+    * write frames to file
+    */
+   void doClearBuffers(DecoderControlEvent *event) const
+   {
+      // start decoder and...
+      // if (!logicDeviceType.isEmpty())
+      // {
+      //    taskLogicDeviceClear([=] {
+      //       taskLogicDecoderClear();
+      //    });
+      // }
+      //
+      // // clear radio receiver and decoder
+      // if (!logicDeviceType.isEmpty())
+      // {
+      //    taskRadioDeviceClear([=] {
+      //       taskRadioDecoderClear();
+      //    });
+      // }
+
+      // clear storage
+      taskStorageClear();
+   }
+
+   /*
+    * read object from settings file
+    */
+   QJsonObject readConfig(const QString &group)
+   {
+      QJsonObject config;
+
+      static QRegularExpression boolExpr("true|false");
+
+      settings.beginGroup(group);
+
+      for (const QString &key: settings.childKeys())
       {
-         // start XML file write
-         taskStorageWrite(json);
+         auto value = settings.value(key);
+
+         if (value.toString().contains(boolExpr))
+         {
+            config[key] = value.toBool();
+         }
+         else if (value.toString().contains("/"))
+         {
+            config[key] = value.toString();
+         }
+         else if (value.canConvert<float>())
+         {
+            config[key] = value.toFloat();
+         }
+         else if (value.canConvert<QVariantList>())
+         {
+            config[key] = value.toJsonArray();
+         }
       }
+
+      settings.endGroup();
+
+      for (const QString &entry: settings.childGroups())
+      {
+         if (entry.length() > group.length() && entry.startsWith(group))
+         {
+            const auto next = entry.indexOf('.', group.length() + 1);
+
+            QString path = entry.left(next);
+            QString name = path.mid(group.length() + 1, next - group.length() - 1);
+
+            config[name] = readConfig(path);
+         }
+      }
+
+      return config;
+   }
+
+   /*
+    * save object to settings file
+    */
+   void saveConfig(const QJsonObject &config, const QString &group = "")
+   {
+      for (QString &key: config.keys())
+      {
+         if (config[key].isObject())
+         {
+            saveConfig(config[key].toObject(), group.isEmpty() ? key : group + "." + key);
+         }
+         else
+         {
+            settings.beginGroup(group);
+            settings.setValue(key, config.value(key).toVariant());
+            settings.endGroup();
+         }
+      }
+   }
+
+   /*
+    * read receiver parameters from settings file
+    */
+   void logicDeviceInitialize()
+   {
+      QJsonObject command;
+
+      if (!logicDeviceType.isEmpty())
+      {
+         if (!defaultDeviceConfig.contains(logicDeviceType))
+         {
+            qWarning() << "unable to configure logic, unknown device type: " << logicDeviceType;
+            return;
+         }
+
+         const QJsonObject &defaults = defaultDeviceConfig[logicDeviceType].toObject();
+
+         QJsonObject config = readConfig("device." + logicDeviceType);
+
+         for (const QString &key: defaults.keys())
+         {
+            if (config.contains(key))
+               command[key] = config[key];
+            else
+               command[key] = defaults[key];
+         }
+      }
+
+      // override enabled flag
+      if (!command.contains("enabled"))
+         command["enabled"] = true;
+
+      // set firmware path if not present
+      if (!command.contains("firmwarePath"))
+         command["firmwarePath"] = QCoreApplication::applicationDirPath() + "/firmware";
+
+      // configure receiver
+      taskLogicDeviceConfig(command);
+   }
+
+   /*
+    *save receiver parameters to settings file
+    */
+   void logicDeviceConfigure(const QJsonObject &config)
+   {
+      // send configuration to device
+      taskLogicDeviceConfig(config);
+
+      // update settings
+      if (!logicDeviceType.isEmpty())
+      {
+         saveConfig(config, "device." + logicDeviceType);
+      }
+   }
+
+   /*
+    * process logic status event
+    */
+   void logicDeviceStatusChange(const rt::Event &event)
+   {
+      if (const auto data = event.get<std::string>("data"))
+      {
+         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         // configure device for first time
+         if (logicDeviceName != status["name"].toString())
+         {
+            logicDeviceName = status["name"].toString();
+            logicDeviceType = logicDeviceName.left(logicDeviceName.indexOf("://"));
+
+            logicDeviceInitialize();
+         }
+         else
+         {
+            QJsonObject forward;
+
+            // forward streamTime and samplerate to decoder
+            if (status.contains("streamTime"))
+               forward["streamTime"] = status["streamTime"].toInt();
+
+            if (status.contains("sampleRate"))
+               forward["sampleRate"] = status["sampleRate"].toInt();
+
+            if (!forward.isEmpty())
+               taskLogicDecoderConfig(forward);
+
+            QtApplication::post(LogicDeviceStatusEvent::create(status));
+         }
+      }
+   }
+
+   /*
+    * read decoder parameters from settings file
+    */
+   void logicDecoderInitialize()
+   {
+      QJsonObject config = readConfig("decoder.logic");
+
+      // override enabled flag
+      if (!config.contains("enabled"))
+         config["enabled"] = true;
+
+      // configure receiver
+      taskLogicDecoderConfig(config);
+   }
+
+   /*
+    * configure radio parameters
+    */
+   void logicDecoderConfigure(const QJsonObject &config)
+   {
+      // send configuration to device
+      taskLogicDecoderConfig(config);
+
+      // update settings
+      saveConfig(config, "decoder.logic");
+   }
+
+   /*
+    * process decoder status event
+    */
+   void logicDecoderStatusChange(const rt::Event &event)
+   {
+      if (auto data = event.get<std::string>("data"))
+      {
+         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         QtApplication::post(LogicDecoderStatusEvent::create(status));
+      }
+   }
+
+   /*
+   * process new received frame
+   */
+   void logicDecoderFrameEvent(const lab::RawFrame &frame)
+   {
+      QtApplication::post(new StreamFrameEvent(frame), Qt::HighEventPriority);
+   }
+
+   /*
+    * read radio parameters from settings file
+    */
+   void radioDeviceInitialize()
+   {
+      QJsonObject command;
+
+      if (!radioDeviceType.isEmpty())
+      {
+         if (!defaultDeviceConfig.contains(radioDeviceType))
+         {
+            qWarning() << "unable to configure radio, unknown device type: " << radioDeviceType;
+            return;
+         }
+
+         const QJsonObject &defaults = defaultDeviceConfig[radioDeviceType].toObject();
+
+         QJsonObject config = readConfig("device." + radioDeviceType);
+
+         for (const QString &key: defaults.keys())
+         {
+            if (config.contains(key))
+               command[key] = config[key];
+            else
+               command[key] = defaults[key];
+         }
+      }
+
+      // override enabled flag
+      if (!command.contains("enabled"))
+         command["enabled"] = true;
+
+      // configure receiver
+      taskRadioDeviceConfig(command);
+   }
+
+   /*
+    * configure radio parameters
+    */
+   void radioDeviceConfigure(const QJsonObject &config)
+   {
+      // send configuration to device
+      taskRadioDeviceConfig(config);
+
+      // update settings
+      if (!radioDeviceType.isEmpty())
+      {
+         saveConfig(config, "device." + radioDeviceType);
+      }
+   }
+
+   /*
+    * process radio status event
+    */
+   void radioDeviceStatusChange(const rt::Event &event)
+   {
+      if (const auto data = event.get<std::string>("data"))
+      {
+         const QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         if (radioDeviceName != status["name"].toString())
+         {
+            radioDeviceName = status["name"].toString();
+            radioDeviceType = radioDeviceName.left(radioDeviceName.indexOf("://"));
+
+            radioDeviceInitialize();
+         }
+         else
+         {
+            QJsonObject forward;
+
+            // forward streamTime and samplerate to decoder
+            if (status.contains("streamTime"))
+               forward["streamTime"] = status["streamTime"].toInt();
+
+            if (status.contains("sampleRate"))
+               forward["sampleRate"] = status["sampleRate"].toInt();
+
+            if (!forward.isEmpty())
+               taskRadioDecoderConfig(forward);
+
+            QtApplication::post(RadioDeviceStatusEvent::create(status));
+         }
+      }
+   }
+
+   /*
+   * read radio decoder parameters from settings file
+   */
+   void radioDecoderInitialize()
+   {
+      QJsonObject config = readConfig("decoder.radio");
+
+      // override enabled flag
+      if (!config.contains("enabled"))
+         config["enabled"] = true;
+
+      // configure receiver
+      taskRadioDecoderConfig(config);
+   }
+
+   /*
+    * configure logic parameters
+    */
+   void radioDecoderConfigure(const QJsonObject &config)
+   {
+      // send configuration to device
+      taskRadioDecoderConfig(config);
+
+      // update settings
+      saveConfig(config, "decoder.radio");
+   }
+
+   /*
+    * process decoder status event
+    */
+   void radioDecoderStatusChange(const rt::Event &event)
+   {
+      if (const auto data = event.get<std::string>("data"))
+      {
+         const QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         QtApplication::post(RadioDecoderStatusEvent::create(status));
+      }
+   }
+
+   /*
+    * process new received frame
+    */
+   void radioDecoderFrameEvent(const lab::RawFrame &frame)
+   {
+      QtApplication::post(new StreamFrameEvent(frame), Qt::HighEventPriority);
+   }
+
+   /*
+    * setup fourier task
+    */
+   void fourierInitialize() const
+   {
+      QJsonObject config {{"enabled", true}};
+
+      taskFourierConfig(config);
+   }
+
+   /*
+   * process fourier status event
+   */
+   void fourierStatusChange(const rt::Event &event)
+   {
+      if (const auto data = event.get<std::string>("data"))
+      {
+         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         QtApplication::post(FourierStatusEvent::create(status));
+      }
+   }
+
+   /*
+    * process recorder status event
+    */
+   void recorderStatusChange(const rt::Event &event)
+   {
+      if (const auto data = event.get<std::string>("data"))
+      {
+         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         QtApplication::post(StorageStatusEvent::create(status));
+
+         // forward streamTime to decoder
+         if (status.contains("streamTime"))
+         {
+            // send streamTime to logic decoder
+            taskLogicDecoderConfig({{"streamTime", status["streamTime"].toInt()}});
+
+            // send streamTime to radio decoder
+            taskRadioDecoderConfig({{"streamTime", status["streamTime"].toInt()}});
+         }
+      }
+   }
+
+   /*
+    * process storage status event
+    */
+   void storageStatusChange(const rt::Event &event)
+   {
+      if (const auto data = event.get<std::string>("data"))
+      {
+         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         QtApplication::post(StorageStatusEvent::create(status));
+      }
+   }
+
+   /*
+    * process new received buffer
+    */
+   void signalBufferEvent(const hw::SignalBuffer &buffer)
+   {
+      QtApplication::post(new SignalBufferEvent(buffer), Qt::LowEventPriority);
    }
 
    /*
     * start decoder task
     */
-   void taskDecoderStart(std::function<void()> onComplete = nullptr) const
+   void taskLogicDecoderStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      decoderCommandStream->next({nfc::FrameDecoderTask::Start, std::move(onComplete)});
+      logicDecoderCommandStream->next({lab::LogicDecoderTask::Start, onComplete, onReject});
    }
 
    /*
     * stop decoder task
     */
-   void taskDecoderStop(std::function<void()> onComplete = nullptr) const
+   void taskLogicDecoderStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      decoderCommandStream->next({nfc::FrameDecoderTask::Stop, std::move(onComplete)});
+      logicDecoderCommandStream->next({lab::LogicDecoderTask::Stop, onComplete, onReject});
+   }
+
+   /*
+    * query decoder task
+    */
+   void taskLogicDecoderQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      logicDecoderCommandStream->next({lab::LogicDecoderTask::Query, onComplete, onReject});
    }
 
    /*
     * configure decoder task
     */
-   void taskDecoderConfig(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
+   void taskLogicDecoderConfig(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      QJsonDocument doc(data);
+      const QJsonDocument doc(data);
 
-      decoderCommandStream->next({nfc::FrameDecoderTask::Configure, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      logicDecoderCommandStream->next({lab::LogicDecoderTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
-    * start receiver task
+    * clear decoder queue
     */
-   void taskReceiverStart(std::function<void()> onComplete = nullptr) const
+   void taskLogicDecoderClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      receiverCommandStream->next({nfc::SignalReceiverTask::Start, std::move(onComplete)});
+      logicDecoderCommandStream->next({lab::LogicDecoderTask::Clear, onComplete, onReject});
    }
 
    /*
-    * stop receiver task
+    * start decoder task
     */
-   void taskReceiverStop(std::function<void()> onComplete = nullptr) const
+   void taskRadioDecoderStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      receiverCommandStream->next({nfc::SignalReceiverTask::Stop, std::move(onComplete)});
+      radioDecoderCommandStream->next({lab::RadioDecoderTask::Start, onComplete, onReject});
    }
 
    /*
-    * enquire receiver status
+    * stop decoder task
     */
-   void taskReceiverQuery(std::function<void()> onComplete = nullptr) const
+   void taskRadioDecoderStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      receiverCommandStream->next({nfc::SignalReceiverTask::Query, std::move(onComplete)});
+      radioDecoderCommandStream->next({lab::RadioDecoderTask::Stop, onComplete, onReject});
    }
 
    /*
-    * configure receiver task
+    * query decoder task
     */
-   void taskReceiverConfig(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
+   void taskRadioDecoderQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      QJsonDocument doc(data);
+      radioDecoderCommandStream->next({lab::RadioDecoderTask::Query, onComplete, onReject});
+   }
 
-      receiverCommandStream->next({nfc::SignalReceiverTask::Configure, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
+   /*
+    * configure decoder task
+    */
+   void taskRadioDecoderConfig(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      const QJsonDocument doc(data);
+
+      radioDecoderCommandStream->next({lab::RadioDecoderTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+   }
+
+   /*
+    * clear decoder queue
+    */
+   void taskRadioDecoderClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      radioDecoderCommandStream->next({lab::RadioDecoderTask::Clear, onComplete, onReject});
+   }
+
+   /*
+    * start logic task
+    */
+   void taskLogicDeviceStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Start, onComplete, onReject});
+   }
+
+   /*
+    * stop logic task
+    */
+   void taskLogicDeviceStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Stop, onComplete, onReject});
+   }
+
+   /*
+    * enquire logic status
+    */
+   void taskLogicDeviceQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Query, onComplete, onReject});
+   }
+
+   /*
+    * configure logic task
+    */
+   void taskLogicDeviceConfig(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      const QJsonDocument doc(data);
+
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+   }
+
+   /*
+   * clear logic queue
+   */
+   void taskLogicDeviceClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Clear, onComplete, onReject});
+   }
+
+   /*
+    * start radio task
+    */
+   void taskRadioDeviceStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Start, onComplete, onReject});
+   }
+
+   /*
+    * stop radio task
+    */
+   void taskRadioDeviceStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Stop, onComplete, onReject});
+   }
+
+   /*
+    * enquire radio status
+    */
+   void taskRadioDeviceQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Query, onComplete, onReject});
+   }
+
+   /*
+    * configure radio task
+    */
+   void taskRadioDeviceConfig(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      const QJsonDocument doc(data);
+
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+   }
+
+   /*
+    * clear radio queue
+    */
+   void taskRadioDeviceClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Clear, onComplete, onReject});
+   }
+
+   /*
+   * configure fourier task
+   */
+   void taskFourierConfig(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      const QJsonDocument doc(data);
+
+      fourierCommandStream->next({lab::FourierProcessTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
     * start recorder task to read file
     */
-   void taskRecorderRead(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
+   void taskRecorderRead(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      QJsonDocument doc(data);
+      const QJsonDocument doc(data);
 
-      recorderCommandStream->next({nfc::SignalRecorderTask::Read, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      recorderCommandStream->next({lab::SignalStorageTask::Read, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
     * start recorder task to write file
     */
-   void taskRecorderWrite(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
+   void taskRecorderWrite(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      QJsonDocument doc(data);
+      const QJsonDocument doc(data);
 
-      recorderCommandStream->next({nfc::SignalRecorderTask::Write, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      recorderCommandStream->next({lab::SignalStorageTask::Write, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
     * stop recorder task
     */
-   void taskRecorderStop(std::function<void()> onComplete = nullptr) const
+   void taskRecorderStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      recorderCommandStream->next({nfc::SignalRecorderTask::Stop, std::move(onComplete)});
+      recorderCommandStream->next({lab::SignalStorageTask::Stop, onComplete, onReject});
    }
 
    /*
     * start storage task to read frames from file
     */
-   void taskStorageRead(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
+   void taskStorageRead(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      QJsonDocument doc(data);
+      const QJsonDocument doc(data);
 
       // read frame data from file
-      storageCommandStream->next({nfc::FrameStorageTask::Read, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      storageCommandStream->next({lab::TraceStorageTask::Read, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
     * start storage task for write frames to file
     */
-   void taskStorageWrite(const QJsonObject &data, std::function<void()> onComplete = nullptr) const
+   void taskStorageWrite(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      QJsonDocument doc(data);
+      const QJsonDocument doc(data);
 
       // write frame data to file
-      storageCommandStream->next({nfc::FrameStorageTask::Write, std::move(onComplete), nullptr, {{"data", doc.toJson().toStdString()}}});
+      storageCommandStream->next({lab::TraceStorageTask::Write, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
     * clear storage task frames from internal buffer
     */
-   void taskStorageClear(std::function<void()> onComplete = nullptr) const
+   void taskStorageClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      storageCommandStream->next({nfc::FrameStorageTask::Clear, std::move(onComplete)});
+      storageCommandStream->next({lab::TraceStorageTask::Clear, onComplete, onReject});
    }
 };
 
-QtDecoder::QtDecoder(QSettings &settings, QtMemory *cache) : impl(new Impl(settings, cache))
+QtDecoder::QtDecoder() : impl(new Impl())
 {
 }
 
 void QtDecoder::handleEvent(QEvent *event)
 {
    if (event->type() == SystemStartupEvent::Type)
-      impl->systemStartup(dynamic_cast<SystemStartupEvent *>(event));
+      impl->systemStartupEvent(dynamic_cast<SystemStartupEvent *>(event));
    else if (event->type() == SystemShutdownEvent::Type)
-      impl->systemShutdown(dynamic_cast<SystemShutdownEvent *>(event));
+      impl->systemShutdownEvent(dynamic_cast<SystemShutdownEvent *>(event));
    else if (event->type() == DecoderControlEvent::Type)
-      impl->decoderControl(dynamic_cast<DecoderControlEvent *>(event));
+      impl->decoderControlEvent(dynamic_cast<DecoderControlEvent *>(event));
 }

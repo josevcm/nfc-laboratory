@@ -1,30 +1,26 @@
 /*
 
-  Copyright (c) 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>
+  This file is part of NFC-LABORATORY.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
+  NFC-LABORATORY is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  NFC-LABORATORY is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with NFC-LABORATORY. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
 #include <atomic>
 #include <mutex>
-#include <memory>
 #include <queue>
 #include <list>
 #include <thread>
@@ -38,7 +34,7 @@ namespace rt {
 
 struct Executor::Impl
 {
-   rt::Logger log {"Executor"};
+   Logger *log = Logger::getLogger("rt.Executor");
 
    // max number of tasks in pool (waiting + running)
    int poolSize;
@@ -63,7 +59,7 @@ struct Executor::Impl
 
    Impl(int poolSize, int coreSize) : poolSize(poolSize), shutdown(false)
    {
-      log.info("executor service starting width {} threads", {coreSize});
+      log->info("executor service starting with {} threads", {coreSize});
 
       // create new thread group
       for (int i = 0; i < coreSize; i++)
@@ -77,47 +73,53 @@ struct Executor::Impl
       // get current thread id
       std::thread::id id = std::this_thread::get_id();
 
-      log.debug("worker thread {} started", {id});
+      log->debug("worker thread {} started", {id});
 
       // main thread loop
       while (!shutdown)
       {
          if (auto next = waitingTasks.get())
          {
-            auto task = next.value();
+            const auto &task = next.value();
 
             runningTasks.add(task);
 
             try
             {
-               log.debug("task {} started in thread {}", {task->name(), id});
+               log->info("task {} started in thread {}", {task->name(), id});
 
-               next.value()->run(); // call next handler
-
-               log.debug("task {} finished in thread {}", {task->name(), id});
+               task->run();
+            }
+            catch (std::exception &e)
+            {
+               log->error("##################################################");
+               log->error("exception in {}: {}", {task->name(), std::string(e.what())});
+               log->error("##################################################");
             }
             catch (...)
             {
-               log.error("unhandled task {} exception in thread {}", {task->name(), id});
+               log->error("##################################################");
+               log->error("unhandled exception in {}", {task->name()});
+               log->error("##################################################");
             }
+
+            log->info("task {} finished in thread {}", {task->name(), id});
 
             // on shutdown process do not remove from list to avoid concurrent modification
             if (!shutdown)
-            {
                runningTasks.remove(task);
-            }
          }
          else if (!shutdown)
          {
             // lock mutex before wait in condition variable
-            std::unique_lock<std::mutex> lock(syncMutex);
+            std::unique_lock lock(syncMutex);
 
             // stop thread until is notified
             threadSync.wait(lock);
          }
       }
 
-      log.debug("executor thread {} terminated", {id});
+      log->info("executor thread {} terminated", {id});
    }
 
    void submit(Task *task)
@@ -130,11 +132,15 @@ struct Executor::Impl
          // notify waiting threads
          threadSync.notify_all();
       }
+      else
+      {
+         log->warn("submit task rejected, shutdown in progress...");
+      }
    }
 
    void terminate(int timeout)
    {
-      log.info("stopping threads of the executor service");
+      log->info("stopping threads of the executor service, timeout {}", {timeout});
 
       // signal executor shutdown
       shutdown = true;
@@ -142,7 +148,7 @@ struct Executor::Impl
       // terminate running tasks
       while (auto task = runningTasks.get())
       {
-         log.debug("send terminate request for task {}", {task.value()->name()});
+         log->debug("send terminate request for task {}", {task.value()->name()});
 
          task.value()->terminate();
       }
@@ -150,14 +156,14 @@ struct Executor::Impl
       // notify waiting threads
       threadSync.notify_all();
 
-      log.info("waiting for completion of all threads");
+      log->info("now waiting for completion of all executor threads");
 
       // joint all threads
-      for (auto &thread : threadList)
+      for (auto &thread: threadList)
       {
          if (thread.joinable())
          {
-            log.debug("joint on thread {}", {thread.get_id()});
+            log->debug("joint on thread {}", {thread.get_id()});
 
             thread.join();
          }
@@ -166,7 +172,7 @@ struct Executor::Impl
       // finally remove waiting tasks
       waitingTasks.clear();
 
-      log.info("all threads terminated, executor service shutdown completed!");
+      log->info("all threads terminated, executor service shutdown completed!");
    }
 };
 
