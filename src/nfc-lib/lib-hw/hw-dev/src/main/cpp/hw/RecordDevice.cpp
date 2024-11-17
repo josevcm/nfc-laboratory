@@ -50,7 +50,7 @@
 
 namespace hw {
 
-struct chunk
+struct FILEChunk
 {
    unsigned int id;
    unsigned int size;
@@ -65,13 +65,13 @@ struct METAInfo
 
 struct RIFFChunk
 {
-   chunk chunk; // 8 bytes
+   FILEChunk chunk; // 8 bytes
    unsigned int type; // 4 bytes
 };
 
 struct WAVEChunk
 {
-   chunk chunk; // 8 bytes
+   FILEChunk chunk; // 8 bytes
    unsigned short audioFormat; // 2 bytes
    unsigned short numChannels; // 2 bytes
    unsigned int sampleRate; // 4 bytes
@@ -82,13 +82,13 @@ struct WAVEChunk
 
 struct LISTChunk
 {
-   chunk chunk;
+   FILEChunk chunk;
    METAInfo meta;
 };
 
 struct DATAChunk
 {
-   chunk chunk;
+   FILEChunk chunk;
 };
 
 struct FILEHeader
@@ -380,9 +380,9 @@ struct RecordDevice::Impl
          return false;
       }
 
-      chunk entry {};
+      FILEChunk entry {};
 
-      while (file.read(reinterpret_cast<char *>(&entry), sizeof(chunk)))
+      while (file.read(reinterpret_cast<char *>(&entry), sizeof(FILEChunk)))
       {
          switch (entry.id)
          {
@@ -391,11 +391,11 @@ struct RecordDevice::Impl
             {
                WAVEChunk wave {};
 
-               if (entry.size != sizeof(wave) - sizeof(chunk))
+               if (entry.size != sizeof(wave) - sizeof(FILEChunk))
                   return false;
 
                // restore offset to read wave chunk
-               file.seekg(-static_cast<int>(sizeof(chunk)), std::ios_base::cur);
+               file.seekg(-static_cast<int>(sizeof(FILEChunk)), std::ios_base::cur);
 
                // read wave chunk
                if (!file.read(reinterpret_cast<char *>(&wave), sizeof(wave)))
@@ -521,7 +521,7 @@ struct RecordDevice::Impl
 
       // initialize LIST chunk
       header.list.chunk.id = LIST_CHUNK_ID;
-      header.list.chunk.size = toLittleEndian<unsigned int>(sizeof(LISTChunk) - sizeof(chunk));
+      header.list.chunk.size = toLittleEndian<unsigned int>(sizeof(LISTChunk) - sizeof(FILEChunk));
 
       // initialize META info
       header.list.meta.id = META_INFO_ID;
