@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package>
-    <Name>org.josevcm.nfclab</Name>
-    <DisplayName>NFC Laboratory @nfc-lab_VERSION@ - josevcm@gmail.com</DisplayName>
-    <Description>NFC Laboratory Package Installer</Description>
-    <Version>@nfc-lab_VERSION@</Version>
-    <ReleaseDate>2022-02-06</ReleaseDate>
+    <Name>org.josevcm.nfc-spy</Name>
+    <DisplayName>NFC SPY @nfc-spy_VERSION@ Installer</DisplayName>
+    <Description>NFC SPY @nfc-spy_VERSION@ Software Installer</Description>
+    <Version>@nfc-spy_VERSION@</Version>
+    <ReleaseDate>2024-06-01</ReleaseDate>
     <Licenses>
         <License name="License Agreement" file="license.txt" />
     </Licenses>
     <Default>true</Default>
     <ForcedInstallation>true</ForcedInstallation>
     <ForcedUpdate>true</ForcedUpdate>
-    <Script>installscript.js</Script>
+    <!-- <Script>installscript.js</Script> -->
 </Package>

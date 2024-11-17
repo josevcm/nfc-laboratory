@@ -1,0 +1,154 @@
+[Version]
+Signature = "$Windows NT$"
+Class = USB
+ClassGUID={36FC9E60-C465-11CF-8056-444553540000}
+Provider = %Provider%
+DriverVer=11/02/2006,6.0.6000.16388
+
+
+; ========== Manufacturer/Models sections ===========
+
+[Manufacturer]
+%Provider% = DreamSourceLabMfg,NTx86,NTamd64
+
+[DreamSourceLabMfg.NTx86]
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0001
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0002
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0003
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0004
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0005
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0006
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0007
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0008
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0009
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000A
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000B
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000C
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000D
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000E
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000F
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0010
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0011
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0012
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0013
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0014
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0015
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0016
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0017
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0018
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0019
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001A
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001B
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001C
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001D
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001E
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001F
+
+[DreamSourceLabMfg.NTamd64]
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0001
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0002
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0003
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0004
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0005
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0006
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0007
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0008
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0009
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000A
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000B
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000C
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000D
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000E
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_000F
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0010
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0011
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0012
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0013
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0014
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0015
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0016
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0017
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0018
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_0019
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001A
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001B
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001C
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001D
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001E
+%USB\DreamSourceLab.DeviceDesc% = DSL_Install, USB\VID_2A0E&PID_001F
+
+; =================== Installation ===================
+
+[DSL_Install]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[DSL_Install.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+
+
+[WinUSB_ServiceInstall]
+DisplayName     = %WinUSB_SvcDesc%
+ServiceType     = 1
+StartType       = 3
+ErrorControl    = 1
+ServiceBinary   = %12%\WinUSB.sys
+
+
+
+[DSL_Install.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+
+
+[WinUSB_Install]
+KmdfLibraryVersion=1.7
+
+
+
+[DSL_Install.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+
+
+[CoInstallers_AddReg]
+HKR,,CoInstallers32,0x00010000,"WUDFUpdate_01007.dll","WinUSBCoInstaller.dll","WdfCoInstaller01007.dll,WdfCoInstaller"
+
+[CoInstallers_CopyFiles]
+WdfCoInstaller01007.dll
+WinUSBCoInstaller.dll
+WUDFUpdate_01007.dll
+
+[DestinationDirs]
+CoInstallers_CopyFiles=11
+
+; ================= Source Media Section =====================
+
+[SourceDisksNames.x86]
+1 = %DISK_NAME%,,,\x86
+
+[SourceDisksNames.amd64]
+2 = %DISK_NAME%,,,\amd64
+
+[SourceDisksFiles.x86]
+WdfCoInstaller01007.dll=1
+WinUSBCoInstaller.dll=1
+WUDFUpdate_01007.dll=1
+
+[SourceDisksFiles.amd64]
+WdfCoInstaller01007.dll=2
+WinUSBCoInstaller.dll=2
+WUDFUpdate_01007.dll=2
+
+; =================== Strings ===================
+
+[Strings]
+Provider="DreamSourceLab"
+USB\DreamSourceLab.DeviceDesc="DreamSourceLab USB-based Instrument"
+WinUSB_SvcDesc="DreamSourceLab USB-based Instrument"
+DISK_NAME = "Driver Disk"
+

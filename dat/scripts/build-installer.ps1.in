@@ -1,20 +1,27 @@
 $SourcePath="@CMAKE_CURRENT_SOURCE_DIR@"
 $TargetPath="@CMAKE_CURRENT_BINARY_DIR@"
 
-New-Item -Force -Path $TargetPath/installer/packages/org.josevcm.nfclab/data/ -ItemType "directory"
-New-Item -Force -Path $TargetPath/installer/packages/org.josevcm.nfclab/meta/ -ItemType "directory"
+$InstallerPath="$TargetPath/installer"
+$ConfigPath="$InstallerPath/config"
+$PackagePath="$InstallerPath/package"
+$PackageDataPath="$PackagePath/org.josevcm.nfc-spy/data"
+$PackageMetaPath="$PackagePath/org.josevcm.nfc-spy/meta"
 
-# Copy application resources
-Copy-Item -Force $SourcePath/dat/config/*.conf $TargetPath/installer/packages/org.josevcm.nfclab/data/
-Copy-Item -Force $SourcePath/dll/usb-1.0.26/x86_64-w64-mingw32/bin/*.dll $TargetPath/installer/packages/org.josevcm.nfclab/data/
-Copy-Item -Force $TargetPath/src/nfc-app/app-qt/nfc-lab.exe $TargetPath/installer/packages/org.josevcm.nfclab/data/
+New-Item -Force -Path $PackageDataPath -ItemType "directory"
+New-Item -Force -Path $PackageMetaPath -ItemType "directory"
 
-# Copy installer resources
-Copy-Item -Force $SourcePath/dat/installer/*.js $TargetPath/installer/packages/org.josevcm.nfclab/meta/
+# Copy data resources
+Copy-Item -Force $SourcePath/dll/openssl-1.1.1/x86_64/bin/*.dll $PackageDataPath
+Copy-Item -Force $SourcePath/dll/usb-1.0.26/x86_64/bin/*.dll $PackageDataPath
+Copy-Item -Force $TargetPath/src/nfc-app/app-qt/nfc-spy.exe $PackageDataPath
+
+# Copy meta resources
+Copy-Item -Force $SourcePath/dat/installer/*.js $PackageMetaPath
+Copy-Item -Force $TargetPath/installer/config/license.txt $PackageMetaPath
+Copy-Item -Force $TargetPath/installer/config/package.xml $PackageMetaPath
 
 # Create QT deployment from executable
-windeployqt.exe --debug --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $TargetPath/installer/packages/org.josevcm.nfclab/data/nfc-lab.exe
-# windeployqt.exe --release --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $TargetPath/installer/packages/org.josevcm.nfclab/data/nfc-lab.exe
+windeployqt --verbose 1 --release --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-opengl-sw $PackageDataPath/nfc-spy.exe
 
 # Create QT installer
-binarycreator.exe -c $TargetPath/installer/config/config.xml -p $TargetPath/installer/packages $TargetPath/nfc-lab-@nfc-lab_VERSION@-x86_64.exe
+binarycreator --verbose -c $ConfigPath/config.xml -p $PackagePath $TargetPath/nfc-spy-@nfc-spy_VERSION@-x86_64.exe

@@ -1,0 +1,77 @@
+; Copyright (c) Microsoft Corporation. All rights reserved.
+
+[Version]
+Signature="$Windows NT$"
+Class=USB Device
+ClassGuid={88BAE032-5A81-49f0-BC3D-A4FF138216D6}
+Provider=%WinPhone%
+CatalogFile=winusbcompat.cat
+DriverVer=05/11/2012,1.0
+
+; =============== Class section needed for downlevel OS ===============
+
+[ClassInstall32]
+AddReg = ClassInstall_AddReg
+ 
+[ClassInstall_AddReg]
+HKR,,,0,%ClassName%
+HKR,,IconPath,%REG_MULTI_SZ%,"%systemroot%\system32\setupapi.dll,-20"
+HKR,,NoInstallClass,,1
+HKR,,BootCritical,,0
+HKR,,Configurable,,1
+ 
+; ======================= End of Class section ========================
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[Manufacturer]
+%Generic.Mfg%=Generic.Section,NTx86,NTamd64,NTx86.6.0,NTamd64.6.0
+
+; =========================== Generic =================================
+
+[Generic.Section.NTx86] ; Windows 2000 and XP
+%NULL.DeviceDesc%=NULL,USB\MS_COMP_WINUSB
+
+[Generic.Section.NTx86.6.0] ; Vista and later
+%USB\MS_COMP_WINUSB.DeviceDesc%=WinUsbDriver,USB\MS_COMP_WINUSB
+
+[Generic.Section.NTamd64] ; Windows 2000 and XP
+%NULL.DeviceDesc%=NULL,USB\MS_COMP_WINUSB
+
+[Generic.Section.NTamd64.6.0] ; Vista and later
+%USB\MS_COMP_WINUSB.DeviceDesc%=WinUsbDriver,USB\MS_COMP_WINUSB
+
+; ======================= WinUsbDriver Sections =======================
+
+[WinUsbDriver.NT]
+Include = Winusb.inf
+Needs   = WINUSB.NT
+
+[WinUsbDriver.NT.Services]
+Include = Winusb.inf
+Needs   = WINUSB.NT.Services
+
+; =========================== NULL Sections ===========================
+
+[DummyReg]
+
+[NULL.NT]
+AddReg = DummyReg
+
+[NULL.NT.Services]
+AddService = , %NULL_SERVICE_INSTALL%
+
+; ========================== Strings Section ==========================
+
+[Strings]
+;Not localizable
+WinPhone="Windows Phone"
+REG_MULTI_SZ = 0x00010000
+NULL_SERVICE_INSTALL = 0x00000002
+
+;Localizable
+Generic.Mfg="WinUsb Device"
+USB\MS_COMP_WINUSB.DeviceDesc="WinUsb Device"
+NULL.DeviceDesc="WinUsb Device (NULL)"
+ClassName = "Universal Serial Bus devices"
