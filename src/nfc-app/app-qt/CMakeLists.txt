@@ -24,7 +24,6 @@ set(SOURCES
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
         src/main/cpp/QtDecoder.cpp
-        src/main/cpp/QtServer.cpp
         src/main/cpp/QtWindow.cpp
         src/main/cpp/events/ConsoleLogEvent.cpp
         src/main/cpp/events/DecoderControlEvent.cpp
