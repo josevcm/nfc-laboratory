@@ -421,19 +421,19 @@ std::list<RawFrame> NfcDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
          {
             switch (decoder.bitrate->techType)
             {
-               case FrameTech::NfcATech:
+               case NfcATech:
                   nfca.decode(samples, frames);
                   break;
 
-               case FrameTech::NfcBTech:
+               case NfcBTech:
                   nfcb.decode(samples, frames);
                   break;
 
-               case FrameTech::NfcFTech:
+               case NfcFTech:
                   nfcf.decode(samples, frames);
                   break;
 
-               case FrameTech::NfcVTech:
+               case NfcVTech:
                   nfcv.decode(samples, frames);
                   break;
             }
@@ -448,9 +448,9 @@ std::list<RawFrame> NfcDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
       // if sample buffer is not valid only process remain carrier detector
    else
    {
-      RawFrame carrierFrame = RawFrame(FrameTech::NfcNoneTech, decoder.carrierOnTime ? FrameType::NfcCarrierOn : FrameType::NfcCarrierOff);
+      RawFrame carrierFrame = RawFrame(NfcAnyTech, decoder.carrierOnTime ? NfcCarrierOn : NfcCarrierOff);
 
-      carrierFrame.setFramePhase(FramePhase::NfcCarrierPhase);
+      carrierFrame.setFramePhase(NfcCarrierPhase);
       carrierFrame.setSampleStart(decoder.signalClock);
       carrierFrame.setSampleEnd(decoder.signalClock);
       carrierFrame.setSampleRate(decoder.sampleRate);
@@ -478,9 +478,9 @@ void NfcDecoder::Impl::detectCarrier(std::list<RawFrame> &frames)
       {
          decoder.carrierOnTime = decoder.carrierEdgeTime ? decoder.carrierEdgeTime : decoder.signalClock;
 
-         RawFrame carrierOn = RawFrame(FrameTech::NfcNoneTech, FrameType::NfcCarrierOn);
+         RawFrame carrierOn = RawFrame(NfcAnyTech, NfcCarrierOn);
 
-         carrierOn.setFramePhase(FramePhase::NfcCarrierPhase);
+         carrierOn.setFramePhase(NfcCarrierPhase);
          carrierOn.setSampleStart(decoder.carrierOnTime);
          carrierOn.setSampleEnd(decoder.carrierOnTime);
          carrierOn.setSampleRate(decoder.sampleRate);
@@ -503,9 +503,9 @@ void NfcDecoder::Impl::detectCarrier(std::list<RawFrame> &frames)
       {
          decoder.carrierOffTime = decoder.carrierEdgeTime ? decoder.carrierEdgeTime : decoder.signalClock;
 
-         RawFrame carrierOff = RawFrame(FrameTech::NfcNoneTech, FrameType::NfcCarrierOff);
+         RawFrame carrierOff = RawFrame(NfcAnyTech, NfcCarrierOff);
 
-         carrierOff.setFramePhase(FramePhase::NfcCarrierPhase);
+         carrierOff.setFramePhase(NfcCarrierPhase);
          carrierOff.setSampleStart(decoder.carrierOffTime);
          carrierOff.setSampleEnd(decoder.carrierOffTime);
          carrierOff.setSampleRate(decoder.sampleRate);

@@ -31,14 +31,14 @@ enum FrameTech
    NoneTech = 0x0000,
 
    // NFC tech types
-   NfcNoneTech = 0x0100,
+   NfcAnyTech = 0x0100,
    NfcATech = 0x0101,
    NfcBTech = 0x0102,
    NfcFTech = 0x0103,
    NfcVTech = 0x0104,
 
    // ISO tech types
-   IsoNoneTech = 0x0200,
+   IsoAnyTech = 0x0200,
    Iso7816Tech = 0x0201,
 };
 
