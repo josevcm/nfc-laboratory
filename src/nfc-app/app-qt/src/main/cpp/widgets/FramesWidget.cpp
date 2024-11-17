@@ -272,7 +272,7 @@ struct FramesWidget::Impl
          {
             switch (frame->techType())
             {
-               case lab::NfcNoneTech:
+               case lab::NfcAnyTech:
                case lab::NfcATech:
                case lab::NfcBTech:
                case lab::NfcFTech:
@@ -280,7 +280,7 @@ struct FramesWidget::Impl
                   addNfcFrame(frame);
                   break;
 
-               case lab::IsoNoneTech:
+               case lab::IsoAnyTech:
                case lab::Iso7816Tech:
                   addIsoFrame(frame);
                   break;
