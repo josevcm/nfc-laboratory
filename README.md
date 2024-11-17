@@ -397,7 +397,7 @@ All can be compiled with mingw-g64, a minimum version is required to support C++
 
 ### Manual build for Windows
 
-Using git-bash, download repository:
+Once you have all pre-requisites ready, download repository:
 
 ```
 $ git clone https://github.com/josevcm/nfc-laboratory.git
@@ -514,92 +514,112 @@ serves as an example to test demodulation.
 Install dependencies
 
 ```
-root@HPWIN11:~# apt install libusb-1.0-0
-...
-root@HPWIN11:~# apt install qt6-base-dev
+user@LG:~# sudo apt install cmake g++ g++-11 qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
 ```
 
 Download repository:
 
 ```
-$ git clone https://github.com/josevcm/nfc-laboratory.git
+user@LG:~$ git clone https://github.com/josevcm/nfc-laboratory.git
 Cloning into 'nfc-laboratory'...
-remote: Enumerating objects: 1629, done.
-remote: Counting objects: 100% (1003/1003), done.
-remote: Compressing objects: 100% (776/776), done.
-remote: Total 1629 (delta 188), reused 990 (delta 179), pack-reused 626
-Receiving objects: 100% (1629/1629), 32.09 MiB | 10.60 MiB/s, done.
-Resolving deltas: 100% (312/312), done.
-Updating files: 100% (975/975), done.
+remote: Enumerating objects: 8903, done.
+remote: Counting objects: 100% (229/229), done.
+remote: Compressing objects: 100% (91/91), done.
+remote: Total 8903 (delta 139), reused 181 (delta 130), pack-reused 8674 (from 1)
+Receiving objects: 100% (8903/8903), 76.69 MiB | 4.03 MiB/s, done.
+Resolving deltas: 100% (3911/3911), done.
 ```
 
 Prepare release makefiles, or change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output:
 
 ```
-root@HPWIN11:~# cmake -DCMAKE_BUILD_TYPE=Release -S nfc-laboratory -B cmake-build-release
--- The C compiler identification is GNU 9.4.0
--- The CXX compiler identification is GNU 9.4.0
--- Check for working C compiler: /usr/bin/cc
--- Check for working C compiler: /usr/bin/cc -- works
+user@LG:~$ cmake -DCMAKE_BUILD_TYPE=Release -S nfc-laboratory -B cmake-build-release
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
 -- Detecting C compiler ABI info
 -- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
 -- Detecting C compile features
 -- Detecting C compile features - done
--- Check for working CXX compiler: /usr/bin/c++
--- Check for working CXX compiler: /usr/bin/c++ -- works
 -- Detecting CXX compiler ABI info
 -- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
 -- Detecting CXX compile features
 -- Detecting CXX compile features - done
 -- Build for x86_64
 -- Enabled SSE/SSE3 instruction set
--- Detected libusb /usr/include/libusb-1.0 /usr/lib/x86_64-linux-gnu/libusb-1.0.so
+-- usb-1.0:
+--   include:/usr/include/libusb-1.0
+--   library:/usr/lib/x86_64-linux-gnu/libusb-1.0.so
+-- Looking for pthread.h
+-- Looking for pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so
+-- Found WrapOpenGL: TRUE
+-- Could NOT find XKB (missing: XKB_LIBRARY XKB_INCLUDE_DIR) (Required is at least version "0.5.0")
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR)
 -- Configuring done
 -- Generating done
--- Build files have been written to: /root/cmake-build-release
+-- Build files have been written to: /home/user/cmake-build-release
 ```
 
 Launch build:
 
 ```
-root@HPWIN11:~# cmake --build cmake-build-release --target nfc-lab -- -j 6
-Scanning dependencies of target mufft-avx
-Scanning dependencies of target mufft-sse
-Scanning dependencies of target airspy
-Scanning dependencies of target rt-lang
-Scanning dependencies of target mufft-sse3
-Scanning dependencies of target rtlsdr
-[  2%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/airspy.c.o
-[  4%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/c/x86/kernel.sse.c.o
-[  3%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-avx.dir/src/main/c/x86/kernel.avx.c.o
-[  4%] Building CXX object src/nfc-lib/lib-rt/rt-lang/CMakeFiles/rt-lang.dir/src/main/cpp/Executor.cpp.o
-[  4%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse3.dir/src/main/c/x86/kernel.sse3.c.o
-[  5%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/c/librtlsdr.c.o
-[  6%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/iqconverter_float.c.o
-[  7%] Linking C static library libmufft-sse.a
+user@LG:~$ cmake --build cmake-build-release --target nfc-spy -- -j 6
+[  0%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/airspy.c.o
+[  0%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-avx.dir/src/main/c/x86/kernel.avx.c.o
+[  0%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/add_scalar.c.o
+[  0%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/c/x86/kernel.sse.c.o
+[  2%] Building C object src/nfc-lib/lib-ext/microtar/CMakeFiles/microtar.dir/src/main/c/microtar.c.o
+[  1%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse3.dir/src/main/c/x86/kernel.sse3.c.o
+[  3%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/fe.c.o
+[  4%] Linking C static library libmicrotar.a
+[  4%] Built target microtar
+[  5%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/ge.c.o
+[  6%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/c/librtlsdr.c.o
+[  7%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/iqconverter_float.c.o
+[  7%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/key_exchange.c.o
+[  8%] Linking C static library libmufft-sse.a
 [  8%] Linking C static library libmufft-sse3.a
 [  8%] Built target mufft-sse
 [  8%] Built target mufft-sse3
-[  9%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/iqconverter_int16.c.o
-[ 10%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/c/tuner_e4k.c.o
-[ 11%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/c/tuner_fc0012.c.o
+[  9%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/keypair.c.o
+[  9%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/sc.c.o
+[ 10%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/seed.c.o
+[ 11%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/sha512.c.o
+[ 11%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/iqconverter_int16.c.o
+[ 13%] Building C object src/nfc-lib/lib-ext/mirisdr/CMakeFiles/mirisdr.dir/src/main/c/libmirisdr.c.o
+[ 14%] Linking C static library libairspy.a
+[ 14%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/sign.c.o
+[ 14%] Built target airspy
+[ 15%] Linking C static library libmufft-avx.a
+[ 16%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/verify.c.o
 ....
-[ 93%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/src/main/cpp/styles/StreamStyle.cpp.o
-[ 94%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/src/main/cpp/styles/ParserStyle.cpp.o
-[ 94%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/src/main/cpp/3party/customplot/QCustomPlot.cpp.o
-[ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/nfc-lab_autogen/YC2MJJWI6E/qrc_icons.cpp.o
-[ 96%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-lab.dir/nfc-lab_autogen/ZNUTFHHM5Q/qrc_style.cpp.o
-[ 97%] Linking CXX executable nfc-lab
-[100%] Built target nfc-lab
+[ 94%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/styles/Theme.cpp.o
+[ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/3party/customplot/QCustomPlot.cpp.o
+[ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/parser/Parser.cpp.o
+[ 96%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/R4D6QHBSUY/qrc_icons.cpp.o
+[ 97%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/BZPGUHF7SV/qrc_style.cpp.o
+[ 97%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/W56BXCATTS/qrc_icons.cpp.o
+[ 98%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/7WXA5J3H5Z/qrc_style.cpp.o
+[ 98%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/M2ZWUQEUSF/qrc_app.cpp.o
+[100%] Linking CXX executable nfc-spy
+[100%] Built target nfc-spy
 ```
 
 Copy base configuration file and launch application
 
 ```
-root@HPWIN11:~# cp nfc-laboratory/dat/config/nfc-lab.conf .
-root@HPWIN11:~# ./cmake-build-release/src/nfc-app/app-qt/nfc-lab
+user@LG:~$ cp -rf nfc-laboratory/dat/firmware cmake-build-release/src/nfc-app/app-qt/
+user@LG:~$ ./cmake-build-release/src/nfc-app/app-qt/nfc-spy
 ```
-## Source code and licensing
+## Source code licensing
 
 If you think it is an interesting job or you plan to use it for something please email me and let me know, I
 will be happy to exchange experiences, thank you very much.
