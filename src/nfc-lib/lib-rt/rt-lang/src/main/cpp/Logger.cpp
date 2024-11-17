@@ -26,6 +26,8 @@
 #include <memory>
 #include <string>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 #include <cmath>
 #include <thread>
 #include <chrono>
@@ -157,6 +159,7 @@ struct Appender
    {
       tm timeinfo {};
       char date[32], buffer[65535];
+      std::stringstream ss;
 
       const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
       const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
@@ -169,7 +172,9 @@ struct Appender
 
       strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-      const int size = snprintf(buffer, sizeof(buffer), "%s.%03d %s [%02d] (%s) %s\n", date, static_cast<int>(millis), event->tag.c_str(), event->thread, event->logger.c_str(), Format::format(event->format, event->params).c_str());
+      ss << std::setw(2) << std::setfill('0') << event->thread;
+
+      const int size = snprintf(buffer, sizeof(buffer), "%s.%03d %s [%s] (%s) %s\n", date, static_cast<int>(millis), event->tag.c_str(), ss.str().c_str(), event->logger.c_str(), Format::format(event->format, event->params).c_str());
 
       stream.write(buffer, size);
 
