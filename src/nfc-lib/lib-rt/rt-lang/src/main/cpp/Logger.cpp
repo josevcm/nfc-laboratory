@@ -30,13 +30,11 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
-#include <iostream>
-#include <sstream>
 #include <utility>
+#include <algorithm>
 
 #include <rt/Logger.h>
 #include <rt/Format.h>
-#include <rt/FileSystem.h>
 #include <rt/BlockingQueue.h>
 
 namespace rt {
