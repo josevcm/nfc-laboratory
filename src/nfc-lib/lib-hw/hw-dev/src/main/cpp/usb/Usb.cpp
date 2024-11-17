@@ -163,7 +163,7 @@ struct Usb::Impl
          SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #else
          sched_param param {20};
-         pthread_setschedparam(std::this_thread::get_id(), SCHED_RR, &param);
+         pthread_setschedparam(pthread_self(), SCHED_RR, &param);
 #endif
 
          std::lock_guard<std::mutex> lock(threadMutex);
