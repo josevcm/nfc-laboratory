@@ -35,7 +35,9 @@ For contact smart cards, the ISO7816 protocol is implemented with the help of a 
 
 Main signal view.
 
-![APP](doc/img/nfc-lab-screenshot1.png "Signal spectrum view")
+![APP](doc/img/nfc-lab-screenshot0.png "Main Signal view")
+
+![APP](doc/img/nfc-lab-screenshot1.png "Main Signal view")
 
 NFC wave detail view.
 
@@ -54,6 +56,18 @@ Protocol detail view and filtering capabilities.
 ![APP](doc/img/nfc-lab-screenshot5.png "Protocol detail example")
 
 ![APP](doc/img/nfc-lab-screenshot6.png "Protocol detail example")
+
+![APP](doc/img/nfc-lab-screenshot7.png "Protocol detail example")
+
+As can be seen, the application split functionalities in different tabs:
+
+- At the top left:
+  - **Frames**: Graphic view for decoded frames captured in contact interface and contactless interface.
+  - **Signal**: Shows the raw signal captured with logic analyzer and the radio interface with protocol markers.
+  - **Receiver**: During acquire shows the spectrum of the signal captured in the radio interface.
+  - 
+- At the bottom:
+  - **Frames**: Table view for decoded frames captured in contact interface and contactless interface.
 
 ## Application settings
 
