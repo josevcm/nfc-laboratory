@@ -159,7 +159,7 @@ struct DSLogicDevice::Impl
          return false;
       }
 
-      if (mode != LogicDevice::Read)
+      if (mode != Read)
       {
          log->warn("invalid device mode [{}]", {mode});
          return false;
@@ -266,7 +266,25 @@ struct DSLogicDevice::Impl
 
          if (!(hwStatus & bmFPGA_DONE))
          {
-            if (!fpgaUpload(profile->fpga_bit33))
+            std::string firmware;
+
+            switch (thLevel)
+            {
+               case TH_3V3:
+                  firmware = profile->fpga_bit33;
+                  break;
+               case TH_5V0:
+                  firmware = profile->fpga_bit50;
+                  break;
+            }
+
+            if (firmware.empty())
+            {
+               log->error("invalid threshold level value {}", {thLevel});
+               break;
+            }
+
+            if (!fpgaUpload(firmware))
             {
                log->error("failed to write firmware");
                break;
