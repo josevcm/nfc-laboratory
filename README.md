@@ -241,6 +241,8 @@ directSampling=1
 ## Logic Analyzer tested
 
 The only tested LA is DreamSourceLab DSLogic Plus, it works perfectly with the app, Pro16 and Pro32 are also supported but not tested (I don't have one).
+Firmware files for this LA are included in the repository, you can find them in the **dat/firmware** folder, this files must
+be located inside firmware folder along nfc-spy.exe application. Thanks to [DreamSourceLab](https://www.dslogic.com/).
 
 ![Devices](doc/img/nfc-lab-devices4.png "Devices")
 
