@@ -26,6 +26,7 @@
 #include <cstring>
 #include <memory>
 #include <functional>
+#include <cstdlib>
 
 #define BUFFER_ALIGNMENT 256
 
