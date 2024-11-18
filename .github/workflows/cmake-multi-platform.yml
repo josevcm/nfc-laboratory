@@ -14,11 +14,14 @@ jobs:
 
       # Set up a matrix to run the following 3 configurations:
       matrix:
-        os: [windows-latest]
+        os: [ubuntu-latest, windows-latest]
         build_type: [Release]
         c_compiler: [gcc]
         include:
           - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: windows-latest
             c_compiler: gcc
             cpp_compiler: g++
 
@@ -26,10 +29,10 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set reusable strings
-      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
       shell: bash
       run: |
+        echo "build-qt-dir=${{ github.workspace }}/qt" >> "$GITHUB_OUTPUT"
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Install Qt (Linux)
@@ -40,7 +43,10 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         choco install aqt -y --no-progress -r
-        aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir C:\Qt
+        aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ steps.strings.outputs.build-qt-dir }}
+        aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ steps.strings.outputs.build-qt-dir }}
+        aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
+        aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
 
     - name: Configure CMake
       run: >
