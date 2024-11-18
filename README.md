@@ -550,7 +550,7 @@ Compile the project:
 cmake --build . --target nfc-spy -- -j$(nproc)
 ```
 
-```cmake
+```
 ...
 [ 94%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/styles/Theme.cpp.o
 [ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/3party/customplot/QCustomPlot.cpp.o
