@@ -30,6 +30,7 @@
 #include <rt/Subject.h>
 
 #include <hw/SignalBuffer.h>
+#include <hw/RecordDevice.h>
 
 #include <lab/data/RawFrame.h>
 
@@ -663,22 +664,35 @@ struct QtDecoder::Impl
             // start XML file read
             taskStorageRead(command);
          });
+
+         return;
       }
-      else if (path.extension() == ".wav")
+
+      if (path.extension() == ".wav")
       {
+         hw::RecordDevice file(fileName.toStdString());
+
+         if (!file.open(hw::RecordDevice::Mode::Read))
+         {
+            qWarning() << "unable to open file: " << fileName;
+            return;
+         }
+
+         unsigned int channelCount = std::get<unsigned int>(file.get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
+
          // clear storage queue
          taskStorageClear([=] {
 
-            // if file starts with logic... trigger logic decoder start
-            if (path.filename().string().rfind("logic", 0) == 0)
+            // if contains 4 channels... trigger logic decoder start
+            if (channelCount >= 3)
             {
                taskLogicDecoderStart([=] {
                   taskRecorderRead(command);
                });
             }
 
-            // if file starts with radio... trigger radio decoder start
-            if (path.filename().string().rfind("radio", 0) == 0)
+            // if contains 1 or 2 channels... trigger radio decoder start
+            else if (channelCount <= 2)
             {
                taskRadioDecoderStart([=] {
                   taskRecorderRead(command);
