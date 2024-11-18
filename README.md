@@ -528,7 +528,7 @@ serves as an example to test demodulation.
 Install dependencies (ubuntu)
 
 ```
-sudo apt install cmake g++ g++-11 qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
+sudo apt install cmake g++ g++-11 qt6-base-dev libqt6svg6 libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev 
 ```
 
 Clone the repository
@@ -536,47 +536,34 @@ Clone the repository
 git clone https://github.com/josevcm/nfc-laboratory.git
 ```
 
-Create a build directory and configure the project (change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output)
+Create a **build** directory and configure the project (change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output)
+
 ```
-cd nfc-laboratory
-mkdir -p build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake -DCMAKE_BUILD_TYPE=Release -S nfc-laboratory -B build
 ```
 
 Compile the project:
 
 ```
-cmake --build . --target nfc-spy -- -j$(nproc)
-```
-
-```
-...
-[ 94%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/styles/Theme.cpp.o
-[ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/3party/customplot/QCustomPlot.cpp.o
-[ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/parser/Parser.cpp.o
-[ 96%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/R4D6QHBSUY/qrc_icons.cpp.o
-[ 97%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/BZPGUHF7SV/qrc_style.cpp.o
-[ 97%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/W56BXCATTS/qrc_icons.cpp.o
-[ 98%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/7WXA5J3H5Z/qrc_style.cpp.o
-[ 98%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/nfc-spy_autogen/M2ZWUQEUSF/qrc_app.cpp.o
-[100%] Linking CXX executable nfc-spy
-[100%] Built target nfc-spy
+cmake --build build --target nfc-spy -- -j$(nproc)
 ```
 
 Copy the base configuration files to the build directory:
+
 ```
-cp -r ../dat/firmware src/nfc-app/app-qt/
+cp -r nfc-laboratory/dat/firmware build/src/nfc-app/app-qt/
 ```
 
 Create a symbolic link to the application for easier access:
+
 ```
-ln -s "$(pwd)/src/nfc-app/app-qt/nfc-spy" ../nfc-spy
+ln -s build/src/nfc-app/app-qt/nfc-spy nfc-spy
 ```
 
 Launch the application:
+
 ```
-../nfc-spy
+./nfc-spy
 ```
 
 ## Source code licensing
