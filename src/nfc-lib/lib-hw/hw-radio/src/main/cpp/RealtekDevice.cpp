@@ -70,6 +70,7 @@ struct RealtekDevice::Impl
    unsigned int gainValue = 0;
    unsigned int tunerAgc = 0;
    unsigned int mixerAgc = 0;
+   unsigned int biasTee = 0;
    unsigned int decimation = 0;
    unsigned int testMode = 0;
    unsigned int streamTime = 0;
@@ -135,7 +136,7 @@ struct RealtekDevice::Impl
 
    bool open(Mode mode)
    {
-      if (mode != RadioDevice::Read)
+      if (mode != Read)
       {
          log->warn("invalid device mode [{}]", {mode});
          return false;
@@ -604,7 +605,7 @@ struct RealtekDevice::Impl
       pthread_setschedparam(pthread_self(), SCHED_RR, &param);
 #endif
 
-      std::lock_guard lock(workerMutex);
+      std::lock_guard workerLock(workerMutex);
 
       log->info("stream worker started for device {}", {deviceName});
 
@@ -621,10 +622,10 @@ struct RealtekDevice::Impl
 #pragma GCC ivdep
             for (int i = 0; i < length; i += 4)
             {
-               scaled[i + 0] = float((data[i + 0] - 128) / 256.0) + 0.0025f;
-               scaled[i + 1] = float((data[i + 1] - 128) / 256.0) + 0.0025f;
-               scaled[i + 2] = float((data[i + 2] - 128) / 256.0) + 0.0025f;
-               scaled[i + 3] = float((data[i + 3] - 128) / 256.0) + 0.0025f;
+               scaled[i + 0] = static_cast<float>((data[i + 0] - 128) / 256.0) + 0.0025f;
+               scaled[i + 1] = static_cast<float>((data[i + 1] - 128) / 256.0) + 0.0025f;
+               scaled[i + 2] = static_cast<float>((data[i + 2] - 128) / 256.0) + 0.0025f;
+               scaled[i + 3] = static_cast<float>((data[i + 3] - 128) / 256.0) + 0.0025f;
             }
 
             // add data to buffer
@@ -652,7 +653,7 @@ struct RealtekDevice::Impl
          else
          {
             // lock buffer access
-            std::lock_guard lock(streamMutex);
+            std::lock_guard streamLock(streamMutex);
 
             // discard oldest buffers
             if (streamQueue.size() >= MAX_QUEUE_SIZE)
@@ -750,7 +751,7 @@ rt::Variant RealtekDevice::get(int id, int channel) const
          return impl->gainValue;
 
       case PARAM_BIAS_TEE:
-         return (int) 0;
+         return impl->biasTee;
 
       case PARAM_DIRECT_SAMPLING:
          return impl->directSampling;

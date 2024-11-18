@@ -34,7 +34,7 @@ std::map<std::string, DeviceFactory::Constructor> DeviceFactory::constructors;
 
 void DeviceFactory::registerDevice(const std::string &type, Enumerator enumerator, Constructor constructor)
 {
-   std::lock_guard<std::mutex> lock(mutex);
+   std::lock_guard lock(mutex);
 
    log->info("registering device type {}", {type.c_str()});
 
@@ -44,7 +44,7 @@ void DeviceFactory::registerDevice(const std::string &type, Enumerator enumerato
 
 std::vector<std::string> DeviceFactory::enumerate(const std::string &filter)
 {
-   std::lock_guard<std::mutex> lock(mutex);
+   std::lock_guard lock(mutex);
 
    std::vector<std::string> devices;
 
