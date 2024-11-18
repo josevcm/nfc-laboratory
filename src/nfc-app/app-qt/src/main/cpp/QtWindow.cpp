@@ -812,8 +812,6 @@ struct QtWindow::Impl
     */
    void updateFeatures()
    {
-      bool advancedOptions = allowedFeatures.match(Caps::FEATURE_MENU).hasMatch();
-
       featureLogicAcquire = allowedFeatures.match(Caps::LOGIC_DEVICE).hasMatch();
       featureLogicDecoder = allowedFeatures.match(Caps::LOGIC_DECODE).hasMatch();
       featureRadioAcquire = allowedFeatures.match(Caps::RADIO_DEVICE).hasMatch();
@@ -829,7 +827,6 @@ struct QtWindow::Impl
       // qInfo() << "featureSignalRecord" << featureSignalRecord;
 
       // show available actions based on licensed features
-      ui->menuFeatures->menuAction()->setVisible(advancedOptions);
       ui->featureLogicAcquire->setVisible(featureLogicAcquire);
       ui->featureLogicDecoder->setVisible(featureLogicDecoder);
       ui->featureRadioAcquire->setVisible(featureRadioAcquire);

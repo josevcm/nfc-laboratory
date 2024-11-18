@@ -22,6 +22,7 @@
 #ifndef NFC_SPY_CAPS_H
 #define NFC_SPY_CAPS_H
 
+#include <QList>
 #include <QString>
 
 class Caps
@@ -35,6 +36,11 @@ class Caps
       static QString LOGIC_DECODE;
       static QString RADIO_SPECTRUM;
       static QString SIGNAL_RECORD;
+
+      static QList<QString> features()
+      {
+         return {RADIO_DEVICE, LOGIC_DEVICE, RADIO_DECODE, LOGIC_DECODE, RADIO_SPECTRUM, SIGNAL_RECORD};
+      }
 };
 
 #endif

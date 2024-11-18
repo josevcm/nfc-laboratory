@@ -25,13 +25,13 @@
 #include <QSettings>
 #include <QPointer>
 #include <QThreadPool>
-#include <QStyleFactory>
 #include <QSplashScreen>
 
 #include "QtDecoder.h"
 #include "QtWindow.h"
 
-#include "styles/IconStyle.h"
+#include "features/Caps.h"
+
 #include "styles/Theme.h"
 
 #include "events/SystemStartupEvent.h"
@@ -101,7 +101,19 @@ struct QtApplication::Impl
       QMap<QString, QString> meta;
 
       meta["devices"] = ".*";
-      meta["features"] = "FeatureMenu|RadioDevice|LogicDevice|RadioDecode|LogicDecode|RadioSpectrum";
+      meta["features"] = "featureMenu";
+
+      settings.beginGroup("features");
+
+      for (const QString &entry: Caps::features())
+      {
+         if (settings.value(entry, true).toBool())
+         {
+            meta["features"] += "|" + entry;
+         }
+      }
+
+      settings.endGroup();
 
       qDebug() << "features fields:" << (meta.isEmpty() ? "none" : "");
 

@@ -21,10 +21,9 @@
 
 #include "Caps.h"
 
-QString Caps::FEATURE_MENU = "FeatureMenu";
-QString Caps::RADIO_DEVICE = "RadioDevice";
-QString Caps::LOGIC_DEVICE = "LogicDevice";
-QString Caps::RADIO_DECODE = "RadioDecode";
-QString Caps::LOGIC_DECODE = "LogicDecode";
-QString Caps::RADIO_SPECTRUM = "RadioSpectrum";
-QString Caps::SIGNAL_RECORD = "SignalRecord";
+QString Caps::RADIO_DEVICE = "radioDevice";
+QString Caps::LOGIC_DEVICE = "logicDevice";
+QString Caps::RADIO_DECODE = "radioDecode";
+QString Caps::LOGIC_DECODE = "logicDecode";
+QString Caps::RADIO_SPECTRUM = "radioSpectrum";
+QString Caps::SIGNAL_RECORD = "signalRecord";
