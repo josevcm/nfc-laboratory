@@ -38,7 +38,9 @@ jobs:
 
     - name: Install Qt (Windows)
       if: matrix.os == 'windows-latest'
-      run: choco install qt6
+      script: |
+        choco install aqt -y --no-progress -r
+        aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir C:\Qt
 
     - name: Configure CMake
       run: >
