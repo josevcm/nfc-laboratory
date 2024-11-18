@@ -23,7 +23,7 @@
 #define NFC_NFCTECH_H
 
 #include <cmath>
-
+#include <algorithm>
 #include <hw/SignalType.h>
 #include <hw/SignalBuffer.h>
 #include <hw/RecordDevice.h>
