@@ -264,6 +264,7 @@ struct DSLogicDevice::Impl
             break;
          }
 
+         // check if FPGA is already programmed
          if (!(hwStatus & bmFPGA_DONE))
          {
             std::string firmware;
@@ -313,7 +314,7 @@ struct DSLogicDevice::Impl
                break;
             }
 
-            if (fpgaVersion != DSL_HDL_VERSION)
+            if (fpgaVersion != DSL_HDL_VERSION && fpgaVersion)
             {
                log->error("incompatible FPGA version {}!", {fpgaVersion});
                break;
