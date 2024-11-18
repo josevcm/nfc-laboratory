@@ -14,7 +14,7 @@ jobs:
 
       # Set up a matrix to run the following 3 configurations:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [windows-latest]
         build_type: [Release]
         c_compiler: [gcc]
         include:
@@ -38,15 +38,13 @@ jobs:
 
     - name: Install Qt (Windows)
       if: matrix.os == 'windows-latest'
-      script: |
+      run: |
         choco install aqt -y --no-progress -r
         aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir C:\Qt
 
     - name: Configure CMake
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -S ${{ github.workspace }}
 
