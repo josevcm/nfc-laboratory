@@ -24,9 +24,10 @@
 #include <cmath>
 #include <list>
 #include <fstream>
+#include <algorithm>
 
 #include <rt/Logger.h>
-#include <algorithm>
+
 #include <hw/usb/Usb.h>
 
 #include <hw/SignalType.h>
