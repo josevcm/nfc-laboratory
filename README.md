@@ -525,96 +525,33 @@ serves as an example to test demodulation.
 
 ### Manual build for Linux
 
-Install dependencies
+Install dependencies (ubuntu)
 
 ```
-user@LG:~# sudo apt install cmake g++ g++-11 qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
+sudo apt install cmake g++ g++-11 qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
 ```
 
-Download repository:
-
+Clone the repository
 ```
-user@LG:~$ git clone https://github.com/josevcm/nfc-laboratory.git
-Cloning into 'nfc-laboratory'...
-remote: Enumerating objects: 8903, done.
-remote: Counting objects: 100% (229/229), done.
-remote: Compressing objects: 100% (91/91), done.
-remote: Total 8903 (delta 139), reused 181 (delta 130), pack-reused 8674 (from 1)
-Receiving objects: 100% (8903/8903), 76.69 MiB | 4.03 MiB/s, done.
-Resolving deltas: 100% (3911/3911), done.
+git clone https://github.com/josevcm/nfc-laboratory.git
 ```
 
-Prepare release makefiles, or change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output:
-
+Create a build directory and configure the project (change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output)
 ```
-user@LG:~$ cmake -DCMAKE_BUILD_TYPE=Release -S nfc-laboratory -B cmake-build-release
--- The C compiler identification is GNU 11.4.0
--- The CXX compiler identification is GNU 11.4.0
--- Detecting C compiler ABI info
--- Detecting C compiler ABI info - done
--- Check for working C compiler: /usr/bin/cc - skipped
--- Detecting C compile features
--- Detecting C compile features - done
--- Detecting CXX compiler ABI info
--- Detecting CXX compiler ABI info - done
--- Check for working CXX compiler: /usr/bin/c++ - skipped
--- Detecting CXX compile features
--- Detecting CXX compile features - done
--- Build for x86_64
--- Enabled SSE/SSE3 instruction set
--- usb-1.0:
---   include:/usr/include/libusb-1.0
---   library:/usr/lib/x86_64-linux-gnu/libusb-1.0.so
--- Looking for pthread.h
--- Looking for pthread.h - found
--- Performing Test CMAKE_HAVE_LIBC_PTHREAD
--- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
--- Found Threads: TRUE
--- Performing Test HAVE_STDATOMIC
--- Performing Test HAVE_STDATOMIC - Success
--- Found WrapAtomic: TRUE
--- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so
--- Found WrapOpenGL: TRUE
--- Could NOT find XKB (missing: XKB_LIBRARY XKB_INCLUDE_DIR) (Required is at least version "0.5.0")
--- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR)
--- Configuring done
--- Generating done
--- Build files have been written to: /home/user/cmake-build-release
+cd nfc-laboratory
+mkdir -p build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
 ```
 
-Launch build:
+Compile the project:
 
 ```
-user@LG:~$ cmake --build cmake-build-release --target nfc-spy -- -j 6
-[  0%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/airspy.c.o
-[  0%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-avx.dir/src/main/c/x86/kernel.avx.c.o
-[  0%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/add_scalar.c.o
-[  0%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/c/x86/kernel.sse.c.o
-[  2%] Building C object src/nfc-lib/lib-ext/microtar/CMakeFiles/microtar.dir/src/main/c/microtar.c.o
-[  1%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse3.dir/src/main/c/x86/kernel.sse3.c.o
-[  3%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/fe.c.o
-[  4%] Linking C static library libmicrotar.a
-[  4%] Built target microtar
-[  5%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/ge.c.o
-[  6%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/c/librtlsdr.c.o
-[  7%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/iqconverter_float.c.o
-[  7%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/key_exchange.c.o
-[  8%] Linking C static library libmufft-sse.a
-[  8%] Linking C static library libmufft-sse3.a
-[  8%] Built target mufft-sse
-[  8%] Built target mufft-sse3
-[  9%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/keypair.c.o
-[  9%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/sc.c.o
-[ 10%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/seed.c.o
-[ 11%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/sha512.c.o
-[ 11%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/iqconverter_int16.c.o
-[ 13%] Building C object src/nfc-lib/lib-ext/mirisdr/CMakeFiles/mirisdr.dir/src/main/c/libmirisdr.c.o
-[ 14%] Linking C static library libairspy.a
-[ 14%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/sign.c.o
-[ 14%] Built target airspy
-[ 15%] Linking C static library libmufft-avx.a
-[ 16%] Building C object src/nfc-lib/lib-ext/ed25519/CMakeFiles/ed25519.dir/src/main/c/verify.c.o
-....
+cmake --build . --target nfc-spy -- -j$(nproc)
+```
+
+```cmake
+...
 [ 94%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/styles/Theme.cpp.o
 [ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/3party/customplot/QCustomPlot.cpp.o
 [ 95%] Building CXX object src/nfc-app/app-qt/CMakeFiles/nfc-spy.dir/src/main/cpp/parser/Parser.cpp.o
@@ -627,12 +564,21 @@ user@LG:~$ cmake --build cmake-build-release --target nfc-spy -- -j 6
 [100%] Built target nfc-spy
 ```
 
-Copy base configuration file and launch application
+Copy the base configuration files to the build directory:
+```
+cp -r ../dat/firmware src/nfc-app/app-qt/
+```
 
+Create a symbolic link to the application for easier access:
 ```
-user@LG:~$ cp -rf nfc-laboratory/dat/firmware cmake-build-release/src/nfc-app/app-qt/
-user@LG:~$ ./cmake-build-release/src/nfc-app/app-qt/nfc-spy
+ln -s "$(pwd)/src/nfc-app/app-qt/nfc-spy" ../nfc-spy
 ```
+
+Launch the application:
+```
+../nfc-spy
+```
+
 ## Source code licensing
 
 If you think it is an interesting job or you plan to use it for something please email me and let me know, I
