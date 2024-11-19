@@ -17,13 +17,6 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         build_type: [Release]
         c_compiler: [gcc]
-        include:
-          - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: windows-latest
-            c_compiler: gcc
-            cpp_compiler: g++
 
     steps:
     - uses: actions/checkout@v4
@@ -48,10 +41,19 @@ jobs:
         aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
         aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
 
-    - name: Configure CMake
+    - name: Configure CMake (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -S ${{ github.workspace }}
+
+    - name: Configure CMake (Windows)
+      if: matrix.os == 'windows-latest'
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.build-qt-dir }}/qt/6.7.2/mingw81_64
         -S ${{ github.workspace }}
 
     - name: Build
