@@ -45,7 +45,7 @@ jobs:
         aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
         aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
         echo "${{ steps.strings.outputs.build-qt-dir }}/tools/mingw1310_64/bin" >> $GITHUB_PATH
-        echo "${{ GITHUB_PATH }}"
+        echo "$GITHUB_PATH"
 
     - name: Configure CMake (Linux)
       if: matrix.os == 'ubuntu-latest'
