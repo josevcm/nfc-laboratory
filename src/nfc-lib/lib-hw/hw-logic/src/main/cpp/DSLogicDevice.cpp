@@ -1889,19 +1889,19 @@ struct DSLogicDevice::Impl
       }
 
       // get next channel index to be read from data buffer
-      unsigned int c = currentBytes % validChannels;
+      unsigned int c = (currentBytes >> 3) % validChannels;
 
       // get output buffer for first channel present in data buffer
       SignalBuffer *buffer = &result[c];
 
       // process each byte in data buffer and split into each channel buffer
-      for (unsigned int i = 0; i < transfer->actual; i++)
+      for (unsigned int i = 0, n = currentBytes & 0x07; i < transfer->actual; i++, n++)
       {
          // append next 8 samples to channel buffer
          buffer->put(dsl_samples[transfer->data[i]], 8);
 
          // switch buffer every 8 samples
-         if (i % 8 == 7)
+         if (n % 8 == 7)
          {
             c = (c + 1) % validChannels;
 
