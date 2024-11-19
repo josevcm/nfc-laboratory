@@ -1889,7 +1889,7 @@ struct DSLogicDevice::Impl
       }
 
       // get next channel index to be read from data buffer
-      unsigned int c = (currentBytes >> 3) % validChannels;
+      unsigned int c = currentBytes % validChannels;
 
       // get output buffer for first channel present in data buffer
       SignalBuffer *buffer = &result[c];
