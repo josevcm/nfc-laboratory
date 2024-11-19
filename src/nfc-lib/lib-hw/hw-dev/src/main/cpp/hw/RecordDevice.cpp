@@ -41,7 +41,7 @@
 
 #define RIFF_CHUNK_ID 0x46464952 // "RIFF"
 #define FMT_CHUNK_ID 0x20746D66 // "fmt "
-#define LIST_CHUNK_ID 0x5453494C // "LIST"
+#define META_CHUNK_ID 0x4154454D // "META"
 #define DATA_CHUNK_ID 0x61746164 // "data"
 #define WAVE_TYPE_ID 0x45564157 // "WAVE"
 #define META_INFO_ID 0x6174656D // "meta"
@@ -416,8 +416,8 @@ struct RecordDevice::Impl
                continue;
             }
 
-            // read LIST chunk with META info
-            case LIST_CHUNK_ID:
+            // read META chunk with META info
+            case META_CHUNK_ID:
             {
                unsigned int type;
 
@@ -520,7 +520,7 @@ struct RecordDevice::Impl
       header.wave.bitsPerSample = toLittleEndian<unsigned short>(sampleSize);
 
       // initialize LIST chunk
-      header.list.chunk.id = LIST_CHUNK_ID;
+      header.list.chunk.id = META_CHUNK_ID;
       header.list.chunk.size = toLittleEndian<unsigned int>(sizeof(LISTChunk) - sizeof(FILEChunk));
 
       // initialize META info
