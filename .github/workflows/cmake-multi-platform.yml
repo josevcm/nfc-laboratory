@@ -53,9 +53,9 @@ jobs:
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DCMAKE_C_COMPILER=${{ steps.strings.outputs.build-qt-dir }}/qt/6.7.2/mingw_64/bin/gcc.exe
-        -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.build-qt-dir }}/qt/6.7.2/mingw_64/bin/g++.exe
         -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.build-qt-dir }}/qt/6.7.2/mingw_64
+        -DCMAKE_C_COMPILER=${{ steps.strings.outputs.build-qt-dir }}/tools/mingw1310_64/bin/gcc.exe
+        -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.build-qt-dir }}/tools/mingw1310_64/bin/g++.exe
         -S ${{ github.workspace }}
 
     - name: Build
