@@ -34,9 +34,15 @@ jobs:
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        winget install -e --id=Kitware.CMake -h
-        winget install -e --id=MSYS2.MSYS2 -h
-        winget install -e --id=Git.Git -h
+        # Install Chocolatey
+        Set-ExecutionPolicy Bypass -Scope Process -Force;
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'));
+        
+        # Install CMake, Git und MSYS2 with Chocolatey
+        choco install cmake git msys2 -y --no-progress
+        
+        # Update MSYS2 and install the necessary packages
         C:\msys64\usr\bin\bash -lc "pacman -Syu --noconfirm"
         C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc"
         C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-qt6-base"
