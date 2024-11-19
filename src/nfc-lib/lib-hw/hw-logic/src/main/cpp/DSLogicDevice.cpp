@@ -74,6 +74,7 @@ struct DSLogicDevice::Impl
    // Device configuration
    unsigned int timebase = 0;
    unsigned int samplerate = 0;
+   unsigned int streamTime = 0;
    unsigned long long limitSamples = 0;
    unsigned long long captureSamples = 0;
    unsigned long long captureBytes = 0;
@@ -525,7 +526,7 @@ struct DSLogicDevice::Impl
             return stream;
 
          case PARAM_STREAM_TIME:
-            return (unsigned int)0;
+            return streamTime;
 
          case PARAM_SAMPLE_RATE:
             return samplerate;
