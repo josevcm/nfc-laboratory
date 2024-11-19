@@ -403,119 +403,55 @@ All can be compiled with mingw-g64, a minimum version is required to support C++
 
 ### Prerequisites
 
-- Qt6 framework 6.x, see https://www.qt.io/offline-installers
-- A recent mingw-w64 11 for windows build, see https://www.mingw-w64.org/downloads
-- A GCC / G++ for Linux build, version 11.0 or later
-- CMake version 3.16 or higher, see http://www.cmake.org/cmake/resources/software.html
-- Git-bash or your preferred client for Windows build, see https://gitforwindows.org/
+- CMake version 3.16 or higher
+  - `winget install -e --id=Kitware.CMake`
+  - alternative see http://www.cmake.org/cmake/resources/software.html
+- Git-bash or your preferred git client
+  - `winget install -e --id Git.Git`
+  - alternative see https://gitforwindows.org/
+- MSYS2 if you like to install everything with pacma
+  - `winget install -e --id MSYS2.MSYS2`
+  - add `C:\msys64\mingw64\bin` to the environment variable `Path`
+- Qt6 framework 6.x
+  - inside MSYS2: `pacman -S mingw-w64-x86_64-qt6-base`
+  - alternative see https://www.qt.io/offline-installers
+- GCC / G++ for Linux build, version 11.0 or later
+  - inside MSYS2: `pacman -S mingw-w64-ucrt-x86_64-gcc`
+  - alternative mingw-w64 11 for windows build see https://www.mingw-w64.org/downloads
+- USB lib
+  - inside MSYS2: `pacman -S mingw-w64-x86_64-libusb`
 
 ### Manual build for Windows
 
-Once you have all pre-requisites ready, download repository:
-
+Once you have all pre-requisites ready, clone the repository:
 ```
-$ git clone https://github.com/josevcm/nfc-laboratory.git
-Cloning into 'nfc-laboratory'...
-remote: Enumerating objects: 1629, done.
-remote: Counting objects: 100% (1003/1003), done.
-remote: Compressing objects: 100% (776/776), done.
-remote: Total 1629 (delta 188), reused 990 (delta 179), pack-reused 626
-Receiving objects: 100% (1629/1629), 32.09 MiB | 10.60 MiB/s, done.
-Resolving deltas: 100% (312/312), done.
-Updating files: 100% (975/975), done.
+git clone https://github.com/josevcm/nfc-laboratory.git
 ```
 
-Prepare release makefiles, or change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output:
+Create a **build** directory and configure the project (change `CMAKE_BUILD_TYPE=Debug` and `-B cmake-build-debug` for debug output)
 
 ```
-$ cmake.exe -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - MinGW Makefiles" -S nfc-laboratory -B cmake-build-release
--- The C compiler identification is GNU 8.1.0
--- The CXX compiler identification is GNU 8.1.0
--- Detecting C compiler ABI info
--- Detecting C compiler ABI info - done
--- Check for working C compiler: D:/develop/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin/gcc.exe - skipped
--- Detecting C compile features
--- Detecting C compile features - done
--- Detecting CXX compiler ABI info
--- Detecting CXX compiler ABI info - done
--- Check for working CXX compiler: D:/develop/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin/g++.exe - skipped
--- Detecting CXX compile features
--- Detecting CXX compile features - done
--- USB_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/usb-1.0.26/x86_64-w64-mingw32/lib/libusb-1.0.dll.a
--- GLEW_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/glew-2.1.0/x86_64-w64-mingw32/lib/libglew32.dll.a
--- FT_LIBRARY: C:/Users/jvcampos/build/nfc-laboratory/dll/freetype-2.11.0/x86_64-w64-mingw32/lib/libfreetype.dll.a
--- Configuring done
--- Generating done
--- Build files have been written to: C:/Users/jvcampos/build/cmake-build-release
+cmake -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - MinGW Makefiles" -S nfc-laboratory -B build
 ```
 
-Launch build:
-
+Compile the project:
 ```
-$ cmake.exe --build cmake-build-release --target nfc-lab -- -j 6
-Scanning dependencies of target mufft-sse
-Scanning dependencies of target mufft-sse3
-Scanning dependencies of target rt-lang
-Scanning dependencies of target mufft-avx
-Scanning dependencies of target airspy
-Scanning dependencies of target rtlsdr
-[  1%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/cpp/x86/kernel.sse.c.obj
-[  2%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse3.dir/src/main/cpp/x86/kernel.sse3.c.obj
-[  3%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-avx.dir/src/main/cpp/x86/kernel.avx.c.obj
-[  4%] Building CXX object src/nfc-lib/lib-rt/rt-lang/CMakeFiles/rt-lang.dir/src/main/cpp/Executor.cpp.obj
-[  4%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/cpp/airspy.c.obj
-[  5%] Building C object src/nfc-lib/lib-ext/rtlsdr/CMakeFiles/rtlsdr.dir/src/main/cpp/librtlsdr.c.obj
+cmake --build build --target nfc-spy -- -j 6
+```
+
+```cmake
+[  1%] Building C object src/nfc-lib/lib-ext/microtar/CMakeFiles/microtar.dir/src/main/c/microtar.c.obj
+[  2%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/c/x86/kernel.sse.c.obj
+[  2%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/airspy.c.obj
 ....
-[100%] Linking CXX executable nfc-lab.exe
-[100%] Built target nfc-lab
+[ 98%] Linking CXX executable nfc-spy.exe
+[100%] Built target nfc-spy
 ```
 
-#### Prepare Qt deployment
-
-To run the application correctly it is necessary to deploy the Qt components together with the libraries and the generated artifact.
+Create a coppy of the application for easier access:
 
 ```
-mkdir qt-deploy
-cp nfc-laboratory/dll/usb-1.0.26/x86_64-w64-mingw32/bin/*.dll qt-deploy/
-cp cmake-build-release/src/nfc-app/app-qt/nfc-lab.exe qt-deploy/
-```
-
-Run `windeployqt.exe` tool to create required folders and copy required Qt DLLs
-
-```
-$ windeployqt.exe --release --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw qt-deploy/nfc-spy.exe
-C:\Users\jvcampos\build\qt-deploy\nfc-spy.exe 64 bit, release executable
-Adding Qt5Svg for qsvgicon.dll
-Direct dependencies: Qt5Core Qt5Gui Qt5PrintSupport Qt5Widgets
-All dependencies   : Qt5Core Qt5Gui Qt5PrintSupport Qt5Widgets
-To be deployed     : Qt5Core Qt5Gui Qt5PrintSupport Qt5Svg Qt5Widgets
-Updating Qt5Core.dll.
-Updating Qt5Gui.dll.
-Updating Qt5PrintSupport.dll.
-Updating Qt5Svg.dll.
-Updating Qt5Widgets.dll.
-Updating libgcc_s_seh-1.dll.
-Updating libstdc++-6.dll.
-Updating libwinpthread-1.dll.
-Patching Qt5Core.dll...
-Creating directory C:/Users/jvcampos/build/qt-deploy/iconengines.
-Updating qsvgicon.dll.
-Creating directory C:/Users/jvcampos/build/qt-deploy/imageformats.
-Updating qgif.dll.
-Updating qicns.dll.
-Updating qico.dll.
-Updating qjpeg.dll.
-Updating qsvg.dll.
-Updating qtga.dll.
-Updating qtiff.dll.
-Updating qwbmp.dll.
-Updating qwebp.dll.
-Creating directory C:/Users/jvcampos/build/qt-deploy/platforms.
-Updating qwindows.dll.
-Creating directory C:/Users/jvcampos/build/qt-deploy/printsupport.
-Updating windowsprintersupport.dll.
-Creating directory C:/Users/jvcampos/build/qt-deploy/styles.
-Updating qwindowsvistastyle.dll.
+cp .\build\src\nfc-app\app-qt\nfc-spy.exe nfc-spy.exe
 ```
 
 Application is ready to use!
