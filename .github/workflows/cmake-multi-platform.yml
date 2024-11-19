@@ -11,54 +11,53 @@ jobs:
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: false
-
-      # Set up a matrix to run the following 3 configurations:
       matrix:
-#        os: [ubuntu-latest, windows-latest]
-        os: [windows-latest]
+        os: [ubuntu-latest, windows-latest]
         build_type: [Release]
-        c_compiler: [gcc]
-        exclude:
-          - os: windows-latest
-            c_compiler: cl
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Check out code
+      uses: actions/checkout@v4
 
     - name: Set reusable strings
       id: strings
       shell: bash
       run: |
-        echo "build-qt-dir=${{ github.workspace }}/qt" >> "$GITHUB_OUTPUT"
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Install Qt (Linux)
+    - name: Install dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
-      run: sudo apt install qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
+      run: |
+        sudo apt update
+        sudo apt install -y qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
 
-    - name: Install Qt (Windows)
+    - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        choco install aqt -y --no-progress -r
-        aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ steps.strings.outputs.build-qt-dir }}
-        aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ steps.strings.outputs.build-qt-dir }}
-        aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
-        aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
+        winget install -e --id=Kitware.CMake -h
+        winget install -e --id=MSYS2.MSYS2 -h
+        winget install -e --id=Git.Git -h
+        C:\msys64\usr\bin\bash -lc "pacman -Syu --noconfirm"
+        C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc"
+        C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-qt6-base"
+        C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-libusb"
 
     - name: Configure CMake (Linux)
       if: matrix.os == 'ubuntu-latest'
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -S ${{ github.workspace }}
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -S ${{ github.workspace }}
 
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.build-qt-dir }}/qt/6.7.2/mingw_64
-        -S ${{ github.workspace }}
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DCMAKE_PREFIX_PATH=C:/msys64/mingw64 \
+          -G "MinGW Makefiles" \
+          -S ${{ github.workspace }}
 
     - name: Build
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --target nfc-spy
+      run: |
+        cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --target nfc-spy
