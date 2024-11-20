@@ -41,22 +41,22 @@ jobs:
 
     - name: Configure CMake (Linux)
       if: matrix.os == 'ubuntu-latest'
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
           -S ${{ github.workspace }}
 
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.build-qt-dir }}/qt/6.7.2/mingw_64
-          -G "MinGW Makefiles"
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.build-qt-dir }}/qt/6.7.2/mingw_64 \
+          -G "MinGW Makefiles" \
           -S ${{ github.workspace }}
 
     - name: Build
-      run: >
-        cmake --build ${{ steps.strings.outputs.build-output-dir }} 
-          --config ${{ matrix.build_type }} 
+      run: |
+        cmake --build ${{ steps.strings.outputs.build-output-dir }} \
+          --config ${{ matrix.build_type }} \
           --target nfc-spy
