@@ -9,10 +9,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
-      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [windows-latest]
         build_type: [Release]
 
     steps:
@@ -23,6 +22,7 @@ jobs:
       id: strings
       shell: bash
       run: |
+        echo "build-qt-dir=${{ github.workspace }}/qt" >> "$GITHUB_OUTPUT"
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies (Linux)
@@ -34,36 +34,29 @@ jobs:
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        # Install Chocolatey
-        Set-ExecutionPolicy Bypass -Scope Process -Force;
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
-        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'));
-        
-        # Install CMake, Git und MSYS2 with Chocolatey
-        choco install cmake git msys2 -y --no-progress
-        
-        # Update MSYS2 and install the necessary packages
-        C:\msys64\usr\bin\bash -lc "pacman -Syu --noconfirm"
-        C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc"
-        C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-qt6-base"
-        C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-libusb"
+        choco install aqt -y --no-progress -r
+        aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ steps.strings.outputs.build-qt-dir }}
+        aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
+        aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ steps.strings.outputs.build-qt-dir }}
 
     - name: Configure CMake (Linux)
       if: matrix.os == 'ubuntu-latest'
-      run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -S ${{ github.workspace }}
 
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
-      run: |
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-          -DCMAKE_PREFIX_PATH=C:/msys64/mingw64 \
-          -G "MinGW Makefiles" \
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.build-qt-dir }}/qt/6.7.2/mingw_64
+          -G "MinGW Makefiles"
           -S ${{ github.workspace }}
 
     - name: Build
-      run: |
-        cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --target nfc-spy
+      run: >
+        cmake --build ${{ steps.strings.outputs.build-output-dir }} 
+          --config ${{ matrix.build_type }} 
+          --target nfc-spy
