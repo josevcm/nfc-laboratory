@@ -23,6 +23,8 @@ jobs:
       shell: bash
       run: |
         echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "qt-dir=${{ github.workspace }}/qt/6.7.2" >> "$GITHUB_OUTPUT"
+        echo "toolchain-dir=${{ github.workspace }}/tools/mingw1310_64/" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -49,15 +51,15 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: >
         cmake -B ${{ steps.strings.outputs.build-dir }}
-        -DCMAKE_PREFIX_PATH=${{ github.workspace }}/qt/6.7.2/mingw_64
-        -DCMAKE_C_COMPILER=${{ github.workspace }}/tools/mingw1310_64/bin/gcc.exe
-        -DCMAKE_CXX_COMPILER=${{ github.workspace }}/tools/mingw1310_64/bin/g++.exe
+        -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.qt-dir }}/mingw_64
+        -DCMAKE_C_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/gcc.exe
+        -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/g++.exe
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -G "MinGW Makefiles"
         -S ${{ github.workspace }}
 
     - name: Build
-      run: |
-        cmake --build ${{ steps.strings.outputs.build-output-dir }} \
-          --config ${{ matrix.build_type }} \
+      run: >
+        cmake --build ${{ steps.strings.outputs.build-dir }}
+          --config ${{ matrix.build_type }}
           --target nfc-spy
