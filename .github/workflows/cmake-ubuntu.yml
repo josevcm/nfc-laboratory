@@ -3,7 +3,7 @@ name: CMake for Ubuntu platform
 on:
   push:
     tags:
-      - '0.*' # any tag
+      - '*' # any tag
 
 jobs:
   build:
@@ -32,8 +32,15 @@ jobs:
 
     - name: Configure project
       run: |
-        cmake -S ${{ github.workspace }} -B ${{ steps.strings.outputs.build-dir }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DBUILD_PROJECT_VERSION=${{ github.sha }} 
+        cmake \
+          -S ${{ github.workspace }} \
+          -B ${{ steps.strings.outputs.build-dir }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DBUILD_PROJECT_VERSION="${{ github.sha }}" 
 
     - name: Build project
       run: |
-        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy -- -j $(nproc)
+        cmake \
+          --target nfc-spy \
+          --build ${{ steps.strings.outputs.build-dir }} \
+          -- -j $(nproc)
