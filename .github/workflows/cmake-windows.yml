@@ -24,11 +24,11 @@ jobs:
       run: |
         echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "qt-dir=${{ github.workspace }}/qt/6.7.2/mingw_64" >> "$GITHUB_OUTPUT"
-        echo "toolchain-dir=${{ github.workspace }}/tools/mingw1310_64/" >> "$GITHUB_OUTPUT"
+        echo "toolchain-dir=${{ github.workspace }}/tools/mingw1310_64" >> "$GITHUB_OUTPUT"
         echo "installer-dir=${{ github.workspace }}/tools/QtInstallerFramework/4.7" >> "$GITHUB_OUTPUT"
-        echo "package-dir=${{ github.workspace }}/installer/package" >> "$GITHUB_OUTPUT"
-        echo "package-data-dir=${{ github.workspace }}/installer/package/org.josevcm.nfc-spy/data" >> "$GITHUB_OUTPUT"
-        echo "package-meta-dir=${{ github.workspace }}/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
+        echo "package-dir=${{ github.workspace }}/build/installer/package" >> "$GITHUB_OUTPUT"
+        echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/data" >> "$GITHUB_OUTPUT"
+        echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
 
     - name: Cache dependencies
       id: cache-dependencies
