@@ -1570,7 +1570,7 @@ struct DSLogicDevice::Impl
       {
          if (!usbWrite(wr_cmd_worldwide))
          {
-            log->error("failed to set GPIF to be wordwide");
+            log->error("failed to set GPIF to be worldwide");
             return false;
          }
       }
@@ -1747,12 +1747,15 @@ struct DSLogicDevice::Impl
       // submit transfer of header buffer
       usb.asyncTransfer(Usb::In, 6, transfer);
 
+      log->debug("usb transfer header size {}", {headerSize()});
+      log->debug("usb transfer buffer size {}", {bufferSize()});
+
       // submit transfer of data buffers
       for (int i = 0; i < totalTransfers(); i++)
       {
          transfer = new Usb::Transfer();
-         transfer->data = new unsigned char[dataSize()];
-         transfer->available = dataSize();
+         transfer->data = new unsigned char[bufferSize()];
+         transfer->available = bufferSize();
          transfer->timeout = 5000;
          transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer *{ return usbProcessData(t, handler); };
 
@@ -1965,12 +1968,21 @@ struct DSLogicDevice::Impl
    {
       int count;
 
+      /* Total buffer size should be able to hold about 100ms of data. */
       if (stream)
-         count = ceil(static_cast<double>(totalBufferTime() * bytesPerMs()) / dataSize());
+      {
+         count = ceil(static_cast<double>(totalBufferTime() * bytesPerMs()) / bufferSize());
+      }
       else
-         count = (profile->usb_speed == LIBUSB_SPEED_SUPER) ? 16 : 4;
+      {
+#ifndef _WIN32
+         count = 1;
+#else
+         count = profile->usb_speed == LIBUSB_SPEED_SUPER ? 16 : 4;
+#endif
+      }
 
-      return (count > NUM_SIMUL_TRANSFERS) ? NUM_SIMUL_TRANSFERS : count;
+      return count > NUM_SIMUL_TRANSFERS ? NUM_SIMUL_TRANSFERS : count;
    }
 
    unsigned int bytesPerMs() const
@@ -1980,12 +1992,12 @@ struct DSLogicDevice::Impl
 
    unsigned int singleBufferTime() const
    {
-      return (profile->usb_speed == LIBUSB_SPEED_SUPER) ? 10 : 20;
+      return profile->usb_speed == LIBUSB_SPEED_SUPER ? 10 : 20;
    }
 
    unsigned int totalBufferTime() const
    {
-      return (profile->usb_speed == LIBUSB_SPEED_SUPER) ? 40 : 100;
+      return profile->usb_speed == LIBUSB_SPEED_SUPER ? 40 : 100;
    }
 
    unsigned int channelDepth() const
@@ -1995,15 +2007,15 @@ struct DSLogicDevice::Impl
 
    unsigned int headerSize() const
    {
-      return (profile->dev_caps.feature_caps & CAPS_FEATURE_USB30) ? DSL_KB(1) : DSL_B(512);
+      return profile->dev_caps.feature_caps & CAPS_FEATURE_USB30 ? DSL_KB(1) : DSL_B(512);
    }
 
-   unsigned int dataSize() const
+   unsigned int bufferSize() const
    {
       // The buffer should be large enough to hold 10ms of data and a multiple of 512.
       unsigned size = stream ? singleBufferTime() * bytesPerMs() : 1024 * 1024;
 
-      return (profile->usb_speed == LIBUSB_SPEED_SUPER) ? static_cast<unsigned int>((size + 1023ULL) & ~1023ULL) : static_cast<int>((size + 511ULL) & ~511ULL);
+      return profile->usb_speed == LIBUSB_SPEED_SUPER ? static_cast<unsigned int>((size + 1023ULL) & ~1023ULL) : static_cast<int>((size + 511ULL) & ~511ULL);
    }
 
    uint16_t triggerMask0(uint16_t stage, uint16_t msc, uint16_t lsc, bool qutr_mode, bool half_mode)
