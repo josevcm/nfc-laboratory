@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '*' # any tag
+    branches:
+      - master
 
 jobs:
   build:
@@ -30,6 +32,7 @@ jobs:
         echo "package-dir=${{ github.workspace }}/build/installer/package" >> "$GITHUB_OUTPUT"
         echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/data" >> "$GITHUB_OUTPUT"
         echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
+        echo "processor-count=$(Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfLogicalProcessors" >> "$GITHUB_OUTPUT"
 
     - name: Cache dependencies
       id: cache-dependencies
@@ -62,8 +65,8 @@ jobs:
 
     - name: Build project
       run: |
-        cmake --target nfc-spy --build ${{ steps.strings.outputs.build-dir }} -- -j (Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfLogicalProcessors
-
+        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy --parallel ${{ steps.strings.outputs.processor-count }} 
+        
     - name: Create installer
       run: |
         # create installer folders
