@@ -50,21 +50,21 @@ jobs:
 
     - name: Configure project
       run: |
-        cmake |
-          -S ${{ github.workspace }} |
-          -B ${{ steps.strings.outputs.build-dir }} |
-          -G "MinGW Makefiles" |
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} |
-          -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.qt-dir }} |
-          -DCMAKE_C_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/gcc.exe |
-          -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/g++.exe |
+        cmake `
+          -S ${{ github.workspace }} `
+          -B ${{ steps.strings.outputs.build-dir }} `
+          -G "MinGW Makefiles" `
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+          -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.qt-dir }} `
+          -DCMAKE_C_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/gcc.exe `
+          -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/g++.exe `
           -DBUILD_PROJECT_VERSION="${{ github.ref_name }}"
 
     - name: Build project
       run: |
-        cmake |
-          --target nfc-spy |
-          --build ${{ steps.strings.outputs.build-dir }} |
+        cmake `
+          --target nfc-spy `
+          --build ${{ steps.strings.outputs.build-dir }} `
           -- -j (Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfLogicalProcessors
 
     - name: Create installer
@@ -87,17 +87,17 @@ jobs:
         Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/installer/config/*.* ${{ steps.strings.outputs.package-meta-dir }}
   
         # create deployment
-        ${{ steps.strings.outputs.qt-dir }}/bin/windeployqt |
-          --verbose 1 |
-          --compiler-runtime |
-          --no-translations |
-          --no-system-d3d-compiler |
-          --no-opengl-sw |
+        ${{ steps.strings.outputs.qt-dir }}/bin/windeployqt `
+          --verbose 1 `
+          --compiler-runtime `
+          --no-translations `
+          --no-system-d3d-compiler `
+          --no-opengl-sw `
           ${{ steps.strings.outputs.package-data-dir }}/nfc-spy.exe
         
         # create installer
-        ${{ steps.strings.outputs.installer-dir }}/bin/binarycreator |
-          --verbose |
-          -c ${{ steps.strings.outputs.build-dir }}/installer/config/config.xml |
-          -p ${{ steps.strings.outputs.package-dir }} |
+        ${{ steps.strings.outputs.installer-dir }}/bin/binarycreator `
+          --verbose `
+          -c ${{ steps.strings.outputs.build-dir }}/installer/config/config.xml `
+          -p ${{ steps.strings.outputs.package-dir }} `
           ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ github.ref_name }}-installer-x86_64.exe
