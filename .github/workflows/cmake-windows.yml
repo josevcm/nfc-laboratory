@@ -3,8 +3,7 @@ name: CMake for windows platform
 on:
   push:
     tags:
-      - '*.*.*'
-#    branches: [ "master" ]
+      - '*' # any tag
 
 jobs:
   build:
