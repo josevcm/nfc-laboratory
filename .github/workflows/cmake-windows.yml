@@ -37,17 +37,17 @@ jobs:
         echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
         echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
-#    - name: Cache dependencies
-#      id: cache-dependencies
-#      uses: actions/cache@v4
-#      with:
-#        key: ${{ runner.os }}-qt-dependencies
-#        path: |
-#          ${{ github.workspace }}/qt
-#          ${{ github.workspace }}/tools
+    - name: Cache dependencies
+      id: cache-dependencies
+      uses: actions/cache@v4
+      with:
+        key: ${{ runner.os }}-qt-dependencies
+        path: |
+          ${{ github.workspace }}/qt
+          ${{ github.workspace }}/tools
 
     - name: Install dependencies
-#      if: steps.cache-dependencies.outputs.cache-hit != 'true'
+      if: steps.cache-dependencies.outputs.cache-hit != 'true'
       run: |
         choco install aqt -y --no-progress -r
         aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ github.workspace }}/qt
@@ -63,9 +63,9 @@ jobs:
           -B ${{ steps.strings.outputs.build-dir }} `
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
           -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.qt-dir }} `
-          -DCMAKE_MAKE_PROGRAM=${{ steps.strings.outputs.ninja-dir }}/ninja `
-          -DCMAKE_C_COMPILER=${{ steps.strings.outputs.mingw-dir }}/bin/gcc `
-          -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.mingw-dir }}/bin/g++ `
+          -DCMAKE_MAKE_PROGRAM=${{ steps.strings.outputs.ninja-dir }}/ninja.exe `
+          -DCMAKE_C_COMPILER=${{ steps.strings.outputs.mingw-dir }}/bin/gcc.exe `
+          -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.mingw-dir }}/bin/g++.exe `
           -DBUILD_PROJECT_VERSION="${{ steps.strings.outputs.build-version }}"
 
     - name: Build project
