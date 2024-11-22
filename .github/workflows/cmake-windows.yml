@@ -71,5 +71,11 @@ jobs:
         Copy-Item -Force -Recurse ${{ github.workspace }}/dat/drivers ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force -Recurse ${{ github.workspace }}/dat/firmware ${{ steps.strings.outputs.package-data-dir }}
         
+        # copy installer resources
+        Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/installer/config/*.* ${{ steps.strings.outputs.package-meta-dir }}
+  
         # create deployment
         ${{ steps.strings.outputs.qt-dir }}/bin/windeployqt --verbose 1 --compiler-runtime --no-translations --no-system-d3d-compiler --no-opengl-sw ${{ steps.strings.outputs.package-data-dir }}/nfc-spy.exe
+        
+        # create installer
+        ${{ steps.strings.outputs.qt-dir }}/bin/binarycreator --verbose -c ${{ steps.strings.outputs.build-dir }}/installer/config/config.xml -p ${{ steps.strings.outputs.package-dir }} ${{ steps.strings.outputs.build-dir }}/nfc-spy-installer-x86_64.exe

@@ -2,7 +2,7 @@ name: CMake for Ubuntu platform
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "develop" ]
 
 jobs:
   build:

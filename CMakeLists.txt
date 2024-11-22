@@ -65,6 +65,7 @@ if (WIN32)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/config.xml.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/config.xml)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/package.xml.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/package.xml)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/license.txt.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/license.txt)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/script.js.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/script.js)
 
 endif (WIN32)
 
