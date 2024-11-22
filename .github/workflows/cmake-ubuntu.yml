@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '*' # any tag
+    branches:
+      - master
 
 jobs:
   build:
@@ -25,6 +27,7 @@ jobs:
       run: |
         echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "build-version=${{ github.ref_name == 'master' && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+        echo "processor-count=4" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies
       run: |
@@ -41,4 +44,4 @@ jobs:
 
     - name: Build project
       run: |
-        cmake --target nfc-spy --build ${{ steps.strings.outputs.build-dir }} -- -j $(nproc)
+        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy --parallel ${{ steps.strings.outputs.processor-count }} 

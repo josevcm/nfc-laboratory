@@ -33,7 +33,7 @@ jobs:
         echo "package-dir=${{ github.workspace }}/build/installer/package" >> "$GITHUB_OUTPUT"
         echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/data" >> "$GITHUB_OUTPUT"
         echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
-        echo "processor-count=$(Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfLogicalProcessors" >> "$GITHUB_OUTPUT"
+        echo "processor-count=4" >> "$GITHUB_OUTPUT"
 
     - name: Cache dependencies
       id: cache-dependencies
@@ -50,6 +50,8 @@ jobs:
         choco install aqt -y --no-progress -r
         aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ github.workspace }}/qt
         aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ github.workspace }}
+        aqt install-tool windows desktop tools_ninja qt.tools.cmake --outputdir ${{ github.workspace }}
+        aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
         aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ github.workspace }}
 
     - name: Configure project
