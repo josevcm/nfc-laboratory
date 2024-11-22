@@ -36,7 +36,7 @@ jobs:
           -S ${{ github.workspace }} \
           -B ${{ steps.strings.outputs.build-dir }} \
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-          -DBUILD_PROJECT_VERSION="${{ github.sha }}" 
+          -DBUILD_PROJECT_VERSION="${{ github.ref_name }}" 
 
     - name: Build project
       run: |
