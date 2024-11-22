@@ -3,7 +3,7 @@ name: CMake for Ubuntu platform
 on:
   push:
     tags:
-      - '*' # any tag
+      - '0.*' # any tag
 
 jobs:
   build:
