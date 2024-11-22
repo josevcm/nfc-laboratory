@@ -25,7 +25,7 @@ jobs:
         echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "qt-dir=${{ github.workspace }}/qt/6.7.2/mingw_64" >> "$GITHUB_OUTPUT"
         echo "toolchain-dir=${{ github.workspace }}/tools/mingw1310_64/" >> "$GITHUB_OUTPUT"
-        echo "installer-dir=${{ github.workspace }}/installer" >> "$GITHUB_OUTPUT"
+        echo "installer-dir=${{ github.workspace }}/tools/QtInstallerFramework/4.7" >> "$GITHUB_OUTPUT"
         echo "package-dir=${{ github.workspace }}/installer/package" >> "$GITHUB_OUTPUT"
         echo "package-data-dir=${{ github.workspace }}/installer/package/org.josevcm.nfc-spy/data" >> "$GITHUB_OUTPUT"
         echo "package-meta-dir=${{ github.workspace }}/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
@@ -53,7 +53,7 @@ jobs:
 
     - name: Build
       run: |
-        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy
+        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy -- -j (Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfLogicalProcessors
 
     - name: Package
       run: |
@@ -78,4 +78,4 @@ jobs:
         ${{ steps.strings.outputs.qt-dir }}/bin/windeployqt --verbose 1 --compiler-runtime --no-translations --no-system-d3d-compiler --no-opengl-sw ${{ steps.strings.outputs.package-data-dir }}/nfc-spy.exe
         
         # create installer
-        ${{ steps.strings.outputs.qt-dir }}/bin/binarycreator --verbose -c ${{ steps.strings.outputs.build-dir }}/installer/config/config.xml -p ${{ steps.strings.outputs.package-dir }} ${{ steps.strings.outputs.build-dir }}/nfc-spy-installer-x86_64.exe
+        ${{ steps.strings.outputs.installer-dir }}/bin/binarycreator --verbose -c ${{ steps.strings.outputs.build-dir }}/installer/config/config.xml -p ${{ steps.strings.outputs.package-dir }} ${{ steps.strings.outputs.build-dir }}/nfc-spy-installer-x86_64.exe

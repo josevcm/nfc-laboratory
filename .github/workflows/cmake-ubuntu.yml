@@ -35,4 +35,4 @@ jobs:
 
     - name: Build Project
       run: |
-        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy
+        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy -- -j $(nproc)
