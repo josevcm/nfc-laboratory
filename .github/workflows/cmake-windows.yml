@@ -58,9 +58,10 @@ jobs:
 
     - name: Configure project
       run: |
-        cmake `
+        ${{ steps.strings.outputs.cmake-dir }}/bin/cmake `
           -S ${{ github.workspace }} `
           -B ${{ steps.strings.outputs.build-dir }} `
+          -G Ninja `
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
           -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.qt-dir }} `
           -DCMAKE_C_COMPILER=${{ steps.strings.outputs.mingw-dir }}/bin/gcc.exe `
@@ -70,7 +71,7 @@ jobs:
 
     - name: Build project
       run: |
-        cmake `
+        ${{ steps.strings.outputs.cmake-dir }}/bin/cmake `
           --build ${{ steps.strings.outputs.build-dir }} `
           --target nfc-spy --parallel ${{ steps.strings.outputs.cpu-count }} 
         
