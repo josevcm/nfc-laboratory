@@ -24,6 +24,7 @@ jobs:
       shell: bash
       run: |
         echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "build-version=${{ github.ref_name == 'master' && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies
       run: |
@@ -36,7 +37,7 @@ jobs:
           -S ${{ github.workspace }} \
           -B ${{ steps.strings.outputs.build-dir }} \
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-          -DBUILD_PROJECT_VERSION="${{ github.ref_name }}"
+          -DBUILD_PROJECT_VERSION="${{ steps.strings.outputs.build-version }}"
 
     - name: Build project
       run: |
