@@ -62,10 +62,7 @@ jobs:
 
     - name: Build project
       run: |
-        cmake `
-          --target nfc-spy `
-          --build ${{ steps.strings.outputs.build-dir }} `
-          -- -j (Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfLogicalProcessors
+        cmake --target nfc-spy --build ${{ steps.strings.outputs.build-dir }} -- -j (Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfLogicalProcessors
 
     - name: Create installer
       run: |
