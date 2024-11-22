@@ -27,7 +27,7 @@ jobs:
       run: |
         echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "build-version=${{ github.ref_name == 'master' && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
-        echo "processor-count=4" >> "$GITHUB_OUTPUT"
+        echo "cpu-count=$(nproc)" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies
       run: |
@@ -44,4 +44,4 @@ jobs:
 
     - name: Build project
       run: |
-        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy --parallel ${{ steps.strings.outputs.processor-count }} 
+        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy --parallel ${{ steps.strings.outputs.cpu-count }} 

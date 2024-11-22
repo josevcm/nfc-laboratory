@@ -28,47 +28,51 @@ jobs:
         echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "build-version=${{ github.ref_name == 'master' && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
         echo "qt-dir=${{ github.workspace }}/qt/6.7.2/mingw_64" >> "$GITHUB_OUTPUT"
-        echo "toolchain-dir=${{ github.workspace }}/tools/mingw1310_64" >> "$GITHUB_OUTPUT"
+        echo "ninja-dir=${{ github.workspace }}/tools/ninja" >> "$GITHUB_OUTPUT"
+        echo "cmake-dir=${{ github.workspace }}/tools/cmake_64" >> "$GITHUB_OUTPUT"
+        echo "mingw-dir=${{ github.workspace }}/tools/mingw1310_64" >> "$GITHUB_OUTPUT"
         echo "installer-dir=${{ github.workspace }}/tools/QtInstallerFramework/4.7" >> "$GITHUB_OUTPUT"
         echo "package-dir=${{ github.workspace }}/build/installer/package" >> "$GITHUB_OUTPUT"
         echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/data" >> "$GITHUB_OUTPUT"
         echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
-        echo "processor-count=4" >> "$GITHUB_OUTPUT"
+        echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
-    - name: Cache dependencies
-      id: cache-dependencies
-      uses: actions/cache@v4
-      with:
-        key: ${{ runner.os }}-qt-dependencies
-        path: |
-          ${{ github.workspace }}/qt
-          ${{ github.workspace }}/tools
+#    - name: Cache dependencies
+#      id: cache-dependencies
+#      uses: actions/cache@v4
+#      with:
+#        key: ${{ runner.os }}-qt-dependencies
+#        path: |
+#          ${{ github.workspace }}/qt
+#          ${{ github.workspace }}/tools
 
     - name: Install dependencies
-      if: steps.cache-dependencies.outputs.cache-hit != 'true'
+#      if: steps.cache-dependencies.outputs.cache-hit != 'true'
       run: |
         choco install aqt -y --no-progress -r
         aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ github.workspace }}/qt
         aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ github.workspace }}
-        aqt install-tool windows desktop tools_ninja qt.tools.cmake --outputdir ${{ github.workspace }}
+        aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ github.workspace }}
         aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
         aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ github.workspace }}
 
     - name: Configure project
       run: |
-        cmake `
+        ${{ steps.strings.outputs.cmake-dir }}/bin/cmake `
           -S ${{ github.workspace }} `
           -B ${{ steps.strings.outputs.build-dir }} `
-          -G "MinGW Makefiles" `
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
           -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.qt-dir }} `
-          -DCMAKE_C_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/gcc.exe `
-          -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/g++.exe `
+          -DCMAKE_MAKE_PROGRAM=${{ steps.strings.outputs.ninja-dir }}/ninja `
+          -DCMAKE_C_COMPILER=${{ steps.strings.outputs.mingw-dir }}/bin/gcc `
+          -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.mingw-dir }}/bin/g++ `
           -DBUILD_PROJECT_VERSION="${{ steps.strings.outputs.build-version }}"
 
     - name: Build project
       run: |
-        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy --parallel ${{ steps.strings.outputs.processor-count }} 
+        ${{ steps.strings.outputs.cmake-dir }}/bin/cmake `
+          --build ${{ steps.strings.outputs.build-dir }} `
+          --target nfc-spy --parallel ${{ steps.strings.outputs.cpu-count }} 
         
     - name: Create installer
       run: |
