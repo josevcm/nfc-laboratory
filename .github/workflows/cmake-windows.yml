@@ -1,4 +1,4 @@
-name: CMake on multiple platforms
+name: CMake for windows platform
 
 on:
   push:
@@ -11,7 +11,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-#        os: [ubuntu-latest, windows-latest]
         os: [windows-latest]
         build_type: [Release]
 
@@ -31,27 +30,24 @@ jobs:
         echo "package-data-dir=${{ github.workspace }}/installer/package/org.josevcm.nfc-spy/data" >> "$GITHUB_OUTPUT"
         echo "package-meta-dir=${{ github.workspace }}/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
 
-    - name: Install dependencies (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt update
-        sudo apt install -y qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
+    - name: Cache dependencies
+      id: cache-dependencies
+      uses: actions/cache@v4
+      with:
+        key: ${{ runner.os }}-qt-dependencies
+        path: |
+          ${{ github.workspace }}/qt
+          ${{ github.workspace }}/tools
 
-    - name: Install dependencies (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Install dependencies
+      if: steps.cache-dependencies.outputs.cache-hit != 'true'
       run: |
         choco install aqt -y --no-progress -r
         aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ github.workspace }}/qt
         aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ github.workspace }}
         aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ github.workspace }}
 
-    - name: Configure CMake (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cmake -S ${{ github.workspace }} -B ${{ steps.strings.outputs.build-dir }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} 
-
-    - name: Configure CMake (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Configure
       run: |
         cmake -S ${{ github.workspace }} -B ${{ steps.strings.outputs.build-dir }} -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.qt-dir }} -DCMAKE_C_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/gcc.exe -DCMAKE_CXX_COMPILER=${{ steps.strings.outputs.toolchain-dir }}/bin/g++.exe
 
@@ -59,8 +55,7 @@ jobs:
       run: |
         cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy
 
-    - name: Package (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Package
       run: |
         # create installer folders
         New-Item -Force -ItemType "directory" -Path ${{ steps.strings.outputs.package-data-dir }}
