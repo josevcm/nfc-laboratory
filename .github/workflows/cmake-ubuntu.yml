@@ -2,7 +2,8 @@ name: CMake for Ubuntu platform
 
 on:
   push:
-    branches: [ "develop" ]
+    tags:
+      - '*.*.*'
 
 jobs:
   build:
@@ -29,10 +30,10 @@ jobs:
         sudo apt update
         sudo apt install -y qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
 
-    - name: Configure CMake
+    - name: Configure project
       run: |
         cmake -S ${{ github.workspace }} -B ${{ steps.strings.outputs.build-dir }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} 
 
-    - name: Build Project
+    - name: Build project
       run: |
         cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy -- -j $(nproc)
