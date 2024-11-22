@@ -32,7 +32,7 @@ jobs:
 
     - name: Configure project
       run: |
-        cmake -S ${{ github.workspace }} -B ${{ steps.strings.outputs.build-dir }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} 
+        cmake -S ${{ github.workspace }} -B ${{ steps.strings.outputs.build-dir }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DBUILD_PROJECT_VERSION=${{ github.sha }} 
 
     - name: Build project
       run: |
