@@ -100,10 +100,10 @@ struct NfcV::Impl : NfcTech
    // modulation status for each bitrate
    NfcModulationStatus modulationStatus {};
 
-   // minimum modulation threshold to detect valid signal for NFC-V (default 95%)
+   // minimum modulation deep to detect valid signal for NFC-V (default 90%)
    float minimumModulationDeep = 0.90f;
 
-   // minimum modulation threshold to detect valid signal for NFC-V (default 100%)
+   // minimum modulation deep to detect valid signal for NFC-V (default 100%)
    float maximumModulationDeep = 1.00f;
 
    // minimum correlation threshold to detect valid NFC-V pulse (default 50%)
