@@ -37,6 +37,7 @@
 #include "DSLogicInternal.h"
 
 #define DEVICE_TYPE_PREFIX "logic.dslogic"
+#define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 8
 
 namespace hw {
 
@@ -121,6 +122,11 @@ struct DSLogicDevice::Impl
     * Transfer buffers
     */
    std::list<Usb::Transfer *> transfers;
+
+   /*
+    * Received buffers
+    */
+   std::vector<SignalBuffer> buffers;
 
    /*
     * Control commands.
@@ -421,7 +427,7 @@ struct DSLogicDevice::Impl
       // stop previous acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
       {
-         log->error("failed to stop previous DSCope acquisition");
+         log->error("failed to stop previous acquisition");
          return false;
       }
 
@@ -432,13 +438,26 @@ struct DSLogicDevice::Impl
          return false;
       }
 
+      // prepare output buffers for enabled channels
+      buffers.clear();
+
+      for (const auto &ch: channels)
+      {
+         if (ch.enabled)
+         {
+            log->debug("create channel {} buffer, size {}", {ch.index, CHANNEL_BUFFER_SIZE});
+
+            buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_RAW_LOGIC, ch.index);
+         }
+      }
+
       // setup usb transfers
       usbTransfer(handler);
 
       // start acquisition
       if (!usbWrite(wr_cmd_acquisition_start))
       {
-         log->error("failed to start DSLogic acquisition");
+         log->error("failed to start acquisition");
          deviceStatus = STATUS_ERROR;
          return false;
       }
@@ -453,7 +472,7 @@ struct DSLogicDevice::Impl
       // stop previous acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
       {
-         log->error("failed to stop DSLogic acquisition");
+         log->error("failed to stop acquisition");
       }
 
       /* adc power down*/
@@ -1836,7 +1855,7 @@ struct DSLogicDevice::Impl
       // trigger next transfer
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
-         // split received buffer in one buffer per channel
+         // split received data in one buffer per channel
          std::vector<SignalBuffer> buffers = splitBuffers(transfer);
 
          // call user handler for each channel
@@ -1882,20 +1901,11 @@ struct DSLogicDevice::Impl
    {
       std::vector<SignalBuffer> result;
 
-      // prepare output buffers for enabled channels
-      for (const auto &ch: channels)
-      {
-         if (ch.enabled)
-         {
-            result.emplace_back((transfer->actual << 3) / validChannels, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_RAW_LOGIC, ch.index);
-         }
-      }
-
-      // get next channel index to be read from data buffer
+      // get channel index to be processed from data buffer
       unsigned int c = (currentBytes >> 3) % validChannels;
 
       // get output buffer for first channel present in data buffer
-      SignalBuffer *buffer = &result[c];
+      SignalBuffer *buffer = &buffers[c];
 
       // process each byte in data buffer and split into each channel buffer
       for (unsigned int i = 0, n = currentBytes & 0x07; i < transfer->actual; i++, n++)
@@ -1903,18 +1913,39 @@ struct DSLogicDevice::Impl
          // append next 8 samples to channel buffer
          buffer->put(dsl_samples[transfer->data[i]], 8);
 
+         // once all buffers are filled, append them to result
+         if (c == validChannels - 1 && buffer->available() == 0)
+         {
+            // copy split buffers to output result
+            result.insert(result.end(), buffers.begin(), buffers.end());
+
+            // clear buffers
+            buffers.clear();
+
+            // update current samples
+            currentSamples += buffer->elements();
+
+            // and create new channels buffers
+            for (const auto &ch: channels)
+            {
+               if (ch.enabled)
+               {
+                  buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_RAW_LOGIC, ch.index);
+               }
+            }
+         }
+
          // switch buffer every 8 samples
          if (n % 8 == 7)
          {
             c = (c + 1) % validChannels;
 
-            buffer = &result[c];
+            buffer = &buffers[c];
          }
       }
 
-      // update current bytes and samples
+      // update current bytes
       currentBytes += transfer->actual;
-      currentSamples += (transfer->actual << 3) / validChannels;
 
       // flip all buffers
       for (auto &b: result)
