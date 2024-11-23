@@ -109,3 +109,9 @@ jobs:
           -c ${{ steps.strings.outputs.build-dir }}/installer/config/config.xml `
           -p ${{ steps.strings.outputs.package-dir }} `
           ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ github.ref_name }}-installer-x86_64.exe
+
+    - name: 'Upload Artifact'
+      uses: actions/upload-artifact@v4
+      with:
+        name: nfc-spy-${{ github.ref_name }}-installer-x86_64
+        path: ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ github.ref_name }}-installer-x86_64.exe
