@@ -82,9 +82,9 @@ jobs:
         New-Item -Force -ItemType "directory" -Path ${{ steps.strings.outputs.package-meta-dir }}
 
         # copy executable and libraries
-        Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/src/nfc-app/app-qt/nfc-spy.exe ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force ${{ github.workspace }}/dll/usb-1.0.26/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force ${{ github.workspace }}/dll/openssl-1.1.1/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
+        Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/src/nfc-app/app-qt/nfc-spy.exe ${{ steps.strings.outputs.package-data-dir }}
         
         # copy drivers and firmware
         Copy-Item -Force -Recurse ${{ github.workspace }}/dat/config ${{ steps.strings.outputs.package-data-dir }}
