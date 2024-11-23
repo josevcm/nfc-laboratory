@@ -18,10 +18,10 @@ jobs:
         build_type: [Release]
 
     steps:
-    - name: Check out code
+    - name: 'Check out code'
       uses: actions/checkout@v4
 
-    - name: Set reusable strings
+    - name: 'Set reusable strings'
       id: strings
       shell: bash
       run: |
@@ -38,7 +38,7 @@ jobs:
         echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
         echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
-    - name: Cache dependencies
+    - name: 'Cache dependencies'
       id: cache-dependencies
       uses: actions/cache@v4
       with:
@@ -47,7 +47,7 @@ jobs:
           ${{ github.workspace }}/qt
           ${{ github.workspace }}/tools
 
-    - name: Install dependencies
+    - name: 'Install dependencies'
       if: steps.cache-dependencies.outputs.cache-hit != 'true'
       run: |
         choco install aqt -y --no-progress -r
@@ -57,7 +57,7 @@ jobs:
         aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
         aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ github.workspace }}
 
-    - name: Configure project
+    - name: 'Configure project'
       run: |
         ${{ steps.strings.outputs.cmake-dir }}/bin/cmake `
           -S ${{ github.workspace }} `
@@ -70,13 +70,13 @@ jobs:
           -DCMAKE_MAKE_PROGRAM=${{ steps.strings.outputs.ninja-dir }}/ninja.exe `
           -DBUILD_PROJECT_VERSION="${{ steps.strings.outputs.build-version }}"
 
-    - name: Build project
+    - name: 'Build project'
       run: |
         ${{ steps.strings.outputs.cmake-dir }}/bin/cmake `
           --build ${{ steps.strings.outputs.build-dir }} `
           --target nfc-spy --parallel ${{ steps.strings.outputs.cpu-count }} 
         
-    - name: Create installer
+    - name: 'Create installer'
       run: |
         # create installer folders
         New-Item -Force -ItemType "directory" -Path ${{ steps.strings.outputs.package-data-dir }}
@@ -112,13 +112,13 @@ jobs:
           -p ${{ steps.strings.outputs.package-dir }} `
           ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
 
-    - name: 'Upload Artifact'
+    - name: 'Upload artifact'
       uses: actions/upload-artifact@v4
       with:
         name: nfc-spy-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
         path: ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
 
-    - name: 'Create Release'
+    - name: 'Create release'
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/create-release@v1
       id: create-release
@@ -132,7 +132,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 'Upload Release'
+    - name: 'Upload release'
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/upload-release-asset@v1
       with:

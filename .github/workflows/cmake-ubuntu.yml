@@ -18,10 +18,10 @@ jobs:
         build_type: [Release]
 
     steps:
-    - name: Check out code
+    - name: 'Check out code'
       uses: actions/checkout@v4
 
-    - name: Set reusable strings
+    - name: 'Set reusable strings'
       id: strings
       shell: bash
       run: |
@@ -29,12 +29,12 @@ jobs:
         echo "build-version=${{ github.ref_name == 'master' && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
         echo "cpu-count=$(nproc)" >> "$GITHUB_OUTPUT"
 
-    - name: Install dependencies
+    - name: 'Install dependencies'
       run: |
         sudo apt update
         sudo apt install -y qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
 
-    - name: Configure project
+    - name: 'Configure project'
       run: |
         cmake \
           -S ${{ github.workspace }} \
@@ -42,6 +42,6 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
           -DBUILD_PROJECT_VERSION="${{ steps.strings.outputs.build-version }}"
 
-    - name: Build project
+    - name: 'Build project'
       run: |
         cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy --parallel ${{ steps.strings.outputs.cpu-count }} 
