@@ -82,9 +82,10 @@ jobs:
         New-Item -Force -ItemType "directory" -Path ${{ steps.strings.outputs.package-meta-dir }}
 
         # copy executable and libraries
+        Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/src/nfc-app/app-qt/nfc-spy.exe ${{ steps.strings.outputs.package-data-dir }}
+        Copy-Item -Force ${{ steps.strings.outputs.mingw-dir }}/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force ${{ github.workspace }}/dll/usb-1.0.26/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force ${{ github.workspace }}/dll/openssl-1.1.1/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
-        Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/src/nfc-app/app-qt/nfc-spy.exe ${{ steps.strings.outputs.package-data-dir }}
         
         # copy drivers and firmware
         Copy-Item -Force -Recurse ${{ github.workspace }}/dat/config ${{ steps.strings.outputs.package-data-dir }}
@@ -113,5 +114,5 @@ jobs:
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v4
       with:
-        name: nfc-spy-${{ github.ref_name }}-installer-x86_64
+        name: nfc-spy-${{ github.ref_name }}-installer-x86_64.exe
         path: ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ github.ref_name }}-installer-x86_64.exe
