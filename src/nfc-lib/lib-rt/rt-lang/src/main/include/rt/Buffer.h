@@ -134,7 +134,7 @@ class Buffer
          if (this == &other)
             return true;
 
-         if (state.limit != other.state.limit || state.position != other.state.position || state.capacity != other.state.capacity)
+         if (state.limit != other.state.limit || state.position != other.state.position)
             return false;
 
          if (alloc == other.alloc)
