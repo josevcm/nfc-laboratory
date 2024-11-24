@@ -57,6 +57,20 @@ ProtocolFrame *ParserISO7816::parse(const lab::RawFrame &frame)
    if (frame.frameType() == lab::FrameType::IsoATRFrame)
       return parseATR(frame);
 
+   switch (frame.frameType())
+   {
+      case lab::FrameType::IsoVccLow:
+      case lab::FrameType::IsoVccHigh:
+         return parseVCC(frame);
+
+      case lab::FrameType::IsoRstLow:
+      case lab::FrameType::IsoRstHigh:
+         return parseRST(frame);
+
+      case lab::FrameType::IsoATRFrame:
+         return parseATR(frame);
+   }
+
    ProtocolFrame *info = nullptr;
 
    do
@@ -85,6 +99,26 @@ ProtocolFrame *ParserISO7816::parse(const lab::RawFrame &frame)
    while (false);
 
    return info;
+}
+
+ProtocolFrame *ParserISO7816::parseVCC(const lab::RawFrame &frame)
+{
+   if (frame.frameType() != lab::FrameType::IsoVccLow || frame.frameType() != lab::FrameType::IsoVccHigh)
+      return nullptr;
+
+   ProtocolFrame *root = buildRootInfo("VCC", frame, 0);
+
+   return root;
+}
+
+ProtocolFrame *ParserISO7816::parseRST(const lab::RawFrame &frame)
+{
+   if (frame.frameType() != lab::FrameType::IsoRstLow || frame.frameType() != lab::FrameType::IsoRstHigh)
+      return nullptr;
+
+   ProtocolFrame *root = buildRootInfo("RST", frame, 0);
+
+   return root;
 }
 
 ProtocolFrame *ParserISO7816::parseATR(const lab::RawFrame &frame)

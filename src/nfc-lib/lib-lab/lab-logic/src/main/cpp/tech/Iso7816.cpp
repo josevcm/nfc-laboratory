@@ -238,6 +238,8 @@ struct Iso7816::Impl
 
    bool detect(std::list<RawFrame> &frames)
    {
+      detectLines(frames);
+
       switch (modulationStatus.searchModeState)
       {
          case SEARCH_MODE_RESET:
@@ -254,6 +256,47 @@ struct Iso7816::Impl
       }
 
       return false;
+   }
+
+   /*
+    * Detect changes in VCC and RST lines
+    */
+   void detectLines(std::list<RawFrame> &frames) const
+   {
+      float vccEdge = decoder->sampleEdge[CH_VCC];
+      float resetEdge = decoder->sampleEdge[CH_RST];
+
+      if (vccEdge != 0)
+      {
+         RawFrame vccChange = RawFrame(Iso7816Tech, vccEdge < 0 ? IsoVccLow : IsoVccHigh);
+
+         vccChange.setFramePhase(IsoAnyPhase);
+         vccChange.setSampleStart(decoder->signalClock);
+         vccChange.setSampleEnd(decoder->signalClock);
+         vccChange.setSampleEnd(decoder->sampleRate);
+         vccChange.setTimeStart(static_cast<double>(decoder->signalClock) / static_cast<double>(decoder->sampleRate));
+         vccChange.setTimeEnd(static_cast<double>(decoder->signalClock) / static_cast<double>(decoder->sampleRate));
+         vccChange.setDateTime(decoder->streamTime + vccChange.timeStart());
+         vccChange.flip();
+
+         frames.push_back(vccChange);
+      }
+
+      if (resetEdge != 0)
+      {
+         RawFrame rstChange = RawFrame(Iso7816Tech, resetEdge < 0 ? IsoRstLow : IsoRstHigh);
+
+         rstChange.setFramePhase(IsoAnyPhase);
+         rstChange.setSampleStart(decoder->signalClock);
+         rstChange.setSampleEnd(decoder->signalClock);
+         rstChange.setSampleEnd(decoder->sampleRate);
+         rstChange.setTimeStart(static_cast<double>(decoder->signalClock) / static_cast<double>(decoder->sampleRate));
+         rstChange.setTimeEnd(static_cast<double>(decoder->signalClock) / static_cast<double>(decoder->sampleRate));
+         rstChange.setDateTime(decoder->streamTime + rstChange.timeStart());
+         rstChange.flip();
+
+         frames.push_back(rstChange);
+      }
    }
 
    /*
@@ -496,6 +539,8 @@ struct Iso7816::Impl
    {
       while (decoder->nextSample(samples))
       {
+         detectLines(frames);
+
          if (decodeFrameT0())
          {
             // frames must contain at least one byte
@@ -544,6 +589,8 @@ struct Iso7816::Impl
    {
       while (decoder->nextSample(samples))
       {
+         detectLines(frames);
+
          if (decodeFrameT1())
          {
             // frames must contain at least one byte
@@ -592,6 +639,7 @@ struct Iso7816::Impl
    {
       while (decoder->nextSample(samples))
       {
+         detectLines(frames);
       }
    }
 

@@ -291,11 +291,26 @@ struct StreamModel::Impl
 
    QVariant frameEvent(const lab::RawFrame &frame, const lab::RawFrame &prev) const
    {
-      if (frame.frameType() == lab::FrameType::NfcCarrierOn)
-         return {"RF-On"};
+      switch (frame.frameType())
+      {
+         case lab::FrameType::NfcCarrierOn:
+            return {"RF-On"};
 
-      if (frame.frameType() == lab::FrameType::NfcCarrierOff)
-         return {"RF-Off"};
+         case lab::FrameType::NfcCarrierOff:
+            return {"RF-Off"};
+
+         case lab::FrameType::IsoVccLow:
+            return {"VCC-Low"};
+
+         case lab::FrameType::IsoVccHigh:
+            return {"VCC-High"};
+
+         case lab::FrameType::IsoRstLow:
+            return {"RST-Low"};
+
+         case lab::FrameType::IsoRstHigh:
+            return {"RST-High"};
+      }
 
       switch (frame.techType())
       {
@@ -321,6 +336,18 @@ struct StreamModel::Impl
    QVariant frameFlags(const lab::RawFrame &frame) const
    {
       QStringList flags;
+
+      if (frame.frameType() == lab::FrameType::IsoVccLow)
+         flags.append("vcc-low");
+
+      if (frame.frameType() == lab::FrameType::IsoVccHigh)
+         flags.append("vcc-high");
+
+      if (frame.frameType() == lab::FrameType::IsoRstLow)
+         flags.append("rst-low");
+
+      if (frame.frameType() == lab::FrameType::IsoRstHigh)
+         flags.append("rst-high");
 
       if (frame.frameType() == lab::FrameType::IsoATRFrame)
          flags.append("startup");

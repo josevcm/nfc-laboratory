@@ -51,7 +51,11 @@ enum FrameType
    NfcListenFrame = 0x0103,
 
    // ISO Frame types
-   IsoATRFrame = 0x0201,
+   IsoVccLow = 0x200,
+   IsoVccHigh = 0x201,
+   IsoRstLow = 0x202,
+   IsoRstHigh = 0x203,
+   IsoATRFrame = 0x0210,
    IsoRequestFrame = 0x0211,
    IsoResponseFrame = 0x0212,
    IsoExchangeFrame = 0x0213,
@@ -60,9 +64,13 @@ enum FrameType
 enum FramePhase
 {
    // NFC Frame phases
-   NfcCarrierPhase = 0x0100,
-   NfcSelectionPhase = 0x0101,
-   NfcApplicationPhase = 0x0102
+   NfcAnyPhase = 0x0100,
+   NfcCarrierPhase = 0x0101,
+   NfcSelectionPhase = 0x0102,
+   NfcApplicationPhase = 0x0103,
+
+   // ISO Frame phases
+   IsoAnyPhase = 0x0200,
 };
 
 enum FrameFlags

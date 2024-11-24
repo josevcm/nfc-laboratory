@@ -35,6 +35,10 @@
         <file>arrows/scalable/caret-up-down-filled.svg</file>
         <file>arrows/scalable/carrier-off.svg</file>
         <file>arrows/scalable/carrier-on.svg</file>
+        <file>arrows/scalable/vcc-low.svg</file>
+        <file>arrows/scalable/vcc-high.svg</file>
+        <file>arrows/scalable/rst-low.svg</file>
+        <file>arrows/scalable/rst-high.svg</file>
         <file>filter/scalable/filter-empty.svg</file>
         <file>filter/scalable/filter-filled-void.svg</file>
         <file>filter/scalable/filter-filled.svg</file>

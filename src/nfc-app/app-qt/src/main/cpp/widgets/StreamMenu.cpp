@@ -226,6 +226,14 @@ struct StreamMenu::Impl
                item->setIcon(Theme::parityErrorIcon);
             else if (value == "sync-error")
                item->setIcon(Theme::syncErrorIcon);
+            else if (value == "vcc-low")
+               item->setIcon(Theme::vccLowIcon);
+            else if (value == "vcc-high")
+               item->setIcon(Theme::vccHighIcon);
+            else if (value == "rst-low")
+               item->setIcon(Theme::rstLowIcon);
+            else if (value == "rst-high")
+               item->setIcon(Theme::rstHighIcon);
          }
 
          optionsModel.appendRow(item);

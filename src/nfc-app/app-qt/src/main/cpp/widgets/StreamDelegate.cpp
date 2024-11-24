@@ -155,6 +155,14 @@ void StreamDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option
       Theme::carrierOnIcon.paint(painter, typeRect);
    else if (flags.contains("carrier-off"))
       Theme::carrierOffIcon.paint(painter, typeRect);
+   else if (flags.contains("vcc-low"))
+      Theme::vccLowIcon.paint(painter, typeRect);
+   else if (flags.contains("vcc-high"))
+      Theme::vccHighIcon.paint(painter, typeRect);
+   else if (flags.contains("rst-low"))
+      Theme::rstLowIcon.paint(painter, typeRect);
+   else if (flags.contains("rst-high"))
+      Theme::rstHighIcon.paint(painter, typeRect);
 
    if (flags.contains("sync-error"))
       Theme::syncErrorIcon.paint(painter, flagRect);

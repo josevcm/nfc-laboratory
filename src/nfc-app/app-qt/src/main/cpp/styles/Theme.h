@@ -39,6 +39,10 @@ class Theme
       static const QIcon filterFilledIcon;
       static const QIcon filterFilledVoidIcon;
 
+      static const QIcon vccLowIcon;
+      static const QIcon vccHighIcon;
+      static const QIcon rstLowIcon;
+      static const QIcon rstHighIcon;
       static const QIcon startupIcon;
       static const QIcon requestIcon;
       static const QIcon responseIcon;

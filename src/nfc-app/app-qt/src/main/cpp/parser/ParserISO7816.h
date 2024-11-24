@@ -34,6 +34,10 @@ struct ParserISO7816 : Parser
 
    virtual ProtocolFrame *parse(const lab::RawFrame &frame);
 
+   ProtocolFrame *parseVCC(const lab::RawFrame &frame);
+
+   ProtocolFrame *parseRST(const lab::RawFrame &frame);
+
    ProtocolFrame *parseATR(const lab::RawFrame &frame);
 
    ProtocolFrame *parsePPS(const lab::RawFrame &frame);

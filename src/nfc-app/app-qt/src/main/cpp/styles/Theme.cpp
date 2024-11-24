@@ -36,6 +36,10 @@ const QIcon Theme::filterEmptyIcon(QIcon::fromTheme("filter-empty"));
 const QIcon Theme::filterFilledIcon(QIcon::fromTheme("filter-filled"));
 const QIcon Theme::filterFilledVoidIcon(QIcon::fromTheme("filter-filled-void"));
 
+const QIcon Theme::vccLowIcon(QIcon::fromTheme("vcc-low"));
+const QIcon Theme::vccHighIcon(QIcon::fromTheme("vcc-high"));
+const QIcon Theme::rstLowIcon(QIcon::fromTheme("rst-low"));
+const QIcon Theme::rstHighIcon(QIcon::fromTheme("rst-high"));
 const QIcon Theme::startupIcon(QIcon::fromTheme("frame-startup"));
 const QIcon Theme::requestIcon(QIcon::fromTheme("frame-request"));
 const QIcon Theme::responseIcon(QIcon::fromTheme("frame-response"));
