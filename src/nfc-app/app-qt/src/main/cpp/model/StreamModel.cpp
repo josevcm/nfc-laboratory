@@ -263,7 +263,12 @@ struct StreamModel::Impl
 
    QVariant frameRate(const lab::RawFrame &frame) const
    {
-      if (frame.frameType() == lab::FrameType::NfcCarrierOn || frame.frameType() == lab::FrameType::NfcCarrierOff)
+      if (frame.frameType() == lab::FrameType::NfcCarrierOn ||
+         frame.frameType() == lab::FrameType::NfcCarrierOff ||
+         frame.frameType() == lab::FrameType::IsoVccLow ||
+         frame.frameType() == lab::FrameType::IsoVccHigh ||
+         frame.frameType() == lab::FrameType::IsoRstLow ||
+         frame.frameType() == lab::FrameType::IsoRstHigh)
          return {};
 
       return frame.frameRate();

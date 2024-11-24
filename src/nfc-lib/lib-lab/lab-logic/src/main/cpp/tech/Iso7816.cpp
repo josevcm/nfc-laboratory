@@ -268,7 +268,7 @@ struct Iso7816::Impl
 
       if (vccEdge != 0)
       {
-         RawFrame vccChange = RawFrame(Iso7816Tech, vccEdge < 0 ? IsoVccLow : IsoVccHigh);
+         RawFrame vccChange = RawFrame(IsoAnyTech, vccEdge < 0 ? IsoVccLow : IsoVccHigh);
 
          vccChange.setFramePhase(IsoAnyPhase);
          vccChange.setSampleStart(decoder->signalClock);
@@ -284,7 +284,7 @@ struct Iso7816::Impl
 
       if (resetEdge != 0)
       {
-         RawFrame rstChange = RawFrame(Iso7816Tech, resetEdge < 0 ? IsoRstLow : IsoRstHigh);
+         RawFrame rstChange = RawFrame(IsoAnyTech, resetEdge < 0 ? IsoRstLow : IsoRstHigh);
 
          rstChange.setFramePhase(IsoAnyPhase);
          rstChange.setSampleStart(decoder->signalClock);

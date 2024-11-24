@@ -105,13 +105,13 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
    {
       switch (col)
       {
-         case Columns::Name:
+         case Name:
             return frame->data(ProtocolFrame::Name);
 
-         case Columns::Flags:
+         case Flags:
             return frame->data(ProtocolFrame::Flags);
 
-         case Columns::Data:
+         case Data:
             return frame->data(ProtocolFrame::Data);
       }
 
@@ -122,13 +122,13 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
    {
       switch (col)
       {
-         case Columns::Name:
+         case Name:
             return frame->data(ProtocolFrame::Name);
 
-         case Columns::Flags:
+         case Flags:
             return frame->data(ProtocolFrame::Flags);
 
-         case Columns::Data:
+         case Data:
          {
             QVariant info = frame->data(ProtocolFrame::Data);
 
@@ -159,7 +159,7 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
    {
       switch (col)
       {
-         case Columns::Name:
+         case Name:
          {
             if (frame->isFrameField())
                return impl->fieldFont;
@@ -167,7 +167,7 @@ QVariant ParserModel::data(const QModelIndex &index, int role) const
             break;
          }
 
-         case Columns::Data:
+         case Data:
          {
             if (frame->isRequestFrame())
             {

@@ -53,7 +53,7 @@ struct StreamDelegate::Impl
 
    QString formatValue(int column, const QVariant &value)
    {
-      if (!columnType.contains(column))
+      if (!columnType.contains(column) || !value.isValid())
          return {};
 
       switch (columnType[column])

@@ -100,13 +100,13 @@ struct StreamFilter::Impl
       return 0;
    }
 
-   void addFilter(int column, const StreamFilter::Filter &filter)
+   void addFilter(int column, const Filter &filter)
    {
       // add new filter
       columnFilters[column].append(filter);
    }
 
-   void removeFilter(int column, StreamFilter::Mode mode)
+   void removeFilter(int column, Mode mode)
    {
       if (!columnFilters.contains(column))
          return;
