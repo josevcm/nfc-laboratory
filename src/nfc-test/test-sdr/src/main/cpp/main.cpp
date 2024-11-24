@@ -65,6 +65,7 @@ bool readFrames(const std::string &path, std::list<lab::RawFrame> &list)
       lab::RawFrame frame(256);
 
       frame.setTechType(entry["techType"]);
+      frame.setDateTime(entry["dateTime"]);
       frame.setFrameType(entry["frameType"]);
       frame.setFramePhase(entry["framePhase"]);
       frame.setFrameFlags(entry["frameFlags"]);
@@ -108,12 +109,13 @@ bool writeFrames(const std::string &path, std::list<lab::RawFrame> &list)
          });
 
          frames.push_back({
+            {"techType", frame.techType()},
+            {"dateTime", frame.dateTime()},
             {"sampleStart", frame.sampleStart()},
             {"sampleEnd", frame.sampleEnd()},
-            {"sampleRate", frame.sampleEnd()},
+            {"sampleRate", frame.sampleRate()},
             {"timeStart", frame.timeStart()},
             {"timeEnd", frame.timeEnd()},
-            {"techType", frame.techType()},
             {"frameType", frame.frameType()},
             {"frameRate", frame.frameRate()},
             {"frameFlags", frame.frameFlags()},
@@ -127,7 +129,7 @@ bool writeFrames(const std::string &path, std::list<lab::RawFrame> &list)
 
    std::ofstream output(path);
 
-   output << std::setw(3) << info << std::endl;
+   output << std::setw(3) << info.dump(2) << std::endl;
 
    return true;
 }
@@ -137,7 +139,7 @@ bool writeFrames(const std::string &path, std::list<lab::RawFrame> &list)
  */
 bool readSignal(const std::string &path, std::list<lab::RawFrame> &list)
 {
-   if (!rt::FileSystem::exists(path))
+   if (!FileSystem::exists(path))
       return false;
 
    hw::RecordDevice source(path);
@@ -154,8 +156,8 @@ bool readSignal(const std::string &path, std::list<lab::RawFrame> &list)
 
    std::list<lab::RawFrame> frames;
 
-   int channelCount = std::get<int>(source.get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
-   int sampleRate = std::get<int>(source.get(hw::SignalDevice::PARAM_SAMPLE_RATE));
+   unsigned int channelCount = std::get<unsigned int>(source.get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
+   unsigned int sampleRate = std::get<unsigned int>(source.get(hw::SignalDevice::PARAM_SAMPLE_RATE));
 
    while (!source.isEof())
    {
@@ -216,7 +218,7 @@ int testFile(const std::string &signal)
 
 int testPath(const std::string &path)
 {
-   for (const auto &entry: rt::FileSystem::directoryList(path))
+   for (const auto &entry: FileSystem::directoryList(path))
    {
       if (entry.name.find(".wav") != std::string::npos)
       {
@@ -232,20 +234,20 @@ int main(int argc, char *argv[])
    //   Logger::init(std::cout, false);
 
    logger->info("***********************************************************************");
-   logger->info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   logger->info("NFC laboratory, 2024 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    logger->info("***********************************************************************");
 
    for (int i = 1; i < argc; i++)
    {
-      std::string path{argv[i]};
+      std::string path {argv[i]};
 
-      if (rt::FileSystem::isDirectory(path))
+      if (FileSystem::isDirectory(path))
       {
          logger->info("processing path {}", {path});
 
          testPath(path);
       }
-      else if (rt::FileSystem::isRegularFile(path))
+      else if (FileSystem::isRegularFile(path))
       {
          logger->info("processing file {}", {path});
 

@@ -1,64 +1,74 @@
 {
-   "frames": [
-      {
-         "frameData": "05:00:00:71:FF",
-         "frameFlags": 0,
-         "framePhase": 1,
-         "frameRate": 105938,
-         "frameType": 2,
-         "sampleEnd": 58199,
-         "sampleStart": 51394,
-         "techType": 2,
-         "timeEnd": 0.0058199,
-         "timeStart": 0.0051394
-      },
-      {
-         "frameData": "50:56:64:73:F2:00:00:00:00:80:81:71:C8:AD",
-         "frameFlags": 0,
-         "framePhase": 1,
-         "frameRate": 105938,
-         "frameType": 3,
-         "sampleEnd": 76917,
-         "sampleStart": 60297,
-         "techType": 2,
-         "timeEnd": 0.0076917,
-         "timeStart": 0.0060297
-      },
-      {
-         "frameData": "1D:56:64:73:F2:00:05:01:01:D4:DA",
-         "frameFlags": 0,
-         "framePhase": 1,
-         "frameRate": 105938,
-         "frameType": 2,
-         "sampleEnd": 122009,
-         "sampleStart": 109541,
-         "techType": 2,
-         "timeEnd": 0.0122009,
-         "timeStart": 0.0109541
-      },
-      {
-         "frameData": "01:F1:E1",
-         "frameFlags": 0,
-         "framePhase": 1,
-         "frameRate": 105938,
-         "frameType": 3,
-         "sampleEnd": 130603,
-         "sampleStart": 124376,
-         "techType": 2,
-         "timeEnd": 0.0130603,
-         "timeStart": 0.0124376
-      },
-      {
-         "frameData": "15:54:B7",
-         "frameFlags": 0,
-         "framePhase": 2,
-         "frameRate": 105938,
-         "frameType": 2,
-         "sampleEnd": 169677,
-         "sampleStart": 164761,
-         "techType": 2,
-         "timeEnd": 0.0169677,
-         "timeStart": 0.0164761
-      }
-   ]
+  "frames": [
+    {
+      "dateTime": 0.0051394,
+      "frameData": "05:00:00:71:FF",
+      "frameFlags": 0,
+      "framePhase": 258,
+      "frameRate": 105938,
+      "frameType": 258,
+      "sampleEnd": 58199,
+      "sampleRate": 10000000,
+      "sampleStart": 51394,
+      "techType": 258,
+      "timeEnd": 0.0058199,
+      "timeStart": 0.0051394
+    },
+    {
+      "dateTime": 0.0060297,
+      "frameData": "50:56:64:73:F2:00:00:00:00:80:81:71:C8:AD",
+      "frameFlags": 0,
+      "framePhase": 258,
+      "frameRate": 105938,
+      "frameType": 259,
+      "sampleEnd": 76917,
+      "sampleRate": 10000000,
+      "sampleStart": 60297,
+      "techType": 258,
+      "timeEnd": 0.0076917,
+      "timeStart": 0.0060297
+    },
+    {
+      "dateTime": 0.0109541,
+      "frameData": "1D:56:64:73:F2:00:05:01:01:D4:DA",
+      "frameFlags": 0,
+      "framePhase": 258,
+      "frameRate": 105938,
+      "frameType": 258,
+      "sampleEnd": 122009,
+      "sampleRate": 10000000,
+      "sampleStart": 109541,
+      "techType": 258,
+      "timeEnd": 0.0122009,
+      "timeStart": 0.0109541
+    },
+    {
+      "dateTime": 0.0124376,
+      "frameData": "01:F1:E1",
+      "frameFlags": 0,
+      "framePhase": 258,
+      "frameRate": 105938,
+      "frameType": 259,
+      "sampleEnd": 130603,
+      "sampleRate": 10000000,
+      "sampleStart": 124376,
+      "techType": 258,
+      "timeEnd": 0.0130603,
+      "timeStart": 0.0124376
+    },
+    {
+      "dateTime": 0.0164761,
+      "frameData": "15:54:B7",
+      "frameFlags": 0,
+      "framePhase": 259,
+      "frameRate": 105938,
+      "frameType": 258,
+      "sampleEnd": 169677,
+      "sampleRate": 10000000,
+      "sampleStart": 164761,
+      "techType": 258,
+      "timeEnd": 0.0169677,
+      "timeStart": 0.0164761
+    }
+  ]
 }

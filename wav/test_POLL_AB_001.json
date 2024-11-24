@@ -1,28 +1,60 @@
 {
-   "frames": [
-      {
-         "frameData": "26",
-         "frameFlags": 1,
-         "framePhase": 1,
-         "frameRate": 105938,
-         "frameType": 2,
-         "sampleEnd": 64129,
-         "sampleStart": 63325,
-         "techType": 1,
-         "timeEnd": 0.0064129,
-         "timeStart": 0.0063325
-      },
-      {
-         "frameData": "05:00:08:39:73",
-         "frameFlags": 0,
-         "framePhase": 1,
-         "frameRate": 105938,
-         "frameType": 2,
-         "sampleEnd": 135243,
-         "sampleStart": 128438,
-         "techType": 2,
-         "timeEnd": 0.0135243,
-         "timeStart": 0.0128438
-      }
-   ]
+  "frames": [
+    {
+      "dateTime": 0.0063325,
+      "frameData": "26",
+      "frameFlags": 1,
+      "framePhase": 258,
+      "frameRate": 105938,
+      "frameType": 258,
+      "sampleEnd": 64129,
+      "sampleRate": 10000000,
+      "sampleStart": 63325,
+      "techType": 257,
+      "timeEnd": 0.0064129,
+      "timeStart": 0.0063325
+    },
+    {
+      "dateTime": 0.0128438,
+      "frameData": "05:00:08:39:73",
+      "frameFlags": 0,
+      "framePhase": 258,
+      "frameRate": 105938,
+      "frameType": 258,
+      "sampleEnd": 135243,
+      "sampleRate": 10000000,
+      "sampleStart": 128438,
+      "techType": 258,
+      "timeEnd": 0.0135243,
+      "timeStart": 0.0128438
+    },
+    {
+      "dateTime": 0.0150432,
+      "frameData": "06:00:97:5B",
+      "frameFlags": 0,
+      "framePhase": 259,
+      "frameRate": 105938,
+      "frameType": 258,
+      "sampleEnd": 157048,
+      "sampleRate": 10000000,
+      "sampleStart": 150432,
+      "techType": 258,
+      "timeEnd": 0.0157048,
+      "timeStart": 0.0150432
+    },
+    {
+      "dateTime": 0.0262387,
+      "frameData": "06:00:97:5B",
+      "frameFlags": 0,
+      "framePhase": 259,
+      "frameRate": 105938,
+      "frameType": 258,
+      "sampleEnd": 269002,
+      "sampleRate": 10000000,
+      "sampleStart": 262387,
+      "techType": 258,
+      "timeEnd": 0.0269002,
+      "timeStart": 0.0262387
+    }
+  ]
 }
