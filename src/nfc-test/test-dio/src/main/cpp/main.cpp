@@ -25,8 +25,6 @@
 
 #include <rt/Logger.h>
 
-#include <hw/usb/Usb.h>
-
 #include <hw/logic/DSLogicDevice.h>
 
 using namespace rt;
@@ -36,7 +34,7 @@ int main(int argc, char *argv[])
 {
    Logger::init(std::cout, false);
 
-   rt::Logger *log = rt::Logger::getLogger("app.main", rt::Logger::INFO_LEVEL);
+   Logger *log = Logger::getLogger("app.main", Logger::INFO_LEVEL);
 
    log->info("***********************************************************************");
    log->info("NFC laboratory, 2024 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
