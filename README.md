@@ -331,16 +331,22 @@ JSON contents are in entry named **frame.json** inside TRZ file:
   - CrcError = 0x20
   - SyncError = 0x40
 - framePhase: Phase of the frame, one of the following values:
-  - NfcCarrierPhase = 0x0100
-  - NfcSelectionPhase = 0x0101
-  - NfcApplicationPhase = 0x0102
+  - NfcAnyPhase = 0x0100
+  - NfcCarrierPhase = 0x0101
+  - NfcSelectionPhase = 0x0102
+  - NfcApplicationPhase = 0x0103
+  - IsoAnyPhase = 0x0200
 - frameRate: Rate of the frame, in bits per second, one of the following values
 - frameType: Type of the frame, one of the following values:
   - NfcCarrierOff = 0x0100
   - NfcCarrierOn = 0x0101
   - NfcPollFrame = 0x0102
   - NfcListenFrame = 0x0103
-  - IsoATRFrame = 0x0201
+  - IsoVccLow = 0x200
+  - IsoVccHigh = 0x201
+  - IsoRstLow = 0x202
+  - IsoRstHigh = 0x203
+  - IsoATRFrame = 0x0210
   - IsoRequestFrame = 0x0211
   - IsoResponseFrame = 0x0212
   - IsoExchangeFrame = 0x0213
