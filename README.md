@@ -144,8 +144,8 @@ it will not offer the necessary quality, is supported only as a reference to exp
 [device.radio.rtlsdr]
 centerFreq=27120000
 sampleRate=3200000
-gainMode=-1
-gainValue=229
+gainMode=1
+gainValue=125
 biasTee=0
 directSampling=0
 mixerAgc=0
@@ -390,7 +390,9 @@ TEST FILE "test_POLL_AB_001.wav": PASS
 
 ## Build instructions
 
-This project is based on Qt6 and MinGW-W64 and contains the following components:
+This project is based on Qt6 and MinGW-W64, with minimal dependencies.
+
+Contains the following components:
 
 - /src/nfc-app/app-qt: Application interface based on Qt Widgets
 - /src/nfc-app/app-rx: Command line decoder application.
@@ -439,7 +441,8 @@ Compile the project:
 cmake --build build --target nfc-spy -- -j 6
 ```
 
-```cmake
+```
+cmake
 [  1%] Building C object src/nfc-lib/lib-ext/microtar/CMakeFiles/microtar.dir/src/main/c/microtar.c.obj
 [  2%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/c/x86/kernel.sse.c.obj
 [  2%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/airspy.c.obj
@@ -504,7 +507,7 @@ Launch the application:
 
 ## Source code licensing
 
-If you think it is an interesting job or you plan to use it for something please email me and let me know, I
+If you think it is an interesting job, or you plan to use it for something please email me and let me know, I
 will be happy to exchange experiences, thank you very much.
 
 This project is published under the terms of the GPLv3 license, however there are parts of it subject to other types of
@@ -520,7 +523,7 @@ licenses, please check if you are interested in this work.
 
 ## Releases
 
-Precompiled installer for x86 64 bit can be found in repository
+Precompiled installer for x86_64 can be found in repository, you can download latest version from [releases](https://github.com/josevcm/nfc-laboratory/releases/latest/)
 
 # How it works?
 
