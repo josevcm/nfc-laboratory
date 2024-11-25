@@ -176,6 +176,7 @@ struct IsoFrameStatus
 {
    unsigned int lastCommand; // last received command
    unsigned int frameType; // frame type
+   unsigned int frameChaining; // frame chaining flag
    unsigned int symbolRate; // frame bit rate
    unsigned int frameStart; // sample clocks for start of last decoded symbol
    unsigned int frameEnd; // sample clocks for end of last decoded symbol

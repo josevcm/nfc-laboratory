@@ -75,6 +75,8 @@
 #define T1_BLOCK_LEN_OFFSET 2
 #define T1_BLOCK_INF_OFFSET 3
 
+#define T1_BLOCK_PCB_CHAINING 0x20
+
 #define GT_THRESHOLD 0.5
 #define WT_THRESHOLD 0.5
 
@@ -881,6 +883,9 @@ struct Iso7816::Impl
 
          if (processTPDU(frame))
             break;
+
+         if (processBlock(frame))
+            break;
       }
       while (false);
 
@@ -889,14 +894,14 @@ struct Iso7816::Impl
       {
          case IsoRequestFrame:
          {
-            frameStatus.frameType = IsoResponseFrame;
+            frameStatus.frameType = frameStatus.frameChaining ? IsoRequestFrame : IsoResponseFrame;
             frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
             frameStatus.waitingTime = protocolStatus.blockWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
             break;
          }
          case IsoResponseFrame:
          {
-            frameStatus.frameType = IsoRequestFrame;
+            frameStatus.frameType = frameStatus.frameChaining ? IsoResponseFrame : IsoRequestFrame;
             frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
             frameStatus.waitingTime = protocolStatus.blockWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
             break;
@@ -918,7 +923,7 @@ struct Iso7816::Impl
       frameStatus.frameEnd = 0;
       frameStatus.frameFlags = 0;
       frameStatus.frameSize = 0;
-      frameStatus.symbolRate = 1.0 / protocolStatus.elementaryTimeUnit;
+      frameStatus.symbolRate = 1.0f / protocolStatus.elementaryTimeUnit;
    }
 
    /*
@@ -1138,6 +1143,23 @@ struct Iso7816::Impl
       // APDU CLA 0xFF is reserved por PPS
       if (frame[T0_TPDU_CLA_OFFSET] == PPS_CMD)
          return false;
+
+      return true;
+   }
+
+   /*
+ * Process Block frame
+ */
+   bool processBlock(RawFrame &frame)
+   {
+      if (frame.frameType() != IsoRequestFrame && frame.frameType() != IsoResponseFrame)
+         return false;
+
+      if (frame.size() < T1_BLOCK_MIN_LEN || frame.size() > T1_BLOCK_MAX_LEN)
+         return false;
+
+      // Check if has frame chaining
+      frameStatus.frameChaining = frame[T1_BLOCK_PCB_OFFSET] & T1_BLOCK_PCB_CHAINING;
 
       return true;
    }
