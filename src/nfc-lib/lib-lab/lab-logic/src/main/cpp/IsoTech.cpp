@@ -75,8 +75,17 @@ bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)
          return false;
       }
 
-      // update signal clock and pulse filter
-      ++signalClock;
+      // get next samples from buffer
+      signalCache.get(sampleData, signalCache.stride());
+
+      // initialize last samples
+      if (signalClock == 0)
+      {
+         for (int i = 0; i < signalCache.stride(); i++)
+         {
+            sampleLast[i] = sampleData[i];
+         }
+      }
 
       // calculate data edges from previous samples
       for (int i = 0; i < signalCache.stride(); i++)
@@ -85,8 +94,8 @@ bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)
          sampleLast[i] = sampleData[i];
       }
 
-      // get next samples from buffer
-      signalCache.get(sampleData, signalCache.stride());
+      // update signal clock and pulse filter
+      ++signalClock;
 
       // store debug data if enabled
       if (debug)
