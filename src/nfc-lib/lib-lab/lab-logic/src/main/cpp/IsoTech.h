@@ -29,9 +29,11 @@
 #include <hw/SignalBuffer.h>
 #include <hw/RecordDevice.h>
 
-#define DEBUG_CHANNELS 8
+#define DEBUG_CHANNELS 10
 #define DEBUG_SIGNAL_DATA_CHANNEL 0
 #define DEBUG_SIGNAL_EDGE_CHANNEL 4
+#define DEBUG_SIGNAL_BIT_CHANNEL 8
+#define DEBUG_SIGNAL_BYTE_CHANNEL 9
 
 namespace lab {
 
@@ -176,7 +178,6 @@ struct IsoFrameStatus
 {
    unsigned int lastCommand; // last received command
    unsigned int frameType; // frame type
-   unsigned int frameChaining; // frame chaining flag
    unsigned int symbolRate; // frame bit rate
    unsigned int frameStart; // sample clocks for start of last decoded symbol
    unsigned int frameEnd; // sample clocks for end of last decoded symbol
@@ -237,6 +238,10 @@ struct IsoDecoderStatus
 
    // check if there are samples remain to process in buffer
    bool hasSamples(const hw::SignalBuffer &samples) const;
+};
+
+struct IsoTech
+{
 };
 
 }

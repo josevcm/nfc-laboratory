@@ -25,6 +25,7 @@
 
 #include <rt/Logger.h>
 
+#include <lab/data/Crc.h>
 #include <lab/iso/Iso.h>
 
 #include <tech/Iso7816.h>
@@ -68,8 +69,10 @@
 #define T0_TPDU_P3_OFFSET 4
 #define T0_TPDU_PROC_OFFSET 5
 
-#define T1_BLOCK_MIN_LEN 3
-#define T1_BLOCK_MAX_LEN 255
+#define T1_BLOCK_PRO_LEN 3
+#define T1_BLOCK_LRC_LEN 1
+#define T1_BLOCK_CRC_LEN 2
+#define T1_BLOCK_INF_LEN 254
 #define T1_BLOCK_NAD_OFFSET 0
 #define T1_BLOCK_PCB_OFFSET 1
 #define T1_BLOCK_LEN_OFFSET 2
@@ -197,7 +200,7 @@ struct IsoProtocolStatus
    bool protocolParametersChange;
 };
 
-struct Iso7816::Impl
+struct Iso7816::Impl : IsoTech
 {
    rt::Logger *log = rt::Logger::getLogger("decoder.Iso7816");
 
@@ -658,6 +661,8 @@ struct Iso7816::Impl
          if (!frameStatus.frameStart)
             frameStatus.frameStart = characterStatus.start;
 
+         log->trace("\tbyte [{}]: {02x}", {frameStatus.frameSize, characterStatus.data});
+
          // update frame and add character to frame data
          frameStatus.frameEnd = characterStatus.end;
          frameStatus.frameFlags |= characterStatus.flags;
@@ -704,6 +709,8 @@ struct Iso7816::Impl
          if (!frameStatus.frameStart)
             frameStatus.frameStart = characterStatus.start;
 
+         log->trace("\tbyte [{}]: {02x}", {frameStatus.frameSize, characterStatus.data});
+
          // update frame and add character to frame data
          frameStatus.frameEnd = characterStatus.end;
          frameStatus.frameFlags |= characterStatus.flags;
@@ -713,11 +720,15 @@ struct Iso7816::Impl
          characterStatus = {};
 
          // check if frame is protocol parameter selection
+         if (isPPS(frameStatus.frameData, frameStatus.frameSize) == ResultSuccess)
+            return true;
+
+         // check if frame is protocol parameter selection
          if (isBlock(frameStatus.frameData, frameStatus.frameSize) == ResultSuccess)
             return true;
 
          // could shouldn't, but check maximum frame size to release frame processing
-         if (frameStatus.frameSize == protocolStatus.maximumInformationSize)
+         if (frameStatus.frameSize >= protocolStatus.maximumInformationSize + T1_BLOCK_PRO_LEN + (protocolStatus.errorCodeType == LRCCode ? T1_BLOCK_LRC_LEN : T1_BLOCK_CRC_LEN))
             return true;
 
          return false;
@@ -788,6 +799,11 @@ struct Iso7816::Impl
                   modulationStatus.searchStartTime = characterStatus.start + frameStatus.guardTime; // guard time for start receiving next character
                   modulationStatus.searchEndTime = characterStatus.start + frameStatus.waitingTime; // limit for start receiving next character
                   modulationStatus.searchSyncTime = 0; // to search for start bit sync must be 0
+
+                  if (decoder->debug)
+                  {
+                     decoder->debug->set(DEBUG_SIGNAL_BYTE_CHANNEL, 0.75f);
+                  }
 
                   return FullCharacter;
                }
@@ -865,6 +881,11 @@ struct Iso7816::Impl
       symbolStatus.end = modulationStatus.searchSyncTime + protocolStatus.elementaryHalfTime; // set symbol end time at trailing edge
       symbolStatus.data = protocolStatus.symbolConvention == DirectConvention ? dataValue : !dataValue; // symbol value
 
+      if (decoder->debug)
+      {
+         decoder->debug->set(DEBUG_SIGNAL_BIT_CHANNEL, 0.75f);
+      }
+
       return FullSymbol;
    }
 
@@ -884,7 +905,13 @@ struct Iso7816::Impl
          if (processTPDU(frame))
             break;
 
-         if (processBlock(frame))
+         if (processIBlock(frame))
+            break;
+
+         if (processRBlock(frame))
+            break;
+
+         if (processSBlock(frame))
             break;
       }
       while (false);
@@ -894,14 +921,14 @@ struct Iso7816::Impl
       {
          case IsoRequestFrame:
          {
-            frameStatus.frameType = frameStatus.frameChaining ? IsoRequestFrame : IsoResponseFrame;
+            frameStatus.frameType = IsoResponseFrame;
             frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
             frameStatus.waitingTime = protocolStatus.blockWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
             break;
          }
          case IsoResponseFrame:
          {
-            frameStatus.frameType = frameStatus.frameChaining ? IsoResponseFrame : IsoRequestFrame;
+            frameStatus.frameType = IsoRequestFrame;
             frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
             frameStatus.waitingTime = protocolStatus.blockWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
             break;
@@ -1148,20 +1175,80 @@ struct Iso7816::Impl
    }
 
    /*
- * Process Block frame
- */
-   bool processBlock(RawFrame &frame)
+    * Process I-Block frame
+    */
+   bool processIBlock(RawFrame &frame) const
    {
+      // I-Block must be request or response frame
       if (frame.frameType() != IsoRequestFrame && frame.frameType() != IsoResponseFrame)
          return false;
 
-      if (frame.size() < T1_BLOCK_MIN_LEN || frame.size() > T1_BLOCK_MAX_LEN)
+      // check if frame is an I-Block, bit 8 must be and length must be at least prologue + epilogue bytes
+      if (frame[1] & 0x80)
          return false;
 
-      // Check if has frame chaining
-      frameStatus.frameChaining = frame[T1_BLOCK_PCB_OFFSET] & T1_BLOCK_PCB_CHAINING;
+      // set generic flags
+      processBlock(frame);
+
+      // int nad = frame[0];
+      // int pcb = frame[1];
+      // int len = frame[2];
 
       return true;
+   }
+
+   /*
+   * Process R-Block frame
+   */
+   bool processRBlock(RawFrame &frame) const
+   {
+      // I-Block must be request or response frame
+      if (frame.frameType() != IsoRequestFrame && frame.frameType() != IsoResponseFrame)
+         return false;
+
+      // check if frame is an I-Block, bit 8 must be and length must be at least 4 bytes
+      if ((frame[1] & 0xC0) != 0x80)
+         return false;
+
+      // set generic flags
+      processBlock(frame);
+
+      return true;
+   }
+
+   /*
+   * Process S-Block frame
+   */
+   bool processSBlock(RawFrame &frame) const
+   {
+      // I-Block must be request or response frame
+      if (frame.frameType() != IsoRequestFrame && frame.frameType() != IsoResponseFrame)
+         return false;
+
+      // check if frame is an I-Block, bit 8 must be and length must be at least 4 bytes
+      if ((frame[1] & 0xC0) != 0xC0)
+         return false;
+
+      // set generic flags
+      processBlock(frame);
+
+      return true;
+   }
+
+   /*
+   * Process generic block flags
+   */
+   void processBlock(RawFrame &frame) const
+   {
+      switch (protocolStatus.errorCodeType)
+      {
+         case LRCCode:
+            frame.setFrameFlags(!checkLrc(frame) ? CrcError : 0);
+            break;
+         case CRCCode:
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
+            break;
+      }
    }
 
    /*
@@ -1359,39 +1446,27 @@ struct Iso7816::Impl
    }
 
    /*
- * Check ISO7816 Block format
- */
-   int isBlock(const unsigned char *block, unsigned int size)
+    * Check ISO7816 Block format
+    */
+   int isBlock(const unsigned char *block, unsigned int size) const
    {
-      if (size < T1_BLOCK_MIN_LEN || size > T1_BLOCK_MAX_LEN)
+      const int epilogue = protocolStatus.errorCodeType == LRCCode ? T1_BLOCK_LRC_LEN : T1_BLOCK_CRC_LEN;
+
+      if (size < T1_BLOCK_PRO_LEN + epilogue)
          return ResultInvalid;
 
       // ISO/IEC 7816-4 enforces 'FF' as invalid value of NAD (used for PPS)
       if (block[T1_BLOCK_NAD_OFFSET] == PPS_CMD)
          return ResultInvalid;
 
-      // get block length
-      int len = block[T1_BLOCK_LEN_OFFSET], rc = 0;
+      // check full frame size
+      if (size != T1_BLOCK_PRO_LEN + block[T1_BLOCK_LEN_OFFSET] + epilogue)
+         return ResultInvalid;
 
-      if (protocolStatus.errorCodeType == LRCCode)
-      {
-         if (size != T1_BLOCK_MIN_LEN + len + 1)
-            return ResultInvalid;
+      if (block[T1_BLOCK_LEN_OFFSET] == 254)
+         log->info("block of 254!");
 
-         // finally check LCR parity
-         for (int i = 1; i < size; i++)
-            rc ^= block[i];
-
-         // check parity
-         return !rc ? ResultSuccess : ResultFailed;
-      }
-
-      if (protocolStatus.errorCodeType == CRCCode)
-      {
-
-      }
-
-      return ResultInvalid;
+      return ResultSuccess;
    }
 
    /*
@@ -1409,6 +1484,38 @@ struct Iso7816::Impl
       }
 
       return parity;
+   }
+
+   /*
+    * Check LRC code
+    */
+
+   static bool checkLrc(RawFrame &frame)
+   {
+      int rc = 0;
+
+      // xor all bytes
+      for (int i = 1; i < frame.size(); i++)
+         rc ^= frame[i];
+
+      // check lrc
+      return !rc;
+   }
+
+   /*
+    * Check ISO/IEC 13239
+    */
+   static bool checkCrc(RawFrame &frame)
+   {
+      unsigned int size = frame.limit();
+
+      if (size < 3)
+         return false;
+
+      unsigned short crc = ~Crc::ccitt16(frame.data(), 0, size - 2, 0xFFFF, true);
+      unsigned short res = (static_cast<unsigned int>(frame[size - 2]) & 0xff) | (static_cast<unsigned int>(frame[size - 1]) & 0xff) << 8;
+
+      return res == crc;
    }
 };
 
