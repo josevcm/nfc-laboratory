@@ -25,6 +25,7 @@
 
 #include <rt/Logger.h>
 
+#include <lab/data/Crc.h>
 #include <lab/nfc/Nfc.h>
 
 #include <tech/NfcA.h>
@@ -401,7 +402,7 @@ struct NfcA::Impl : NfcTech
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
-         symbolStatus.pattern = PatternType::PatternZ;
+         symbolStatus.pattern = PatternZ;
 
          // modulation detected
          decoder->bitrate = bitrate;
@@ -418,12 +419,12 @@ struct NfcA::Impl : NfcTech
     */
    void decodeFrame(hw::SignalBuffer &samples, std::list<RawFrame> &frames)
    {
-      if (frameStatus.frameType == FrameType::NfcPollFrame)
+      if (frameStatus.frameType == NfcPollFrame)
       {
          decodePollFrame(samples, frames);
       }
 
-      if (frameStatus.frameType == FrameType::NfcListenFrame)
+      if (frameStatus.frameType == NfcListenFrame)
       {
          decodeListenFrame(samples, frames);
       }
@@ -438,11 +439,11 @@ struct NfcA::Impl : NfcTech
       bool frameEnd = false, truncateError = false;
 
       // read NFC-A request request
-      while ((pattern = decodePollFrameSymbolAsk(buffer)) > PatternType::NoPattern)
+      while ((pattern = decodePollFrameSymbolAsk(buffer)) > NoPattern)
       {
          streamStatus.pattern = pattern;
 
-         if (streamStatus.pattern == PatternType::PatternY && (streamStatus.previous == PatternType::PatternY || streamStatus.previous == PatternType::PatternZ))
+         if (streamStatus.pattern == PatternY && (streamStatus.previous == PatternY || streamStatus.previous == PatternZ))
             frameEnd = true;
 
          else if (streamStatus.bytes == protocolStatus.maxFrameSize)
@@ -459,7 +460,7 @@ struct NfcA::Impl : NfcTech
                   streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
 
                // build request frame
-               RawFrame request = RawFrame(FrameTech::NfcATech, FrameType::NfcPollFrame);
+               RawFrame request = RawFrame(FrameTech::NfcATech, NfcPollFrame);
 
                request.setFrameRate(frameStatus.symbolRate);
                request.setSampleStart(frameStatus.frameStart);
@@ -469,14 +470,14 @@ struct NfcA::Impl : NfcTech
                request.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
                request.setDateTime(decoder->streamTime + request.timeStart());
 
-               if (streamStatus.flags & FrameFlags::ParityError)
-                  request.setFrameFlags(FrameFlags::ParityError);
+               if (streamStatus.flags & ParityError)
+                  request.setFrameFlags(ParityError);
 
                if (truncateError)
-                  request.setFrameFlags(FrameFlags::Truncated);
+                  request.setFrameFlags(Truncated);
 
                if (streamStatus.bytes == 1 && streamStatus.bits == 7)
-                  request.setFrameFlags(FrameFlags::ShortFrame);
+                  request.setFrameFlags(ShortFrame);
 
                // add bytes to frame and flip to prepare read
                request.put(streamStatus.buffer, streamStatus.bytes).flip();
@@ -530,7 +531,7 @@ struct NfcA::Impl : NfcTech
 
          if (streamStatus.previous)
          {
-            int value = (streamStatus.previous == PatternType::PatternX);
+            int value = (streamStatus.previous == PatternX);
 
             // decode next bit
             if (streamStatus.bits < 8)
@@ -582,14 +583,14 @@ struct NfcA::Impl : NfcTech
             pattern = decodeListenFrameStartAsk(buffer);
 
             // Pattern-D found, mark frame start time
-            if (pattern == PatternType::PatternD)
+            if (pattern == PatternD)
             {
                frameStatus.frameStart = symbolStatus.start;
             }
             else
             {
                //  end of frame waiting time, restart modulation search
-               if (pattern == PatternType::NoPattern)
+               if (pattern == NoPattern)
                   resetModulation();
 
                // no frame found
@@ -600,9 +601,9 @@ struct NfcA::Impl : NfcTech
          if (frameStatus.frameStart)
          {
             // decode remaining response
-            while ((pattern = decodeListenFrameSymbolAsk(buffer)) > PatternType::NoPattern)
+            while ((pattern = decodeListenFrameSymbolAsk(buffer)) > NoPattern)
             {
-               if (pattern == PatternType::PatternF)
+               if (pattern == PatternF)
                   frameEnd = true;
 
                else if (streamStatus.bytes == protocolStatus.maxFrameSize)
@@ -618,7 +619,7 @@ struct NfcA::Impl : NfcTech
                      if (streamStatus.bits == 4)
                         streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
 
-                     RawFrame response = RawFrame(FrameTech::NfcATech, FrameType::NfcListenFrame);
+                     RawFrame response = RawFrame(FrameTech::NfcATech, NfcListenFrame);
 
                      response.setFrameRate(decoder->bitrate->symbolsPerSecond);
                      response.setSampleStart(frameStatus.frameStart);
@@ -629,13 +630,13 @@ struct NfcA::Impl : NfcTech
                      response.setDateTime(decoder->streamTime + response.timeStart());
 
                      if (streamStatus.flags & ParityError)
-                        response.setFrameFlags(FrameFlags::ParityError);
+                        response.setFrameFlags(ParityError);
 
                      if (truncateError)
-                        response.setFrameFlags(FrameFlags::Truncated);
+                        response.setFrameFlags(Truncated);
 
                      if (streamStatus.bytes == 1 && streamStatus.bits == 4)
-                        response.setFrameFlags(FrameFlags::ShortFrame);
+                        response.setFrameFlags(ShortFrame);
 
                      // add bytes to frame and flip to prepare read
                      response.put(streamStatus.buffer, streamStatus.bytes).flip();
@@ -699,14 +700,14 @@ struct NfcA::Impl : NfcTech
             pattern = decodeListenFrameStartBpsk(buffer);
 
             // Pattern-S found, mark frame start time
-            if (pattern == PatternType::PatternS)
+            if (pattern == PatternS)
             {
                frameStatus.frameStart = symbolStatus.start;
             }
             else
             {
                //  end of frame waiting time, restart modulation search
-               if (pattern == PatternType::NoPattern)
+               if (pattern == NoPattern)
                   resetModulation();
 
                // no frame found
@@ -717,9 +718,9 @@ struct NfcA::Impl : NfcTech
          // frame SoF detected, decode frame stream...
          if (frameStatus.frameStart)
          {
-            while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > PatternType::NoPattern)
+            while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > NoPattern)
             {
-               if (pattern == PatternType::PatternO)
+               if (pattern == PatternO)
                   frameEnd = true;
 
                else if (streamStatus.bytes == protocolStatus.maxFrameSize)
@@ -744,7 +745,7 @@ struct NfcA::Impl : NfcTech
                      frameStatus.frameEnd = symbolStatus.end;
 
                      // build responde frame
-                     RawFrame response = RawFrame(FrameTech::NfcATech, FrameType::NfcListenFrame);
+                     RawFrame response = RawFrame(FrameTech::NfcATech, NfcListenFrame);
 
                      response.setFrameRate(decoder->bitrate->symbolsPerSecond);
                      response.setSampleStart(frameStatus.frameStart);
@@ -755,10 +756,10 @@ struct NfcA::Impl : NfcTech
                      response.setDateTime(decoder->streamTime + response.timeStart());
 
                      if (streamStatus.flags & ParityError)
-                        response.setFrameFlags(FrameFlags::ParityError);
+                        response.setFrameFlags(ParityError);
 
                      if (truncateError)
-                        response.setFrameFlags(FrameFlags::Truncated);
+                        response.setFrameFlags(Truncated);
 
                      // add bytes to frame and flip to prepare read
                      response.put(streamStatus.buffer, streamStatus.bytes).flip();
@@ -886,7 +887,7 @@ struct NfcA::Impl : NfcTech
 
             // setup symbol info
             symbolStatus.value = 1;
-            symbolStatus.pattern = PatternType::PatternY;
+            symbolStatus.pattern = PatternY;
          }
 
          // detect Pattern-Z
@@ -899,7 +900,7 @@ struct NfcA::Impl : NfcTech
 
             // setup symbol info
             symbolStatus.value = 0;
-            symbolStatus.pattern = PatternType::PatternZ;
+            symbolStatus.pattern = PatternZ;
          }
 
          // detect Pattern-X
@@ -912,7 +913,7 @@ struct NfcA::Impl : NfcTech
 
             // detect Pattern-X, setup symbol info
             symbolStatus.value = 1;
-            symbolStatus.pattern = PatternType::PatternX;
+            symbolStatus.pattern = PatternX;
          }
 
          // sets next search window
@@ -933,7 +934,7 @@ struct NfcA::Impl : NfcTech
          return symbolStatus.pattern;
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -992,11 +993,11 @@ struct NfcA::Impl : NfcTech
 
          // check for maximum response time
          if (decoder->signalClock > frameStatus.waitingEnd)
-            return PatternType::NoPattern;
+            return NoPattern;
 
          // poll frame modulation detected while waiting for response
          if (signalDeep > minimumModulationDeep)
-            return PatternType::NoPattern;
+            return NoPattern;
 
          if (decoder->debug)
          {
@@ -1084,12 +1085,12 @@ struct NfcA::Impl : NfcTech
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
-         symbolStatus.pattern = PatternType::PatternD;
+         symbolStatus.pattern = PatternD;
 
          return symbolStatus.pattern;
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -1176,14 +1177,14 @@ struct NfcA::Impl : NfcTech
                modulation->symbolRiseTime = modulation->searchSyncTime;
 
                symbolStatus.value = 0;
-               symbolStatus.pattern = PatternType::PatternE;
+               symbolStatus.pattern = PatternE;
             }
             else
             {
                modulation->symbolRiseTime = modulation->searchSyncTime - bitrate->period2SymbolSamples;
 
                symbolStatus.value = 1;
-               symbolStatus.pattern = PatternType::PatternD;
+               symbolStatus.pattern = PatternD;
             }
          }
          else
@@ -1193,7 +1194,7 @@ struct NfcA::Impl : NfcTech
             modulation->symbolRiseTime = 0;
 
             // no modulation (End Of Frame) EoF
-            symbolStatus.pattern = PatternType::PatternF;
+            symbolStatus.pattern = PatternF;
          }
 
          // next timing search window
@@ -1213,7 +1214,7 @@ struct NfcA::Impl : NfcTech
       }
 
       return
-         PatternType::Invalid;
+         Invalid;
    }
 
    /*
@@ -1258,11 +1259,11 @@ struct NfcA::Impl : NfcTech
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock > frameStatus.waitingEnd)
-            return PatternType::NoPattern;
+            return NoPattern;
 
          // check if poll frame modulation is detected while waiting for response
          if (signalDeep > minimumModulationDeep)
-            return PatternType::NoPattern;
+            return NoPattern;
 
          // compute phase integration after guard end
          modulation->phaseIntegrate += modulation->integrationData[signalIndex & (BUFFER_SIZE - 1)]; // add new value
@@ -1323,12 +1324,12 @@ struct NfcA::Impl : NfcTech
          symbolStatus.start = modulation->symbolStartTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
-         symbolStatus.pattern = PatternType::PatternS;
+         symbolStatus.pattern = PatternS;
 
          return symbolStatus.pattern;
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -1387,7 +1388,7 @@ struct NfcA::Impl : NfcTech
 
          // no modulation detected, generate End Of Frame
          if (std::abs(modulation->phaseIntegrate) < std::abs(modulation->searchPhaseThreshold))
-            return PatternType::PatternO;
+            return PatternO;
 
          // set symbol timings
          modulation->symbolStartTime = modulation->symbolEndTime;
@@ -1404,7 +1405,7 @@ struct NfcA::Impl : NfcTech
          if (modulation->phaseIntegrate < -modulation->searchPhaseThreshold)
          {
             symbolStatus.value = !symbolStatus.value;
-            symbolStatus.pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
+            symbolStatus.pattern = (symbolStatus.pattern == PatternM) ? PatternN : PatternM;
          }
          else
          {
@@ -1420,7 +1421,7 @@ struct NfcA::Impl : NfcTech
          return symbolStatus.pattern;
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -1483,7 +1484,7 @@ struct NfcA::Impl : NfcTech
    void process(RawFrame &frame)
    {
       // for request frame set default response timings, must be overridden by subsequent process functions
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
          // initialize frame parameters to default protocol parameters
          frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
@@ -1506,7 +1507,7 @@ struct NfcA::Impl : NfcTech
          if (processHLTA(frame))
             break;
 
-         if (!(chainedFlags & FrameFlags::Encrypted))
+         if (!(chainedFlags & Encrypted))
          {
             if (processSELn(frame))
                break;
@@ -1536,10 +1537,10 @@ struct NfcA::Impl : NfcTech
          else
          {
             // parity is calculated over decrypted data, so disable flag for encrypted frames
-            frame.clearFrameFlags(FrameFlags::ParityError);
+            frame.clearFrameFlags(ParityError);
 
             // set application frame phase
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
+            frame.setFramePhase(NfcApplicationPhase);
          }
       }
       while (false);
@@ -1548,7 +1549,7 @@ struct NfcA::Impl : NfcTech
       frame.setFrameFlags(chainedFlags);
 
       // for request frame set response timings
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
          // update frame timing parameters for receive PICC frame
          if (decoder->bitrate)
@@ -1594,11 +1595,11 @@ struct NfcA::Impl : NfcTech
     */
    bool processREQA(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] == CommandType::NFCA_REQA || frame[0] == CommandType::NFCA_WUPA) && frame.limit() == 1)
+         if ((frame[0] == NFCA_REQA || frame[0] == NFCA_WUPA) && frame.limit() == 1)
          {
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
+            frame.setFramePhase(NfcSelectionPhase);
 
             frameStatus.lastCommand = frame[0];
 
@@ -1620,11 +1621,11 @@ struct NfcA::Impl : NfcTech
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCA_REQA || frameStatus.lastCommand == CommandType::NFCA_WUPA)
+         if (frameStatus.lastCommand == NFCA_REQA || frameStatus.lastCommand == NFCA_WUPA)
          {
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
+            frame.setFramePhase(NfcSelectionPhase);
 
             return true;
          }
@@ -1638,12 +1639,12 @@ struct NfcA::Impl : NfcTech
     */
    bool processHLTA(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == CommandType::NFCA_HLTA && frame.limit() == 4 && !frame.hasFrameFlags(FrameFlags::CrcError))
+         if (frame[0] == NFCA_HLTA && frame.limit() == 4 && !frame.hasFrameFlags(CrcError))
          {
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             frameStatus.lastCommand = frame[0];
 
@@ -1672,11 +1673,11 @@ struct NfcA::Impl : NfcTech
     */
    bool processSELn(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == CommandType::NFCA_SEL1 || frame[0] == CommandType::NFCA_SEL2 || frame[0] == CommandType::NFCA_SEL3)
+         if (frame[0] == NFCA_SEL1 || frame[0] == NFCA_SEL2 || frame[0] == NFCA_SEL3)
          {
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
+            frame.setFramePhase(NfcSelectionPhase);
 
             frameStatus.lastCommand = frame[0];
 
@@ -1688,11 +1689,11 @@ struct NfcA::Impl : NfcTech
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCA_SEL1 || frameStatus.lastCommand == CommandType::NFCA_SEL2 || frameStatus.lastCommand == CommandType::NFCA_SEL3)
+         if (frameStatus.lastCommand == NFCA_SEL1 || frameStatus.lastCommand == NFCA_SEL2 || frameStatus.lastCommand == NFCA_SEL3)
          {
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
+            frame.setFramePhase(NfcSelectionPhase);
 
             return true;
          }
@@ -1707,9 +1708,9 @@ struct NfcA::Impl : NfcTech
    bool processRATS(RawFrame &frame)
    {
       // capture parameters from ATS and reconfigure decoder timings
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == CommandType::NFCA_RATS)
+         if (frame[0] == NFCA_RATS)
          {
             int fsdi = (frame[1] >> 4) & 0x0F;
 
@@ -1725,16 +1726,16 @@ struct NfcA::Impl : NfcTech
             log->debug("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
 
             // set frame flags
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCA_RATS)
+         if (frameStatus.lastCommand == NFCA_RATS)
          {
             int offset = 0;
             int tl = frame[offset++];
@@ -1782,8 +1783,8 @@ struct NfcA::Impl : NfcTech
                log->debug("  frameWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / decoder->sampleRate});
             }
 
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
@@ -1797,25 +1798,25 @@ struct NfcA::Impl : NfcTech
     */
    bool processPPSr(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] & 0xF0) == CommandType::NFCA_PPS)
+         if ((frame[0] & 0xF0) == NFCA_PPS)
          {
             frameStatus.lastCommand = frame[0] & 0xF0;
 
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCA_PPS)
+         if (frameStatus.lastCommand == NFCA_PPS)
          {
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
@@ -1829,15 +1830,15 @@ struct NfcA::Impl : NfcTech
     */
    bool processAUTH(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == CommandType::NFCA_AUTH1 || frame[0] == CommandType::NFCA_AUTH2)
+         if (frame[0] == NFCA_AUTH1 || frame[0] == NFCA_AUTH2)
          {
             frameStatus.lastCommand = frame[0];
             //         frameStatus.frameWaitingTime = static_cast<int>(signalParams.sampleTimeUnit * 256 * 16 * (1 << 14);
 
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcApplicationPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             //      if (!frameStatus.lastCommand)
             //      {
@@ -1848,9 +1849,9 @@ struct NfcA::Impl : NfcTech
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCA_AUTH1 || frameStatus.lastCommand == CommandType::NFCA_AUTH2)
+         if (frameStatus.lastCommand == NFCA_AUTH1 || frameStatus.lastCommand == NFCA_AUTH2)
          {
             //      unsigned int uid = 0x1e47fc35;
             //      unsigned int nc = frame[0] << 24 || frame[1] << 16 || frame[2] << 8 || frame[0];
@@ -1859,9 +1860,9 @@ struct NfcA::Impl : NfcTech
 
             // set chained flags
 
-            chainedFlags = FrameFlags::Encrypted;
+            chainedFlags = Encrypted;
 
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
+            frame.setFramePhase(NfcApplicationPhase);
 
             return true;
          }
@@ -1875,25 +1876,25 @@ struct NfcA::Impl : NfcTech
     */
    bool processIBlock(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] & 0xE2) == CommandType::NFCA_IBLOCK && frame.limit() > 4)
+         if ((frame[0] & 0xE2) == NFCA_IBLOCK && frame.limit() > 4)
          {
             frameStatus.lastCommand = frame[0] & 0xE2;
 
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcApplicationPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCA_IBLOCK)
+         if (frameStatus.lastCommand == NFCA_IBLOCK)
          {
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcApplicationPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
@@ -1907,25 +1908,25 @@ struct NfcA::Impl : NfcTech
     */
    bool processRBlock(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] & 0xE6) == CommandType::NFCA_RBLOCK && frame.limit() == 3)
+         if ((frame[0] & 0xE6) == NFCA_RBLOCK && frame.limit() == 3)
          {
             frameStatus.lastCommand = frame[0] & 0xE6;
 
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcApplicationPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCA_RBLOCK)
+         if (frameStatus.lastCommand == NFCA_RBLOCK)
          {
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcApplicationPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
@@ -1939,25 +1940,25 @@ struct NfcA::Impl : NfcTech
     */
    bool processSBlock(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] & 0xC7) == CommandType::NFCA_SBLOCK && frame.limit() == 4)
+         if ((frame[0] & 0xC7) == NFCA_SBLOCK && frame.limit() == 4)
          {
             frameStatus.lastCommand = frame[0] & 0xC7;
 
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcApplicationPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCA_SBLOCK)
+         if (frameStatus.lastCommand == NFCA_SBLOCK)
          {
-            frame.setFramePhase(FramePhase::NfcApplicationPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcApplicationPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
@@ -1971,21 +1972,21 @@ struct NfcA::Impl : NfcTech
     */
    void processOther(RawFrame &frame)
    {
-      frame.setFramePhase(FramePhase::NfcApplicationPhase);
-      frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+      frame.setFramePhase(NfcApplicationPhase);
+      frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
    }
 
    /*
     * Check NFC-A crc NFC-A ITU-V.41
     */
-   bool checkCrc(RawFrame &frame)
+   static bool checkCrc(RawFrame &frame)
    {
-      int size = frame.limit();
+      unsigned int size = frame.limit();
 
       if (size < 2)
          return true;
 
-      unsigned short crc = crc16(frame, 0, size - 2, 0x6363, true);
+      unsigned short crc = Crc::ccitt16(frame.data(), 0, size - 2, 0x6363, true);
       unsigned short res = ((unsigned int)frame[size - 2] & 0xff) | ((unsigned int)frame[size - 1] & 0xff) << 8;
 
       return res == crc;

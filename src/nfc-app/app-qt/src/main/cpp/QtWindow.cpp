@@ -433,12 +433,12 @@ struct QtWindow::Impl
       });
 
       // connect acquire timer signal
-      acquireTimerTimeoutConnection = connect(acquireTimer, &QTimer::timeout, [=] {
+      acquireTimerTimeoutConnection = acquireTimer->callOnTimeout([=] {
          toggleStop();
       });
 
       // connect refresh timer signal
-      refreshTimerTimeoutConnection = connect(refreshTimer, &QTimer::timeout, [=] {
+      refreshTimerTimeoutConnection = refreshTimer->callOnTimeout([=] {
          refreshView();
       });
 

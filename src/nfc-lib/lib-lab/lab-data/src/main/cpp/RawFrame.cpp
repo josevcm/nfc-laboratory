@@ -48,13 +48,13 @@ RawFrame::RawFrame(unsigned int size) : ByteBuffer(size), impl(std::make_shared<
 {
 }
 
-RawFrame::RawFrame(unsigned int techType, unsigned int frameType) : RawFrame(256)
+RawFrame::RawFrame(unsigned int techType, unsigned int frameType) : RawFrame(512)
 {
    impl->techType = techType;
    impl->frameType = frameType;
 }
 
-RawFrame::RawFrame(unsigned int techType, unsigned int frameType, double timeStart, double timeEnd) : RawFrame(256)
+RawFrame::RawFrame(unsigned int techType, unsigned int frameType, double timeStart, double timeEnd) : RawFrame(512)
 {
    impl->techType = techType;
    impl->frameType = frameType;

@@ -156,7 +156,7 @@ struct FrequencyWidget::Impl
       plot->legend->setColumnStretchFactor(1, 1);
 
       // connect refresh timer signal
-      QObject::connect(refreshTimer, &QTimer::timeout, [=]() {
+      refreshTimer->callOnTimeout([=] {
          refresh();
       });
 
@@ -188,8 +188,8 @@ struct FrequencyWidget::Impl
          {
             double temp[buffer.elements()];
 
-            double decimation = buffer.decimation() > 0 ? (float) buffer.decimation() : 1.0f;
-            double binStep = (sampleRate / decimation) / (float) buffer.elements();
+            double decimation = buffer.decimation() > 0 ? (float)buffer.decimation() : 1.0f;
+            double binStep = (sampleRate / decimation) / (float)buffer.elements();
             double lowerFreq = centerFreq - (sampleRate / (decimation * 2));
             double upperFreq = centerFreq + (sampleRate / (decimation * 2));
             double fftSize = buffer.elements();
@@ -389,6 +389,3 @@ QCPRange FrequencyWidget::scaleFilter(const QCPRange &newScale)
 {
    return AbstractPlotWidget::scaleFilter(newScale);
 }
-
-
-

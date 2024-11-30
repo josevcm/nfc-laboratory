@@ -394,7 +394,6 @@ struct NfcDecoderStatus
 
 struct NfcTech
 {
-   static unsigned short crc16(RawFrame &frame, int from, int to, unsigned short init, bool refin);
 };
 
 }
