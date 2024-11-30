@@ -89,7 +89,7 @@ struct HexViewWidget::Impl
       charHeight = addrFontMetrics.height();
 
       // connect refresh timer signal
-      QObject::connect(blinkTimer, &QTimer::timeout, [=]() {
+      blinkTimer->callOnTimeout([=] {
          if (widget->hasFocus())
          {
             cursorVisible = !cursorVisible;
@@ -163,7 +163,7 @@ struct HexViewWidget::Impl
             else
                painter.setBackground(defaultBrush);
 
-            painter.drawText(QRect(dataCoord + charCoord + 5, lineCoord, charWidth * 2, charHeight), Qt::AlignCenter, QString("%1").arg((int) data[pos] & 0xff, 2, 16, QChar('0')));
+            painter.drawText(QRect(dataCoord + charCoord + 5, lineCoord, charWidth * 2, charHeight), Qt::AlignCenter, QString("%1").arg((int)data[pos] & 0xff, 2, 16, QChar('0')));
          }
 
          // draw ascii data
@@ -177,7 +177,7 @@ struct HexViewWidget::Impl
             else
                painter.setBackground(defaultBrush);
 
-            painter.drawText(QRect(textCoord + charCoord + 5, lineCoord, charWidth, charHeight), Qt::AlignCenter, (int) data[pos] >= 0x20 ? QString("%1").arg((char) data[pos]) : ".");
+            painter.drawText(QRect(textCoord + charCoord + 5, lineCoord, charWidth, charHeight), Qt::AlignCenter, (int)data[pos] >= 0x20 ? QString("%1").arg((char)data[pos]) : ".");
          }
       }
 
@@ -215,7 +215,7 @@ struct HexViewWidget::Impl
 
       for (int i = from; i < value.count() && i < to; i++)
       {
-         text.append(value[i] >= 0x20 ? QString("%1").arg((char) value[i]) : ".");
+         text.append(value[i] >= 0x20 ? QString("%1").arg((char)value[i]) : ".");
       }
 
       return text.trimmed();
@@ -242,7 +242,7 @@ void HexViewWidget::setCursor(int position)
 {
    if (impl->data.size() > 0)
    {
-      impl->cursorPosition = std::clamp(position, 0, (int) impl->data.size() - 1);
+      impl->cursorPosition = std::clamp(position, 0, (int)impl->data.size() - 1);
       impl->cursorVisible = true;
 
       impl->blinkTimer->start(500);
@@ -255,8 +255,8 @@ void HexViewWidget::setSelection(int start, int end)
 {
    if (start >= 0 && end >= start && impl->data.size() > 0)
    {
-      impl->selectionStart = std::clamp(start, 0, (int) impl->data.size() - 1);
-      impl->selectionEnd = std::clamp(end, 0, (int) impl->data.size() - 1);
+      impl->selectionStart = std::clamp(start, 0, (int)impl->data.size() - 1);
+      impl->selectionEnd = std::clamp(end, 0, (int)impl->data.size() - 1);
 
       QClipboard *clipboard = QApplication::clipboard();
 
