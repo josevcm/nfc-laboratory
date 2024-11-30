@@ -557,7 +557,7 @@ struct Iso7816::Impl : IsoTech
                return;
             }
 
-            log->info("new frame, {}->{}, length {} bytes", {frameStatus.frameStart, frameStatus.frameEnd, frameStatus.frameSize});
+            log->debug("new frame, {}->{}, length {} bytes", {frameStatus.frameStart, frameStatus.frameEnd, frameStatus.frameSize});
 
             // build request frame
             RawFrame request = RawFrame(Iso7816Tech, frameStatus.frameType);
@@ -607,7 +607,7 @@ struct Iso7816::Impl : IsoTech
                return;
             }
 
-            log->info("new frame, {}->{}, length {} bytes", {frameStatus.frameStart, frameStatus.frameEnd, frameStatus.frameSize});
+            log->debug("new frame, {}->{}, length {} bytes", {frameStatus.frameStart, frameStatus.frameEnd, frameStatus.frameSize});
 
             // build request frame
             RawFrame request = RawFrame(Iso7816Tech, frameStatus.frameType);
@@ -961,7 +961,7 @@ struct Iso7816::Impl : IsoTech
       if (frame.frameType() != IsoATRFrame)
          return false;
 
-      log->debug("process ATR frame");
+      log->info("process ATR frame");
 
       bool updateParameters = false;
 
@@ -986,8 +986,8 @@ struct Iso7816::Impl : IsoTech
                   unsigned int fn = ISO_FI_TABLE[fi];
                   unsigned int fm = ISO_FM_TABLE[fi];
 
-                  log->debug("\tTA1 Fi {}, maximum frequency {.2} MHz ({} clock cycles)", {fi, fm / 1E6, fn});
-                  log->debug("\tTA1 Di {}, baud rate divisor 1/{}", {di, dn});
+                  log->info("\tTA1 Fi {}, maximum frequency {.2} MHz ({} clock cycles)", {fi, fm / 1E6, fn});
+                  log->info("\tTA1 Di {}, baud rate divisor 1/{}", {di, dn});
 
                   break;
                }
@@ -995,7 +995,7 @@ struct Iso7816::Impl : IsoTech
                {
                   protocolStatus.maximumInformationSize = ta;
 
-                  log->debug("\tTA3 IFSC {}, maximum information field size for the card", {ta});
+                  log->info("\tTA3 IFSC {}, maximum information field size for the card", {ta});
 
                   break;
                }
@@ -1020,8 +1020,8 @@ struct Iso7816::Impl : IsoTech
                   protocolStatus.blockWaitingTimeUnits = bwt;
                   protocolStatus.characterWaitingTimeUnits = cwt;
 
-                  log->debug("\tTB3 BWI {}, maximum delay between two blocks ({} ETUs)", {bwi, bwt});
-                  log->debug("\tTB3 CWI {}, maximum delay between two characters ({} ETUs)", {cwi, bwt});
+                  log->info("\tTB3 BWI {}, maximum delay between two blocks ({} ETUs)", {bwi, bwt});
+                  log->info("\tTB3 CWI {}, maximum delay between two characters ({} ETUs)", {cwi, bwt});
 
                   break;
                }
@@ -1042,7 +1042,7 @@ struct Iso7816::Impl : IsoTech
                   // update protocol extra guard time
                   updateParameters = true;
                   protocolStatus.extraGuardTimeUnits = tc;
-                  log->debug("\tTC1 extra guard time is {} ETUs", {protocolStatus.extraGuardTimeUnits});
+                  log->info("\tTC1 extra guard time is {} ETUs", {protocolStatus.extraGuardTimeUnits});
                   break;
                }
                case 2:
@@ -1050,13 +1050,13 @@ struct Iso7816::Impl : IsoTech
                   // update protocol waiting time
                   updateParameters = true;
                   protocolStatus.characterWaitingTimeUnits = tc > 0 ? tc * 960 * dn : ISO_7816_CWT_DEF;
-                  log->debug("\tTC2 waiting time is {} ETUs", {protocolStatus.characterWaitingTimeUnits});
+                  log->info("\tTC2 waiting time is {} ETUs", {protocolStatus.characterWaitingTimeUnits});
                   break;
                }
                case 3:
                {
                   // update protocol waiting time
-                  log->debug("\tTC3 error detection code to be used: {}", {tc & 1 ? "CRC" : "LRC"});
+                  log->info("\tTC3 error detection code to be used: {}", {tc & 1 ? "CRC" : "LRC"});
                   break;
                }
             }
@@ -1079,7 +1079,7 @@ struct Iso7816::Impl : IsoTech
 
       unsigned int hb = frame[1] & 0x0f;
 
-      log->debug("\thistorical bytes {}", {hb});
+      log->info("\thistorical bytes {}", {hb});
 
       // update protocol parameters
       if (updateParameters)
@@ -1096,7 +1096,7 @@ struct Iso7816::Impl : IsoTech
       if (frame[0] != PPS_CMD)
          return false;
 
-      log->debug("process PPS {}", {!protocolStatus.protocolParametersChange ? "request" : "response"});
+      log->info("process PPS {}", {!protocolStatus.protocolParametersChange ? "request" : "response"});
 
       int i = 1;
 
@@ -1104,7 +1104,7 @@ struct Iso7816::Impl : IsoTech
 
       if (!protocolStatus.protocolParametersChange)
       {
-         log->debug("\trequest protocol T{}", {pps0 & 0x0f});
+         log->info("\trequest protocol T{}", {pps0 & 0x0f});
       }
 
       if (pps0 & PPS_PPS1_MASK)
@@ -1136,9 +1136,9 @@ struct Iso7816::Impl : IsoTech
          }
          else
          {
-            log->debug("\trequest frequency adjustment, FI {} ({.0} clock cycles)", {fi, fn});
-            log->debug("\trequest baud rate divisor, DI {} (1/{.0})", {di, dn});
-            log->debug("\trequest elementary time unit, ETU {.3} us ({.2} samples)", {1000000.0 * etu, et});
+            log->info("\trequest frequency adjustment, FI {} ({.0} clock cycles)", {fi, fn});
+            log->info("\trequest baud rate divisor, DI {} (1/{.0})", {di, dn});
+            log->info("\trequest elementary time unit, ETU {.3} us ({.2} samples)", {1000000.0 * etu, et});
 
             // request protocol parameters change on card response
             protocolStatus.protocolParametersChange = true;
@@ -1462,9 +1462,6 @@ struct Iso7816::Impl : IsoTech
       // check full frame size
       if (size != T1_BLOCK_PRO_LEN + block[T1_BLOCK_LEN_OFFSET] + epilogue)
          return ResultInvalid;
-
-      if (block[T1_BLOCK_LEN_OFFSET] == 254)
-         log->info("block of 254!");
 
       return ResultSuccess;
    }
