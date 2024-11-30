@@ -7,8 +7,6 @@ add_library(lab-data STATIC
         src/main/cpp/RawFrame.cpp
 )
 
-#target_compile_options(nfc-tasks PRIVATE "-fopt-info-vec-optimized")
-
 target_include_directories(lab-data PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(lab-data PRIVATE ${PRIVATE_SOURCE_DIR})
 
