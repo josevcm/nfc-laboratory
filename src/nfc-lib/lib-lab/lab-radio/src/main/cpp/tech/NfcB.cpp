@@ -23,6 +23,7 @@
 
 #include <rt/Logger.h>
 
+#include <lab/data/Crc.h>
 #include <lab/nfc/Nfc.h>
 
 #include <tech/NfcB.h>
@@ -439,12 +440,12 @@ struct NfcB::Impl : NfcTech
     */
    void decodeFrame(hw::SignalBuffer &samples, std::list<RawFrame> &frames)
    {
-      if (frameStatus.frameType == FrameType::NfcPollFrame)
+      if (frameStatus.frameType == NfcPollFrame)
       {
          decodePollFrame(samples, frames);
       }
 
-      if (frameStatus.frameType == FrameType::NfcListenFrame)
+      if (frameStatus.frameType == NfcListenFrame)
       {
          decodeListenFrame(samples, frames);
       }
@@ -459,18 +460,18 @@ struct NfcB::Impl : NfcTech
       bool frameEnd = false, truncateError = false, streamError = false;
 
       // decode remaining request frame
-      while ((pattern = decodePollFrameSymbolAsk(buffer)) > PatternType::NoPattern)
+      while ((pattern = decodePollFrameSymbolAsk(buffer)) > NoPattern)
       {
          // frame ends if found 10 ETU width Pattern-L (10 consecutive bits at value 0)
-         if (streamStatus.bits == 9 && !streamStatus.data && pattern == PatternType::PatternL)
+         if (streamStatus.bits == 9 && !streamStatus.data && pattern == PatternL)
             frameEnd = true;
 
             // frame ends width stream error if end bit is pattern L
-         else if (streamStatus.bits == 9 && pattern == PatternType::PatternL)
+         else if (streamStatus.bits == 9 && pattern == PatternL)
             streamError = true;
 
             // frame ends width stream error EGT is longer than 6 ETU
-         else if (streamStatus.bits == 0 && pattern == PatternType::PatternH && streamStatus.skip == 6)
+         else if (streamStatus.bits == 0 && pattern == PatternH && streamStatus.skip == 6)
             streamError = true;
 
             // frame ends width truncate error max frame size is reached
@@ -478,7 +479,7 @@ struct NfcB::Impl : NfcTech
             truncateError = true;
 
             // if pattern H is detected after complete one byte, EGT are present and must be skipped up tu 57us (6 EUT)
-         else if ((streamStatus.bits == 0 && pattern == PatternType::PatternH) && ++streamStatus.skip)
+         else if ((streamStatus.bits == 0 && pattern == PatternH) && ++streamStatus.skip)
             continue;
 
          // detect end of frame
@@ -489,7 +490,7 @@ struct NfcB::Impl : NfcTech
             {
                frameStatus.frameEnd = symbolStatus.end;
 
-               RawFrame request = RawFrame(FrameTech::NfcBTech, FrameType::NfcPollFrame);
+               RawFrame request = RawFrame(FrameTech::NfcBTech, NfcPollFrame);
 
                request.setFrameRate(decoder->bitrate->symbolsPerSecond);
                request.setSampleStart(frameStatus.frameStart);
@@ -500,7 +501,7 @@ struct NfcB::Impl : NfcTech
                request.setDateTime(decoder->streamTime + request.timeStart());
 
                if (truncateError || streamError)
-                  request.setFrameFlags(FrameFlags::Truncated);
+                  request.setFrameFlags(Truncated);
 
                // add bytes to frame and flip to prepare read
                request.put(streamStatus.buffer, streamStatus.bytes).flip();
@@ -583,14 +584,14 @@ struct NfcB::Impl : NfcTech
          pattern = decodeListenFrameStartBpsk(buffer);
 
          // Pattern-S found, mark frame start time
-         if (pattern == PatternType::PatternS)
+         if (pattern == PatternS)
          {
             frameStatus.frameStart = symbolStatus.start;
          }
          else
          {
             //  end of frame waiting time, restart modulation search
-            if (pattern == PatternType::NoPattern)
+            if (pattern == NoPattern)
                resetModulation();
 
             // no frame found
@@ -601,14 +602,14 @@ struct NfcB::Impl : NfcTech
       // frame SoF detected, decode frame stream...
       if (frameStatus.frameStart)
       {
-         while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > PatternType::NoPattern)
+         while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > NoPattern)
          {
             // frame ends if found 10 ETU width Pattern-M (10 consecutive bits at value 0)
-            if (streamStatus.bits == 9 && !streamStatus.data && pattern == PatternType::PatternM)
+            if (streamStatus.bits == 9 && !streamStatus.data && pattern == PatternM)
                frameEnd = true;
 
                // frame stream error if start bit is PatternN (1) or end bit is pattern M (0)
-            else if ((streamStatus.bits == 0 && pattern == PatternType::PatternN) || (streamStatus.bits == 9 && pattern == PatternType::PatternM))
+            else if ((streamStatus.bits == 0 && pattern == PatternN) || (streamStatus.bits == 9 && pattern == PatternM))
                streamError = true;
 
                // frame ends width truncate error max frame size is reached
@@ -625,7 +626,7 @@ struct NfcB::Impl : NfcTech
                   frameStatus.frameEnd = symbolStatus.end + static_cast<int>(decoder->signalParams.sampleTimeUnit * 352);
 
                   // build response frame
-                  RawFrame response = RawFrame(FrameTech::NfcBTech, FrameType::NfcListenFrame);
+                  RawFrame response = RawFrame(FrameTech::NfcBTech, NfcListenFrame);
 
                   response.setFrameRate(decoder->bitrate->symbolsPerSecond);
                   response.setSampleStart(frameStatus.frameStart);
@@ -636,7 +637,7 @@ struct NfcB::Impl : NfcTech
                   response.setDateTime(decoder->streamTime + response.timeStart());
 
                   if (truncateError || streamError)
-                     response.setFrameFlags(FrameFlags::Truncated);
+                     response.setFrameFlags(Truncated);
 
                   // add bytes to frame and flip to prepare read
                   response.put(streamStatus.buffer, streamStatus.bytes).flip();
@@ -744,7 +745,7 @@ struct NfcB::Impl : NfcTech
             symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
             symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
-            symbolStatus.pattern = PatternType::PatternL;
+            symbolStatus.pattern = PatternL;
          }
 
          // non modulated signal, symbol H -> 1 value
@@ -755,13 +756,13 @@ struct NfcB::Impl : NfcTech
             symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
             symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
-            symbolStatus.pattern = PatternType::PatternH;
+            symbolStatus.pattern = PatternH;
          }
 
          return symbolStatus.pattern;
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -812,11 +813,11 @@ struct NfcB::Impl : NfcTech
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock > frameStatus.waitingEnd)
-            return PatternType::NoPattern;
+            return NoPattern;
 
          // check if poll frame modulation is detected while waiting for response
          if (signalDeep > maximumModulationDeep)
-            return PatternType::NoPattern;
+            return NoPattern;
 
          if (decoder->debug)
          {
@@ -941,14 +942,14 @@ struct NfcB::Impl : NfcTech
                symbolStatus.start = modulation->symbolStartTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
                symbolStatus.end = modulation->symbolEndTime - bitrate->period1SymbolSamples - bitrate->symbolDelayDetect;
                symbolStatus.length = symbolStatus.end - symbolStatus.start;
-               symbolStatus.pattern = PatternType::PatternS;
+               symbolStatus.pattern = PatternS;
 
                return symbolStatus.pattern;
             }
          }
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -1006,7 +1007,7 @@ struct NfcB::Impl : NfcTech
 
          // no modulation detected, generate End Of Frame
          if (std::abs(modulation->phaseIntegrate) < std::abs(modulation->searchPhaseThreshold))
-            return PatternType::PatternO;
+            return PatternO;
 
          // set symbol timings
          modulation->symbolStartTime = modulation->symbolEndTime;
@@ -1023,7 +1024,7 @@ struct NfcB::Impl : NfcTech
          if (modulation->phaseIntegrate < -modulation->searchPhaseThreshold)
          {
             symbolStatus.value = !symbolStatus.value;
-            symbolStatus.pattern = (symbolStatus.pattern == PatternType::PatternM) ? PatternType::PatternN : PatternType::PatternM;
+            symbolStatus.pattern = (symbolStatus.pattern == PatternM) ? PatternN : PatternM;
          }
          // update threshold for next symbol
          else
@@ -1039,7 +1040,7 @@ struct NfcB::Impl : NfcTech
          return symbolStatus.pattern;
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -1077,7 +1078,7 @@ struct NfcB::Impl : NfcTech
    void process(RawFrame &frame)
    {
       // for request frame set default response timings, must be overridden by subsequent process functions
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
          // initialize frame parameters to default protocol parameters
          frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
@@ -1109,7 +1110,7 @@ struct NfcB::Impl : NfcTech
       frame.setFrameFlags(chainedFlags);
 
       // for request frame set response timings
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
          // update frame timing parameters for receive PICC frame
          if (decoder->bitrate)
@@ -1155,9 +1156,9 @@ struct NfcB::Impl : NfcTech
     */
    bool processREQB(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == CommandType::NFCB_REQB && frame.limit() == 5)
+         if (frame[0] == NFCB_REQB && frame.limit() == 5)
          {
             frameStatus.lastCommand = frame[0];
 
@@ -1176,16 +1177,16 @@ struct NfcB::Impl : NfcTech
             chainedFlags = 0;
 
             // set frame flags
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCB_REQB)
+         if (frameStatus.lastCommand == NFCB_REQB)
          {
             int fdsi = (frame[10] >> 4) & 0x0f;
             int fwi = (frame[11] >> 4) & 0x0f;
@@ -1194,8 +1195,8 @@ struct NfcB::Impl : NfcTech
             protocolStatus.maxFrameSize = NFC_FDS_TABLE[fdsi];
             protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFC_FWT_TABLE[fwi]);
 
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             log->debug("ATQB protocol timing parameters");
             log->debug("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
@@ -1214,9 +1215,9 @@ struct NfcB::Impl : NfcTech
     */
    bool processATTRIB(RawFrame &frame)
    {
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == CommandType::NFCB_ATTRIB && frame.limit() > 10)
+         if (frame[0] == NFCB_ATTRIB && frame.limit() > 10)
          {
             frameStatus.lastCommand = frame[0];
 
@@ -1240,18 +1241,18 @@ struct NfcB::Impl : NfcTech
             chainedFlags = 0;
 
             // set frame flags
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
-            frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
       }
 
-      if (frame.frameType() == FrameType::NfcListenFrame)
+      if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCB_ATTRIB)
+         if (frameStatus.lastCommand == NFCB_ATTRIB)
          {
-            frame.setFramePhase(FramePhase::NfcSelectionPhase);
+            frame.setFramePhase(NfcSelectionPhase);
 
             return true;
          }
@@ -1265,21 +1266,21 @@ struct NfcB::Impl : NfcTech
     */
    void processOther(RawFrame &frame)
    {
-      frame.setFramePhase(FramePhase::NfcApplicationPhase);
-      frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+      frame.setFramePhase(NfcApplicationPhase);
+      frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
    }
 
    /*
     * Check NFC-B crc NFC-B ISO/IEC 13239
     */
-   bool checkCrc(RawFrame &frame)
+   static bool checkCrc(RawFrame &frame)
    {
-      int size = frame.limit();
+      unsigned int size = frame.limit();
 
       if (size < 3)
          return false;
 
-      unsigned short crc = ~crc16(frame, 0, size - 2, 0xFFFF, true);
+      unsigned short crc = ~Crc::ccitt16(frame.data(), 0, size - 2, 0xFFFF, true);
       unsigned short res = (static_cast<unsigned int>(frame[size - 2]) & 0xff) | (static_cast<unsigned int>(frame[size - 1]) & 0xff) << 8;
 
       return res == crc;

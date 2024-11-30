@@ -23,6 +23,7 @@
 
 #include <rt/Logger.h>
 
+#include <lab/data/Crc.h>
 #include <lab/nfc/Nfc.h>
 
 #include <tech/NfcV.h>
@@ -151,7 +152,7 @@ struct NfcV::Impl : NfcTech
       bitrateParams = {};
 
       // set tech type and rate
-      bitrateParams.techType = FrameTech::NfcVTech;
+      bitrateParams.techType = NfcVTech;
 
       // NFC-V has constant symbol rate
       bitrateParams.symbolsPerSecond = static_cast<int>(std::round(NFC_FC / 256));
@@ -456,14 +457,14 @@ struct NfcV::Impl : NfcTech
       bool frameEnd = false, truncateError = false, streamError = false;
 
       // decode remaining request frame
-      while ((pattern = decodePollFrameSymbolPpm(buffer)) > PatternType::NoPattern)
+      while ((pattern = decodePollFrameSymbolPpm(buffer)) > NoPattern)
       {
          // frame ends width pattern S
-         if (pattern == PatternType::PatternS)
+         if (pattern == PatternS)
             frameEnd = true;
 
             // frame ends if detected stream error
-         else if (pattern == PatternType::PatternE)
+         else if (pattern == PatternE)
             streamError = true;
 
             // frame ends width truncate error max frame size is reached
@@ -483,7 +484,7 @@ struct NfcV::Impl : NfcTech
                // set last symbol timing
                frameStatus.frameEnd = symbolStatus.end;
 
-               RawFrame request = RawFrame(FrameTech::NfcVTech, FrameType::NfcPollFrame);
+               RawFrame request = RawFrame(NfcVTech, NfcPollFrame);
 
                request.setFrameRate(frameStatus.symbolRate);
                request.setSampleStart(frameStatus.frameStart);
@@ -494,7 +495,7 @@ struct NfcV::Impl : NfcTech
                request.setDateTime(decoder->streamTime + request.timeStart());
 
                if (truncateError || streamError)
-                  request.setFrameFlags(FrameFlags::Truncated);
+                  request.setFrameFlags(Truncated);
 
                // add bytes to frame and flip to prepare read
                request.put(streamStatus.buffer, streamStatus.bytes).flip();
@@ -572,14 +573,14 @@ struct NfcV::Impl : NfcTech
          pattern = decodeListenFrameStartAsk(buffer);
 
          // Pattern-S found, mark frame start time
-         if (pattern == PatternType::PatternS)
+         if (pattern == PatternS)
          {
             frameStatus.frameStart = symbolStatus.start;
          }
          else
          {
             //  end of frame waiting time, restart modulation search
-            if (pattern == PatternType::NoPattern)
+            if (pattern == NoPattern)
                resetModulation();
 
             // no frame found
@@ -590,14 +591,14 @@ struct NfcV::Impl : NfcTech
       // frame SoF detected, decode frame stream...
       if (frameStatus.frameStart)
       {
-         while ((pattern = decodeListenFrameSymbolAsk(buffer)) > PatternType::NoPattern)
+         while ((pattern = decodeListenFrameSymbolAsk(buffer)) > NoPattern)
          {
             // frame ends with Pattern-S
-            if (pattern == PatternType::PatternS)
+            if (pattern == PatternS)
                frameEnd = true;
 
                // frame stream error
-            else if (pattern == PatternType::PatternE)
+            else if (pattern == PatternE)
                streamError = true;
 
                // frame ends width truncate error max frame size is reached
@@ -617,7 +618,7 @@ struct NfcV::Impl : NfcTech
                   frameStatus.frameEnd = symbolStatus.end;
 
                   // build response frame
-                  RawFrame response = RawFrame(FrameTech::NfcVTech, FrameType::NfcListenFrame);
+                  RawFrame response = RawFrame(NfcVTech, NfcListenFrame);
 
                   response.setFrameRate(frameStatus.symbolRate);
                   response.setSampleStart(frameStatus.frameStart);
@@ -628,7 +629,7 @@ struct NfcV::Impl : NfcTech
                   response.setDateTime(decoder->streamTime + response.timeStart());
 
                   if (truncateError || streamError)
-                     response.setFrameFlags(FrameFlags::Truncated);
+                     response.setFrameFlags(Truncated);
 
                   // add bytes to frame and flip to prepare read
                   response.put(streamStatus.buffer, streamStatus.bytes).flip();
@@ -748,7 +749,7 @@ struct NfcV::Impl : NfcTech
             symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
             symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
             symbolStatus.length = symbolStatus.end - symbolStatus.start;
-            symbolStatus.pattern = PatternType::PatternS;
+            symbolStatus.pattern = PatternS;
 
             return symbolStatus.pattern;
          }
@@ -758,7 +759,7 @@ struct NfcV::Impl : NfcTech
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
-         symbolStatus.pattern = PatternType::PatternE;
+         symbolStatus.pattern = PatternE;
 
          // search pulse code
          for (int i = 0; i < pulse->periods; i++)
@@ -785,16 +786,16 @@ struct NfcV::Impl : NfcTech
                symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
                symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
                symbolStatus.length = symbolStatus.end - symbolStatus.start;
-               symbolStatus.pattern = pulse->bits == 2 ? PatternType::Pattern2 : PatternType::Pattern8;
+               symbolStatus.pattern = pulse->bits == 2 ? Pattern2 : Pattern8;
 
                return symbolStatus.pattern;
             }
          }
 
-         return PatternType::PatternE;
+         return PatternE;
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -854,11 +855,11 @@ struct NfcV::Impl : NfcTech
 
          // check if frame waiting time exceeded without detect modulation
          if (decoder->signalClock > frameStatus.waitingEnd)
-            return PatternType::NoPattern;
+            return NoPattern;
 
          // check if poll frame modulation is detected while waiting for response
          if (signalDeep > maximumModulationDeep)
-            return PatternType::NoPattern;
+            return NoPattern;
 
          if (decoder->debug)
          {
@@ -972,14 +973,14 @@ struct NfcV::Impl : NfcTech
                symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
                symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
                symbolStatus.length = symbolStatus.end - symbolStatus.start;
-               symbolStatus.pattern = PatternType::PatternS;
+               symbolStatus.pattern = PatternS;
 
                return symbolStatus.pattern;
             }
          }
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -1049,7 +1050,7 @@ struct NfcV::Impl : NfcTech
 
          // no modulation found(End Of Frame)
          if (modulation->correlatedPeakValue < modulation->searchValueThreshold)
-            return PatternType::PatternS;
+            return PatternS;
 
          // estimated symbol start and end
          modulation->symbolStartTime = modulation->symbolEndTime;
@@ -1068,12 +1069,12 @@ struct NfcV::Impl : NfcTech
          symbolStatus.start = modulation->symbolStartTime - bitrate->symbolDelayDetect;
          symbolStatus.end = modulation->symbolEndTime - bitrate->symbolDelayDetect;
          symbolStatus.length = symbolStatus.end - symbolStatus.start;
-         symbolStatus.pattern = symbolStatus.value ? PatternType::Pattern1 : PatternType::Pattern0;
+         symbolStatus.pattern = symbolStatus.value ? Pattern1 : Pattern0;
 
          return symbolStatus.pattern;
       }
 
-      return PatternType::Invalid;
+      return Invalid;
    }
 
    /*
@@ -1111,7 +1112,7 @@ struct NfcV::Impl : NfcTech
    void process(RawFrame &frame)
    {
       // for request frame set default response timings, must be overridden by subsequent process functions
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
          // initialize frame parameters to default protocol parameters
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
@@ -1141,7 +1142,7 @@ struct NfcV::Impl : NfcTech
       frame.setFrameFlags(chainedFlags);
 
       // for request frame set response timings
-      if (frame.frameType() == FrameType::NfcPollFrame)
+      if (frame.frameType() == NfcPollFrame)
       {
          // update frame timing parameters for receive PICC frame
          if (decoder->bitrate)
@@ -1187,37 +1188,22 @@ struct NfcV::Impl : NfcTech
     */
    void processOther(RawFrame &frame)
    {
-      frame.setFramePhase(FramePhase::NfcApplicationPhase);
-      frame.setFrameFlags(!checkCrc(frame) ? FrameFlags::CrcError : 0);
+      frame.setFramePhase(NfcApplicationPhase);
+      frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
    }
 
    /*
     * Check NFC-V crc
     */
-   bool checkCrc(RawFrame &frame)
+   static bool checkCrc(RawFrame &frame)
    {
-      unsigned short crc = 0xFFFF; // NFC-B ISO/IEC 13239
-      unsigned short res = 0;
+      unsigned int size = frame.limit();
 
-      int length = frame.limit();
-
-      if (length <= 2)
+      if (size < 3)
          return false;
 
-      for (int i = 0; i < length - 2; i++)
-      {
-         auto d = (unsigned char)frame[i];
-
-         d = (d ^ (unsigned int)(crc & 0xff));
-         d = (d ^ (d << 4));
-
-         crc = (crc >> 8) ^ ((unsigned short)(d << 8)) ^ ((unsigned short)(d << 3)) ^ ((unsigned short)(d >> 4));
-      }
-
-      crc = ~crc;
-
-      res |= ((unsigned int)frame[length - 2] & 0xff);
-      res |= ((unsigned int)frame[length - 1] & 0xff) << 8;
+      unsigned short crc = ~Crc::ccitt16(frame.data(), 0, size - 2, 0xFFFF, true);
+      unsigned short res = (static_cast<unsigned int>(frame[size - 2]) & 0xff) | (static_cast<unsigned int>(frame[size - 1]) & 0xff) << 8;
 
       return res == crc;
    }
