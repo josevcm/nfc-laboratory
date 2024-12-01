@@ -1191,7 +1191,7 @@ struct Iso7816::Impl : IsoTech
       if (frame.frameType() != IsoRequestFrame && frame.frameType() != IsoResponseFrame)
          return false;
 
-      // check if frame is an I-Block, bit 8 must be and length must be at least prologue + epilogue bytes
+      // check if frame is an I-Block, bit 8 must be clear
       if (frame[1] & 0x80)
          return false;
 
@@ -1214,7 +1214,7 @@ struct Iso7816::Impl : IsoTech
       if (frame.frameType() != IsoRequestFrame && frame.frameType() != IsoResponseFrame)
          return false;
 
-      // check if frame is an I-Block, bit 8 must be and length must be at least 4 bytes
+      // check if frame is an R-Block, bit 8,7 must be 1,0
       if ((frame[1] & 0xC0) != 0x80)
          return false;
 
@@ -1233,7 +1233,7 @@ struct Iso7816::Impl : IsoTech
       if (frame.frameType() != IsoRequestFrame && frame.frameType() != IsoResponseFrame)
          return false;
 
-      // check if frame is an I-Block, bit 8 must be and length must be at least 4 bytes
+      // check if frame is an S-Block, bit 8,7 must be 1,1
       if ((frame[1] & 0xC0) != 0xC0)
          return false;
 
@@ -1350,7 +1350,7 @@ struct Iso7816::Impl : IsoTech
    /*
     * Check ISO7816 ATR format
     */
-   int isATR(const unsigned char *atr, unsigned int size) const
+   static int isATR(const unsigned char *atr, unsigned int size)
    {
       if (size < ATR_MIN_LEN)
          return ResultInvalid;
@@ -1358,9 +1358,8 @@ struct Iso7816::Impl : IsoTech
       if (size > ATR_MAX_LEN)
          return ResultFailed;
 
-      int i = 1, n = 1;
+      int i = 1, n = 1, c = 0;
       int hb = atr[n++] & 0x0f;
-      int ck = 0, p = 0;
 
       do
       {
@@ -1372,7 +1371,7 @@ struct Iso7816::Impl : IsoTech
          if (atr[i] & ATR_TD_MASK)
          {
             // get protocol indicator
-            p += atr[i] & 0x0f;
+            c |= atr[i] & 0x0f;
 
             // next structural byte
             i = n++;
@@ -1381,7 +1380,7 @@ struct Iso7816::Impl : IsoTech
       while ((i == n - 1) && n < size);
 
       // check frame size with historical bytes and presence of TCK
-      if (size < n + hb + (p > 0 ? 1 : 0))
+      if (size < n + hb + (c ? 1 : 0))
          return ResultInvalid;
 
       // ATR completed
