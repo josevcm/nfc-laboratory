@@ -284,7 +284,7 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
       {
          int frames = 0;
 
-         log->debug("decode new buffer {} offset {} with {} samples", {buffer->id(), buffer->offset(), buffer->elements()});
+         log->trace("decode new buffer {} offset {} with {} samples", {buffer->id(), buffer->offset(), buffer->elements()});
 
          for (const auto &frame: decoder->nextFrames(buffer.value()))
          {
