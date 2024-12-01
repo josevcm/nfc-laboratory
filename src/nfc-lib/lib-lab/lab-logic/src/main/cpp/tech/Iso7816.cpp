@@ -926,23 +926,36 @@ struct Iso7816::Impl : IsoTech
          case IsoRequestFrame:
          {
             frameStatus.frameType = IsoResponseFrame;
-            frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
-            frameStatus.waitingTime = protocolStatus.blockWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
             break;
          }
          case IsoResponseFrame:
          {
             frameStatus.frameType = IsoRequestFrame;
-            frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
-            frameStatus.waitingTime = protocolStatus.blockWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
             break;
          }
-         default:
+      }
+
+      // N=255 has a protocol-dependent meaning:
+      //  - GT=12 ETU under protocol T=0 nad during PPS (Protocol and Parameters Selection)
+      //  - GT=11 ETU under protocol T=1 (corresponding to 1 start bit, 8 data bits, 1 parity bit, and 1 stop bit; with no error indication)
+      if (protocolStatus.extraGuardTimeUnits == 255)
+      {
+         if (protocolStatus.protocolType == PROTO_T0)
          {
-            frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
-            frameStatus.waitingTime = protocolStatus.characterWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
+            frameStatus.guardTime = (12 - GT_THRESHOLD) * protocolStatus.elementaryTime;
+         }
+         else
+         {
+            frameStatus.guardTime = (11 - GT_THRESHOLD) * protocolStatus.elementaryTime;
          }
       }
+      else
+      {
+         frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
+      }
+
+      // waiting time is set by default to 960 ETUs for T=0 and 9600 ETUs for T=1
+      frameStatus.waitingTime = protocolStatus.characterWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
 
       // clear search to detect first start bit of next frame
       modulationStatus.searchStartTime = 0;
