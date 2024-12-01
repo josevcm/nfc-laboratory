@@ -458,7 +458,7 @@ struct Iso7816::Impl : IsoTech
       {
          case FullCharacter:
          {
-            log->trace("\tbyte [{}]: {02x}", {frameStatus.frameSize, characterStatus.data});
+            log->trace("\tbyte [{}]: {02x} {}->{}", {frameStatus.frameSize, characterStatus.data, characterStatus.start, characterStatus.end});
 
             // update frame status and add character to frame data
             frameStatus.frameEnd = characterStatus.end;
@@ -665,7 +665,7 @@ struct Iso7816::Impl : IsoTech
          if (!frameStatus.frameStart)
             frameStatus.frameStart = characterStatus.start;
 
-         log->trace("\tbyte [{}]: {02x}", {frameStatus.frameSize, characterStatus.data});
+         log->trace("\tbyte [{}]: {02x} {}->{}", {frameStatus.frameSize, characterStatus.data, characterStatus.start, characterStatus.end});
 
          // update frame and add character to frame data
          frameStatus.frameEnd = characterStatus.end;
@@ -713,7 +713,7 @@ struct Iso7816::Impl : IsoTech
          if (!frameStatus.frameStart)
             frameStatus.frameStart = characterStatus.start;
 
-         log->trace("\tbyte [{}]: {02x}", {frameStatus.frameSize, characterStatus.data});
+         log->trace("\tbyte [{}]: {02x} {}->{}", {frameStatus.frameSize, characterStatus.data, characterStatus.start, characterStatus.end});
 
          // update frame and add character to frame data
          frameStatus.frameEnd = characterStatus.end;
@@ -969,7 +969,7 @@ struct Iso7816::Impl : IsoTech
 
       bool updateParameters = false;
 
-      int i = 1, n = 2, k = 1, p = 0;
+      int i = 1, n = 2, k = 1, c = 0;
 
       do
       {
@@ -1069,8 +1069,8 @@ struct Iso7816::Impl : IsoTech
          // check presence of TDk
          if (frame[i] & ATR_TD_MASK)
          {
-            // next protocol parameters
-            p = frame[i] & 0x0f;
+            // check presence of TCK (then T!=0 on some of TDk bytes)
+            c |= frame[i] & 0x0f;
 
             // next structural byte
             i = n++;
@@ -1084,6 +1084,10 @@ struct Iso7816::Impl : IsoTech
       unsigned int hb = frame[1] & 0x0f;
 
       log->info("\thistorical bytes {}", {hb});
+
+      // check presence of TCK
+      if (c)
+         frame.setFrameFlags(!checkLrc(frame) ? CrcError : 0);
 
       // update protocol parameters
       if (updateParameters)
@@ -1346,7 +1350,7 @@ struct Iso7816::Impl : IsoTech
    /*
     * Check ISO7816 ATR format
     */
-   static int isATR(const unsigned char *atr, unsigned int size)
+   int isATR(const unsigned char *atr, unsigned int size) const
    {
       if (size < ATR_MIN_LEN)
          return ResultInvalid;
@@ -1356,28 +1360,32 @@ struct Iso7816::Impl : IsoTech
 
       int i = 1, n = 1;
       int hb = atr[n++] & 0x0f;
-      int ck = 0;
+      int ck = 0, p = 0;
 
       do
       {
          if (atr[i] & ATR_TA_MASK) n++; // skip TAi
          if (atr[i] & ATR_TB_MASK) n++; // skip TBi
          if (atr[i] & ATR_TC_MASK) n++; // skip TCi
-         if (atr[i] & ATR_TD_MASK) i = n++; // check next TDi
 
+         // check presence of TDk, and protocol indicator != 0 to trigger TCK check
+         if (atr[i] & ATR_TD_MASK)
+         {
+            // get protocol indicator
+            p += atr[i] & 0x0f;
+
+            // next structural byte
+            i = n++;
+         }
       }
       while ((i == n - 1) && n < size);
 
-      // check frame size with historical bytes
-      if (size < n + hb + 1)
+      // check frame size with historical bytes and presence of TCK
+      if (size < n + hb + (p > 0 ? 1 : 0))
          return ResultInvalid;
 
-      // finally check LCR parity
-      for (int j = 1; j < size; j++)
-         ck ^= atr[j];
-
-      // check parity
-      return !ck ? ResultSuccess : ResultFailed;
+      // ATR completed
+      return ResultSuccess;
    }
 
    /*
