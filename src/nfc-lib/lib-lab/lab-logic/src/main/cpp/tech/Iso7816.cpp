@@ -404,6 +404,8 @@ struct Iso7816::Impl : IsoTech
       {
          case FullCharacter:
          {
+            log->trace("\tbyte [{}]: {02x}", {frameStatus.frameSize, characterStatus.data});
+
             // check TS byte to detect convention
             switch (characterStatus.data)
             {
@@ -433,7 +435,7 @@ struct Iso7816::Impl : IsoTech
             frameStatus.frameFlags = 0;
             frameStatus.frameSize = 0;
             frameStatus.frameData[frameStatus.frameSize++] = characterStatus.data;
-            frameStatus.symbolRate = 1.0 / protocolStatus.elementaryTimeUnit;
+            frameStatus.symbolRate = 1.0f / protocolStatus.elementaryTimeUnit;
 
             // clear status for next character
             characterStatus = {};
@@ -456,6 +458,8 @@ struct Iso7816::Impl : IsoTech
       {
          case FullCharacter:
          {
+            log->trace("\tbyte [{}]: {02x}", {frameStatus.frameSize, characterStatus.data});
+
             // update frame status and add character to frame data
             frameStatus.frameEnd = characterStatus.end;
             frameStatus.frameFlags |= characterStatus.flags;
