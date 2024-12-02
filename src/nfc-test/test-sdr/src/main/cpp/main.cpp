@@ -24,7 +24,7 @@
 #include <iomanip>
 #include <nlohmann/json.hpp>
 
-#include <rt/logger.h>
+#include <rt/Logger.h>
 #include <rt/FileSystem.h>
 
 #include <hw/SignalType.h>
