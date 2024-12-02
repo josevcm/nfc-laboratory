@@ -936,7 +936,7 @@ struct Iso7816::Impl : IsoTech
       }
 
       // N=255 has a protocol-dependent meaning:
-      //  - GT=12 ETU under protocol T=0 nad during PPS (Protocol and Parameters Selection)
+      //  - GT=12 ETU under protocol T=0 and during PPS (Protocol Parameters Selection)
       //  - GT=11 ETU under protocol T=1 (corresponding to 1 start bit, 8 data bits, 1 parity bit, and 1 stop bit; with no error indication)
       if (protocolStatus.extraGuardTimeUnits == 255)
       {
