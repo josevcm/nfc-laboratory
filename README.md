@@ -65,7 +65,7 @@ As can be seen, the application split functionalities in different tabs:
   - **Frames**: Graphic view for decoded frames captured in contact interface and contactless interface.
   - **Signal**: Shows the raw signal captured with logic analyzer and the radio interface with protocol markers.
   - **Receiver**: During acquire shows the spectrum of the signal captured in the radio interface.
-  - 
+
 - At the bottom:
   - **Frames**: Table view for decoded frames captured in contact interface and contactless interface.
 
@@ -268,9 +268,11 @@ The channel connections required to decode ISO7816 protocol are:
 
 ![Devices](doc/img/nfc-lab-devices5.png "Devices")
 
-I use a simple adapter to connect the smart card to the logic analyzer from aliexpress.
+I use a simple adapter to connect the smart card to the logic analyzer from aliexpress, like [this](https://aliexpress.com/item/4000967188424.html) and [this](https://aliexpress.com/item/1005007077428556.html):
 
 ![Devices](doc/img/nfc-lab-devices6.png "Devices")
+
+![Devices](doc/img/nfc-lab-devices7.png "Devices")
 
 ## Hardware requirements and performance
 
