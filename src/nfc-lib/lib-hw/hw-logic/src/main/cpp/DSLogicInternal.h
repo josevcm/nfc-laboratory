@@ -397,7 +397,7 @@ struct dsl_caps
    int dso_depth;
    int intest_channel;
    const long *vdivs;
-   const long *samplerates;
+   const unsigned long long *samplerates;
    int vga_id;
    int default_channelid;
    long default_samplerate;
@@ -593,7 +593,37 @@ static const char *probe_units[] = {
    "m/s",
 };
 
-static const long samplerates400[] = {
+static const unsigned long long samplerates100[] = {
+   DSL_HZ(10),
+   DSL_HZ(20),
+   DSL_HZ(50),
+   DSL_HZ(100),
+   DSL_HZ(200),
+   DSL_HZ(500),
+   DSL_KHZ(1),
+   DSL_KHZ(2),
+   DSL_KHZ(5),
+   DSL_KHZ(10),
+   DSL_KHZ(20),
+   DSL_KHZ(40),
+   DSL_KHZ(50),
+   DSL_KHZ(100),
+   DSL_KHZ(200),
+   DSL_KHZ(400),
+   DSL_KHZ(500),
+   DSL_MHZ(1),
+   DSL_MHZ(2),
+   DSL_MHZ(4),
+   DSL_MHZ(5),
+   DSL_MHZ(10),
+   DSL_MHZ(20),
+   DSL_MHZ(25),
+   DSL_MHZ(50),
+   DSL_MHZ(100),
+   0,
+};
+
+static const unsigned long long samplerates400[] = {
    DSL_HZ(10),
    DSL_HZ(20),
    DSL_HZ(50),
@@ -625,7 +655,7 @@ static const long samplerates400[] = {
    0,
 };
 
-static const long samplerates1000[] = {
+static const unsigned long long samplerates1000[] = {
    DSL_HZ(10),
    DSL_HZ(20),
    DSL_HZ(50),
@@ -786,6 +816,121 @@ static const dsl_vga vga_defaults[] = {
 static const dsl_profile dsl_profiles[] = {
    {
       0x2A0E,
+      0x0020,
+      LIBUSB_SPEED_HIGH,
+      "DreamSourceLab",
+      "DSLogic PLus",
+      nullptr,
+      "DSLogicPlus.fw",
+      "DSLogicPlus.bin",
+      "DSLogicPlus.bin",
+      .dev_caps {
+         .mode_caps = CAPS_MODE_LOGIC, // mode_caps
+         .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF, // feature_caps
+         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .total_ch_num = 16, // total_ch_num
+         .hw_depth = DSL_MB(256), // hw_depth
+         .dso_depth = 0, // dso_depth
+         .intest_channel = DSLogicDevice::DSL_BUFFER100x16, // intest_channel
+         .vdivs = nullptr, // vdivs
+         .samplerates = samplerates400, // samplerates
+         .vga_id = 0x00, // vga_id
+         .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
+         .default_samplerate = DSL_MHZ(1), // default_samplerate
+         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_pwmtrans = 0x0000, // default_pwmtrans
+         .default_pwmmargin = 0x0000, // default_pwmmargin
+         .ref_min = 0x00000000, // ref_min
+         .ref_max = 0x00000000, // ref_max
+         .default_comb_comp = 0x00, // default_comb_comp
+         .half_samplerate = DSL_MHZ(200), // half_samplerate
+         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+      }
+   },
+   {
+      0x2A0E,
+      0x0021,
+      LIBUSB_SPEED_HIGH,
+      "DreamSourceLab",
+      "DSLogic Basic",
+      nullptr,
+      "DSLogicBasic.fw",
+      "DSLogicBasic.bin",
+      "DSLogicBasic.bin",
+      .dev_caps {
+         .mode_caps = CAPS_MODE_LOGIC, // mode_caps
+         .feature_caps = CAPS_FEATURE_VTH, // feature_caps
+         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .total_ch_num = 16, // total_ch_num
+         .hw_depth = DSL_KB(256), // hw_depth
+         .dso_depth = 0, // dso_depth
+         .intest_channel = DSLogicDevice::DSL_STREAM20x16, // intest_channel
+         .vdivs = nullptr, // vdivs
+         .samplerates = samplerates400, // samplerates
+         .vga_id = 0x00, // vga_id
+         .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
+         .default_samplerate = DSL_MHZ(1), // default_samplerate
+         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_pwmtrans = 0x0000, // default_pwmtrans
+         .default_pwmmargin = 0x0000, // default_pwmmargin
+         .ref_min = 0x00000000, // ref_min
+         .ref_max = 0x00000000, // ref_max
+         .default_comb_comp = 0x00, // default_comb_comp
+         .half_samplerate = DSL_MHZ(200), // half_samplerate
+         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+      }
+   },
+   {
+      0x2A0E,
+      0x0029,
+      LIBUSB_SPEED_HIGH,
+      "DreamSourceLab",
+      "DSLogic U2Basic",
+      nullptr,
+      "DSLogicU2Basic.fw",
+      "DSLogicU2Basic.bin",
+      "DSLogicU2Basic.bin",
+      .dev_caps {
+         .mode_caps = CAPS_MODE_LOGIC, // mode_caps
+         .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF, // feature_caps
+         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
+         .total_ch_num = 16, // total_ch_num
+         .hw_depth = DSL_MB(64), // hw_depth
+         .dso_depth = 0, // dso_depth
+         .intest_channel = DSLogicDevice::DSL_BUFFER100x16, // intest_channel
+         .vdivs = nullptr, // vdivs
+         .samplerates = samplerates100, // samplerates
+         .vga_id = 0x00, // vga_id
+         .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
+         .default_samplerate = DSL_MHZ(1), // default_samplerate
+         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_pwmtrans = 0x0000, // default_pwmtrans
+         .default_pwmmargin = 0x0000, // default_pwmmargin
+         .ref_min = 0x00000000, // ref_min
+         .ref_max = 0x00000000, // ref_max
+         .default_comb_comp = 0x00, // default_comb_comp
+         .half_samplerate = DSL_MHZ(200), // half_samplerate
+         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+      }
+   },
+   {
+      0x2A0E,
       0x002A,
       LIBUSB_SPEED_HIGH,
       "DreamSourceLab",
@@ -822,45 +967,45 @@ static const dsl_profile dsl_profiles[] = {
          .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
       },
    },
-{
-   0x2A0E,
-   0x002A,
-   LIBUSB_SPEED_SUPER,
-   "DreamSourceLab",
-   "DSLogic U3Pro16",
-   nullptr,
-   "DSLogicU3Pro16.fw",
-   "DSLogicU3Pro16.bin",
-   "DSLogicU3Pro16.bin",
-   .dev_caps {
-      .mode_caps = CAPS_MODE_LOGIC, // mode_caps
-      .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360, // feature_caps
-      .channels = DSL_CH(DSLogicDevice::DSL_STREAM125x16_16) |
-      DSL_CH(DSLogicDevice::DSL_STREAM250x12_16) |
-      DSL_CH(DSLogicDevice::DSL_STREAM500x6) |
-      DSL_CH(DSLogicDevice::DSL_STREAM1000x3) |
-      DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-      DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
-      .total_ch_num = 16, // total_ch_num
-      .hw_depth = DSL_GB(2), // hw_depth
-      .dso_depth = 0, // dso_depth
-      .intest_channel = DSLogicDevice::DSL_BUFFER500x16, // intest_channel
-      .vdivs = nullptr, // vdivs
-      .samplerates = samplerates1000, // samplerates
-      .vga_id = 0x00, // vga_id
-      .default_channelid = DSLogicDevice::DSL_STREAM500x6, // default_channelid
-      .default_samplerate = DSL_MHZ(1), // default_samplerate
-      .default_samplelimit = DSL_Mn(1), // default_samplelimit
-      .default_pwmtrans = 0x0000, // default_pwmtrans
-      .default_pwmmargin = 0x0000, // default_pwmmargin
-      .ref_min = 0x00000000, // ref_min
-      .ref_max = 0x00000000, // ref_max
-      .default_comb_comp = 0x00, // default_comb_comp
-      .half_samplerate = DSL_MHZ(500), // half_samplerate
-      .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+   {
+      0x2A0E,
+      0x002A,
+      LIBUSB_SPEED_SUPER,
+      "DreamSourceLab",
+      "DSLogic U3Pro16",
+      nullptr,
+      "DSLogicU3Pro16.fw",
+      "DSLogicU3Pro16.bin",
+      "DSLogicU3Pro16.bin",
+      .dev_caps {
+         .mode_caps = CAPS_MODE_LOGIC, // mode_caps
+         .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360, // feature_caps
+         .channels = DSL_CH(DSLogicDevice::DSL_STREAM125x16_16) |
+         DSL_CH(DSLogicDevice::DSL_STREAM250x12_16) |
+         DSL_CH(DSLogicDevice::DSL_STREAM500x6) |
+         DSL_CH(DSLogicDevice::DSL_STREAM1000x3) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .total_ch_num = 16, // total_ch_num
+         .hw_depth = DSL_GB(2), // hw_depth
+         .dso_depth = 0, // dso_depth
+         .intest_channel = DSLogicDevice::DSL_BUFFER500x16, // intest_channel
+         .vdivs = nullptr, // vdivs
+         .samplerates = samplerates1000, // samplerates
+         .vga_id = 0x00, // vga_id
+         .default_channelid = DSLogicDevice::DSL_STREAM500x6, // default_channelid
+         .default_samplerate = DSL_MHZ(1), // default_samplerate
+         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_pwmtrans = 0x0000, // default_pwmtrans
+         .default_pwmmargin = 0x0000, // default_pwmmargin
+         .ref_min = 0x00000000, // ref_min
+         .ref_max = 0x00000000, // ref_max
+         .default_comb_comp = 0x00, // default_comb_comp
+         .half_samplerate = DSL_MHZ(500), // half_samplerate
+         .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+      },
    },
-},
-{
+   {
       0x2A0E,
       0x002C,
       LIBUSB_SPEED_HIGH,
@@ -900,47 +1045,85 @@ static const dsl_profile dsl_profiles[] = {
          .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
       },
    },
-{
-   0x2A0E,
-   0x002C,
-   LIBUSB_SPEED_SUPER,
-   "DreamSourceLab",
-   "DSLogic U3Pro32",
-   nullptr,
-   "DSLogicU3Pro32.fw",
-   "DSLogicU3Pro32.bin",
-   "DSLogicU3Pro32.bin",
-   .dev_caps {
-      .mode_caps = CAPS_MODE_LOGIC, // mode_caps
-      .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_LA_CH32, // feature_caps
-      .channels = DSL_CH(DSLogicDevice::DSL_STREAM50x32) |
-      DSL_CH(DSLogicDevice::DSL_STREAM100x30) |
-      DSL_CH(DSLogicDevice::DSL_STREAM250x12) |
-      DSL_CH(DSLogicDevice::DSL_STREAM500x6) |
-      DSL_CH(DSLogicDevice::DSL_STREAM1000x3) |
-      DSL_CH(DSLogicDevice::DSL_BUFFER250x32) |
-      DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-      DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
-      .total_ch_num = 32, // total_ch_num
-      .hw_depth = DSL_GB(2), // hw_depth
-      .dso_depth = 0, // dso_depth
-      .intest_channel = DSLogicDevice::DSL_BUFFER250x32, // intest_channel
-      .vdivs = nullptr, // vdivs
-      .samplerates = samplerates1000, // samplerates
-      .vga_id = 0x00, // vga_id
-      .default_channelid = DSLogicDevice::DSL_STREAM500x6, // default_channelid
-      .default_samplerate = DSL_MHZ(1), // default_samplerate
-      .default_samplelimit = DSL_Mn(1), // default_samplelimit
-      .default_pwmtrans = 0x0000, // default_pwmtrans
-      .default_pwmmargin = 0x0000, // default_pwmmargin
-      .ref_min = 0x00000000, // ref_min
-      .ref_max = 0x00000000, // ref_max
-      .default_comb_comp = 0x00, // default_comb_comp
-      .half_samplerate = DSL_MHZ(500), // half_samplerate
-      .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+   {
+      0x2A0E,
+      0x002C,
+      LIBUSB_SPEED_SUPER,
+      "DreamSourceLab",
+      "DSLogic U3Pro32",
+      nullptr,
+      "DSLogicU3Pro32.fw",
+      "DSLogicU3Pro32.bin",
+      "DSLogicU3Pro32.bin",
+      .dev_caps {
+         .mode_caps = CAPS_MODE_LOGIC, // mode_caps
+         .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_LA_CH32, // feature_caps
+         .channels = DSL_CH(DSLogicDevice::DSL_STREAM50x32) |
+         DSL_CH(DSLogicDevice::DSL_STREAM100x30) |
+         DSL_CH(DSLogicDevice::DSL_STREAM250x12) |
+         DSL_CH(DSLogicDevice::DSL_STREAM500x6) |
+         DSL_CH(DSLogicDevice::DSL_STREAM1000x3) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER250x32) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .total_ch_num = 32, // total_ch_num
+         .hw_depth = DSL_GB(2), // hw_depth
+         .dso_depth = 0, // dso_depth
+         .intest_channel = DSLogicDevice::DSL_BUFFER250x32, // intest_channel
+         .vdivs = nullptr, // vdivs
+         .samplerates = samplerates1000, // samplerates
+         .vga_id = 0x00, // vga_id
+         .default_channelid = DSLogicDevice::DSL_STREAM500x6, // default_channelid
+         .default_samplerate = DSL_MHZ(1), // default_samplerate
+         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_pwmtrans = 0x0000, // default_pwmtrans
+         .default_pwmmargin = 0x0000, // default_pwmmargin
+         .ref_min = 0x00000000, // ref_min
+         .ref_max = 0x00000000, // ref_max
+         .default_comb_comp = 0x00, // default_comb_comp
+         .half_samplerate = DSL_MHZ(500), // half_samplerate
+         .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+      },
    },
-},
-{
+   {
+      0x2A0E,
+      0x002D,
+      LIBUSB_SPEED_HIGH,
+      "DreamSourceLab",
+      "DSLogic U2Pro16",
+      nullptr,
+      "DSLogicU2Pro16.fw",
+      "DSLogicU2Pro16.bin",
+      "DSLogicU2Pro16.bin",
+      .dev_caps {
+         .mode_caps = CAPS_MODE_LOGIC, // mode_caps
+         .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_SECURITY, // feature_caps
+         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
+         DSL_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
+         DSL_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
+         DSL_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .total_ch_num = 16, // total_ch_num
+         .hw_depth = DSL_GB(4), // hw_depth
+         .dso_depth = 0, // dso_depth
+         .intest_channel = DSLogicDevice::DSL_BUFFER500x16, // intest_channel
+         .vdivs = nullptr, // vdivs
+         .samplerates = samplerates1000, // samplerates
+         .vga_id = 0x00, // vga_id
+         .default_channelid = DSLogicDevice::DSL_STREAM50x6_3DN2, // default_channelid
+         .default_samplerate = DSL_MHZ(1), // default_samplerate
+         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_pwmtrans = 0x0000, // default_pwmtrans
+         .default_pwmmargin = 0x0000, // default_pwmmargin
+         .ref_min = 0x00000000, // ref_min
+         .ref_max = 0x00000000, // ref_max
+         .default_comb_comp = 0x00, // default_comb_comp
+         .half_samplerate = DSL_MHZ(500), // half_samplerate
+         .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+      },
+   },
+   {
       .vid = 0x2A0E,
       .pid = 0x0030,
       .usb_speed = LIBUSB_SPEED_HIGH,
