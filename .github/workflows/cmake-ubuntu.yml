@@ -4,8 +4,8 @@ on:
   push:
     tags:
       - '*' # any tag
-    branches:
-      - master
+#    branches:
+#      - master
 
 jobs:
   build:
