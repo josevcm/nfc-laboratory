@@ -1083,7 +1083,7 @@ struct Iso7816::Impl : IsoTech
          if (frame[i] & ATR_TD_MASK)
          {
             // check presence of TCK (then T!=0 on some of TDk bytes)
-            c |= frame[i] & 0x0f;
+            c |= frame[n] & 0x0f;
 
             // next structural byte
             i = n++;
@@ -1380,11 +1380,11 @@ struct Iso7816::Impl : IsoTech
          if (atr[i] & ATR_TB_MASK) n++; // skip TBi
          if (atr[i] & ATR_TC_MASK) n++; // skip TCi
 
-         // check presence of TDk, and protocol indicator != 0 to trigger TCK check
+         // check presence of TDk, using protocol indicator != 0 to trigger TCK check
          if (atr[i] & ATR_TD_MASK)
          {
             // get protocol indicator
-            c |= atr[i] & 0x0f;
+            c |= atr[n] & 0x0f;
 
             // next structural byte
             i = n++;
