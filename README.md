@@ -288,7 +288,7 @@ exercise rather than a production application.
 
 The application allows you to read and write files in two different formats:
 
-- WAV: Reading signals in standard WAV format with 1 or 2 channels for NFC signals and 4 channels for logic analyzer 
+- WAV: Reading signals in 16 bits per sample WAV format with 1 or 2 channels for NFC signals and 4 channels for logic analyzer 
   signals. 
 
   - Radio signal with 1 channel should contain samples in absolute real values. If 2 channels are used they should contain the sampling of the I / Q components.
