@@ -193,11 +193,13 @@ I have tried several receivers obtaining the best results with AirSpy Mini, I do
 works with others.
 
 - AirSpy Mini or R2: Better results, tuning the third harmonic at 40.68Mhz, with a sampling frequency of 10 Mbps, 
-  with these parameters it is possible to capture the communication up to 424 Kbps.
+  with these parameters it is possible to capture the communication up to 424 Kbps. This is the recommended device 
+  to use with this tool.
 
 - RTL SDR: It works by tuning the second harmonic at 27.12Mhz, due to the limitation in the maximum sampling frequency 
   of 3Mbps and its 8 bits of resolution only allows you to capture the commands up to 106Kbps and some responses in 
-  very clean signals.
+  very clean signals with good antenna. This device is supported only as a reference to experiment with it, I not 
+  recommend using it if you want to obtain good results.
 
 Receivers tested:
 
@@ -288,7 +290,7 @@ exercise rather than a production application.
 
 The application allows you to read and write files in two different formats:
 
-- WAV: Reading signals in standard WAV format with 1 or 2 channels for NFC signals and 4 channels for logic analyzer 
+- WAV: Reading signals in 16 bits per sample WAV format with 1 or 2 channels for NFC signals and 4 channels for logic analyzer 
   signals. 
 
   - Radio signal with 1 channel should contain samples in absolute real values. If 2 channels are used they should contain the sampling of the I / Q components.
