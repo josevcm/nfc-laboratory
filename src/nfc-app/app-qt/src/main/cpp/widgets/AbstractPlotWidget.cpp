@@ -500,7 +500,7 @@ struct AbstractPlotWidget::Impl
    // event handlers
    void legendClick(QCPLegend *legend, QCPAbstractLegendItem *item)
    {
-      qInfo() << "Legend clicked:" << item->rect().center();
+      qDebug() << "Legend clicked:" << item->rect().center();
    }
 
    void mouseEnter() const

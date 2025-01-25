@@ -11,4 +11,4 @@ add_library(hw-radio STATIC
 target_include_directories(hw-radio PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(hw-radio PRIVATE ${PRIVATE_SOURCE_DIR})
 
-target_link_libraries(hw-radio rt-lang hw-dev mufft mirisdr rtlsdr airspy)
+target_link_libraries(hw-radio rt-lang hw-dev mufft mirisdr ${LIBAIRSPY_LIBRARY} ${LIBRTLSDR_LIBRARY})

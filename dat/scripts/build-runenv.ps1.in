@@ -7,8 +7,10 @@ if (Test-Path "$TargetPath/src/nfc-app/app-qt/nfc-spy.exe") {
     Copy-Item -Force -Recurse $SourcePath/dat/config/*.conf $TargetPath
 
     # Copy application external libraries
-    Copy-Item -Force $SourcePath/dll/openssl-1.1.1/x86_64/bin/*.dll $TargetPath/src/nfc-app/app-qt/
-    Copy-Item -Force $SourcePath/dll/usb-1.0.26/x86_64-w64-mingw32/bin/*.dll $TargetPath/src/nfc-app/app-qt/
+    Copy-Item -Force $SourcePath/dll/airspy/x86_64/bin/*.dll $TargetPath/src/nfc-app/app-qt/
+    Copy-Item -Force $SourcePath/dll/openssl/x86_64/bin/*.dll $TargetPath/src/nfc-app/app-qt/
+    Copy-Item -Force $SourcePath/dll/rtlsdr/x86_64/bin/*.dll $TargetPath/src/nfc-app/app-qt/
+    Copy-Item -Force $SourcePath/dll/usb/x86_64-w64-mingw32/bin/*.dll $TargetPath/src/nfc-app/app-qt/
 
     # Deploy QT required libraries
     # Debug, not deployable for production

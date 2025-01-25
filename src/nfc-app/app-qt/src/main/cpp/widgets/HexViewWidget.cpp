@@ -118,7 +118,7 @@ struct HexViewWidget::Impl
    void layout()
    {
       int areaHeight = widget->viewport()->height();
-      int dataHeight = ((data.count() / lineBytes) + (data.count() % lineBytes ? 1 : 0)) * charHeight;
+      int dataHeight = ((data.size() / lineBytes) + (data.size() % lineBytes ? 1 : 0)) * charHeight;
 
       widget->verticalScrollBar()->setPageStep(areaHeight / charHeight);
       widget->verticalScrollBar()->setRange(0, (dataHeight - areaHeight) / charHeight + 1);
@@ -126,8 +126,8 @@ struct HexViewWidget::Impl
       firstLine = widget->verticalScrollBar()->value();
       lastLine = firstLine + areaHeight / charHeight;
 
-      if (lastLine > data.count() / lineBytes)
-         lastLine = (data.count() / lineBytes) + (data.count() % lineBytes ? 1 : 0);
+      if (lastLine > data.size() / lineBytes)
+         lastLine = (data.size() / lineBytes) + (data.size() % lineBytes ? 1 : 0);
    }
 
    void paint(QPaintEvent *event)
@@ -146,7 +146,7 @@ struct HexViewWidget::Impl
       // draw contents
       painter.setPen(widget->palette().color(QPalette::WindowText));
 
-      for (int addr = firstLine * lineBytes, line = firstLine, lineCoord = 0; addr < data.count() && line <= lastLine; addr += lineBytes, lineCoord += charHeight, line++)
+      for (int addr = firstLine * lineBytes, line = firstLine, lineCoord = 0; addr < data.size() && line <= lastLine; addr += lineBytes, lineCoord += charHeight, line++)
       {
          painter.setFont(addrFont);
          painter.setBackgroundMode(Qt::TransparentMode);
@@ -156,7 +156,7 @@ struct HexViewWidget::Impl
          painter.setFont(dataFont);
          painter.setBackgroundMode(Qt::OpaqueMode);
 
-         for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.count(); i++, pos++, charCoord += charWidth * 3)
+         for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.size(); i++, pos++, charCoord += charWidth * 3)
          {
             if (pos >= selectionStart && pos <= selectionEnd)
                painter.setBackground(selectedBrush);
@@ -170,7 +170,7 @@ struct HexViewWidget::Impl
          painter.setFont(textFont);
          painter.setBackgroundMode(Qt::OpaqueMode);
 
-         for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.count(); i++, pos++, charCoord += charWidth)
+         for (int i = 0, pos = addr, charCoord = 0; i < lineBytes && pos < data.size(); i++, pos++, charCoord += charWidth)
          {
             if (pos >= selectionStart && pos <= selectionEnd)
                painter.setBackground(selectedBrush);
@@ -201,7 +201,7 @@ struct HexViewWidget::Impl
    {
       QString text;
 
-      for (int i = from; i < value.count() && i < to; i++)
+      for (int i = from; i < value.size() && i < to; i++)
       {
          text.append(QString("%1 ").arg(value[i] & 0xff, 2, 16, QLatin1Char('0')));
       }
@@ -213,7 +213,7 @@ struct HexViewWidget::Impl
    {
       QString text;
 
-      for (int i = from; i < value.count() && i < to; i++)
+      for (int i = from; i < value.size() && i < to; i++)
       {
          text.append(value[i] >= 0x20 ? QString("%1").arg((char)value[i]) : ".");
       }
