@@ -81,7 +81,7 @@ int startApp(int argc, char *argv[])
    rt::Logger *log = rt::Logger::getLogger("app.main", rt::Logger::INFO_LEVEL);
 
    log->info("***********************************************************************");
-   log->info("NFC-SPY {}", {NFC_LAB_VERSION_STRING});
+   log->info("NFC-LAB {}", {NFC_LAB_VERSION_STRING});
    log->info("***********************************************************************");
 
    if (argc > 1)

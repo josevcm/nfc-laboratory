@@ -100,23 +100,23 @@ if (WIN32)
 
     if(ENABLE_CONSOLE_OUTPUT)
         message(STATUS "Enable debug output to console.")
-        add_executable(nfc-spy ${SOURCES})
+        add_executable(nfc-lab ${SOURCES})
         add_compile_definitions(ENABLE_CONSOLE_LOGGING)
     else()
-        add_executable(nfc-spy WIN32 ${SOURCES})
+        add_executable(nfc-lab WIN32 ${SOURCES})
     endif ()
 
 elseif (UNIX)
-    add_executable(nfc-spy ${SOURCES})
+    add_executable(nfc-lab ${SOURCES})
 endif ()
 
 add_compile_definitions(QT_DISABLE_DEPRECATED_UP_TO=0x050F00)
 
-target_include_directories(nfc-spy PRIVATE ${PRIVATE_SOURCE_DIR})
-target_include_directories(nfc-spy PRIVATE ${AUTOGEN_BUILD_DIR}/include)
-target_include_directories(nfc-spy PRIVATE ${LIBUSB_INCLUDE_DIR})
+target_include_directories(nfc-lab PRIVATE ${PRIVATE_SOURCE_DIR})
+target_include_directories(nfc-lab PRIVATE ${AUTOGEN_BUILD_DIR}/include)
+target_include_directories(nfc-lab PRIVATE ${LIBUSB_INCLUDE_DIR})
 
-target_link_libraries(nfc-spy
+target_link_libraries(nfc-lab
         ${PLATFORM_LIBS}
         lab-tasks
         lab-logic

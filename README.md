@@ -71,7 +71,7 @@ As can be seen, the application split functionalities in different tabs:
 
 ## Application settings
 
-Settings are stored in user home directory, inside Roaming folder for windows %USERPROFILE%\AppData\Roaming\josevcm\nfc-spy.ini.
+Settings are stored in user home directory, inside Roaming folder for windows %USERPROFILE%\AppData\Roaming\josevcm\nfc-lab.ini.
 The file is created the first time the application is run and can contain the following sections:
 
 Window state, updated every application close.
@@ -257,7 +257,7 @@ directSampling=1
 
 The only tested LA is DreamSourceLab DSLogic Plus, it works perfectly with the app, Pro16 and Pro32 are also supported but not tested (I don't have one).
 Firmware files for this LA are included in the repository, you can find them in the **dat/firmware** folder, this files must
-be located inside firmware folder along nfc-spy.exe application. Thanks to [DreamSourceLab](https://www.dreamsourcelab.com/product/dslogic-series/).
+be located inside firmware folder along nfc-lab.exe application. Thanks to [DreamSourceLab](https://www.dreamsourcelab.com/product/dslogic-series/).
 
 ![Devices](doc/img/nfc-lab-devices4.png "Devices")
 
@@ -447,7 +447,7 @@ cmake -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - MinGW Makefiles" -S nfc-labora
 
 Compile the project:
 ```
-cmake --build build --target nfc-spy -- -j 6
+cmake --build build --target nfc-lab -- -j 6
 ```
 
 ```
@@ -456,14 +456,14 @@ cmake
 [  2%] Building C object src/nfc-lib/lib-ext/mufft/CMakeFiles/mufft-sse.dir/src/main/c/x86/kernel.sse.c.obj
 [  2%] Building C object src/nfc-lib/lib-ext/airspy/CMakeFiles/airspy.dir/src/main/c/airspy.c.obj
 ....
-[ 98%] Linking CXX executable nfc-spy.exe
-[100%] Built target nfc-spy
+[ 98%] Linking CXX executable nfc-lab.exe
+[100%] Built target nfc-lab
 ```
 
 Create a coppy of the application for easier access:
 
 ```
-cp .\build\src\nfc-app\app-qt\nfc-spy.exe nfc-spy.exe
+cp .\build\src\nfc-app\app-qt\nfc-lab.exe nfc-lab.exe
 ```
 
 Application is ready to use!
@@ -493,7 +493,7 @@ cmake -DCMAKE_BUILD_TYPE=Release -S nfc-laboratory -B build
 Compile the project:
 
 ```
-cmake --build build --target nfc-spy -- -j$(nproc)
+cmake --build build --target nfc-lab -- -j$(nproc)
 ```
 
 Copy the base configuration files to the build directory:
@@ -505,13 +505,13 @@ cp -r nfc-laboratory/dat/firmware build/src/nfc-app/app-qt/
 Create a symbolic link to the application for easier access:
 
 ```
-ln -s build/src/nfc-app/app-qt/nfc-spy nfc-spy
+ln -s build/src/nfc-app/app-qt/nfc-lab nfc-lab
 ```
 
 Launch the application:
 
 ```
-./nfc-spy
+./nfc-lab
 ```
 
 ## Source code licensing

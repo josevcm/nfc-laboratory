@@ -19,12 +19,12 @@
 
 */
 
-#define NFC_LAB_VERSION_MAJOR @nfc-spy_VERSION_MAJOR@
-#define NFC_LAB_VERSION_MINOR @nfc-spy_VERSION_MINOR@
-#define NFC_LAB_VERSION_PATCH @nfc-spy_VERSION_PATCH@
-#define NFC_LAB_VERSION_STRING "@nfc-spy_VERSION@"
-#define NFC_LAB_VENDOR_STRING "josevcm@gmail.com nfc-spy @nfc-spy_VERSION@"
+#define NFC_LAB_VERSION_MAJOR @nfc-lab_VERSION_MAJOR@
+#define NFC_LAB_VERSION_MINOR @nfc-lab_VERSION_MINOR@
+#define NFC_LAB_VERSION_PATCH @nfc-lab_VERSION_PATCH@
+#define NFC_LAB_VERSION_STRING "@nfc-lab_VERSION@"
+#define NFC_LAB_VENDOR_STRING "josevcm@gmail.com nfc-lab @nfc-lab_VERSION@"
 #define NFC_LAB_COMPANY_NAME "josevcm"
-#define NFC_LAB_APPLICATION_NAME "nfc-spy"
+#define NFC_LAB_APPLICATION_NAME "nfc-lab"
 #define NFC_LAB_DOMAIN_NAME "josevcm"
 

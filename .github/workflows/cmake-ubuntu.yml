@@ -44,4 +44,4 @@ jobs:
 
     - name: 'Build project'
       run: |
-        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-spy --parallel ${{ steps.strings.outputs.cpu-count }} 
+        cmake --build ${{ steps.strings.outputs.build-dir }} --target nfc-lab --parallel ${{ steps.strings.outputs.cpu-count }} 
