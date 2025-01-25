@@ -37,12 +37,12 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
 endif ()
 
 #-------------------------------------------------------------------------------
-# libusb-1.0
+# find dependency libusb-1.0
 #-------------------------------------------------------------------------------
 find_package(libusb-1.0)
 
 if(NOT LIBUSB_FOUND)
-  message(FATAL_ERROR  "Please install usb-1.0!")
+  message(FATAL_ERROR  "Please install libusb-1.0!")
 endif()
 
 message(STATUS "usb-1.0:")
@@ -50,6 +50,36 @@ message(STATUS "  include:" ${LIBUSB_INCLUDE})
 message(STATUS "  library:" ${LIBUSB_LIBRARY})
 
 include_directories(${LIBUSB_INCLUDE})
+
+#-------------------------------------------------------------------------------
+# find dependency airspy
+#-------------------------------------------------------------------------------
+find_package(libairspy)
+
+if(NOT LIBAIRSPY_FOUND)
+  message(FATAL_ERROR  "Please install libairspy!")
+endif()
+
+message(STATUS "airspy:")
+message(STATUS "  include:" ${LIBAIRSPY_INCLUDE})
+message(STATUS "  library:" ${LIBAIRSPY_LIBRARY})
+
+include_directories(${LIBAIRSPY_INCLUDE})
+
+#-------------------------------------------------------------------------------
+# find dependency rltsdr
+#-------------------------------------------------------------------------------
+find_package(librtlsdr)
+
+if(NOT LIBUSB_FOUND)
+  message(FATAL_ERROR  "Please install librtlsdr!")
+endif()
+
+message(STATUS "rtlsdr:")
+message(STATUS "  include:" ${LIBRTLSDR_INCLUDE})
+message(STATUS "  library:" ${LIBRTLSDR_LIBRARY})
+
+include_directories(${LIBRTLSDR_INCLUDE})
 
 #-------------------------------------------------------------------------------
 # configure files

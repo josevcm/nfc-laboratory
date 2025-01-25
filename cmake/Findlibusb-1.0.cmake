@@ -10,7 +10,7 @@ else (LIBUSB_LIBRARY AND LIBUSB_INCLUDE)
                 /usr/include
                 /usr/local/include
                 /opt/local/include
-                ${CMAKE_SOURCE_DIR}/dll/usb-1.0.26/include
+                ${CMAKE_SOURCE_DIR}/dll/usb/include
             PATH_SUFFIXES
                 libusb-1.0
     )
@@ -25,7 +25,7 @@ else (LIBUSB_LIBRARY AND LIBUSB_INCLUDE)
                 /usr/local/lib
                 /opt/local/lib
                 /usr/lib
-                ${CMAKE_SOURCE_DIR}/dll/usb-1.0.26/x86_64/lib
+                ${CMAKE_SOURCE_DIR}/dll/usb/x86_64/lib
     )
 
     if (LIBUSB_INCLUDE AND LIBUSB_LIBRARY)

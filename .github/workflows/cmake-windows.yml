@@ -85,8 +85,10 @@ jobs:
         # copy executable and libraries
         Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/src/nfc-app/app-qt/nfc-spy.exe ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force ${{ steps.strings.outputs.mingw-dir }}/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
-        Copy-Item -Force ${{ github.workspace }}/dll/usb-1.0.26/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
-        Copy-Item -Force ${{ github.workspace }}/dll/openssl-1.1.1/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
+        Copy-Item -Force ${{ github.workspace }}/dll/airspy/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
+        Copy-Item -Force ${{ github.workspace }}/dll/openssl/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
+        Copy-Item -Force ${{ github.workspace }}/dll/rtlsdr/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
+        Copy-Item -Force ${{ github.workspace }}/dll/usb/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
         
         # copy drivers and firmware
         Copy-Item -Force -Recurse ${{ github.workspace }}/dat/config ${{ steps.strings.outputs.package-data-dir }}

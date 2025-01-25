@@ -11,8 +11,10 @@ New-Item -Force -Path $PackageDataPath -ItemType "directory"
 New-Item -Force -Path $PackageMetaPath -ItemType "directory"
 
 # Copy data resources
-Copy-Item -Force $SourcePath/dll/openssl-1.1.1/x86_64/bin/*.dll $PackageDataPath
-Copy-Item -Force $SourcePath/dll/usb-1.0.26/x86_64/bin/*.dll $PackageDataPath
+Copy-Item -Force $SourcePath/dll/airspy/x86_64/bin/*.dll $PackageDataPath
+Copy-Item -Force $SourcePath/dll/openssl/x86_64/bin/*.dll $PackageDataPath
+Copy-Item -Force $SourcePath/dll/rtlsdr/x86_64/bin/*.dll $PackageDataPath
+Copy-Item -Force $SourcePath/dll/usb/x86_64/bin/*.dll $PackageDataPath
 Copy-Item -Force $TargetPath/src/nfc-app/app-qt/nfc-spy.exe $PackageDataPath
 
 # Copy meta resources
