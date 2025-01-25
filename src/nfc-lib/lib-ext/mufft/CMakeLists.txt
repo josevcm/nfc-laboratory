@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.5)  # Specify minimum CMake version required
-
 set(CMAKE_C_STANDARD 99)
 
 set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/c)
