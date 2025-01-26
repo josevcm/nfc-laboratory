@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+# Output every command that modifies files on the build system.
+export DH_VERBOSE = 1
+
+%:
+    dh $@ -v --buildsystem=cmake
+
+override_dh_auto_configure:
+    dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release
