@@ -1,6 +1,6 @@
 <RCC>
     <qresource prefix="app">
-        <file alias="app-icon">rc/app-icon.ico</file>
-        <file alias="app-splash">rc/app-splash.png</file>
+        <file alias="app-icon">rc/nfc-lab.ico</file>
+        <file alias="app-splash">rc/nfc-lab.png</file>
     </qresource>
 </RCC>

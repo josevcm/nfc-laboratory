@@ -4,7 +4,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 set(COMPANY "Jose Vicente Campos")
 set(PROGRAM_NAME "nfc-lab")
-set(ICON_FILE_PATH "../assets/app/rc/app-icon.ico")
+set(ICON_FILE_PATH "../assets/app/rc/nfc-lab.ico")
 set(APP_TARGET_DIR "@HomeDir@/.${PROGRAM_NAME}")
 
 if(NOT DEFINED BUILD_PROJECT_VERSION)
