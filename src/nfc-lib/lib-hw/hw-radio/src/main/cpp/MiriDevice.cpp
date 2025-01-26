@@ -139,7 +139,7 @@ struct MiriDevice::Impl
       {
          deviceHandle = handle;
 
-         char vendor[256], product[256], serial[32];
+         char vendor[512], product[512], serial[512];
 
          // read board serial
          if (mirisdr_get_device_usb_strings(index, vendor, product, serial) != MIRI_SUCCESS)
