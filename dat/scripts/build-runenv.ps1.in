@@ -1,7 +1,7 @@
 $SourcePath="@CMAKE_CURRENT_SOURCE_DIR@"
 $TargetPath="@CMAKE_CURRENT_BINARY_DIR@"
 
-if (Test-Path "$TargetPath/src/nfc-app/app-qt/nfc-spy.exe") {
+if (Test-Path "$TargetPath/src/nfc-app/app-qt/nfc-lab.exe") {
 
     # Copy application resources
     Copy-Item -Force -Recurse $SourcePath/dat/config/*.conf $TargetPath
@@ -14,5 +14,5 @@ if (Test-Path "$TargetPath/src/nfc-app/app-qt/nfc-spy.exe") {
 
     # Deploy QT required libraries
     # Debug, not deployable for production
-    windeployqt.exe --debug --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $TargetPath/src/nfc-app/app-qt/nfc-spy.exe
+    windeployqt.exe --debug --compiler-runtime --no-translations --no-system-d3d-compiler --no-angle --no-opengl-sw $TargetPath/src/nfc-app/app-qt/nfc-lab.exe
 }

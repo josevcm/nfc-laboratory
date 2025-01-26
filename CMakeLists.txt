@@ -3,15 +3,15 @@ cmake_minimum_required(VERSION 3.17)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 set(COMPANY "Jose Vicente Campos")
-set(PROGRAM_NAME "nfc-spy")
-set(ICON_FILE_PATH "../assets/app/rc/app-icon.ico")
+set(PROGRAM_NAME "nfc-lab")
+set(ICON_FILE_PATH "../assets/app/rc/nfc-lab.ico")
 set(APP_TARGET_DIR "@HomeDir@/.${PROGRAM_NAME}")
 
 if(NOT DEFINED BUILD_PROJECT_VERSION)
   set(BUILD_PROJECT_VERSION "0.0.0")
 endif()
 
-project(nfc-spy VERSION "${BUILD_PROJECT_VERSION}" LANGUAGES C CXX)
+project(nfc-lab VERSION "${BUILD_PROJECT_VERSION}" LANGUAGES C CXX)
 
 #-------------------------------------------------------------------------------
 # build flags
@@ -27,7 +27,7 @@ if (UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif ()
 
-message(STATUS "Build for ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "Build for ${CMAKE_SYSTEM_PROCESSOR} in ${CMAKE_BUILD_TYPE} mode")
 
 # customize CPU architecture options
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")

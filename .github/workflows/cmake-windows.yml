@@ -34,8 +34,8 @@ jobs:
         echo "mingw-dir=${{ github.workspace }}/tools/mingw1310_64" >> "$GITHUB_OUTPUT"
         echo "installer-dir=${{ github.workspace }}/tools/QtInstallerFramework/4.7" >> "$GITHUB_OUTPUT"
         echo "package-dir=${{ github.workspace }}/build/installer/package" >> "$GITHUB_OUTPUT"
-        echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/data" >> "$GITHUB_OUTPUT"
-        echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-spy/meta" >> "$GITHUB_OUTPUT"
+        echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-lab/data" >> "$GITHUB_OUTPUT"
+        echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-lab/meta" >> "$GITHUB_OUTPUT"
         echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
     - name: 'Cache dependencies'
@@ -74,7 +74,7 @@ jobs:
       run: |
         ${{ steps.strings.outputs.cmake-dir }}/bin/cmake `
           --build ${{ steps.strings.outputs.build-dir }} `
-          --target nfc-spy --parallel ${{ steps.strings.outputs.cpu-count }} 
+          --target nfc-lab --parallel ${{ steps.strings.outputs.cpu-count }} 
         
     - name: 'Create installer'
       run: |
@@ -83,7 +83,7 @@ jobs:
         New-Item -Force -ItemType "directory" -Path ${{ steps.strings.outputs.package-meta-dir }}
 
         # copy executable and libraries
-        Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/src/nfc-app/app-qt/nfc-spy.exe ${{ steps.strings.outputs.package-data-dir }}
+        Copy-Item -Force ${{ steps.strings.outputs.build-dir }}/src/nfc-app/app-qt/nfc-lab.exe ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force ${{ steps.strings.outputs.mingw-dir }}/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force ${{ github.workspace }}/dll/airspy/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
         Copy-Item -Force ${{ github.workspace }}/dll/openssl/x86_64/bin/*.dll ${{ steps.strings.outputs.package-data-dir }}
@@ -105,20 +105,20 @@ jobs:
           --no-translations `
           --no-system-d3d-compiler `
           --no-opengl-sw `
-          ${{ steps.strings.outputs.package-data-dir }}/nfc-spy.exe
+          ${{ steps.strings.outputs.package-data-dir }}/nfc-lab.exe
         
         # create installer
         ${{ steps.strings.outputs.installer-dir }}/bin/binarycreator `
           --verbose `
           -c ${{ steps.strings.outputs.build-dir }}/installer/config/config.xml `
           -p ${{ steps.strings.outputs.package-dir }} `
-          ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
+          ${{ steps.strings.outputs.build-dir }}/nfc-lab-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
 
     - name: 'Upload artifact'
       uses: actions/upload-artifact@v4
       with:
-        name: nfc-spy-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
-        path: ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
+        name: nfc-lab-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
+        path: ${{ steps.strings.outputs.build-dir }}/nfc-lab-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
 
     - name: 'Create release'
       if: startsWith(github.ref, 'refs/tags/')
@@ -139,8 +139,8 @@ jobs:
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_name: nfc-spy-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
-        asset_path: ${{ steps.strings.outputs.build-dir }}/nfc-spy-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
+        asset_name: nfc-lab-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
+        asset_path: ${{ steps.strings.outputs.build-dir }}/nfc-lab-${{ steps.strings.outputs.build-name }}-installer-x86_64.exe
         asset_content_type: application/octet-stream
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

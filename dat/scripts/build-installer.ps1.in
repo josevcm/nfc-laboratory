@@ -4,8 +4,8 @@ $TargetPath="@CMAKE_CURRENT_BINARY_DIR@"
 $InstallerPath="$TargetPath/installer"
 $ConfigPath="$InstallerPath/config"
 $PackagePath="$InstallerPath/package"
-$PackageDataPath="$PackagePath/org.josevcm.nfc-spy/data"
-$PackageMetaPath="$PackagePath/org.josevcm.nfc-spy/meta"
+$PackageDataPath="$PackagePath/org.josevcm.nfc-lab/data"
+$PackageMetaPath="$PackagePath/org.josevcm.nfc-lab/meta"
 
 New-Item -Force -Path $PackageDataPath -ItemType "directory"
 New-Item -Force -Path $PackageMetaPath -ItemType "directory"
@@ -15,7 +15,7 @@ Copy-Item -Force $SourcePath/dll/airspy/x86_64/bin/*.dll $PackageDataPath
 Copy-Item -Force $SourcePath/dll/openssl/x86_64/bin/*.dll $PackageDataPath
 Copy-Item -Force $SourcePath/dll/rtlsdr/x86_64/bin/*.dll $PackageDataPath
 Copy-Item -Force $SourcePath/dll/usb/x86_64/bin/*.dll $PackageDataPath
-Copy-Item -Force $TargetPath/src/nfc-app/app-qt/nfc-spy.exe $PackageDataPath
+Copy-Item -Force $TargetPath/src/nfc-app/app-qt/nfc-lab.exe $PackageDataPath
 
 # Copy meta resources
 Copy-Item -Force $SourcePath/dat/installer/*.js $PackageMetaPath
@@ -23,7 +23,7 @@ Copy-Item -Force $TargetPath/installer/config/license.txt $PackageMetaPath
 Copy-Item -Force $TargetPath/installer/config/package.xml $PackageMetaPath
 
 # Create QT deployment from executable
-windeployqt --verbose 1 --release --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-opengl-sw $PackageDataPath/nfc-spy.exe
+windeployqt --verbose 1 --release --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-opengl-sw $PackageDataPath/nfc-lab.exe
 
 # Create QT installer
-binarycreator --verbose -c $ConfigPath/config.xml -p $PackagePath $TargetPath/nfc-spy-@nfc-spy_VERSION@-x86_64.exe
+binarycreator --verbose -c $ConfigPath/config.xml -p $PackagePath $TargetPath/nfc-lab-@nfc-lab_VERSION@-x86_64.exe

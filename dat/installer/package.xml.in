@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package>
-    <Name>org.josevcm.nfc-spy</Name>
-    <DisplayName>NFC SPY @nfc-spy_VERSION@ Installer</DisplayName>
-    <Description>NFC SPY @nfc-spy_VERSION@ Software Installer</Description>
-    <Version>@nfc-spy_VERSION@</Version>
+    <Name>org.josevcm.nfc-lab</Name>
+    <DisplayName>NFC LAB @nfc-lab_VERSION@ Installer</DisplayName>
+    <Description>NFC LAB @nfc-lab_VERSION@ Software Installer</Description>
+    <Version>@nfc-lab_VERSION@</Version>
     <ReleaseDate>2024-06-01</ReleaseDate>
     <Licenses>
         <License name="License Agreement" file="license.txt" />

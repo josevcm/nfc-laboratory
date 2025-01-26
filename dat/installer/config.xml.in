@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Installer>
-    <Name>NFC SPY @nfc-spy_VERSION@ - josevcm@gmail.com</Name>
-    <Version>@nfc-spy_VERSION@</Version>
-    <Title>NFC SPY Installer</Title>
+    <Name>NFC LAB @nfc-lab_VERSION@ - josevcm@gmail.com</Name>
+    <Version>@nfc-lab_VERSION@</Version>
+    <Title>NFC LAB Installer</Title>
     <Publisher>Jose Vicente Campos Martinez</Publisher>
-    <StartMenuDir>NFC SPY</StartMenuDir>
+    <StartMenuDir>NFC LAB</StartMenuDir>
     <TargetDir>@APP_TARGET_DIR@</TargetDir>
 </Installer>
