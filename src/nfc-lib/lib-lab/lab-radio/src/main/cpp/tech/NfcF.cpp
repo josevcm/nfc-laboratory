@@ -43,27 +43,6 @@ enum PatternType
    PatternE = 5
 };
 
-/*
- * status for protocol
- */
-struct NfcProtocolStatus
-{
-   // The FSD defines the maximum size of a frame the PCD is able to receive
-   unsigned int maxFrameSize;
-
-   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
-   unsigned int frameGuardTime;
-
-   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
-   unsigned int frameWaitingTime;
-
-   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
-   unsigned int startUpGuardTime;
-
-   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
-   unsigned int requestGuardTime;
-};
-
 struct NfcF::Impl : NfcTech
 {
    rt::Logger *log = rt::Logger::getLogger("decoder.NfcF");
@@ -82,11 +61,28 @@ struct NfcF::Impl : NfcTech
    // frame processing status
    NfcFrameStatus frameStatus {};
 
-   // protocol processing status
-   NfcProtocolStatus protocolStatus {};
-
    // modulation status for each bitrate
    NfcModulationStatus modulationStatus[4] {};
+
+   // protocol processing status
+   struct NfcProtocolStatus
+   {
+      // The FSD defines the maximum size of a frame the PCD is able to receive
+      unsigned int maxFrameSize;
+
+      // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
+      unsigned int frameGuardTime;
+
+      // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
+      unsigned int frameWaitingTime;
+
+      // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
+      unsigned int startUpGuardTime;
+
+      // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
+      unsigned int requestGuardTime;
+
+   } protocolStatus {};
 
    // minimum modulation deep to detect valid signal for NFC-F (default 10%)
    float minimumModulationDeep = 0.10f;

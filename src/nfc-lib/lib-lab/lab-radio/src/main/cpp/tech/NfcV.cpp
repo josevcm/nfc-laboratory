@@ -45,35 +45,6 @@ enum PatternType
    PatternE = 7, // frame error pattern
 };
 
-/*
- * status for protocol
- */
-struct NfcProtocolStatus
-{
-   // The FSD defines the maximum size of a frame the PCD is able to receive
-   unsigned int maxFrameSize;
-
-   // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
-   unsigned int frameGuardTime;
-
-   // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
-   unsigned int frameWaitingTime;
-
-   // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
-   unsigned int startUpGuardTime;
-
-   // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
-   unsigned int requestGuardTime;
-
-   // Length of first SOF preamble subcarrier burst
-   unsigned int sofS1MinimumTime;
-   unsigned int sofS1MaximumTime;
-
-   // Length of second SOF preamble subcarrier burst
-   unsigned int sofS2MinimumTime;
-   unsigned int sofS2MaximumTime;
-};
-
 struct NfcV::Impl : NfcTech
 {
    rt::Logger *log = rt::Logger::getLogger("decoder.NfcV");
@@ -95,11 +66,36 @@ struct NfcV::Impl : NfcTech
    // frame processing status
    NfcFrameStatus frameStatus {};
 
-   // protocol processing status
-   NfcProtocolStatus protocolStatus {};
-
    // modulation status for each bitrate
    NfcModulationStatus modulationStatus {};
+
+   // protocol processing status
+   struct NfcProtocolStatus
+   {
+      // The FSD defines the maximum size of a frame the PCD is able to receive
+      unsigned int maxFrameSize;
+
+      // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
+      unsigned int frameGuardTime;
+
+      // The FWT defines the maximum time for a PICC to start its response after the end of a PCD frame.
+      unsigned int frameWaitingTime;
+
+      // The SFGT defines a specific guard time needed by the PICC before it is ready to receive the next frame after it has sent the ATS
+      unsigned int startUpGuardTime;
+
+      // The Request Guard Time is defined as the minimum time between the start bits of two consecutive REQA commands. It has the value 7000 / fc.
+      unsigned int requestGuardTime;
+
+      // Length of first SOF preamble subcarrier burst
+      unsigned int sofS1MinimumTime;
+      unsigned int sofS1MaximumTime;
+
+      // Length of second SOF preamble subcarrier burst
+      unsigned int sofS2MinimumTime;
+      unsigned int sofS2MaximumTime;
+
+   } protocolStatus {};
 
    // minimum modulation deep to detect valid signal for NFC-V (default 90%)
    float minimumModulationDeep = 0.90f;
