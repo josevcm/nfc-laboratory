@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=NFC Lab
+GenericName=NFC signal and protocol analyzer
+Comment=NFC signal and protocol analyzer using SDR receiver
+Exec=nfc-lab
+Terminal=false
+Icon=nfc-lab
+Categories=AudioVideo;Audio;Qt;HamRadio;
+Keywords=SDR;Radio;HAM;
