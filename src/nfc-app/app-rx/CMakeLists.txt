@@ -17,7 +17,4 @@ target_link_libraries(nfc-rx ${PLATFORM_LIBS} lab-tasks hw-radio rt-lang nlohman
 # Install targets
 if (UNIX)
     install(TARGETS nfc-rx DESTINATION bin)
-    install(FILES src/main/assets/app/rc/nfc-lab.desktop DESTINATION share/applications)
-    install(FILES src/main/assets/app/rc/nfc-lab.png DESTINATION share/icons/hicolor/512x512/apps)
-    install(FILES src/main/assets/app/rc/nfc-lab.svg DESTINATION share/icons/hicolor/scalable/apps)
 endif (UNIX)
