@@ -19,38 +19,18 @@ jobs:
 
     steps:
 
-      #
-      # Common steps
-      #
-      - name: 'Check out code'
+      - name: 'Check out code (Common)'
         uses: actions/checkout@v4
 
-      #
-      # Ubuntu steps
-      #
       - name: 'Set reusable strings (Ubuntu)'
         id: strings-linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
           echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-          echo "build-version=${{ github.ref_name == 'master' && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "cpu-count=$(nproc)" >> "$GITHUB_OUTPUT"
 
-      - name: 'Install dependencies (Ubuntu)'
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt update
-          sudo apt install -y build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
-
-      - name: 'Build project (Ubuntu)'
-        if: runner.os == 'Linux'
-        run: |
-          dpkg-buildpackage -us -uc -j${{ steps.strings-linux.outputs.cpu-count }} 
-
-      #
-      # Window steps
-      #
       - name: 'Set reusable strings (Windows)'
         if: runner.os == 'Windows'
         id: strings-windows
@@ -79,6 +59,12 @@ jobs:
             ${{ github.workspace }}/qt
             ${{ github.workspace }}/tools
 
+      - name: 'Install dependencies (Ubuntu)'
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
+
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows' && steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
@@ -89,7 +75,12 @@ jobs:
           aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ github.workspace }}
 
-      - name: 'Configure project (Windows)'
+      - name: 'Build project (Ubuntu)'
+        if: runner.os == 'Linux'
+        run: |
+          dpkg-buildpackage -us -uc -j${{ steps.strings-linux.outputs.cpu-count }} 
+
+      - name: 'Build project (Windows)'
         if: runner.os == 'Windows'
         run: |
           ${{ steps.strings-windows.outputs.cmake-dir }}/bin/cmake `
@@ -102,10 +93,6 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ steps.strings-windows.outputs.mingw-dir }}/bin/g++.exe `
             -DCMAKE_MAKE_PROGRAM=${{ steps.strings-windows.outputs.ninja-dir }}/ninja.exe `
             -DBUILD_PROJECT_VERSION="${{ steps.strings-windows.outputs.build-version }}"
-
-      - name: 'Build project (Windows)'
-        if: runner.os == 'Windows'
-        run: |
           ${{ steps.strings-windows.outputs.cmake-dir }}/bin/cmake `
             --build ${{ steps.strings-windows.outputs.build-dir }} `
             --target nfc-lab --parallel ${{ steps.strings-windows.outputs.cpu-count }} 
@@ -156,10 +143,7 @@ jobs:
           name: nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
           path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
 
-      #
-      #  Final steps
-      #
-      - name: 'Create release'
+      - name: 'Create release (Common)'
         if: startsWith(github.ref, 'refs/tags/')
         uses: actions/create-release@v1
         id: create-release
