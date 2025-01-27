@@ -3,6 +3,9 @@
 # Output every command that modifies files on the build system.
 export DH_VERBOSE = 1
 
+# Set Makefile output silent
+export MAKEFLAGS = -s
+
 %:
 	dh $@ -v --buildsystem=cmake
 
