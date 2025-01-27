@@ -22,23 +22,20 @@ jobs:
       - name: 'Check out code (Common)'
         uses: actions/checkout@v4
 
-      - name: 'Set reusable strings (Ubuntu)'
-        id: strings-linux
-        if: runner.os == 'Linux'
+      - name: 'Set reusable strings (Common)'
+        id: strings-common
         shell: bash
         run: |
           echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
           echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
-          echo "cpu-count=$(nproc)" >> "$GITHUB_OUTPUT"
+          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && 'latest' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
       - name: 'Set reusable strings (Windows)'
         if: runner.os == 'Windows'
         id: strings-windows
         shell: bash
         run: |
-          echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-          echo "build-version=${{ github.ref_name == 'master' && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
-          echo "build-name=${{ github.ref_name == 'master' && 'latest' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "qt-dir=${{ github.workspace }}/qt/6.7.2/mingw_64" >> "$GITHUB_OUTPUT"
           echo "ninja-dir=${{ github.workspace }}/tools/ninja" >> "$GITHUB_OUTPUT"
           echo "cmake-dir=${{ github.workspace }}/tools/cmake_64" >> "$GITHUB_OUTPUT"
@@ -47,7 +44,6 @@ jobs:
           echo "package-dir=${{ github.workspace }}/build/installer/package" >> "$GITHUB_OUTPUT"
           echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-lab/data" >> "$GITHUB_OUTPUT"
           echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-lab/meta" >> "$GITHUB_OUTPUT"
-          echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
       - name: 'Cache dependencies (Windows)'
         id: cache-dependencies
@@ -78,24 +74,24 @@ jobs:
       - name: 'Build project (Ubuntu)'
         if: runner.os == 'Linux'
         run: |
-          dpkg-buildpackage -us -uc -j${{ steps.strings-linux.outputs.cpu-count }} 
+          dpkg-buildpackage -us -uc -j${{ steps.strings-common.outputs.cpu-count }} 
 
       - name: 'Build project (Windows)'
         if: runner.os == 'Windows'
         run: |
           ${{ steps.strings-windows.outputs.cmake-dir }}/bin/cmake `
             -S ${{ github.workspace }} `
-            -B ${{ steps.strings-windows.outputs.build-dir }} `
+            -B ${{ steps.strings-common.outputs.build-dir }} `
             -G Ninja `
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
             -DCMAKE_PREFIX_PATH=${{ steps.strings-windows.outputs.qt-dir }} `
             -DCMAKE_C_COMPILER=${{ steps.strings-windows.outputs.mingw-dir }}/bin/gcc.exe `
             -DCMAKE_CXX_COMPILER=${{ steps.strings-windows.outputs.mingw-dir }}/bin/g++.exe `
             -DCMAKE_MAKE_PROGRAM=${{ steps.strings-windows.outputs.ninja-dir }}/ninja.exe `
-            -DBUILD_PROJECT_VERSION="${{ steps.strings-windows.outputs.build-version }}"
+            -DBUILD_PROJECT_VERSION="${{ steps.strings-common.outputs.build-version }}"
           ${{ steps.strings-windows.outputs.cmake-dir }}/bin/cmake `
-            --build ${{ steps.strings-windows.outputs.build-dir }} `
-            --target nfc-lab --parallel ${{ steps.strings-windows.outputs.cpu-count }} 
+            --build ${{ steps.strings-common.outputs.build-dir }} `
+            --target nfc-lab --parallel ${{ steps.strings-common.outputs.cpu-count }} 
 
       - name: 'Create installer (Windows)'
         if: runner.os == 'Windows'
@@ -105,7 +101,7 @@ jobs:
           New-Item -Force -ItemType "directory" -Path ${{ steps.strings-windows.outputs.package-meta-dir }}
           
           # copy executable and libraries
-          Copy-Item -Force ${{ steps.strings-windows.outputs.build-dir }}/src/nfc-app/app-qt/nfc-lab.exe ${{ steps.strings-windows.outputs.package-data-dir }}
+          Copy-Item -Force ${{ steps.strings-common.outputs.build-dir }}/src/nfc-app/app-qt/nfc-lab.exe ${{ steps.strings-windows.outputs.package-data-dir }}
           Copy-Item -Force ${{ steps.strings-windows.outputs.mingw-dir }}/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/airspy/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/openssl/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
@@ -118,7 +114,7 @@ jobs:
           Copy-Item -Force -Recurse ${{ github.workspace }}/dat/firmware ${{ steps.strings-windows.outputs.package-data-dir }}
           
           # copy installer resources
-          Copy-Item -Force ${{ steps.strings-windows.outputs.build-dir }}/installer/config/*.* ${{ steps.strings-windows.outputs.package-meta-dir }}
+          Copy-Item -Force ${{ steps.strings-common.outputs.build-dir }}/installer/config/*.* ${{ steps.strings-windows.outputs.package-meta-dir }}
           
           # create deployment
           ${{ steps.strings-windows.outputs.qt-dir }}/bin/windeployqt `
@@ -132,16 +128,16 @@ jobs:
           # create installer
           ${{ steps.strings-windows.outputs.installer-dir }}/bin/binarycreator `
             --verbose `
-            -c ${{ steps.strings-windows.outputs.build-dir }}/installer/config/config.xml `
+            -c ${{ steps.strings-common.outputs.build-dir }}/installer/config/config.xml `
             -p ${{ steps.strings-windows.outputs.package-dir }} `
-            ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
 
       - name: 'Upload artifact (Windows)'
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
-          path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+          name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+          path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
 
       - name: 'Create release (Common)'
         if: startsWith(github.ref, 'refs/tags/')
@@ -162,8 +158,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_name: nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
-          asset_path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+          asset_name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+          asset_path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
           asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
