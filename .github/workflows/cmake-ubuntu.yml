@@ -32,7 +32,7 @@ jobs:
     - name: 'Install dependencies'
       run: |
         sudo apt update
-        sudo apt install -y build-essential debhelper-compat qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
+        sudo apt install -y build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
 
 #    - name: 'Configure project'
 #      run: |
