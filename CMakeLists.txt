@@ -16,14 +16,8 @@ project(nfc-lab VERSION "${BUILD_PROJECT_VERSION}" LANGUAGES C CXX)
 #-------------------------------------------------------------------------------
 # build flags
 #-------------------------------------------------------------------------------
-if(WIN32)
-  set(DEBUG_BIGOBJ_FLAG "-Wa,-mbig-obj")
-else()
-  set(DEBUG_BIGOBJ_FLAG "")
-endif()
-
-set(CMAKE_C_FLAGS_DEBUG "-g -Og -fno-math-errno -falign-functions=32 -falign-loops=32 ${DEBUG_BIGOBJ_FLAG}" CACHE INTERNAL "" FORCE)
-set(CMAKE_CXX_FLAGS_DEBUG "-g -Og -fno-math-errno -falign-functions=32 -falign-loops=32 ${DEBUG_BIGOBJ_FLAG}" CACHE INTERNAL "" FORCE)
+set(CMAKE_C_FLAGS_DEBUG "-g -Og -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG "-g -Og -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
 
 set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
@@ -31,7 +25,10 @@ set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -fno-math-errno -falign-functions=32 -falig
 if (UNIX)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-endif ()
+else(WIN32)
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wa,-mbig-obj")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wa,-mbig-obj")
+endif()
 
 message(STATUS "Build for ${CMAKE_SYSTEM_PROCESSOR} in ${CMAKE_BUILD_TYPE} mode")
 
