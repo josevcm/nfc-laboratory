@@ -376,7 +376,7 @@ struct Iso7816::Impl : IsoTech
       protocolStatus.symbolConvention = DirectConvention;
 
       // update protocol timings based on current ETU samples and set default Fi/Di values
-      updateProtocol((modulationStatus.syncEndTime - modulationStatus.syncStartTime) / 3.0, 0, 1);
+      updateProtocol((modulationStatus.syncEndTime - modulationStatus.syncStartTime) / 3.0, 1, 1);
 
       // configure frame timing parameters
       frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
@@ -1139,6 +1139,7 @@ struct Iso7816::Impl : IsoTech
          double dn = ISO_DI_TABLE[di];
 
          // new elementary time unit
+         // TODO: aqui esta el fallo, no se esta calculando bien el nuevo ETU resultante del cambio de frecuencia
          double et = protocolStatus.elementaryTime * (fn * protocolStatus.baudRateFactor) / (protocolStatus.frequencyFactor * dn);
          double etu = et * decoder->sampleTime;
 

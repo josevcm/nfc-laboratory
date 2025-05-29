@@ -53,7 +53,7 @@ class DeviceFactory
       template<class T>
       static T *newInstance(const std::string &name)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          std::string type = name.find("://") != std::string::npos ? name.substr(0, name.find("://")) : "";
 
