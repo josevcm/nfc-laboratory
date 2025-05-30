@@ -19,8 +19,8 @@ project(nfc-lab VERSION "${BUILD_PROJECT_VERSION}" LANGUAGES C CXX)
 set(CMAKE_C_FLAGS_DEBUG "-g -Og -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -Og -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
 
-set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -fno-math-errno -falign-functions=32 -falign-loops=32" CACHE INTERNAL "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -fno-math-errno -falign-functions=32 -falign-loops=32 -march=native -fopenmp" CACHE INTERNAL "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -fno-math-errno -falign-functions=32 -falign-loops=32 -march=native -fopenmp" CACHE INTERNAL "" FORCE)
 
 if (UNIX)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")

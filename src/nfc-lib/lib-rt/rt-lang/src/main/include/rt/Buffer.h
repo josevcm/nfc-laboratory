@@ -26,63 +26,58 @@
 #include <cstring>
 #include <memory>
 #include <functional>
-#include <cstdlib>
 
 #define BUFFER_ALIGNMENT 256
 
 namespace rt {
 
-template<class T>
+template <class T>
 class Buffer
 {
    struct Alloc
+   {
+      T *data = nullptr; // aligned payload data pointer
+      void *context = nullptr; // context payload
+      unsigned int type = 0; // data type
+      unsigned int stride = 0; // data stride, how many data has in one chunk for all channels
+      unsigned int interleave = 0; // data interleave, how many consecutive data has per channel
+      std::atomic<int> references; // block reference count
+
+      Alloc(unsigned int type, unsigned int capacity, unsigned int stride, unsigned int interleave, void *context) : data(nullptr), type(type), references(1), stride(stride), interleave(interleave), context(context)
       {
-         T *data = nullptr; // aligned payload data pointer
-         void *block = nullptr;  // raw memory block pointer
-         void *context = nullptr; // context payload
-         unsigned int type = 0; // data type
-         unsigned int stride = 0; // data stride, how many data has in one chunk for all channels
-         unsigned int interleave = 0; // data interleave, how many consecutive data has per channel
-         std::atomic<int> references; // block reference count
+         // allocate raw memory including alignment space
+         data = static_cast<T *>(operator new[](capacity * sizeof(T), static_cast<std::align_val_t>(BUFFER_ALIGNMENT)));
+      }
 
-         Alloc(unsigned int type, unsigned int capacity, unsigned int stride, unsigned int interleave, void *context) : data(nullptr), type(type), references(1), stride(stride), interleave(interleave), context(context)
-         {
-            // allocate raw memory including alignment space
-            block = malloc(capacity * sizeof(T) + BUFFER_ALIGNMENT);
-
-            // align data buffer
-            data = (T *) ((reinterpret_cast<uintptr_t>(block) + BUFFER_ALIGNMENT) & ~(BUFFER_ALIGNMENT - 1));
-         }
-
-         ~Alloc()
-         {
-            // release allocated buffer
-            free(block);
-         }
-
-         int attach()
-         {
-            return ++references;
-         }
-
-         int detach()
-         {
-            return --references;
-         }
-
-      } *alloc {};
-
-      struct State
+      ~Alloc()
       {
-         unsigned int position; // current data position
-         unsigned int capacity; // buffer data capacity
-         unsigned int limit; // buffer data limit
+         // free buffer data
+         ::operator delete[](data, static_cast<std::align_val_t>(BUFFER_ALIGNMENT));
+      }
 
-         State(unsigned int position, unsigned int capacity, unsigned int limit) : position(position), capacity(capacity), limit(limit)
-         {
-         }
+      int attach()
+      {
+         return ++references;
+      }
 
-      } state;
+      int detach()
+      {
+         return --references;
+      }
+
+   } *alloc {};
+
+   struct State
+   {
+      unsigned int position; // current data position
+      unsigned int capacity; // buffer data capacity
+      unsigned int limit; // buffer data limit
+
+      State(unsigned int position, unsigned int capacity, unsigned int limit) : position(position), capacity(capacity), limit(limit)
+      {
+      }
+
+   } state;
 
    public:
 
@@ -96,13 +91,13 @@ class Buffer
             alloc->attach();
       }
 
-      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state(0, capacity, capacity), alloc(new Alloc(type, capacity, stride, interleave, context))
+      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : alloc(new Alloc(type, capacity, stride, interleave, context)), state(0, capacity, capacity)
       {
          if (data && capacity)
             put(data, capacity).flip();
       }
 
-      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state(0, capacity, capacity), alloc(new Alloc(type, capacity, stride, interleave, context))
+      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : alloc(new Alloc(type, capacity, stride, interleave, context)), state(0, capacity, capacity)
       {
       }
 
@@ -255,14 +250,13 @@ class Buffer
       {
          if (alloc)
          {
-            auto data = new T[newCapacity];
+            const int count = std::min(newCapacity, state.limit);
 
-            for (int i = 0; i < newCapacity && i < state.limit; i++)
-            {
-               data[i] = alloc->data[i];
-            }
+            T *data = static_cast<T *>(operator new[](newCapacity * sizeof(T), static_cast<std::align_val_t>(BUFFER_ALIGNMENT)));
 
-            delete[] alloc->data;
+            std::memcpy(data, alloc->data, count * sizeof(T));
+
+            ::operator delete[](alloc->data, std::align_val_t(BUFFER_ALIGNMENT));
 
             alloc->data = data;
             state.limit = newCapacity > state.limit ? state.limit : newCapacity;
@@ -348,10 +342,13 @@ class Buffer
       {
          if (alloc)
          {
-            for (int i = 0; state.position < state.limit && i < size; ++i, ++state.position)
-            {
-               data[i] = alloc->data[state.position];
-            }
+            int count = std::min(size, state.limit - state.position);
+
+#pragma omp simd
+            for (int i = 0; i < count; ++i)
+               data[i] = alloc->data[state.position + i];
+
+            state.position += count;
          }
 
          return *this;
@@ -361,16 +358,19 @@ class Buffer
       {
          if (alloc)
          {
-            for (int i = 0; i < size && state.position < state.limit; ++i, ++state.position)
-            {
-               alloc->data[state.position] = data[i];
-            }
+            int count = std::min(size, state.limit - state.position);
+
+#pragma omp simd
+            for (int i = 0; i < count; ++i)
+               alloc->data[state.position + i] = data[i];
+
+            state.position += count;
          }
 
          return *this;
       }
 
-      template<typename E>
+      template <typename E>
       E reduce(E value, const std::function<E(E, T)> &handler) const
       {
          if (alloc)
