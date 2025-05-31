@@ -25,7 +25,7 @@
 namespace lab {
 
 // ISO7816 Default value for the frequency adjustment (Fi)
-constexpr int ISO_7816_FI_DEF = 0; // 372
+constexpr int ISO_7816_FI_DEF = 1; // 372
 
 // ISO7816 Default value for the baud rate divisor adjustment (Di)
 constexpr int ISO_7816_DI_DEF = 1; // 1
