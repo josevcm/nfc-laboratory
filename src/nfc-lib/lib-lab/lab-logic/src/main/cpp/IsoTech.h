@@ -144,6 +144,11 @@ struct IsoModulationStatus
    // sync parameters
    unsigned int syncStartTime; // sample time for sync start
    unsigned int syncEndTime; // sample time for sync end
+
+   // clock parameters
+   unsigned int clockEdgeTime; // sample time for first clock edge
+   unsigned int  clockCounter; // use last 16 periods to calculate clock frequency
+   double clockFrequency; // detected clock frequency in Hz
 };
 
 /*

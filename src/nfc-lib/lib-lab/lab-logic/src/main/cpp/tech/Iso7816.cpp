@@ -37,9 +37,9 @@
 #define SEARCH_MODE_T0 4
 
 #define CH_IO 0
-// #define CH_CLK 1
-#define CH_RST 1
-#define CH_VCC 2
+#define CH_CLK 1
+#define CH_RST 2
+#define CH_VCC 3
 
 #define ATR_MIN_LEN 2
 #define ATR_MAX_LEN 32
@@ -245,6 +245,8 @@ struct Iso7816::Impl : IsoTech
    {
       detectLines(frames);
 
+      detectClock(frames);
+
       switch (modulationStatus.searchModeState)
       {
          case SEARCH_MODE_RESET:
@@ -264,7 +266,7 @@ struct Iso7816::Impl : IsoTech
    }
 
    /*
-    * Detect changes in VCC and RST lines
+    * Detect changes in VCC and RST lines and frequency of signal clock
     */
    void detectLines(std::list<RawFrame> &frames) const
    {
@@ -302,6 +304,45 @@ struct Iso7816::Impl : IsoTech
 
          frames.push_back(rstChange);
       }
+   }
+
+   /*
+    * Wait for VCC and reset line to go UP
+    */
+   bool detectClock(std::list<RawFrame> &frames)
+   {
+      float clockEdge = decoder->sampleEdge[CH_CLK];
+
+      if (clockEdge < 0)
+      {
+         // measure time between 10 edges and calculate clock frequency
+         if (++modulationStatus.clockCounter == 10)
+         {
+            modulationStatus.clockFrequency = static_cast<double>(decoder->sampleRate * modulationStatus.clockCounter) / static_cast<double>(decoder->signalClock - modulationStatus.clockEdgeTime); // calculate clock frequency
+            modulationStatus.clockEdgeTime = decoder->signalClock;
+            modulationStatus.clockCounter = 0;
+
+            if (protocolStatus.clockFrequency > 0)
+            {
+               double clockChange = std::abs(modulationStatus.clockFrequency - protocolStatus.clockFrequency) / protocolStatus.clockFrequency;
+
+               if (clockChange > 0.05)
+               {
+                  log->info("detected clock change: {.2} MHz -> {.2} MHz", {protocolStatus.clockFrequency / 1000000.0f, modulationStatus.clockFrequency / 1000000.0f});
+
+                  // calculate elementary time unit based on ATR SYNC pattern
+                  // double etuSyncSamples = (modulationStatus.syncEndTime - modulationStatus.syncStartTime) / 3.0;
+
+                  // derive new elementary time unit for current clock frequency
+                  // double etuSamples = (ISO_FI_TABLE[protocolStatus.frequencyFactorIndex] / ISO_DI_TABLE[protocolStatus.baudRateFactorIndex]);
+
+                  updateProtocol(modulationStatus.clockFrequency, protocolStatus.frequencyFactorIndex, protocolStatus.baudRateFactorIndex);
+               }
+            }
+         }
+      }
+
+      return true;
    }
 
    /*
@@ -375,8 +416,14 @@ struct Iso7816::Impl : IsoTech
       // assume direct convention
       protocolStatus.symbolConvention = DirectConvention;
 
+      // calculate elementary time unit based on SYNC pattern
+      double etuSamples = (modulationStatus.syncEndTime - modulationStatus.syncStartTime) / 3.0;
+
+      // calculate clock frequency based on measured ETU and default F / D parameters
+      double clockFrequency = (decoder->sampleRate / etuSamples) * (ISO_FI_TABLE[ISO_7816_FI_DEF] / ISO_DI_TABLE[ISO_7816_DI_DEF]);
+
       // update protocol timings based on current ETU samples and set default Fi/Di values
-      updateProtocol((modulationStatus.syncEndTime - modulationStatus.syncStartTime) / 3.0, 1, 1);
+      updateProtocol(clockFrequency, ISO_7816_FI_DEF, ISO_7816_DI_DEF);
 
       // configure frame timing parameters
       frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
@@ -387,10 +434,6 @@ struct Iso7816::Impl : IsoTech
       modulationStatus.searchSyncTime = characterStatus.start + protocolStatus.elementaryTime * 3 + protocolStatus.elementaryHalfTime;
       modulationStatus.searchStartTime = 0;
       modulationStatus.searchEndTime = 0;
-
-      // clear synchronization status
-      modulationStatus.syncStartTime = 0;
-      modulationStatus.syncEndTime = 0;
 
       return false;
    }
@@ -550,6 +593,8 @@ struct Iso7816::Impl : IsoTech
       {
          detectLines(frames);
 
+         detectClock(frames);
+
          if (decodeFrameT0())
          {
             // frames must contain at least one byte
@@ -600,6 +645,8 @@ struct Iso7816::Impl : IsoTech
       {
          detectLines(frames);
 
+         detectClock(frames);
+
          if (decodeFrameT1())
          {
             // frames must contain at least one byte
@@ -649,6 +696,8 @@ struct Iso7816::Impl : IsoTech
       while (decoder->nextSample(samples))
       {
          detectLines(frames);
+
+         detectClock(frames);
       }
    }
 
@@ -1104,7 +1153,7 @@ struct Iso7816::Impl : IsoTech
 
       // update protocol parameters
       if (updateParameters)
-         updateProtocol(protocolStatus.elementaryTime, protocolStatus.frequencyFactorIndex, protocolStatus.baudRateFactorIndex);
+         updateProtocol(protocolStatus.clockFrequency, protocolStatus.frequencyFactorIndex, protocolStatus.baudRateFactorIndex);
 
       return true;
    }
@@ -1139,16 +1188,16 @@ struct Iso7816::Impl : IsoTech
          double dn = ISO_DI_TABLE[di];
 
          // new elementary time unit
-         // TODO: aqui esta el fallo, no se esta calculando bien el nuevo ETU resultante del cambio de frecuencia
-         double et = protocolStatus.elementaryTime * (fn * protocolStatus.baudRateFactor) / (protocolStatus.frequencyFactor * dn);
-         double etu = et * decoder->sampleTime;
+         // double etu = fn / dn;
+         // double etuSamples = protocolStatus.elementaryTime * (fn * protocolStatus.baudRateFactor) / (protocolStatus.frequencyFactor * dn);
+         // double etuPeriod = etuSamples * decoder->sampleTime;
 
          if (protocolStatus.protocolParametersChange)
          {
             protocolStatus.protocolType = pps0 & 0x0f;
 
             // update protocol parameters
-            updateProtocol(et, fi, di);
+            updateProtocol(protocolStatus.clockFrequency, fi, di);
 
             // in protocol T1, next frame must be IsoRequestFrame
             if (protocolStatus.protocolType == 1)
@@ -1160,7 +1209,6 @@ struct Iso7816::Impl : IsoTech
          {
             log->info("\trequest frequency adjustment, FI {} ({.0} clock cycles)", {fi, fn});
             log->info("\trequest baud rate divisor, DI {} (1/{.0})", {di, dn});
-            log->info("\trequest elementary time unit, ETU {.3} us ({.2} samples)", {1000000.0 * etu, et});
 
             // request protocol parameters change on card response
             protocolStatus.protocolParametersChange = true;
@@ -1324,26 +1372,42 @@ struct Iso7816::Impl : IsoTech
    /*
     * Update protocol timmings based on number of samples for one ETU
     */
-   void updateProtocol(double elementaryTime, unsigned int fi, unsigned int di)
+   void updateProtocol(const double clockFrequency, const unsigned int fi, const unsigned int di)
    {
-      // update frequency and baud rate factors
-      protocolStatus.frequencyFactorIndex = fi;
-      protocolStatus.baudRateFactorIndex = di;
-      protocolStatus.frequencyFactor = ISO_FI_TABLE[protocolStatus.frequencyFactorIndex];
-      protocolStatus.baudRateFactor = ISO_DI_TABLE[protocolStatus.baudRateFactorIndex];
+      double sampleRate = decoder->sampleRate;
+      double frequencyFactor = ISO_FI_TABLE[fi];
+      double baudRateFactor = ISO_DI_TABLE[di];
 
       // initialize default protocol parameters for start decoding
-      protocolStatus.elementaryTime = elementaryTime;
-      protocolStatus.elementaryHalfTime = elementaryTime / 2;
-      protocolStatus.elementaryTimeUnit = elementaryTime * decoder->sampleTime;
-      protocolStatus.characterGuardTime = elementaryTime * protocolStatus.characterGuardTimeUnits;
-      protocolStatus.characterWaitingTime = elementaryTime * protocolStatus.characterWaitingTimeUnits * protocolStatus.baudRateFactor;
-      protocolStatus.blockGuardTime = elementaryTime * protocolStatus.blockGuardTimeUnits;
-      protocolStatus.blockWaitingTime = elementaryTime * protocolStatus.blockWaitingTimeUnits * protocolStatus.baudRateFactor;
-      protocolStatus.extraGuardTime = elementaryTime * protocolStatus.extraGuardTimeUnits;
+      if (clockFrequency > 0)
+      {
+         protocolStatus.elementaryTime = sampleRate * frequencyFactor / (baudRateFactor * clockFrequency);
+         protocolStatus.elementaryHalfTime = protocolStatus.elementaryTime / 2;
+         protocolStatus.elementaryTimeUnit = protocolStatus.elementaryTime * decoder->sampleTime;
+         protocolStatus.characterGuardTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.characterGuardTimeUnits));
+         protocolStatus.characterWaitingTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.characterWaitingTimeUnits * protocolStatus.baudRateFactor));
+         protocolStatus.blockGuardTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.blockGuardTimeUnits));
+         protocolStatus.blockWaitingTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.blockWaitingTimeUnits * protocolStatus.baudRateFactor));
+         protocolStatus.extraGuardTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.extraGuardTimeUnits));
+      }
+      else
+      {
+         protocolStatus.elementaryTime = 0;
+         protocolStatus.elementaryHalfTime = 0;
+         protocolStatus.elementaryTimeUnit = 0;
+         protocolStatus.characterGuardTime = 0;
+         protocolStatus.characterWaitingTime = 0;
+         protocolStatus.blockGuardTime = 0;
+         protocolStatus.blockWaitingTime = 0;
+         protocolStatus.extraGuardTime = 0;
+      }
 
       // update clock frequency
-      protocolStatus.clockFrequency = elementaryTime > 0 ? protocolStatus.frequencyFactor / (protocolStatus.elementaryTimeUnit * protocolStatus.baudRateFactor) : 0;
+      protocolStatus.clockFrequency = clockFrequency;
+      protocolStatus.frequencyFactor = static_cast<int>(frequencyFactor);
+      protocolStatus.baudRateFactor = static_cast<int>(baudRateFactor);
+      protocolStatus.frequencyFactorIndex = fi;
+      protocolStatus.baudRateFactorIndex = di;
 
       // reset protocol parameters change flag
       protocolStatus.protocolParametersChange = false;
