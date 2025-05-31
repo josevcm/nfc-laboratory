@@ -66,10 +66,10 @@ class Throughput
          e = std::chrono::duration_cast<std::chrono::microseconds>(s);
 
          // process exponential average time
-         a = a * (1 - 0.01) + double(e.count()) * 0.01;
+         a = a * (1 - 0.01) + static_cast<double>(e.count()) * 0.01;
 
          // process exponential average throughput
-         r = r * (1 - 0.01) + (elements / double(e.count()) * 1E6) * 0.01;
+         r = r * (1 - 0.01) + (elements / static_cast<double>(e.count()) * 1E6) * 0.01;
 
          // update last time
          t = std::chrono::steady_clock::now();
