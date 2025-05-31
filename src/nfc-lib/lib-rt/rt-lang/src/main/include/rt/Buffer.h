@@ -65,7 +65,7 @@ class Buffer
          return --references;
       }
 
-   } *alloc {};
+   } *alloc = nullptr;
 
    struct State
    {
@@ -237,9 +237,7 @@ class Buffer
          if (alloc && state.position + size <= state.capacity)
          {
             T *ptr = alloc->data + state.position;
-
             state.position += size;
-
             return ptr;
          }
 
@@ -256,7 +254,7 @@ class Buffer
 
             std::memcpy(data, alloc->data, count * sizeof(T));
 
-            ::operator delete[](alloc->data, std::align_val_t(BUFFER_ALIGNMENT));
+            ::operator delete[](alloc->data, static_cast<std::align_val_t>(BUFFER_ALIGNMENT));
 
             alloc->data = data;
             state.limit = newCapacity > state.limit ? state.limit : newCapacity;
@@ -291,9 +289,7 @@ class Buffer
       Buffer &rewind()
       {
          if (alloc)
-         {
             state.position = 0;
-         }
 
          return *this;
       }
@@ -301,9 +297,7 @@ class Buffer
       Buffer &get(T *data)
       {
          if (alloc && state.position < state.limit)
-         {
             *data = alloc->data[state.position++];
-         }
 
          return *this;
       }
@@ -311,9 +305,7 @@ class Buffer
       Buffer &put(const T *data)
       {
          if (alloc && state.position < state.limit)
-         {
             alloc->data[state.position++] = *data;
-         }
 
          return *this;
       }
@@ -321,9 +313,7 @@ class Buffer
       Buffer &get(T &value)
       {
          if (alloc && state.position < state.limit)
-         {
             value = alloc->data[state.position++];
-         }
 
          return *this;
       }
@@ -331,9 +321,7 @@ class Buffer
       Buffer &put(const T &value)
       {
          if (alloc && state.position < state.limit)
-         {
             alloc->data[state.position++] = value;
-         }
 
          return *this;
       }
@@ -343,11 +331,7 @@ class Buffer
          if (alloc)
          {
             int count = std::min(size, state.limit - state.position);
-
-#pragma omp simd
-            for (int i = 0; i < count; ++i)
-               data[i] = alloc->data[state.position + i];
-
+            std::memcpy(data, alloc->data + state.position, count * sizeof(T));
             state.position += count;
          }
 
@@ -359,11 +343,7 @@ class Buffer
          if (alloc)
          {
             int count = std::min(size, state.limit - state.position);
-
-#pragma omp simd
-            for (int i = 0; i < count; ++i)
-               alloc->data[state.position + i] = data[i];
-
+            std::memcpy(alloc->data + state.position, data, count * sizeof(T));
             state.position += count;
          }
 
@@ -376,9 +356,7 @@ class Buffer
          if (alloc)
          {
             for (int i = state.position; i < state.limit; ++i)
-            {
                value = handler(value, alloc->data[i]);
-            }
          }
 
          return value;
@@ -389,9 +367,7 @@ class Buffer
          if (alloc)
          {
             for (int i = state.position; i < state.limit; i += alloc->stride)
-            {
                handler(alloc->data + i, alloc->stride);
-            }
          }
       }
 
