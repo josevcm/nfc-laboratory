@@ -443,9 +443,9 @@ struct QtWindow::Impl
       });
 
       // create logic channels
+      ui->logicView->addChannel(1, {Theme::defaultSignalPen, Theme::defaultLogicCLKPen, Theme::defaultLogicCLKBrush, Theme::defaultTextPen, Theme::defaultLabelFont, "CLK"});
       ui->logicView->addChannel(0, {Theme::defaultSignalPen, Theme::defaultLogicIOPen, Theme::defaultLogicIOBrush, Theme::defaultTextPen, Theme::defaultLabelFont, "IO"});
       ui->logicView->addChannel(2, {Theme::defaultSignalPen, Theme::defaultLogicRSTPen, Theme::defaultLogicRSTBrush, Theme::defaultSignalPen, Theme::defaultLabelFont, "RST"});
-      ui->logicView->addChannel(1, {Theme::defaultSignalPen, Theme::defaultLogicCLKPen, Theme::defaultLogicCLKBrush, Theme::defaultTextPen, Theme::defaultLabelFont, "CLK"});
       ui->logicView->addChannel(3, {Theme::defaultSignalPen, Theme::defaultLogicVCCPen, Theme::defaultLogicVCCBrush, Theme::defaultSignalPen, Theme::defaultLabelFont, "VCC"});
 
       // acquire timer is one shot
