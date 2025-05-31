@@ -520,7 +520,7 @@ struct Iso7816::Impl : IsoTech
                break;
 
             // build request frame
-            RawFrame request = RawFrame(Iso7816Tech, frameStatus.frameType);
+            RawFrame request = RawFrame(Iso7816Tech, IsoATRFrame);
 
             request.setFrameRate(frameStatus.symbolRate);
             request.setSampleStart(frameStatus.frameStart);
@@ -970,17 +970,20 @@ struct Iso7816::Impl : IsoTech
       while (false);
 
       // for request frame set response timings
-      switch (frame.frameType())
+      if (protocolStatus.protocolType == PROTO_T1)
       {
-         case IsoRequestFrame:
+         switch (frame.frameType())
          {
-            frameStatus.frameType = IsoResponseFrame;
-            break;
-         }
-         case IsoResponseFrame:
-         {
-            frameStatus.frameType = IsoRequestFrame;
-            break;
+            case IsoRequestFrame:
+            {
+               frameStatus.frameType = IsoResponseFrame;
+               break;
+            }
+            case IsoResponseFrame:
+            {
+               frameStatus.frameType = IsoRequestFrame;
+               break;
+            }
          }
       }
 
@@ -1187,23 +1190,16 @@ struct Iso7816::Impl : IsoTech
          double fn = ISO_FI_TABLE[fi];
          double dn = ISO_DI_TABLE[di];
 
-         // new elementary time unit
-         // double etu = fn / dn;
-         // double etuSamples = protocolStatus.elementaryTime * (fn * protocolStatus.baudRateFactor) / (protocolStatus.frequencyFactor * dn);
-         // double etuPeriod = etuSamples * decoder->sampleTime;
-
          if (protocolStatus.protocolParametersChange)
          {
+            // check if protocol type is T0 or T1
             protocolStatus.protocolType = pps0 & 0x0f;
+
+            // restore frame type based on protocol
+            frameStatus.frameType = protocolStatus.protocolType == PROTO_T0 ? IsoExchangeFrame : IsoRequestFrame;
 
             // update protocol parameters
             updateProtocol(protocolStatus.clockFrequency, fi, di);
-
-            // in protocol T1, next frame must be IsoRequestFrame
-            if (protocolStatus.protocolType == 1)
-            {
-               frameStatus.frameType = IsoRequestFrame;
-            }
          }
          else
          {
@@ -1413,11 +1409,11 @@ struct Iso7816::Impl : IsoTech
       protocolStatus.protocolParametersChange = false;
 
       // trace new protocol parameters
-      log->info("set protocol parameters, T{} ", {protocolStatus.protocolType});
+      log->info("update protocol parameters, T{} ", {protocolStatus.protocolType});
       log->info("\tclock frequency.......: {.2} MHz", {protocolStatus.clockFrequency / 1000000.0});
       log->info("\tfrequency adjustment..: Fi {} Fn {}", {protocolStatus.frequencyFactorIndex, protocolStatus.frequencyFactor});
       log->info("\tbaud rate adjustment..: Di {} Dn {}", {protocolStatus.baudRateFactorIndex, protocolStatus.baudRateFactor});
-      log->info("\telementary time unit..: 1 ETU {.3} us ({.2} samples)", {1000000.0 * protocolStatus.elementaryTimeUnit, protocolStatus.elementaryTime});
+      log->info("\telementary time unit..: 1 ETU {.3} us ({.2} samples)", {protocolStatus.elementaryTimeUnit * 1000000.0, protocolStatus.elementaryTime});
       log->info("\tcharacter guard time..: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.characterGuardTimeUnits, 1000000.0 * protocolStatus.characterGuardTime * decoder->sampleTime, protocolStatus.characterGuardTime});
       log->info("\tcharacter waiting time: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.characterWaitingTimeUnits, 1000000.0 * protocolStatus.characterWaitingTime * decoder->sampleTime, protocolStatus.characterWaitingTime});
       log->info("\tblock guard time......: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.blockGuardTimeUnits, 1000000.0 * protocolStatus.blockGuardTime * decoder->sampleTime, protocolStatus.blockGuardTime});
