@@ -191,7 +191,7 @@ std::list<RawFrame> IsoDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
          while (decoder.nextSample(samples))
          {
             if ((enabledTech & ENABLED_ISO7816) && iso7816.detect(frames))
-               break;
+            break;
          }
       }
 
@@ -207,7 +207,6 @@ std::list<RawFrame> IsoDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
                break;
          }
       }
-
    }
    while (decoder.hasSamples(samples));
 
