@@ -129,7 +129,7 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
          {
             if (taskThroughput.average() > 0)
             {
-               log->info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
+               log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, logicSignalQueue.size()});
 
                taskThroughput.begin();
             }

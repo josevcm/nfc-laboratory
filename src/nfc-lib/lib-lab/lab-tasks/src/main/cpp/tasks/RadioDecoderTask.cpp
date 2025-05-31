@@ -131,7 +131,7 @@ struct RadioDecoderTask::Impl : RadioDecoderTask, AbstractTask
          {
             if (taskThroughput.average() > 0)
             {
-               log->info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
+               log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, radioSignalQueue.size()});
 
                taskThroughput.begin();
             }
