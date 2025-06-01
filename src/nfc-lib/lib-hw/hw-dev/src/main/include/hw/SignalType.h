@@ -29,8 +29,9 @@ enum SignalType
    SIGNAL_TYPE_RAW_IQ = 1, // 2 float components per sample (I / Q value)
    SIGNAL_TYPE_RAW_REAL = 2, // 1 float component per sample (magnitude value)
    SIGNAL_TYPE_RAW_LOGIC = 3, // 1 float component per sample (1 / 0 value)
-   SIGNAL_TYPE_ADV_REAL = 4, // 2 float components per sample (value / offset)
-   SIGNAL_TYPE_ADV_LOGIC = 5, // 2 float components per sample (value / offset)
+   SIGNAL_TYPE_INTERLEAVED_LOGIC = 4, // 1 float component per channel sample (1 / 0 value)
+   SIGNAL_TYPE_ADV_REAL = 5, // 2 float components per sample (value / offset)
+   SIGNAL_TYPE_ADV_LOGIC = 6, // 2 float components per sample (value / offset)
    SIGNAL_TYPE_FFT_BIN = 10 // 2 float components per sample (magnitude / phase)
 };
 

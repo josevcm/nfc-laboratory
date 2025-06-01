@@ -38,6 +38,7 @@
 
 #define DEVICE_TYPE_PREFIX "logic.dslogic"
 #define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 8
+#define CHANNEL_BUFFER_SAMPLES 16384 // number of samples per buffer
 
 namespace hw {
 
@@ -126,6 +127,7 @@ struct DSLogicDevice::Impl
    /*
     * Received buffers
     */
+   SignalBuffer buffer;
    std::vector<SignalBuffer> buffers;
 
    /*
@@ -1856,7 +1858,8 @@ struct DSLogicDevice::Impl
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
          // split received data in one buffer per channel
-         std::vector<SignalBuffer> buffers = splitBuffers(transfer);
+         // std::vector<SignalBuffer> buffers = channelSplit(transfer);
+         std::vector<SignalBuffer> buffers = channelInterleave(transfer);
 
          // call user handler for each channel
          for (auto &buffer: buffers)
@@ -1897,7 +1900,7 @@ struct DSLogicDevice::Impl
       return nullptr;
    }
 
-   std::vector<SignalBuffer> splitBuffers(Usb::Transfer *transfer)
+   std::vector<SignalBuffer> channelSplit(Usb::Transfer *transfer)
    {
       std::vector<SignalBuffer> result;
 
@@ -1941,6 +1944,107 @@ struct DSLogicDevice::Impl
             c = (c + 1) % validChannels;
 
             buffer = &buffers[c];
+         }
+      }
+
+      // update current bytes
+      currentBytes += transfer->actual;
+
+      // flip all buffers
+      for (auto &b: result)
+      {
+         b.flip();
+      }
+
+      return result;
+   }
+
+   std::vector<SignalBuffer> channelInterleave(Usb::Transfer *transfer)
+   {
+      std::vector<SignalBuffer> result;
+
+      // source buffer offset
+      unsigned int o = 0;
+
+      // number of source bytes per buffer
+      unsigned int block = (CHANNEL_BUFFER_SAMPLES * validChannels) >> 6;
+
+      /*
+       * if previous buffer is not full
+       */
+      if (unsigned int p = currentBytes % block; p && buffer)
+      {
+         // get previous buffer pointer
+         float *target = buffer.data();
+
+         for (unsigned int b = p / 8; b < block; ++b)
+         {
+            unsigned int n = b / validChannels; // current row number
+            unsigned int c = b % validChannels; // current channel index
+            unsigned int t = c + (n << 6); // start index in target buffer
+
+            for (unsigned int i = 0; i < 8; ++i, ++o)
+            {
+               const float *row = dsl_samples[transfer->data[o]];
+
+               for (unsigned int r = 0; r < 8; ++r, t += validChannels)
+               {
+                  target[t] = row[r];
+               }
+            }
+         }
+
+         result.push_back(buffer);
+
+         buffer.reset();
+      }
+
+      /*
+       * Interleave data from transfer buffer
+       */
+      // number of full buffers than can be processed with remain data
+      unsigned int count = 1 + (transfer->actual - o) / block;
+
+      // #pragma omp parallel for schedule(static)
+      for (int k = 0; k < count; ++k)
+      {
+         // create new buffer for interleaved data
+         SignalBuffer buffer(CHANNEL_BUFFER_SAMPLES * validChannels, validChannels, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_INTERLEAVED_LOGIC);
+
+         // reserve full buffer for direct pointer access
+         float *target = buffer.pull(buffer.capacity());
+
+         // offset in source buffer
+         unsigned int s = o + k * block;
+
+         // process each block of 8 samples
+         for (unsigned int b = 0; b < block && s < transfer->actual; ++b)
+         {
+            unsigned int n = b / validChannels; // current row number
+            unsigned int c = b % validChannels; // current channel index
+            unsigned int t = c + (n << 6); // start index of current block in target buffer
+
+            for (unsigned int i = 0; i < 8 && s < transfer->actual; ++i, ++s)
+            {
+               const float *row = dsl_samples[transfer->data[s]];
+
+               for (unsigned int r = 0; r < 8; ++r, t += validChannels)
+               {
+                  target[t] = row[r];
+               }
+            }
+         }
+
+         if (s >= transfer->actual)
+         {
+            this->buffer = buffer;
+         }
+         else
+         {
+            // #pragma omp critical
+            {
+               result.push_back(buffer);
+            }
          }
       }
 
