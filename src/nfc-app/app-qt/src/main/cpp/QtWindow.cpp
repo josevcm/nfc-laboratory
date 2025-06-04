@@ -676,7 +676,7 @@ struct QtWindow::Impl
    {
       if (event->buffer().isValid())
       {
-         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RAW_LOGIC || event->buffer().type() == hw::SignalType::SIGNAL_TYPE_ADV_LOGIC)
+         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_STM_LOGIC || event->buffer().type() == hw::SignalType::SIGNAL_TYPE_ADV_LOGIC)
          {
             ui->logicView->append(event->buffer());
          }

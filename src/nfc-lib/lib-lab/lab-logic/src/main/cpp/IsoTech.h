@@ -226,9 +226,6 @@ struct IsoDecoderStatus
    // signal debugger
    std::shared_ptr<IsoSignalDebug> debug;
 
-   // interleaved signal buffer
-   hw::SignalBuffer signalCache;
-
    // previous data samples
    float sampleLast[8];
 
@@ -240,9 +237,6 @@ struct IsoDecoderStatus
 
    // process next sample from signal buffer
    bool nextSample(hw::SignalBuffer &buffer);
-
-   // check if there are samples remain to process in buffer
-   bool hasSamples(const hw::SignalBuffer &samples) const;
 };
 
 struct IsoTech

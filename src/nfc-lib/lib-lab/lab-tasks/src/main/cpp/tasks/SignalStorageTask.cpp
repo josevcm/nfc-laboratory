@@ -290,7 +290,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
          {
             switch (buffer->type())
             {
-               case hw::SignalType::SIGNAL_TYPE_RAW_LOGIC:
+               case hw::SignalType::SIGNAL_TYPE_STM_LOGIC:
                {
                   // integrate new buffer interleaving with previous one store every offset change
                   if (interleaveBuffer(logicBufferKeys, logicBufferCache, *buffer))
@@ -315,7 +315,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
                   break;
                }
 
-               case hw::SignalType::SIGNAL_TYPE_ILV_LOGIC:
+               case hw::SignalType::SIGNAL_TYPE_RAW_LOGIC:
                {
                   // create new storage file before first buffer is completed
                   if (!logicStorage)
@@ -476,13 +476,13 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       unsigned int channelCount = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
       unsigned int sampleOffset = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
 
-      hw::SignalBuffer block(65536 * channelCount, channelCount, 1, 0, 0, 0, hw::SignalType::SIGNAL_TYPE_RAW_LOGIC);
+      hw::SignalBuffer block(65536 * channelCount, channelCount, 1, 0, 0, 0, hw::SignalType::SIGNAL_TYPE_STM_LOGIC);
 
       if (logicStorage->read(block) > 0)
       {
          for (int c = 0; c < block.stride(); c++)
          {
-            hw::SignalBuffer buffer(65536, 1, 1, sampleRate, sampleOffset / channelCount, 0, hw::SignalType::SIGNAL_TYPE_RAW_LOGIC, c < logicBufferKeys.size() ? logicBufferKeys[c] : c);
+            hw::SignalBuffer buffer(65536, 1, 1, sampleRate, sampleOffset / channelCount, 0, hw::SignalType::SIGNAL_TYPE_STM_LOGIC, c < logicBufferKeys.size() ? logicBufferKeys[c] : c);
 
             for (unsigned int i = 0; i < block.size(); i += block.stride())
             {

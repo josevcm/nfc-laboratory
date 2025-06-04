@@ -415,6 +415,8 @@ struct DSLogicDevice::Impl
 
    bool start(const StreamHandler &handler)
    {
+      log->info("starting acquisition for device {}", {deviceName});
+
       deviceStatus = STATUS_INIT;
 
       captureSamples = (limitSamples + SAMPLES_ALIGN) & ~SAMPLES_ALIGN;
@@ -449,7 +451,7 @@ struct DSLogicDevice::Impl
          {
             log->debug("create channel {} buffer, size {}", {ch.index, CHANNEL_BUFFER_SIZE});
 
-            buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_RAW_LOGIC, ch.index);
+            buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_STM_LOGIC, ch.index);
          }
       }
 
@@ -465,6 +467,8 @@ struct DSLogicDevice::Impl
       }
 
       deviceStatus = STATUS_START;
+
+      log->info("acquisition started for device {}", {deviceName});
 
       return true;
    }
@@ -1864,8 +1868,8 @@ struct DSLogicDevice::Impl
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
          // split received data in one buffer per channel
-         std::vector<SignalBuffer> buffers = channelSplit(transfer);
-         // std::vector<SignalBuffer> buffers = channelInterleave(transfer);
+         // std::vector<SignalBuffer> buffers = channelSplit(transfer);
+         std::vector<SignalBuffer> buffers = channelInterleave(transfer);
 
          // call user handler for each channel
          for (auto &buffer: buffers)
@@ -1939,7 +1943,7 @@ struct DSLogicDevice::Impl
             {
                if (ch.enabled)
                {
-                  buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_RAW_LOGIC, ch.index);
+                  buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_STM_LOGIC, ch.index);
                }
             }
          }
@@ -1980,8 +1984,6 @@ struct DSLogicDevice::Impl
        */
       if (unsigned int p = currentBytes % (size >> 3); p && buffer)
       {
-         log->warn("split {}", {currentBytes << 3});
-
          o = transpose(buffer, p % block, transfer->data, o, transfer->actual);
 
          result.push_back(buffer);
@@ -1997,9 +1999,7 @@ struct DSLogicDevice::Impl
       // number of full buffers than can be processed with remain data
       unsigned int count = 1 + (transfer->actual - o) / (size >> 3);
 
-      log->warn("count {}", {count});
-
-      // #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
       for (unsigned int k = 0; k < count; ++k)
       {
          // source start position
@@ -2009,12 +2009,12 @@ struct DSLogicDevice::Impl
          unsigned long long c = currentSamples + k * (size / validChannels);
 
          // create new buffer for interleaved data
-         SignalBuffer buffer(size, validChannels, 1, samplerate, c, 0, SIGNAL_TYPE_ILV_LOGIC);
+         SignalBuffer buffer(size, validChannels, 1, samplerate, c, 0, SIGNAL_TYPE_RAW_LOGIC);
 
          // transpose data from transfer buffer to interleaved buffer
          transpose(buffer, 0, transfer->data, s, transfer->actual);
 
-         // #pragma omp critical
+#pragma omp critical
          {
             // add buffer to result
             if (!buffer.available())
@@ -2022,9 +2022,7 @@ struct DSLogicDevice::Impl
 
                // or if buffer is not full, keep it for next transfer
             else if (buffer.available() < size)
-            {
                this->buffer = buffer;
-            }
          }
       }
 

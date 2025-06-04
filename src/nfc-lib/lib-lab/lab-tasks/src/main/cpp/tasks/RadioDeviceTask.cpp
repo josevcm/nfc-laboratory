@@ -609,6 +609,8 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       }
       else if (radioReceiverStatus == Flush)
       {
+         log->info("flush receiver buffers");
+
          // send null buffer for EOF
          signalIqStream->next({});
          signalRawStream->next({});

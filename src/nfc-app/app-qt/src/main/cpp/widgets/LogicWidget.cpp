@@ -199,7 +199,7 @@ struct LogicWidget::Impl
 
       switch (buffer.type())
       {
-         case hw::SignalType::SIGNAL_TYPE_RAW_LOGIC:
+         case hw::SignalType::SIGNAL_TYPE_STM_LOGIC:
          {
             if (!channels.contains(buffer.id()))
                return;

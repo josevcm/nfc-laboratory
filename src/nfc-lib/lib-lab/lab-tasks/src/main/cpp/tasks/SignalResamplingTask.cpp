@@ -148,7 +148,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       switch (buffer.type())
       {
          // adaptive resample for real signal
-         case hw::SignalType::SIGNAL_TYPE_RAW_LOGIC:
+         case hw::SignalType::SIGNAL_TYPE_STM_LOGIC:
          {
             hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_ADV_LOGIC, buffer.id());
 

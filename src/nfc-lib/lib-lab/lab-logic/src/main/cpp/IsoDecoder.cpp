@@ -127,9 +127,6 @@ void IsoDecoder::Impl::initialize()
    // clear signal master clock
    decoder.signalClock = 0;
 
-   // clear signal cache
-   decoder.signalCache.reset();
-
    // configure only if samplerate > 0
    if (decoder.sampleRate > 0)
    {
@@ -208,7 +205,7 @@ std::list<RawFrame> IsoDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
          }
       }
    }
-   while (decoder.hasSamples(samples));
+   while (!samples.isEmpty());
 
    if (decoder.debug)
       decoder.debug->write();

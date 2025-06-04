@@ -405,6 +405,8 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
       }
       else if (logicReceiverStatus == Flush)
       {
+         log->info("flush receiver buffers");
+
          // send null buffer for EOF
          signalStream->next({});
 
