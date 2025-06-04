@@ -37,7 +37,8 @@
 #include "DSLogicInternal.h"
 
 #define DEVICE_TYPE_PREFIX "logic.dslogic"
-#define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 8
+#define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 64
+#define CHANNEL_BUFFER_SAMPLES 16384 // number of samples per buffer
 
 namespace hw {
 
@@ -126,6 +127,7 @@ struct DSLogicDevice::Impl
    /*
     * Received buffers
     */
+   SignalBuffer buffer;
    std::vector<SignalBuffer> buffers;
 
    /*
@@ -469,6 +471,8 @@ struct DSLogicDevice::Impl
 
    bool stop()
    {
+      log->info("stopping acquisition for device {}", {deviceName});
+
       // stop previous acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
       {
@@ -484,6 +488,8 @@ struct DSLogicDevice::Impl
          }
       }
 
+      log->info("cancel pending transfers for device {}", {deviceName});
+
       // cancel current transfers
       for (const auto transfer: transfers)
       {
@@ -491,6 +497,8 @@ struct DSLogicDevice::Impl
       }
 
       deviceStatus = STATUS_STOP;
+
+      log->info("capture finished for device {}", {deviceName});
 
       return true;
    }
@@ -607,7 +615,7 @@ struct DSLogicDevice::Impl
          }
          case PARAM_LIMIT_SAMPLES:
          {
-            if (auto v = std::get_if<unsigned int>(&value))
+            if (auto v = std::get_if<unsigned long long>(&value))
             {
                limitSamples = *v;
                log->info("setting limit samples to {}", {limitSamples});
@@ -1856,7 +1864,8 @@ struct DSLogicDevice::Impl
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
          // split received data in one buffer per channel
-         std::vector<SignalBuffer> buffers = splitBuffers(transfer);
+         std::vector<SignalBuffer> buffers = channelSplit(transfer);
+         // std::vector<SignalBuffer> buffers = channelInterleave(transfer);
 
          // call user handler for each channel
          for (auto &buffer: buffers)
@@ -1897,7 +1906,7 @@ struct DSLogicDevice::Impl
       return nullptr;
    }
 
-   std::vector<SignalBuffer> splitBuffers(Usb::Transfer *transfer)
+   std::vector<SignalBuffer> channelSplit(Usb::Transfer *transfer)
    {
       std::vector<SignalBuffer> result;
 
@@ -1954,6 +1963,127 @@ struct DSLogicDevice::Impl
       }
 
       return result;
+   }
+
+   std::vector<SignalBuffer> channelInterleave(Usb::Transfer *transfer)
+   {
+      std::vector<SignalBuffer> result;
+
+      unsigned int o = 0; // source buffer offset
+      unsigned int chunk = validChannels << 3; // minimum chunk size in bytes
+      unsigned int block = chunk << 3;
+      unsigned int round = CHANNEL_BUFFER_SIZE % block;
+      unsigned int size = CHANNEL_BUFFER_SIZE - round;
+
+      /*
+       * if last buffer is not full
+       */
+      if (unsigned int p = currentBytes % (size >> 3); p && buffer)
+      {
+         log->warn("split {}", {currentBytes << 3});
+
+         o = transpose(buffer, p % block, transfer->data, o, transfer->actual);
+
+         result.push_back(buffer);
+
+         currentSamples += buffer.limit() / buffer.stride();
+
+         buffer.reset();
+      }
+
+      /*
+       * Interleave data from transfer buffer
+       */
+      // number of full buffers than can be processed with remain data
+      unsigned int count = 1 + (transfer->actual - o) / (size >> 3);
+
+      log->warn("count {}", {count});
+
+      // #pragma omp parallel for schedule(static)
+      for (unsigned int k = 0; k < count; ++k)
+      {
+         // source start position
+         unsigned int s = o + k * (size >> 3);
+
+         // sample start position
+         unsigned long long c = currentSamples + k * (size / validChannels);
+
+         // create new buffer for interleaved data
+         SignalBuffer buffer(size, validChannels, 1, samplerate, c, 0, SIGNAL_TYPE_ILV_LOGIC);
+
+         // transpose data from transfer buffer to interleaved buffer
+         transpose(buffer, 0, transfer->data, s, transfer->actual);
+
+         // #pragma omp critical
+         {
+            // add buffer to result
+            if (!buffer.available())
+               result.push_back(buffer);
+
+               // or if buffer is not full, keep it for next transfer
+            else if (buffer.available() < size)
+            {
+               this->buffer = buffer;
+            }
+         }
+      }
+
+      // update current bytes
+      currentBytes += transfer->actual;
+
+      // flip all buffers
+      for (auto &b: result)
+      {
+         b.flip();
+
+         currentSamples += b.elements();
+      }
+
+      return result;
+   }
+
+   unsigned int transpose(SignalBuffer &buffer, unsigned int filled, const unsigned char *data, unsigned int source, unsigned int limit)
+   {
+      unsigned int ch = buffer.stride(); // number of channels
+      unsigned int chunk = (ch << 3); // chunk size in bytes for interleaved data
+      unsigned int pos = source % chunk;
+      unsigned int col = (pos >> 3);
+      unsigned int row = (pos & 0x07) << 3;
+
+      // transpose data from transfer buffer to interleaved buffer
+      for (; buffer.available() && source < limit;)
+      {
+         // reserve full buffer for interleaved data
+         float *target = !filled ? buffer.pull(ch << 6) : buffer.pull(0) - filled; // 64 * channels
+
+         // transpose full block of SAMPLES[64][validChannels]
+         for (unsigned int c = col; c < ch; ++c)
+         {
+            // transpose source block of 8 bytes
+            for (unsigned int i = row, t = c + row * ch; i < 8 && source < limit; ++i, ++source)
+            {
+               // float data conversion table
+               const float *samples = dsl_samples[data[source]];
+
+               // each byte contains 8 samples, so we need to transpose them
+               for (unsigned int r = 0; r < 8; ++r, t += ch)
+               {
+                  target[t] = samples[r];
+               }
+            }
+
+            // next loop start from first row
+            row = 0;
+         }
+
+         // next loop start from first column
+         col = 0;
+
+         // next block if not filled
+         filled = 0;
+      }
+
+      return source;
    }
 
    bool isReady()

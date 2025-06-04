@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
          // device.set(LogicDevice::PARAM_OPERATION_MODE, LogicDevice::OP_INTEST);
          device.set(LogicDevice::PARAM_OPERATION_MODE, LogicDevice::OP_STREAM);
-         device.set(hw::LogicDevice::PARAM_LIMIT_SAMPLES, static_cast<unsigned int>(-1));
+         device.set(LogicDevice::PARAM_LIMIT_SAMPLES, static_cast<unsigned long long>(-1));
          //         device.set(LogicDevice::PARAM_RLE_COMPRESS, false);
          //         device.set(LogicDevice::PARAM_FILTER_MODE, FILTER_NONE);
          device.set(LogicDevice::PARAM_CHANNEL_MODE, DSLogicDevice::DSL_STREAM50x6);
