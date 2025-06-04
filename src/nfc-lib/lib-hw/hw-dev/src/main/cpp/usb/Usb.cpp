@@ -356,7 +356,7 @@ struct Usb::Impl
       return false;
    }
 
-   int setOption(enum libusb_option option, int value)
+   int setOption(libusb_option option, int value)
    {
       if ((result = libusb_set_option(*ctx, option, value)) < 0)
       {

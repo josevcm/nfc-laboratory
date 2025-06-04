@@ -43,10 +43,17 @@ class Buffer
       unsigned int interleave = 0; // data interleave, how many consecutive data has per channel
       std::atomic<int> references; // block reference count
 
-      Alloc(unsigned int type, unsigned int capacity, unsigned int stride, unsigned int interleave, void *context) : data(nullptr), type(type), references(1), stride(stride), interleave(interleave), context(context)
+      Alloc(unsigned int type, unsigned int capacity, unsigned int stride, unsigned int interleave, void *context, bool cleanup = false) : data(nullptr), type(type), references(1), stride(stride), interleave(interleave), context(context)
       {
          // allocate raw memory including alignment space
          data = static_cast<T *>(operator new[](capacity * sizeof(T), static_cast<std::align_val_t>(BUFFER_ALIGNMENT)));
+
+         // clear memory
+         if (!data)
+            throw std::bad_alloc();
+
+         if (cleanup)
+            std::memset(data, 0, capacity * sizeof(T));
       }
 
       ~Alloc()

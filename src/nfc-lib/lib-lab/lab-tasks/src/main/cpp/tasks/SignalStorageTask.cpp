@@ -288,23 +288,52 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       {
          if (!buffer->isEmpty())
          {
-            // integrate new buffer interleaving with previous one store every offset change
-            if (interleaveBuffer(logicBufferKeys, logicBufferCache, *buffer))
+            switch (buffer->type())
             {
-               // create new storage file before first buffer is completed
-               if (!logicStorage)
+               case hw::SignalType::SIGNAL_TYPE_RAW_LOGIC:
                {
-                  logicStorage = open(fileName("logic"), logicBufferCache.sampleRate(), hw::SAMPLE_SIZE_8, logicBufferCache.stride(), logicBufferKeys, hw::RecordDevice::Mode::Write);
-                  writeFinished = !logicStorage;
+                  // integrate new buffer interleaving with previous one store every offset change
+                  if (interleaveBuffer(logicBufferKeys, logicBufferCache, *buffer))
+                  {
+                     // create new storage file before first buffer is completed
+                     if (!logicStorage)
+                     {
+                        logicStorage = open(fileName("logic"), logicBufferCache.sampleRate(), hw::SAMPLE_SIZE_8, logicBufferCache.stride(), logicBufferKeys, hw::RecordDevice::Mode::Write);
+                        writeFinished = !logicStorage;
+                     }
+
+                     if (!writeFinished)
+                     {
+                        // write buffer to storage
+                        logicStorage->write(logicBufferCache);
+
+                        // and start again with new buffer
+                        logicBufferCache = *buffer;
+                     }
+                  }
+
+                  break;
                }
 
-               if (!writeFinished)
+               case hw::SignalType::SIGNAL_TYPE_ILV_LOGIC:
                {
-                  // write buffer to storage
-                  logicStorage->write(logicBufferCache);
+                  // create new storage file before first buffer is completed
+                  if (!logicStorage)
+                  {
+                     logicBufferKeys = std::vector<int>();
 
-                  // and start again with new buffer
-                  logicBufferCache = *buffer;
+                     for (int i = 0; i < buffer->stride(); i++)
+                        logicBufferKeys.push_back(i);
+
+                     logicStorage = open(fileName("logic"), buffer->sampleRate(), hw::SAMPLE_SIZE_8, buffer->stride(), logicBufferKeys, hw::RecordDevice::Mode::Write);
+                     writeFinished = !logicStorage;
+                  }
+
+                  if (!writeFinished)
+                  {
+                     // write buffer to storage
+                     logicStorage->write(*buffer);
+                  }
                }
             }
          }
