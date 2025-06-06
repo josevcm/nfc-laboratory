@@ -128,11 +128,7 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
          if (std::chrono::steady_clock::now() - lastStatus > std::chrono::milliseconds(1000))
          {
             if (taskThroughput.average() > 0)
-            {
                log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, logicSignalQueue.size()});
-
-               taskThroughput.begin();
-            }
 
             lastStatus = std::chrono::steady_clock::now();
          }
@@ -286,13 +282,13 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
 
          log->trace("decode new buffer {} offset {} with {} samples", {buffer->id(), buffer->offset(), buffer->elements()});
 
+         taskThroughput.update(buffer->elements());
+
          for (const auto &frame: decoder->nextFrames(buffer.value()))
          {
             decoderFrameStream->next(frame);
             frames++;
          }
-
-         taskThroughput.update(buffer->elements());
 
          if (!buffer->isValid())
          {

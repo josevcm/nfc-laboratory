@@ -415,7 +415,7 @@ struct DSLogicDevice::Impl
 
    bool start(const StreamHandler &handler)
    {
-      log->info("starting acquisition for device {}", {deviceName});
+      log->debug("starting acquisition for device {}", {deviceName});
 
       deviceStatus = STATUS_INIT;
 
@@ -468,14 +468,14 @@ struct DSLogicDevice::Impl
 
       deviceStatus = STATUS_START;
 
-      log->info("acquisition started for device {}", {deviceName});
+      log->debug("acquisition started for device {}", {deviceName});
 
       return true;
    }
 
    bool stop()
    {
-      log->info("stopping acquisition for device {}", {deviceName});
+      log->debug("stopping acquisition for device {}", {deviceName});
 
       // stop previous acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
@@ -492,7 +492,7 @@ struct DSLogicDevice::Impl
          }
       }
 
-      log->info("cancel pending transfers for device {}", {deviceName});
+      log->debug("cancel pending transfers for device {}", {deviceName});
 
       // cancel current transfers
       for (const auto transfer: transfers)
@@ -502,7 +502,7 @@ struct DSLogicDevice::Impl
 
       deviceStatus = STATUS_STOP;
 
-      log->info("capture finished for device {}", {deviceName});
+      log->debug("capture finished for device {}", {deviceName});
 
       return true;
    }
@@ -1868,8 +1868,7 @@ struct DSLogicDevice::Impl
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
          // split received data in one buffer per channel
-         // std::vector<SignalBuffer> buffers = channelSplit(transfer);
-         std::vector<SignalBuffer> buffers = channelInterleave(transfer);
+         std::vector<SignalBuffer> buffers = interleave(transfer);
 
          // call user handler for each channel
          for (auto &buffer: buffers)
@@ -1910,66 +1909,66 @@ struct DSLogicDevice::Impl
       return nullptr;
    }
 
-   std::vector<SignalBuffer> channelSplit(Usb::Transfer *transfer)
-   {
-      std::vector<SignalBuffer> result;
+   // std::vector<SignalBuffer> channelSplit(Usb::Transfer *transfer)
+   // {
+   //    std::vector<SignalBuffer> result;
+   //
+   //    // get channel index to be processed from data buffer
+   //    unsigned int c = (currentBytes >> 3) % validChannels;
+   //
+   //    // get output buffer for first channel present in data buffer
+   //    SignalBuffer *buffer = &buffers[c];
+   //
+   //    // process each byte in data buffer and split into each channel buffer
+   //    for (unsigned int i = 0, n = currentBytes & 0x07; i < transfer->actual; i++, n++)
+   //    {
+   //       // append next 8 samples to channel buffer
+   //       buffer->put(dsl_samples[transfer->data[i]], 8);
+   //
+   //       // once all buffers are filled, append them to result
+   //       if (c == validChannels - 1 && buffer->available() == 0)
+   //       {
+   //          // copy split buffers to output result
+   //          result.insert(result.end(), buffers.begin(), buffers.end());
+   //
+   //          // clear buffers
+   //          buffers.clear();
+   //
+   //          // update current samples
+   //          currentSamples += buffer->elements();
+   //
+   //          // and create new channels buffers
+   //          for (const auto &ch: channels)
+   //          {
+   //             if (ch.enabled)
+   //             {
+   //                buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_STM_LOGIC, ch.index);
+   //             }
+   //          }
+   //       }
+   //
+   //       // switch buffer every 8 samples
+   //       if (n % 8 == 7)
+   //       {
+   //          c = (c + 1) % validChannels;
+   //
+   //          buffer = &buffers[c];
+   //       }
+   //    }
+   //
+   //    // update current bytes
+   //    currentBytes += transfer->actual;
+   //
+   //    // flip all buffers
+   //    for (auto &b: result)
+   //    {
+   //       b.flip();
+   //    }
+   //
+   //    return result;
+   // }
 
-      // get channel index to be processed from data buffer
-      unsigned int c = (currentBytes >> 3) % validChannels;
-
-      // get output buffer for first channel present in data buffer
-      SignalBuffer *buffer = &buffers[c];
-
-      // process each byte in data buffer and split into each channel buffer
-      for (unsigned int i = 0, n = currentBytes & 0x07; i < transfer->actual; i++, n++)
-      {
-         // append next 8 samples to channel buffer
-         buffer->put(dsl_samples[transfer->data[i]], 8);
-
-         // once all buffers are filled, append them to result
-         if (c == validChannels - 1 && buffer->available() == 0)
-         {
-            // copy split buffers to output result
-            result.insert(result.end(), buffers.begin(), buffers.end());
-
-            // clear buffers
-            buffers.clear();
-
-            // update current samples
-            currentSamples += buffer->elements();
-
-            // and create new channels buffers
-            for (const auto &ch: channels)
-            {
-               if (ch.enabled)
-               {
-                  buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_STM_LOGIC, ch.index);
-               }
-            }
-         }
-
-         // switch buffer every 8 samples
-         if (n % 8 == 7)
-         {
-            c = (c + 1) % validChannels;
-
-            buffer = &buffers[c];
-         }
-      }
-
-      // update current bytes
-      currentBytes += transfer->actual;
-
-      // flip all buffers
-      for (auto &b: result)
-      {
-         b.flip();
-      }
-
-      return result;
-   }
-
-   std::vector<SignalBuffer> channelInterleave(Usb::Transfer *transfer)
+   std::vector<SignalBuffer> interleave(Usb::Transfer *transfer)
    {
       std::vector<SignalBuffer> result;
 
@@ -1999,7 +1998,7 @@ struct DSLogicDevice::Impl
       // number of full buffers than can be processed with remain data
       unsigned int count = 1 + (transfer->actual - o) / (size >> 3);
 
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for
       for (unsigned int k = 0; k < count; ++k)
       {
          // source start position
@@ -2036,6 +2035,11 @@ struct DSLogicDevice::Impl
 
          currentSamples += b.elements();
       }
+
+      // sort buffers by offset due to parallel processing can lead to unordered buffers
+      std::sort(result.begin(), result.end(), [](const SignalBuffer &a, const SignalBuffer &b) {
+         return a.offset() < b.offset();
+      });
 
       return result;
    }

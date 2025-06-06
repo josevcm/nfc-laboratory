@@ -157,10 +157,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
             }
             else if (taskThroughput.average() > 0)
             {
-               log->info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
-
-               // reset throughput meter
-               taskThroughput.begin();
+               log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, signalQueue.size()});
             }
 
             // store last search time

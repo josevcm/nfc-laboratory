@@ -128,10 +128,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
             }
             else if (taskThroughput.average() > 0)
             {
-               log->info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
-
-               // reset throughput meter
-               taskThroughput.begin();
+               log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, signalQueue.size()});
             }
 
             // store last search time
@@ -397,11 +394,11 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
       {
          const hw::SignalBuffer &buffer = entry.value();
 
-         // send value buffer
-         signalStream->next(buffer);
-
          // update receiver throughput
          taskThroughput.update(buffer.elements());
+
+         // send value buffer
+         signalStream->next(buffer);
       }
       else if (logicReceiverStatus == Flush)
       {

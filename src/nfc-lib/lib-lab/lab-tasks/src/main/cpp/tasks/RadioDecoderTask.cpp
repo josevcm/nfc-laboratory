@@ -130,11 +130,7 @@ struct RadioDecoderTask::Impl : RadioDecoderTask, AbstractTask
          if (std::chrono::steady_clock::now() - lastStatus > std::chrono::milliseconds(1000))
          {
             if (taskThroughput.average() > 0)
-            {
                log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, radioSignalQueue.size()});
-
-               taskThroughput.begin();
-            }
 
             lastStatus = std::chrono::steady_clock::now();
          }

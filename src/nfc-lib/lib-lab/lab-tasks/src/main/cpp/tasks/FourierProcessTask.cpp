@@ -85,10 +85,10 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
    explicit Impl(int length = 1024) : AbstractTask("worker.FourierProcess", "fourier"), length(length)
    {
       // create fft buffers
-      fftIn = static_cast<float*>(mufft_alloc(length * sizeof(float) * 2));
-      fftOut = static_cast<float*>(mufft_alloc(length * sizeof(float) * 2));
-      fftMag = static_cast<float*>(mufft_alloc(length * sizeof(float)));
-      fftWin = static_cast<float*>(mufft_alloc(length * sizeof(float)));
+      fftIn = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
+      fftOut = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
+      fftMag = static_cast<float *>(mufft_alloc(length * sizeof(float)));
+      fftWin = static_cast<float *>(mufft_alloc(length * sizeof(float)));
 
       // create FFT plans
       fftC2C = mufft_create_plan_1d_c2c(length, MUFFT_FORWARD, MUFFT_FLAG_CPU_NO_AVX);
@@ -165,11 +165,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       if (std::chrono::steady_clock::now() - lastStatus > std::chrono::milliseconds(1000))
       {
          if (taskThroughput.average() > 0)
-         {
             log->info("average throughput {.2} Ksps", {taskThroughput.average() / 1E3});
-
-            taskThroughput.begin();
-         }
 
          // store last search time
          lastStatus = std::chrono::steady_clock::now();

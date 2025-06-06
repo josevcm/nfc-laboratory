@@ -22,7 +22,11 @@
 #ifndef RT_THROUGHPUT_H
 #define RT_THROUGHPUT_H
 
+#include <mutex>
 #include <chrono>
+#include <cstring>
+
+#define QUEUE_SIZE (1<<8)
 
 namespace rt {
 
@@ -30,59 +34,63 @@ class Throughput
 {
    private:
 
-      // average time
-      double a = 0;
+      // current value
+      double value = 0;
 
-      // average throughput
-      double r = 0;
+      // window for moving average
+      double values[QUEUE_SIZE] {};
 
-      // elapsed time
-      std::chrono::microseconds e {};
+      // moving average window for time
+      std::chrono::steady_clock::time_point chrono[QUEUE_SIZE] {};
 
-      // start time
-      std::chrono::steady_clock::time_point t;
+      // current index in moving average window
+      unsigned int index = 0;
+
+      // mutex
+      mutable std::mutex mutex;
 
    public:
 
       inline void begin()
       {
-         a = 0;
-         r = 0;
-         t = std::chrono::steady_clock::now();
+         index = 0;
+         value = 0;
+         ::memset(values, 0, sizeof(double) * QUEUE_SIZE);
       }
 
       inline void end()
       {
-         a = 0;
-         r = 0;
+         index = 0;
+         value = 0;
+         ::memset(values, 0, sizeof(double) * QUEUE_SIZE);
       }
 
-      inline void update(double elements = 1)
+      inline void update(double n = 1)
       {
-         // calculate elapsed time since last update
-         auto s = std::chrono::steady_clock::now() - t;
+         std::lock_guard lock(mutex);
 
-         // get elapsed time in microseconds
-         e = std::chrono::duration_cast<std::chrono::microseconds>(s);
+         value += n;
+         value -= values[index & (QUEUE_SIZE - 1)];
 
-         // process exponential average time
-         a = a * (1 - 0.01) + static_cast<double>(e.count()) * 0.01;
+         values[index & (QUEUE_SIZE - 1)] = n;
+         chrono[index & (QUEUE_SIZE - 1)] = std::chrono::steady_clock::now();
 
-         // process exponential average throughput
-         r = r * (1 - 0.01) + (elements / static_cast<double>(e.count()) * 1E6) * 0.01;
-
-         // update last time
-         t = std::chrono::steady_clock::now();
-      }
-
-      inline double elapsed() const
-      {
-         return a;
+         ++index;
       }
 
       inline double average() const
       {
-         return r;
+         std::lock_guard lock(mutex);
+
+         if (index < QUEUE_SIZE)
+            return 0;
+
+         auto t1 = chrono[(index & (QUEUE_SIZE - 1))];
+         auto t2 = chrono[(index - 1) & (QUEUE_SIZE - 1)];
+
+         double t = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+
+         return value / (t / 1E6);
       }
 };
 

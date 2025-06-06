@@ -123,11 +123,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       if ((std::chrono::steady_clock::now() - lastStatus) > std::chrono::milliseconds(1000))
       {
          if (taskThroughput.average() > 0)
-         {
             log->info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
-
-            taskThroughput.begin();
-         }
 
          // store last search time
          lastStatus = std::chrono::steady_clock::now();
