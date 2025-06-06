@@ -65,7 +65,14 @@ class Subject
 
       void next(const T &value, bool retain = false)
       {
-         for (auto observer = observers.begin(); observer != observers.end(); ++observer)
+         std::vector<Observer> localObservers;
+
+         {
+            std::lock_guard lock(mutex);
+            localObservers = observers;
+         }
+
+         for (auto observer = localObservers.begin(); observer != localObservers.end(); ++observer)
          {
             if (observer->next)
             {
@@ -75,13 +82,21 @@ class Subject
 
          if (retain)
          {
+            std::lock_guard lock(mutex);
             retained = std::make_shared<T>(value);
          }
       }
 
       void error(int error, const std::string &message)
       {
-         for (auto observer = observers.begin(); observer != observers.end(); ++observer)
+         std::vector<Observer> localObservers;
+
+         {
+            std::lock_guard lock(mutex);
+            localObservers = observers; // Copia para evitar iterar bajo lock
+         }
+
+         for (auto observer = localObservers.begin(); observer != localObservers.end(); ++observer)
          {
             if (observer->error)
             {
@@ -92,7 +107,14 @@ class Subject
 
       void close()
       {
-         for (auto observer = observers.begin(); observer != observers.end(); ++observer)
+         std::vector<Observer> localObservers;
+
+         {
+            std::lock_guard lock(mutex);
+            localObservers = observers;
+         }
+
+         for (auto observer = localObservers.begin(); observer != localObservers.end(); ++observer)
          {
             if (observer->close)
             {
@@ -103,6 +125,8 @@ class Subject
 
       Subscription subscribe(NextHandler next, ErrorHandler error = nullptr, CloseHandler close = nullptr)
       {
+         std::lock_guard lock(mutex);
+
          // append observer to list
          auto &observer = observers.emplace_back(observers.size() + 1, next, error, close);
          log->debug("created subscription {} ({}) on subject {}", {observer.index, static_cast<void *>(&observer), id});
@@ -119,8 +143,15 @@ class Subject
          // returns finisher to remove observer when destroyed
          return {
             [this, &observer] {
+
+               std::lock_guard lock(mutex);
+
                log->debug("removed subscription {} ({}) from subject {}", {observer.index, static_cast<void *>(&observer), id});
-               observers.remove(observer);
+
+               auto it = std::find(observers.begin(), observers.end(), observer);
+
+               if (it != observers.end())
+                  observers.erase(it);
             }
          };
       }
@@ -157,7 +188,7 @@ class Subject
       std::string id;
 
       // subject observers subscriptions
-      std::list<Observer> observers;
+      std::vector<Observer> observers;
 
       // last value
       std::shared_ptr<T> retained;
