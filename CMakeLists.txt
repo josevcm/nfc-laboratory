@@ -16,11 +16,14 @@ project(nfc-lab VERSION "${BUILD_PROJECT_VERSION}" LANGUAGES C CXX)
 #-------------------------------------------------------------------------------
 # build flags
 #-------------------------------------------------------------------------------
+set(CMAKE_AR gcc-ar)
+set(CMAKE_RANLIB gcc-ranlib)
+
 set(CMAKE_C_FLAGS_DEBUG "-g -Og -fno-omit-frame-pointer" CACHE INTERNAL "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -Og -fno-omit-frame-pointer" CACHE INTERNAL "" FORCE)
 
-set(CMAKE_C_FLAGS_RELEASE "-O3 -fno-math-errno -falign-functions=32 -falign-loops=32 -march=native -fopenmp" CACHE INTERNAL "" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-math-errno -falign-functions=32 -falign-loops=32 -march=native -fopenmp" CACHE INTERNAL "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE "-O3 -flto=auto -fno-math-errno -falign-functions=32 -falign-loops=32 -march=native -fopenmp" CACHE INTERNAL "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto=auto -fno-math-errno -falign-functions=32 -falign-loops=32 -march=native -fopenmp" CACHE INTERNAL "" FORCE)
 
 if (UNIX)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
