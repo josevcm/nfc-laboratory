@@ -133,7 +133,7 @@ class BlockingQueue
       {
          std::lock_guard lock(mutex);
 
-         return queue.clear();
+         std::list<T>().swap(queue);
       }
 
       int size() const
