@@ -58,6 +58,9 @@ class Buffer
 
       ~Alloc()
       {
+         if (!data)
+            return;
+
          // free buffer data
          ::operator delete[](data, static_cast<std::align_val_t>(BUFFER_ALIGNMENT));
       }
@@ -167,6 +170,11 @@ class Buffer
       bool isEmpty() const
       {
          return state.position == state.limit;
+      }
+
+      bool isFull() const
+      {
+         return state.position == state.capacity;
       }
 
       unsigned int position() const
