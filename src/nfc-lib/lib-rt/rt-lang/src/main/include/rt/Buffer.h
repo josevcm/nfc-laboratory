@@ -61,6 +61,7 @@ class Buffer
          if (!data)
             return;
 
+         // TODO: usar un alineador manual para evitar el uso de operator delete[] que es muy lento
          // free buffer data
          ::operator delete[](data, static_cast<std::align_val_t>(BUFFER_ALIGNMENT));
       }
