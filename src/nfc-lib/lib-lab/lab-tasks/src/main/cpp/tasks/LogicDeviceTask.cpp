@@ -370,7 +370,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
          data["model"] = std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_MODEL));
          data["version"] = std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_VERSION));
          data["serial"] = std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_SERIAL));
-         data["status"] = logicReceiverEnabled ? (device->isStreaming() ? "streaming" : "idle") : "disabled";
+         data["status"] = logicReceiverEnabled ? (device->isStreaming() ? "streaming" : status == Flush ? "flush" : "idle") : "disabled";
 
          // device parameters
          data["sampleRate"] = std::get<unsigned int>(device->get(hw::LogicDevice::PARAM_SAMPLE_RATE));

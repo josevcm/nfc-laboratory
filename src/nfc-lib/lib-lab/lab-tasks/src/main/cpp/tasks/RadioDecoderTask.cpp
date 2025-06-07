@@ -137,7 +137,7 @@ struct RadioDecoderTask::Impl : RadioDecoderTask, AbstractTask
       }
       else
       {
-         wait(100);
+         wait(50);
       }
 
       return true;
