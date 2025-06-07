@@ -68,7 +68,7 @@ class Subject
          std::vector<Observer> localObservers;
 
          {
-            std::lock_guard lock(mutex);
+            std::lock_guard lock(access);
             localObservers = observers;
          }
 
@@ -82,7 +82,7 @@ class Subject
 
          if (retain)
          {
-            std::lock_guard lock(mutex);
+            std::lock_guard lock(access);
             retained = std::make_shared<T>(value);
          }
       }
@@ -92,8 +92,8 @@ class Subject
          std::vector<Observer> localObservers;
 
          {
-            std::lock_guard lock(mutex);
-            localObservers = observers; // Copia para evitar iterar bajo lock
+            std::lock_guard lock(access);
+            localObservers = observers;
          }
 
          for (auto observer = localObservers.begin(); observer != localObservers.end(); ++observer)
@@ -110,7 +110,7 @@ class Subject
          std::vector<Observer> localObservers;
 
          {
-            std::lock_guard lock(mutex);
+            std::lock_guard lock(access);
             localObservers = observers;
          }
 
@@ -125,7 +125,7 @@ class Subject
 
       Subscription subscribe(NextHandler next, ErrorHandler error = nullptr, CloseHandler close = nullptr)
       {
-         std::lock_guard lock(mutex);
+         std::lock_guard lock(access);
 
          // append observer to list
          auto &observer = observers.emplace_back(observers.size() + 1, next, error, close);
@@ -144,7 +144,7 @@ class Subject
          return {
             [this, &observer] {
 
-               std::lock_guard lock(mutex);
+               std::lock_guard lock(access);
 
                log->debug("removed subscription {} ({}) from subject {}", {observer.index, static_cast<void *>(&observer), id});
 
@@ -192,6 +192,9 @@ class Subject
 
       // last value
       std::shared_ptr<T> retained;
+
+      // subject access mutex
+      std::mutex access;
 };
 
 template <typename T>
