@@ -318,23 +318,21 @@ struct Iso7816::Impl : IsoTech
          // measure time between 10 edges and calculate clock frequency
          if (++modulationStatus.clockCounter == 10)
          {
-            modulationStatus.clockFrequency = static_cast<double>(decoder->sampleRate * modulationStatus.clockCounter) / static_cast<double>(decoder->signalClock - modulationStatus.clockEdgeTime); // calculate clock frequency
-            modulationStatus.clockEdgeTime = decoder->signalClock;
+            double clockValue = static_cast<double>(decoder->sampleRate * modulationStatus.clockCounter) / static_cast<double>(decoder->signalClock - modulationStatus.clockEdgeTime); // calculate clock frequency
+            double clockDrift = std::abs(clockValue - modulationStatus.clockFrequency) / modulationStatus.clockFrequency;
+
             modulationStatus.clockCounter = 0;
+            modulationStatus.clockEdgeTime = decoder->signalClock;
+            modulationStatus.clockFrequency = clockValue;
 
-            if (protocolStatus.clockFrequency > 0)
+            // only update clock frequency if drift is less than 5% between two consecutive measures
+            if (clockDrift < 0.05 && protocolStatus.clockFrequency > 0)
             {
-               double clockChange = std::abs(modulationStatus.clockFrequency - protocolStatus.clockFrequency) / protocolStatus.clockFrequency;
+               clockDrift = std::abs(modulationStatus.clockFrequency - protocolStatus.clockFrequency) / protocolStatus.clockFrequency;
 
-               if (clockChange > 0.05)
+               if (clockDrift > 0.05)
                {
                   log->info("detected clock change: {.2} MHz -> {.2} MHz", {protocolStatus.clockFrequency / 1000000.0f, modulationStatus.clockFrequency / 1000000.0f});
-
-                  // calculate elementary time unit based on ATR SYNC pattern
-                  // double etuSyncSamples = (modulationStatus.syncEndTime - modulationStatus.syncStartTime) / 3.0;
-
-                  // derive new elementary time unit for current clock frequency
-                  // double etuSamples = (ISO_FI_TABLE[protocolStatus.frequencyFactorIndex] / ISO_DI_TABLE[protocolStatus.baudRateFactorIndex]);
 
                   updateProtocol(modulationStatus.clockFrequency, protocolStatus.frequencyFactorIndex, protocolStatus.baudRateFactorIndex);
                }
