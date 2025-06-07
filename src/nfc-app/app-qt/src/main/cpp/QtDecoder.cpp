@@ -344,6 +344,8 @@ struct QtDecoder::Impl
     */
    void doStartDecode(DecoderControlEvent *event) const
    {
+      qInfo() << "start decoder and receiver tasks";
+
       // if event contains file name and sample rate start recorder
       if (event->contains("storagePath"))
       {
@@ -410,6 +412,8 @@ struct QtDecoder::Impl
     */
    void doStopDecode(DecoderControlEvent *event) const
    {
+      qInfo() << "stop decoder and receiver tasks";
+
       // stop radio receiver task
       if (!logicDeviceType.isEmpty())
       {
@@ -428,6 +432,8 @@ struct QtDecoder::Impl
     */
    void doLogicDeviceConfig(DecoderControlEvent *event)
    {
+      qInfo() << "configure logic device";
+
       QJsonObject config;
 
       if (event->contains("enabled"))
@@ -445,6 +451,8 @@ struct QtDecoder::Impl
     */
    void doLogicDecoderConfig(DecoderControlEvent *event)
    {
+      qInfo() << "configure logic decoder";
+
       QJsonObject config;
       QJsonObject iso7816;
 
@@ -894,6 +902,7 @@ struct QtDecoder::Impl
          else
          {
             QJsonObject forward;
+            static QJsonObject lastForward;
 
             // forward streamTime and samplerate to decoder
             if (status.contains("streamTime"))
@@ -902,8 +911,11 @@ struct QtDecoder::Impl
             if (status.contains("sampleRate"))
                forward["sampleRate"] = status["sampleRate"].toInt();
 
-            if (!forward.isEmpty())
+            if (!forward.isEmpty() && forward != lastForward)
+            {
+               lastForward = forward;
                taskLogicDecoderConfig(forward);
+            }
 
             QtApplication::post(LogicDeviceStatusEvent::create(status));
          }
@@ -1028,6 +1040,7 @@ struct QtDecoder::Impl
          else
          {
             QJsonObject forward;
+            static QJsonObject lastForward;
 
             // forward streamTime and samplerate to decoder
             if (status.contains("streamTime"))
@@ -1036,8 +1049,11 @@ struct QtDecoder::Impl
             if (status.contains("sampleRate"))
                forward["sampleRate"] = status["sampleRate"].toInt();
 
-            if (!forward.isEmpty())
+            if (!forward.isEmpty() && forward != lastForward)
+            {
+               lastForward = forward;
                taskRadioDecoderConfig(forward);
+            }
 
             QtApplication::post(RadioDeviceStatusEvent::create(status));
          }
@@ -1164,7 +1180,7 @@ struct QtDecoder::Impl
     */
    void taskLogicDecoderStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "start logic decoder task";
+      qInfo() << "start logic decoder task";
 
       logicDecoderCommandStream->next({lab::LogicDecoderTask::Start, onComplete, onReject});
    }
@@ -1174,7 +1190,7 @@ struct QtDecoder::Impl
     */
    void taskLogicDecoderStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "stop logic decoder task";
+      qInfo() << "stop logic decoder task";
 
       logicDecoderCommandStream->next({lab::LogicDecoderTask::Stop, onComplete, onReject});
    }
@@ -1184,7 +1200,7 @@ struct QtDecoder::Impl
     */
    void taskLogicDecoderQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "query logic decoder task";
+      qInfo() << "query logic decoder task";
 
       logicDecoderCommandStream->next({lab::LogicDecoderTask::Query, onComplete, onReject});
    }
@@ -1196,7 +1212,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "configure logic decoder task";
+      qInfo() << "configure logic decoder task";
 
       logicDecoderCommandStream->next({lab::LogicDecoderTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1206,7 +1222,7 @@ struct QtDecoder::Impl
     */
    void taskLogicDecoderClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "clear logic decoder task";
+      qInfo() << "clear logic decoder task";
 
       logicDecoderCommandStream->next({lab::LogicDecoderTask::Clear, onComplete, onReject});
    }
@@ -1216,7 +1232,7 @@ struct QtDecoder::Impl
     */
    void taskRadioDecoderStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "start radio decoder task";
+      qInfo() << "start radio decoder task";
 
       radioDecoderCommandStream->next({lab::RadioDecoderTask::Start, onComplete, onReject});
    }
@@ -1226,7 +1242,7 @@ struct QtDecoder::Impl
     */
    void taskRadioDecoderStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "stop radio decoder task";
+      qInfo() << "stop radio decoder task";
 
       radioDecoderCommandStream->next({lab::RadioDecoderTask::Stop, onComplete, onReject});
    }
@@ -1236,7 +1252,7 @@ struct QtDecoder::Impl
     */
    void taskRadioDecoderQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "query radio decoder task";
+      qInfo() << "query radio decoder task";
 
       radioDecoderCommandStream->next({lab::RadioDecoderTask::Query, onComplete, onReject});
    }
@@ -1248,7 +1264,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "configure radio decoder task";
+      qInfo() << "configure radio decoder task";
 
       radioDecoderCommandStream->next({lab::RadioDecoderTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1258,7 +1274,7 @@ struct QtDecoder::Impl
     */
    void taskRadioDecoderClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "clear radio decoder task";
+      qInfo() << "clear radio decoder task";
 
       radioDecoderCommandStream->next({lab::RadioDecoderTask::Clear, onComplete, onReject});
    }
@@ -1268,7 +1284,7 @@ struct QtDecoder::Impl
     */
    void taskLogicDeviceStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "start logic decoder task";
+      qInfo() << "start logic device task";
 
       logicDeviceCommandStream->next({lab::LogicDeviceTask::Start, onComplete, onReject});
    }
@@ -1278,7 +1294,7 @@ struct QtDecoder::Impl
     */
    void taskLogicDeviceStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "stop logic decoder task";
+      qInfo() << "stop logic device task";
 
       logicDeviceCommandStream->next({lab::LogicDeviceTask::Stop, onComplete, onReject});
    }
@@ -1288,7 +1304,7 @@ struct QtDecoder::Impl
     */
    void taskLogicDeviceQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "query logic decoder task";
+      qInfo() << "query logic device task";
 
       logicDeviceCommandStream->next({lab::LogicDeviceTask::Query, onComplete, onReject});
    }
@@ -1300,7 +1316,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "configure logic decoder task";
+      qInfo() << "configure logic device task ";
 
       logicDeviceCommandStream->next({lab::LogicDeviceTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1310,7 +1326,7 @@ struct QtDecoder::Impl
    */
    void taskLogicDeviceClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "clear logic decoder task";
+      qInfo() << "clear logic device task";
 
       logicDeviceCommandStream->next({lab::LogicDeviceTask::Clear, onComplete, onReject});
    }
@@ -1320,7 +1336,7 @@ struct QtDecoder::Impl
     */
    void taskRadioDeviceStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "start radio device task";
+      qInfo() << "start radio device task";
 
       radioDeviceCommandStream->next({lab::RadioDeviceTask::Start, onComplete, onReject});
    }
@@ -1330,7 +1346,7 @@ struct QtDecoder::Impl
     */
    void taskRadioDeviceStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "stop radio device task";
+      qInfo() << "stop radio device task";
 
       radioDeviceCommandStream->next({lab::RadioDeviceTask::Stop, onComplete, onReject});
    }
@@ -1340,7 +1356,7 @@ struct QtDecoder::Impl
     */
    void taskRadioDeviceQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "query radio device task";
+      qInfo() << "query radio device task";
 
       radioDeviceCommandStream->next({lab::RadioDeviceTask::Query, onComplete, onReject});
    }
@@ -1352,7 +1368,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "configure radio device task";
+      qInfo() << "configure radio device task ";
 
       radioDeviceCommandStream->next({lab::RadioDeviceTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1362,7 +1378,7 @@ struct QtDecoder::Impl
     */
    void taskRadioDeviceClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "clear radio device task";
+      qInfo() << "clear radio device task";
 
       radioDeviceCommandStream->next({lab::RadioDeviceTask::Clear, onComplete, onReject});
    }
@@ -1374,7 +1390,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "configure fourier task";
+      qInfo() << "configure fourier task ";
 
       fourierCommandStream->next({lab::FourierProcessTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1386,7 +1402,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "start recorder task to read file";
+      qInfo() << "start recorder task to read file:" << doc.toJson();
 
       recorderCommandStream->next({lab::SignalStorageTask::Read, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1398,7 +1414,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "start recorder task to write file";
+      qInfo() << "start recorder task to write file:" << doc.toJson();
 
       recorderCommandStream->next({lab::SignalStorageTask::Write, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1408,7 +1424,7 @@ struct QtDecoder::Impl
     */
    void taskRecorderStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "stop recorder task";
+      qInfo() << "stop recorder task";
 
       recorderCommandStream->next({lab::SignalStorageTask::Stop, onComplete, onReject});
    }
@@ -1420,7 +1436,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "start storage task to read file";
+      qInfo() << "start storage task to read file:" << doc.toJson();
 
       storageCommandStream->next({lab::TraceStorageTask::Read, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1432,7 +1448,7 @@ struct QtDecoder::Impl
    {
       const QJsonDocument doc(data);
 
-      qDebug() << "start storage task to write file";
+      qInfo() << "start storage task to write file:" << doc.toJson();
 
       storageCommandStream->next({lab::TraceStorageTask::Write, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1442,7 +1458,7 @@ struct QtDecoder::Impl
     */
    void taskStorageClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
-      qDebug() << "clear storage task";
+      qInfo() << "clear storage task";
 
       storageCommandStream->next({lab::TraceStorageTask::Clear, onComplete, onReject});
    }
