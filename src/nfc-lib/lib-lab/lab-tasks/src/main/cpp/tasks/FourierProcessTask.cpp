@@ -202,7 +202,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       std::lock_guard lock(signalMutex);
 
       // IQ complex signal to real FFT transform
-      if (signalBuffer.isValid() && signalBuffer.type() == hw::SignalType::SIGNAL_TYPE_RAW_IQ)
+      if (signalBuffer.isValid() && signalBuffer.type() == hw::SignalType::SIGNAL_TYPE_RADIO_IQ)
       {
          float *data = signalBuffer.data();
 

@@ -30,7 +30,7 @@ namespace lab {
 // process next sample from signal buffer
 bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)
 {
-   if (buffer.available() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_RAW_LOGIC)
+   if (buffer.available() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES)
       return false;
 
    // number of channels

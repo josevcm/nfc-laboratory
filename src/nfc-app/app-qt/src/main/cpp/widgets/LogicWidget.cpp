@@ -199,37 +199,7 @@ struct LogicWidget::Impl
 
       switch (buffer.type())
       {
-         case hw::SignalType::SIGNAL_TYPE_STM_LOGIC:
-         {
-            if (!channels.contains(buffer.id()))
-               return;
-
-            ChannelGraph *ch = channels[buffer.id()];
-
-            double offset = ch->offset();
-            double sampleRate = buffer.sampleRate();
-            double sampleStep = 1 / sampleRate;
-            double startTime = static_cast<double>(buffer.offset()) / sampleRate;
-
-            for (int i = 0; i < buffer.elements(); i++)
-            {
-               double time = std::fma(sampleStep, i, startTime);
-               double value = buffer[i];
-
-               ch->data()->add({time, offset + (value < threshold ? -height / 2 : +height / 2)});
-            }
-
-            // remove old data when maximum memory threshold is reached
-            if (ch->data()->size() > maximumEntries)
-               ch->data()->removeBefore(ch->data()->at(ch->data()->size() - maximumEntries)->key);
-
-            // update graph
-            widget->setDataRange(ch->data()->at(0)->key, ch->data()->at(ch->data()->size() - 1)->key);
-
-            break;
-         }
-
-         case hw::SignalType::SIGNAL_TYPE_ADV_LOGIC:
+         case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
          {
             if (!channels.contains(buffer.id()))
                return;

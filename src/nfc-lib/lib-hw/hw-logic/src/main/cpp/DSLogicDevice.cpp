@@ -1937,7 +1937,7 @@ struct DSLogicDevice::Impl
          unsigned long long bufferOffset = currentSamples + k * (size / validChannels);
 
          // create new buffer for interleaved data
-         SignalBuffer buffer(size, validChannels, 1, samplerate, bufferOffset, 0, SIGNAL_TYPE_RAW_LOGIC);
+         SignalBuffer buffer(size, validChannels, 1, samplerate, bufferOffset, 0, SIGNAL_TYPE_LOGIC_SAMPLES);
 
          // transpose data from transfer buffer to interleaved buffer
          transpose(buffer, 0, transfer->data, start + k * (size >> 3), transfer->actual);

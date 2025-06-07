@@ -147,23 +147,16 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       switch (buffer.type())
       {
          // adaptive resample for raw real signal
-         case hw::SignalType::SIGNAL_TYPE_RAW_REAL:
+         case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
          {
             processRawReal(buffer);
             break;
          }
 
          // adaptive resample for stream logic signal
-         case hw::SignalType::SIGNAL_TYPE_RAW_LOGIC:
+         case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
          {
             processRawLogic(buffer);
-            break;
-         }
-
-         // adaptive resample for stream logic signal
-         case hw::SignalType::SIGNAL_TYPE_STM_LOGIC:
-         {
-            processStmLogic(buffer);
             break;
          }
 
@@ -174,7 +167,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
 
    void processRawReal(const hw::SignalBuffer &buffer)
    {
-      hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_ADV_REAL, buffer.id());
+      hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, buffer.id());
 
       float avrg = 0;
       float last = buffer[0];
@@ -245,7 +238,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
          if (n == 1)
             continue;
 
-         hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_ADV_LOGIC, n);
+         hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL, n);
 
          // get value of the first sample of a channel
          float last = buffer[n];
@@ -275,41 +268,6 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
 
          adaptiveSignalStream->next(resampled);
       }
-
-      taskThroughput.update(buffer.elements());
-   }
-
-   void processStmLogic(const hw::SignalBuffer &buffer)
-   {
-      hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_ADV_LOGIC, buffer.id());
-
-      // get value of the first sample
-      float last = buffer[0];
-
-      // and store in resampled buffer
-      resampled.put(last).put(0.0);
-
-      // adaptive resample based values changes (logic)
-      for (int i = 1, c = 0; i < buffer.limit(); ++i)
-      {
-         float value = buffer[i];
-
-         // store new sample if different from last or every LOGIC_INTERVAL samples
-         if (value != last || (i - c) >= LOGIC_INTERVAL)
-         {
-            resampled.put(value).put(static_cast<float>(i));
-
-            // update last value
-            last = value;
-
-            // update control point index
-            c = i;
-         }
-      }
-
-      resampled.flip();
-
-      adaptiveSignalStream->next(resampled);
 
       taskThroughput.update(buffer.elements());
    }

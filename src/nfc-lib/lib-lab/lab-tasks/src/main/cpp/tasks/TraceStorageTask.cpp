@@ -117,10 +117,10 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          {
             switch (buffer.type())
             {
-               case hw::SignalType::SIGNAL_TYPE_ADV_LOGIC:
+               case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
                   logicSignalQueue.add(buffer);
                   break;
-               case hw::SignalType::SIGNAL_TYPE_ADV_REAL:
+               case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
                   radioSignalQueue.add(buffer);
                   break;
                default:
@@ -597,7 +597,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
          log->debug("\tread data, offset {} size {} start {}", {position, size, position + chunk[0]});
 
-         hw::SignalBuffer buffer(size, 2, 1, sampleRate, position, 0, hw::SignalType::SIGNAL_TYPE_ADV_LOGIC, streamId);
+         hw::SignalBuffer buffer(size, 2, 1, sampleRate, position, 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL, streamId);
 
          for (int i = 0; i < size; i += 2)
          {
@@ -834,7 +834,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
          log->debug("\tread data, offset {} size {} start {}", {position, size, position + chunk[0]});
 
-         hw::SignalBuffer buffer((size / 3) * 2, 2, 1, sampleRate, position, 0, hw::SignalType::SIGNAL_TYPE_ADV_REAL, streamId);
+         hw::SignalBuffer buffer((size / 3) * 2, 2, 1, sampleRate, position, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, streamId);
 
          for (int i = 0; i < size; i += 3)
          {

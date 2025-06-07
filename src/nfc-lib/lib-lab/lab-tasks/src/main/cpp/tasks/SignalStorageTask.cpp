@@ -290,32 +290,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
          {
             switch (buffer->type())
             {
-               case hw::SignalType::SIGNAL_TYPE_STM_LOGIC:
-               {
-                  // integrate new buffer interleaving with previous one store every offset change
-                  if (interleaveBuffer(logicBufferKeys, logicBufferCache, *buffer))
-                  {
-                     // create new storage file before first buffer is completed
-                     if (!logicStorage)
-                     {
-                        logicStorage = open(fileName("logic"), logicBufferCache.sampleRate(), hw::SAMPLE_SIZE_8, logicBufferCache.stride(), logicBufferKeys, hw::RecordDevice::Mode::Write);
-                        writeFinished = !logicStorage;
-                     }
-
-                     if (!writeFinished)
-                     {
-                        // write buffer to storage
-                        logicStorage->write(logicBufferCache);
-
-                        // and start again with new buffer
-                        logicBufferCache = *buffer;
-                     }
-                  }
-
-                  break;
-               }
-
-               case hw::SignalType::SIGNAL_TYPE_RAW_LOGIC:
+               case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
                {
                   // create new storage file before first buffer is completed
                   if (!logicStorage)
@@ -476,25 +451,13 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       unsigned int channelCount = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
       unsigned int sampleOffset = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
 
-      hw::SignalBuffer block(65536 * channelCount, channelCount, 1, 0, 0, 0, hw::SignalType::SIGNAL_TYPE_STM_LOGIC);
+      hw::SignalBuffer buffer(65536 * channelCount, 1, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
 
-      if (logicStorage->read(block) > 0)
+      if (logicStorage->read(buffer) > 0)
       {
-         for (int c = 0; c < block.stride(); c++)
-         {
-            hw::SignalBuffer buffer(65536, 1, 1, sampleRate, sampleOffset / channelCount, 0, hw::SignalType::SIGNAL_TYPE_STM_LOGIC, c < logicBufferKeys.size() ? logicBufferKeys[c] : c);
+         log->debug("streaming logic [{}]: {} length {}", {buffer.id(), buffer.offset(), buffer.elements()});
 
-            for (unsigned int i = 0; i < block.size(); i += block.stride())
-            {
-               buffer.put(block[c + i]);
-            }
-
-            buffer.flip();
-
-            log->debug("streaming logic [{}]: {} length {}", {buffer.id(), buffer.offset(), buffer.elements()});
-
-            logicSignalRawStream->next(buffer);
-         }
+         radioSignalRawStream->next(buffer);
       }
 
       if (logicStorage->isEof() || !logicStorage->isOpen())
@@ -519,7 +482,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       {
          case 1:
          {
-            hw::SignalBuffer buffer(65536 * channelCount, 1, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_RAW_REAL);
+            hw::SignalBuffer buffer(65536 * channelCount, 1, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
 
             if (radioStorage->read(buffer) > 0)
             {
@@ -533,11 +496,11 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
          case 2:
          {
-            hw::SignalBuffer buffer(65536 * channelCount, 2, 1, sampleRate, sampleOffset >> 1, 0, hw::SignalType::SIGNAL_TYPE_RAW_IQ);
+            hw::SignalBuffer buffer(65536 * channelCount, 2, 1, sampleRate, sampleOffset >> 1, 0, hw::SignalType::SIGNAL_TYPE_RADIO_IQ);
 
             if (radioStorage->read(buffer) > 0)
             {
-               hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RAW_REAL);
+               hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
 
                float *src = buffer.data();
                float *dst = result.pull(buffer.elements());

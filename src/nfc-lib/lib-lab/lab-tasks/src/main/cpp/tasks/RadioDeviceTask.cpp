@@ -474,7 +474,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       if (auto entry = signalQueue.get(timeout))
       {
          hw::SignalBuffer buffer = entry.value();
-         hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RAW_REAL, buffer.id());
+         hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, buffer.id());
 
          float *src = buffer.data();
          float *dst = result.pull(buffer.elements());
