@@ -52,9 +52,7 @@ struct Promise
       void resolve() const
       {
          if (resolveHandler)
-         {
             resolveHandler();
-         }
 
          status = Fulfilled;
       }
@@ -62,9 +60,7 @@ struct Promise
       void reject(int error = 0, const std::string &message = std::string()) const
       {
          if (rejectHandler)
-         {
             rejectHandler(error, message);
-         }
 
          status = Rejected;
       }
