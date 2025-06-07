@@ -403,7 +403,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
          data["model"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_MODEL));
          data["version"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_VERSION));
          data["serial"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_SERIAL));
-         data["status"] = radioReceiverEnabled ? (device->isStreaming() ? "streaming" : "idle") : "disabled";
+         data["status"] = radioReceiverEnabled ? (device->isStreaming() ? "streaming" : status == Flush ? "flush" : "idle") : "disabled";
 
          // device parameters
          data["centerFreq"] = std::get<unsigned int>(device->get(hw::RadioDevice::PARAM_TUNE_FREQUENCY));
