@@ -42,9 +42,9 @@ class RadioDeviceTask : public rt::Worker
       enum Status
       {
          Absent,
-         Idle,
          Streaming,
-         Flush
+         Flush,
+         Idle
       };
 
       enum Error
