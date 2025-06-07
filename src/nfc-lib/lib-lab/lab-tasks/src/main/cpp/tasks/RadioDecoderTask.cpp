@@ -199,11 +199,17 @@ struct RadioDecoderTask::Impl : RadioDecoderTask, AbstractTask
 
    void configDecoder(const rt::Event &command)
    {
+      static json lastConfig;
+
       if (auto data = command.get<std::string>("data"))
       {
          auto config = json::parse(data.value());
 
-         log->info("change config: {}", {config.dump()});
+         if (lastConfig != config)
+         {
+            lastConfig = config;
+            log->info("change config: {}", {config.dump()});
+         }
 
          // update current configuration
          currentConfig.merge_patch(config);
