@@ -161,7 +161,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          }
       }
 
-      wait(250);
+      wait(50);
 
       return true;
    }
@@ -232,17 +232,20 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       command.reject(error);
    }
 
-   void clearQueue(const rt::Event &event)
+   void clearQueue(const rt::Event &command)
    {
       log->info("clear {} entries from frame cache", {frameQueue.size()});
-      log->info("clear {} entries from logic buffer cache", {logicSignalQueue.size()});
-      log->info("clear {} entries from radio buffer cache", {radioSignalQueue.size()});
-
       frameQueue.clear();
+
+      log->info("clear {} entries from logic buffer cache", {logicSignalQueue.size()});
       logicSignalQueue.clear();
+
+      log->info("clear {} entries from radio buffer cache", {radioSignalQueue.size()});
       radioSignalQueue.clear();
 
-      event.resolve();
+      log->info("clear all entries completed!");
+
+      command.resolve();
    }
 
    int readTraceFile(const std::string &file)
