@@ -42,9 +42,9 @@ class Heap
          // check if there is a suitable allocation block in the pool
          for (auto it = available.begin(); it != available.end(); ++it)
          {
-            if (it->get()->size >= size && it->get()->alignment == alignment)
+            if (it->alloc->size >= size && it->alloc->alignment == alignment)
             {
-               Alloc<T> *found = it->release();
+               Alloc<T>* found = it->alloc.release();
                available.erase(it);
                return wrap(found);
             }
@@ -56,16 +56,26 @@ class Heap
 
    private:
 
+      using Weak = std::unique_ptr<Alloc<T>>;
+      using Clock = std::chrono::steady_clock;
+      using Time = Clock::time_point;
+
+      struct Entry
+      {
+         Weak alloc;
+         Time created;
+      };
+
       Ptr wrap(Alloc<T> *raw)
       {
          return Ptr(raw, [this](Alloc<T> *ptr) {
             std::lock_guard lock(mutex);
-            available.push_back(std::unique_ptr<Alloc<T>>(ptr));
+            available.push_back({Weak(ptr), Clock::now()});
          });
       }
 
       std::mutex mutex;
-      std::list<std::unique_ptr<Alloc<T>>> available; // object pool
+      std::list<Entry> available; // object pool
 };
 
 }
