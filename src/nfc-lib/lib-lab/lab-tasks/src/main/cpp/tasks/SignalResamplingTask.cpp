@@ -114,7 +114,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       /*
        * process signal queue
        */
-      if (const auto buffer = signalQueue.get(25))
+      if (const auto buffer = signalQueue.get(10))
       {
          if (buffer.has_value())
          {
