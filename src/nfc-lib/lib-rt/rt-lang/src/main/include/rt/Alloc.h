@@ -22,26 +22,23 @@
 #ifndef RT_ALLOC_POOL_H
 #define RT_ALLOC_POOL_H
 
-#include <atomic>
 #include <cstring>
 #include <memory>
 #include <stdexcept>
 
 namespace rt {
-
 template <class T>
 struct Alloc
 {
    T *data; // aligned payload data pointer
    unsigned int size; // block size
    unsigned int alignment; // block alignment
-   std::shared_ptr<std::atomic_int> references;
 
-   Alloc() : data(nullptr), size(0), alignment(0), references(std::make_shared<std::atomic_int>(1))
+   Alloc() : data(nullptr), size(0), alignment(0)
    {
    }
 
-   Alloc(unsigned int size, unsigned int alignment, bool clean = false) : data(nullptr), size(size), alignment(alignment), references(std::make_shared<std::atomic_int>(1))
+   Alloc(unsigned int size, unsigned int alignment, bool clean = false) : data(nullptr), size(size), alignment(alignment)
    {
       if (size == 0 || alignment == 0)
          throw std::invalid_argument("Size and alignment must be greater than zero");
@@ -63,20 +60,8 @@ struct Alloc
          std::memset((void *)data, 0, size * sizeof(T));
    }
 
-   Alloc(const Alloc &other) : data(other.data), size(other.size), alignment(other.alignment), references(other.references)
-   {
-      references->fetch_add(1, std::memory_order_acq_rel);
-   }
-
    ~Alloc()
    {
-      // Decrease reference count and free memory if no references left
-      if (references->fetch_sub(1, std::memory_order_acq_rel) > 1)
-         return; // still has references, do not free
-
-      if (!data)
-         return; // nothing to free
-
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
       _aligned_free(data);
 #else

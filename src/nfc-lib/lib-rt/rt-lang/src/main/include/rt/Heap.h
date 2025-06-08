@@ -19,47 +19,53 @@
 
 */
 
-#ifndef RT_POOL_H
-#define RT_POOL_H
+#ifndef RT_HEAP_H
+#define RT_HEAP_H
 
+#include <list>
 #include <mutex>
+
+#include <rt/Alloc.h>
 
 namespace rt {
 template <class T>
-class Pool
+class Heap
 {
    public:
 
-      Alloc<T> acquire(unsigned int size, unsigned int alignment)
+      using Ptr = std::shared_ptr<Alloc<T>>;
+
+      Ptr alloc(unsigned int size, unsigned int alignment)
       {
          std::lock_guard lock(mutex);
 
+         // check if there is a suitable allocation block in the pool
          for (auto it = available.begin(); it != available.end(); ++it)
          {
-            if (it->size >= size && it->alignment == alignment)
+            if (it->get()->size >= size && it->get()->alignment == alignment)
             {
-               Alloc<T> found = *it;
+               Alloc<T> *found = it->release();
                available.erase(it);
-               return found;
+               return wrap(found);
             }
          }
 
          // create a new allocation block if no suitable one found and add it to the pool
-         return {size, alignment};
-      }
-
-      void release(const Alloc<T> &alloc)
-      {
-         std::lock_guard lock(mutex);
-
-         if (alloc.data)
-            available.push_back(alloc);
+         return wrap(new Alloc<T>(size, alignment));
       }
 
    private:
 
+      Ptr wrap(Alloc<T> *raw)
+      {
+         return Ptr(raw, [this](Alloc<T> *ptr) {
+            std::lock_guard lock(mutex);
+            available.push_back(std::unique_ptr<Alloc<T>>(ptr));
+         });
+      }
+
       std::mutex mutex;
-      std::vector<Alloc<T>> available; // object pool
+      std::list<std::unique_ptr<Alloc<T>>> available; // object pool
 };
 
 }

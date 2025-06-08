@@ -26,8 +26,7 @@
 #include <memory>
 #include <functional>
 
-#include <rt/Alloc.h>
-#include <rt/Pool.h>
+#include <rt/Heap.h>
 
 #define ALLOC_ALIGNMENT 128
 
@@ -36,38 +35,28 @@ namespace rt {
 template <class T>
 class Buffer
 {
-   Alloc<T> alloc;
+   std::shared_ptr<Alloc<T>> alloc;
 
    struct State
    {
       unsigned int position; // current data position
       unsigned int capacity; // buffer data capacity
       unsigned int limit; // buffer data limit
-
-      State(unsigned int position, unsigned int capacity, unsigned int limit) : position(position), capacity(capacity), limit(limit)
-      {
-      }
-
    } state;
 
    struct Attrs
    {
-      void *context; // context payload
       unsigned int type; // data type
       unsigned int stride; // data stride, how many data has in one chunk for all channels
       unsigned int interleave; // data interleave, how many consecutive data has per channel
-
-      Attrs(unsigned int type, unsigned int stride, unsigned int interleave, void *context) : type(type), stride(stride), interleave(interleave), context(context)
-      {
-      }
-
+      void *context; // context payload
    } attrs;
 
-   static Pool<T> pool;
+   static Heap<T> heap;
 
    public:
 
-      Buffer() : state(0, 0, 0), attrs(0, 0, 0, nullptr)
+      Buffer() : state{0, 0, 0}, attrs{0, 0, 0, nullptr}
       {
       }
 
@@ -81,15 +70,12 @@ class Buffer
             put(data, capacity).flip();
       }
 
-      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state(0, capacity, capacity), attrs(type, stride, interleave, context)
+      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state{0, capacity, capacity}, attrs{type, stride, interleave, context}
       {
-         alloc = pool.acquire(capacity, ALLOC_ALIGNMENT);
+         alloc = heap.alloc(capacity, ALLOC_ALIGNMENT);
       }
 
-      ~Buffer()
-      {
-         pool.release(alloc);
-      }
+      ~Buffer() = default;
 
       Buffer &operator=(const Buffer &other)
       {
@@ -111,10 +97,10 @@ class Buffer
          if (state.limit != other.state.limit || state.position != other.state.position)
             return false;
 
-         if (alloc.data == other.alloc.data)
+         if (alloc == other.alloc)
             return true;
 
-         return std::memcmp(alloc.data + state.position, other.alloc.data + state.position, state.limit) == 0;
+         return std::memcmp(alloc->data + state.position, other.alloc->data + state.position, state.limit) == 0;
       }
 
       bool operator!=(const Buffer &other) const
@@ -124,16 +110,14 @@ class Buffer
 
       void reset()
       {
-         pool.release(alloc);
-
-         alloc = {};
+         alloc.reset();
          state = {0, 0, 0};
          attrs = {0, 0, 0, nullptr};
       }
 
       bool isValid() const
       {
-         return alloc.data;
+         return alloc != nullptr;
       }
 
       bool isEmpty() const
@@ -168,27 +152,27 @@ class Buffer
 
       unsigned int elements() const
       {
-         return alloc.data ? state.limit * attrs.interleave / attrs.stride : 0;
+         return alloc ? state.limit * attrs.interleave / attrs.stride : 0;
       }
 
       unsigned int stride() const
       {
-         return alloc.data ? attrs.stride : 0;
+         return alloc ? attrs.stride : 0;
       }
 
       unsigned int interleave() const
       {
-         return alloc.data ? alloc->interleave : 0;
+         return alloc ? alloc->interleave : 0;
       }
 
       unsigned int size() const
       {
-         return alloc.data ? state.limit * sizeof(T) : 0;
+         return alloc ? state.limit * sizeof(T) : 0;
       }
 
       unsigned int chunk() const
       {
-         return alloc.data ? attrs.stride * sizeof(T) : 0;
+         return alloc ? attrs.stride * sizeof(T) : 0;
       }
 
       operator bool() const
@@ -196,31 +180,26 @@ class Buffer
          return isValid();
       }
 
-      unsigned int references() const
-      {
-         return alloc.data ? static_cast<unsigned int>(alloc->references) : 0;
-      }
-
       unsigned int type() const
       {
-         return alloc.data ? attrs.type : 0;
+         return alloc->data ? attrs.type : 0;
       }
 
       void *context() const
       {
-         return alloc.data ? attrs.context : nullptr;
+         return alloc->data ? attrs.context : nullptr;
       }
 
       T *data() const
       {
-         return alloc.data ? alloc.data : nullptr;
+         return alloc->data ? alloc->data : nullptr;
       }
 
       T *pull(unsigned int size)
       {
-         if (alloc.data && state.position + size <= state.capacity)
+         if (alloc && state.position + size <= state.capacity)
          {
-            T *ptr = alloc.data + state.position;
+            T *ptr = alloc->data + state.position;
             state.position += size;
             return ptr;
          }
@@ -230,15 +209,15 @@ class Buffer
 
       Buffer &resize(unsigned int newCapacity)
       {
-         if (alloc.data)
+         if (alloc)
          {
             const int count = std::min(newCapacity, state.limit);
 
-            Alloc<T> newAlloc = pool.acquire(newCapacity, ALLOC_ALIGNMENT);
+            Alloc<T> newAlloc = heap.acquire(newCapacity, ALLOC_ALIGNMENT);
 
-            std::memcpy(newAlloc.block, alloc.block, count * sizeof(T));
+            std::memcpy(newAlloc->data, alloc->data, count * sizeof(T));
 
-            pool.release(alloc);
+            heap.release(alloc);
 
             alloc = newAlloc;
             state.limit = newCapacity > state.limit ? state.limit : newCapacity;
@@ -250,7 +229,7 @@ class Buffer
 
       Buffer &clear()
       {
-         if (alloc.data)
+         if (alloc)
          {
             state.limit = state.capacity;
             state.position = 0;
@@ -261,7 +240,7 @@ class Buffer
 
       Buffer &flip()
       {
-         if (alloc.data)
+         if (alloc)
          {
             state.limit = state.position;
             state.position = 0;
@@ -272,7 +251,7 @@ class Buffer
 
       Buffer &rewind()
       {
-         if (alloc.data)
+         if (alloc)
             state.position = 0;
 
          return *this;
@@ -281,41 +260,41 @@ class Buffer
       Buffer &get(T *data)
       {
          if (alloc && state.position < state.limit)
-            *data = alloc.data[state.position++];
+            *data = alloc->data[state.position++];
 
          return *this;
       }
 
       Buffer &put(const T *data)
       {
-         if (alloc.data && state.position < state.limit)
-            alloc.data[state.position++] = *data;
+         if (alloc && state.position < state.limit)
+            alloc->data[state.position++] = *data;
 
          return *this;
       }
 
       Buffer &get(T &value)
       {
-         if (alloc.data && state.position < state.limit)
-            value = alloc.data[state.position++];
+         if (alloc && state.position < state.limit)
+            value = alloc->data[state.position++];
 
          return *this;
       }
 
       Buffer &put(const T &value)
       {
-         if (alloc.data && state.position < state.limit)
-            alloc.data[state.position++] = value;
+         if (alloc && state.position < state.limit)
+            alloc->data[state.position++] = value;
 
          return *this;
       }
 
       Buffer &get(T *data, unsigned int size)
       {
-         if (alloc.data)
+         if (alloc)
          {
             int count = std::min(size, state.limit - state.position);
-            std::memcpy(data, alloc.data + state.position, count * sizeof(T));
+            std::memcpy(data, alloc->data + state.position, count * sizeof(T));
             state.position += count;
          }
 
@@ -324,10 +303,10 @@ class Buffer
 
       Buffer &put(const T *data, unsigned int size)
       {
-         if (alloc.data)
+         if (alloc)
          {
             int count = std::min(size, state.limit - state.position);
-            std::memcpy(alloc.data + state.position, data, count * sizeof(T));
+            std::memcpy(alloc->data + state.position, data, count * sizeof(T));
             state.position += count;
          }
 
@@ -337,10 +316,10 @@ class Buffer
       template <typename E>
       E reduce(E value, const std::function<E(E, T)> &handler) const
       {
-         if (alloc.data)
+         if (alloc)
          {
             for (int i = state.position; i < state.limit; ++i)
-               value = handler(value, alloc.data[i]);
+               value = handler(value, alloc->data[i]);
          }
 
          return value;
@@ -348,26 +327,26 @@ class Buffer
 
       void stream(const std::function<void(const T *, unsigned int)> &handler) const
       {
-         if (alloc.data)
+         if (alloc)
          {
             for (int i = state.position; i < state.limit; i += attrs.stride)
-               handler(alloc.data + i, attrs.stride);
+               handler(alloc->data + i, attrs.stride);
          }
       }
 
       T &operator[](unsigned int index)
       {
-         return alloc.data[index];
+         return alloc->data[index];
       }
 
       const T &operator[](unsigned int index) const
       {
-         return alloc.data[index];
+         return alloc->data[index];
       }
 };
 
 template <class T>
-Pool<T> Buffer<T>::pool;
+Heap<T> Buffer<T>::heap;
 
 }
 
