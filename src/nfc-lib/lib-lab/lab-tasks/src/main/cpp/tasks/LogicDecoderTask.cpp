@@ -291,19 +291,18 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
    {
       if (const auto buffer = logicSignalQueue.get())
       {
-         int frames = 0;
-
-         log->trace("decode new buffer {} offset {} with {} samples", {buffer->id(), buffer->offset(), buffer->elements()});
-
-         taskThroughput.update(buffer->elements());
-
-         for (const auto &frame: decoder->nextFrames(buffer.value()))
+         if (buffer->isValid())
          {
-            decoderFrameStream->next(frame);
-            frames++;
-         }
+            log->trace("decode new buffer {} offset {} with {} samples", {buffer->id(), buffer->offset(), buffer->elements()});
 
-         if (!buffer->isValid())
+            taskThroughput.update(buffer->elements());
+
+            for (const auto &frame: decoder->nextFrames(buffer.value()))
+            {
+               decoderFrameStream->next(frame);
+            }
+         }
+         else
          {
             log->info("decoder EOF buffer received, finish!");
 
