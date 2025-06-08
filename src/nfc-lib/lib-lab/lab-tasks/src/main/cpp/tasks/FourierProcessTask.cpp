@@ -101,11 +101,8 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
       // subscribe to signal events
       signalIqSubscription = signalIqStream->subscribe([=](const hw::SignalBuffer &buffer) {
-         if (signalMutex.try_lock())
-         {
-            signalBuffer = buffer;
-            signalMutex.unlock();
-         }
+         std::lock_guard lock(signalMutex);
+         signalBuffer = buffer;
       });
    }
 
@@ -208,15 +205,21 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
    void process()
    {
-      std::lock_guard lock(signalMutex);
+      hw::SignalBuffer localBuffer;
+
+      {
+         std::lock_guard lock(signalMutex);
+
+         localBuffer = signalBuffer;
+      }
 
       // IQ complex signal to real FFT transform
-      if (signalBuffer.isValid() && signalBuffer.type() == hw::SignalType::SIGNAL_TYPE_RADIO_IQ)
+      if (localBuffer.isValid() && localBuffer.type() == hw::SignalType::SIGNAL_TYPE_RADIO_IQ)
       {
-         float *data = signalBuffer.data();
+         float *data = localBuffer.data();
 
          // calculate decimation for required bandwith
-         decimation = int(signalBuffer.sampleRate() / bandwidth);
+         decimation = int(localBuffer.sampleRate() / bandwidth);
 
          // apply signal windowing and decimation
 #if defined(__SSE2__) && defined(USE_SSE2)
@@ -312,7 +315,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 #endif
 
          // create output buffer
-         hw::SignalBuffer result(length, 1, 1, signalBuffer.sampleRate(), 0, decimation, hw::SignalType::SIGNAL_TYPE_FFT_BIN);
+         hw::SignalBuffer result(length, 1, 1, localBuffer.sampleRate(), 0, decimation, hw::SignalType::SIGNAL_TYPE_FFT_BIN);
 
          // add data width negative / positive frequency shift
          result.put(fftMag + (length >> 1), (length >> 1)).put(fftMag, (length >> 1)).flip();
