@@ -52,9 +52,9 @@ class Buffer
       void *context; // context payload
    } attrs;
 
-   static Heap<T> heap;
-
    public:
+
+      static Heap<T> heap;
 
       Buffer() : state{0, 0, 0}, attrs{0, 0, 0, nullptr}
       {

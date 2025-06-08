@@ -28,6 +28,7 @@
 #include <rt/Alloc.h>
 
 namespace rt {
+
 template <class T>
 class Heap
 {
@@ -44,7 +45,7 @@ class Heap
          {
             if (it->alloc->size >= size && it->alloc->alignment == alignment)
             {
-               Alloc<T>* found = it->alloc.release();
+               Alloc<T> *found = it->alloc.release();
                available.erase(it);
                return wrap(found);
             }
@@ -52,6 +53,22 @@ class Heap
 
          // create a new allocation block if no suitable one found and add it to the pool
          return wrap(new Alloc<T>(size, alignment));
+      }
+
+      void cleanup()
+      {
+         std::lock_guard lock(mutex);
+
+         available.clear();
+      }
+
+      std::string statistics()
+      {
+         std::lock_guard lock(mutex);
+
+         std::string stats = "Heap statistics: available allocations: " + std::to_string(available.size());
+
+         return stats;
       }
 
    private:
