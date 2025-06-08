@@ -241,10 +241,10 @@ struct LogicWidget::Impl
       ribbonMarker->clear();
 
       // clear graph data
-      for (const auto &channel: channels)
+      for (const auto &ch: channels)
       {
-         channel->data()->clear();
-         channel->selection().clear();
+         ch->data()->clear();
+         ch->selection().clear();
       }
 
       widget->setDataRange(0, 1E-6);
