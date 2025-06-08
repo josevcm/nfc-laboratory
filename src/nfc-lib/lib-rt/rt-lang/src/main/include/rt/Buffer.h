@@ -45,13 +45,15 @@ class Buffer
 
       Alloc(unsigned int type, unsigned int capacity, unsigned int stride, unsigned int interleave, void *context, bool cleanup = false) : data(nullptr), type(type), references(1), stride(stride), interleave(interleave), context(context)
       {
-         // allocate raw memory including alignment space
-         data = static_cast<T *>(operator new[](capacity * sizeof(T), static_cast<std::align_val_t>(BUFFER_ALIGNMENT)));
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
+         if (!((data = static_cast<T*>(_aligned_malloc(capacity * sizeof(T), BUFFER_ALIGNMENT)))))
+            throw std::bad_alloc();
+#else
+         if (posix_memalign(&data, BUFFER_ALIGNMENT, capacity * sizeof(T)) != 0)
+            throw std::bad_alloc();
+#endif
 
          // clear memory
-         if (!data)
-            throw std::bad_alloc();
-
          if (cleanup)
             std::memset(data, 0, capacity * sizeof(T));
       }
@@ -61,9 +63,11 @@ class Buffer
          if (!data)
             return;
 
-         // TODO: usar un alineador manual para evitar el uso de operator delete[] que es muy lento
-         // free buffer data
-         ::operator delete[](data, static_cast<std::align_val_t>(BUFFER_ALIGNMENT));
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
+         _aligned_free(data);
+#else
+         std::free(data);
+#endif
       }
 
       int attach()
