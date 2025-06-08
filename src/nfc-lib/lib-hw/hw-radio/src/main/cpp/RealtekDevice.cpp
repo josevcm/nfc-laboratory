@@ -26,6 +26,7 @@
 #undef ERROR
 #endif
 
+#include <atomic>
 #include <queue>
 #include <mutex>
 #include <thread>
