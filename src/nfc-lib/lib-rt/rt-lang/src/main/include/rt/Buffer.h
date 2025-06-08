@@ -2,7 +2,7 @@
 
   This file is part of NFC-LABORATORY.
 
-  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+  Copyright (C) 2025 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,65 +22,21 @@
 #ifndef RT_BUFFER_H
 #define RT_BUFFER_H
 
-#include <atomic>
 #include <cstring>
 #include <memory>
 #include <functional>
 
-#define BUFFER_ALIGNMENT 256
+#include <rt/Alloc.h>
+#include <rt/Pool.h>
+
+#define ALLOC_ALIGNMENT 128
 
 namespace rt {
 
 template <class T>
 class Buffer
 {
-   struct Alloc
-   {
-      T *data = nullptr; // aligned payload data pointer
-      void *context = nullptr; // context payload
-      unsigned int type = 0; // data type
-      unsigned int stride = 0; // data stride, how many data has in one chunk for all channels
-      unsigned int interleave = 0; // data interleave, how many consecutive data has per channel
-      std::atomic<int> references; // block reference count
-
-      Alloc(unsigned int type, unsigned int capacity, unsigned int stride, unsigned int interleave, void *context, bool cleanup = false) : data(nullptr), type(type), references(1), stride(stride), interleave(interleave), context(context)
-      {
-#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
-         if (!((data = static_cast<T*>(_aligned_malloc(capacity * sizeof(T), BUFFER_ALIGNMENT)))))
-            throw std::bad_alloc();
-#else
-         if (posix_memalign(&data, BUFFER_ALIGNMENT, capacity * sizeof(T)) != 0)
-            throw std::bad_alloc();
-#endif
-
-         // clear memory
-         if (cleanup)
-            std::memset(data, 0, capacity * sizeof(T));
-      }
-
-      ~Alloc()
-      {
-         if (!data)
-            return;
-
-#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
-         _aligned_free(data);
-#else
-         std::free(data);
-#endif
-      }
-
-      int attach()
-      {
-         return ++references;
-      }
-
-      int detach()
-      {
-         return --references;
-      }
-
-   } *alloc = nullptr;
+   Alloc<T> alloc;
 
    struct State
    {
@@ -94,32 +50,45 @@ class Buffer
 
    } state;
 
+   struct Attrs
+   {
+      void *context; // context payload
+      unsigned int type; // data type
+      unsigned int stride; // data stride, how many data has in one chunk for all channels
+      unsigned int interleave; // data interleave, how many consecutive data has per channel
+
+      Attrs(unsigned int type, unsigned int stride, unsigned int interleave, void *context) : type(type), stride(stride), interleave(interleave), context(context)
+      {
+      }
+
+   } attrs;
+
+   static Pool<T> pool;
+
    public:
 
-      Buffer() : alloc(nullptr), state(0, 0, 0)
+      Buffer() : state(0, 0, 0), attrs(0, 0, 0, nullptr)
       {
       }
 
-      Buffer(const Buffer &other) : alloc(other.alloc), state(other.state)
+      Buffer(const Buffer &other) : alloc(other.alloc), state(other.state), attrs(other.attrs)
       {
-         if (alloc)
-            alloc->attach();
       }
 
-      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : alloc(new Alloc(type, capacity, stride, interleave, context)), state(0, capacity, capacity)
+      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : Buffer(capacity, type, stride, interleave, context)
       {
          if (data && capacity)
             put(data, capacity).flip();
       }
 
-      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : alloc(new Alloc(type, capacity, stride, interleave, context)), state(0, capacity, capacity)
+      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state(0, capacity, capacity), attrs(type, stride, interleave, context)
       {
+         alloc = pool.acquire(capacity, ALLOC_ALIGNMENT);
       }
 
       ~Buffer()
       {
-         if (alloc && alloc->detach() == 0)
-            delete alloc;
+         pool.release(alloc);
       }
 
       Buffer &operator=(const Buffer &other)
@@ -127,14 +96,9 @@ class Buffer
          if (&other == this)
             return *this;
 
-         if (alloc && alloc->detach() == 0)
-            delete alloc;
-
-         state = other.state;
          alloc = other.alloc;
-
-         if (alloc)
-            alloc->attach();
+         state = other.state;
+         attrs = other.attrs;
 
          return *this;
       }
@@ -147,10 +111,10 @@ class Buffer
          if (state.limit != other.state.limit || state.position != other.state.position)
             return false;
 
-         if (alloc == other.alloc)
+         if (alloc.data == other.alloc.data)
             return true;
 
-         return std::memcmp(alloc->data + state.position, other.alloc->data + state.position, state.limit) == 0;
+         return std::memcmp(alloc.data + state.position, other.alloc.data + state.position, state.limit) == 0;
       }
 
       bool operator!=(const Buffer &other) const
@@ -160,16 +124,16 @@ class Buffer
 
       void reset()
       {
-         if (alloc && alloc->detach() == 0)
-            delete alloc;
+         pool.release(alloc);
 
+         alloc = {};
          state = {0, 0, 0};
-         alloc = {nullptr};
+         attrs = {0, 0, 0, nullptr};
       }
 
       bool isValid() const
       {
-         return alloc;
+         return alloc.data;
       }
 
       bool isEmpty() const
@@ -204,27 +168,27 @@ class Buffer
 
       unsigned int elements() const
       {
-         return alloc ? state.limit * alloc->interleave / alloc->stride : 0;
+         return alloc.data ? state.limit * attrs.interleave / attrs.stride : 0;
       }
 
       unsigned int stride() const
       {
-         return alloc ? alloc->stride : 0;
+         return alloc.data ? attrs.stride : 0;
       }
 
       unsigned int interleave() const
       {
-         return alloc ? alloc->interleave : 0;
+         return alloc.data ? alloc->interleave : 0;
       }
 
       unsigned int size() const
       {
-         return alloc ? state.limit * sizeof(T) : 0;
+         return alloc.data ? state.limit * sizeof(T) : 0;
       }
 
       unsigned int chunk() const
       {
-         return alloc ? alloc->stride * sizeof(T) : 0;
+         return alloc.data ? attrs.stride * sizeof(T) : 0;
       }
 
       operator bool() const
@@ -234,29 +198,29 @@ class Buffer
 
       unsigned int references() const
       {
-         return alloc ? static_cast<unsigned int>(alloc->references) : 0;
+         return alloc.data ? static_cast<unsigned int>(alloc->references) : 0;
       }
 
       unsigned int type() const
       {
-         return alloc ? alloc->type : 0;
+         return alloc.data ? attrs.type : 0;
       }
 
       void *context() const
       {
-         return alloc ? alloc->context : nullptr;
+         return alloc.data ? attrs.context : nullptr;
       }
 
       T *data() const
       {
-         return alloc ? alloc->data : nullptr;
+         return alloc.data ? alloc.data : nullptr;
       }
 
       T *pull(unsigned int size)
       {
-         if (alloc && state.position + size <= state.capacity)
+         if (alloc.data && state.position + size <= state.capacity)
          {
-            T *ptr = alloc->data + state.position;
+            T *ptr = alloc.data + state.position;
             state.position += size;
             return ptr;
          }
@@ -266,17 +230,17 @@ class Buffer
 
       Buffer &resize(unsigned int newCapacity)
       {
-         if (alloc)
+         if (alloc.data)
          {
             const int count = std::min(newCapacity, state.limit);
 
-            T *data = static_cast<T *>(operator new[](newCapacity * sizeof(T), static_cast<std::align_val_t>(BUFFER_ALIGNMENT)));
+            Alloc<T> newAlloc = pool.acquire(newCapacity, ALLOC_ALIGNMENT);
 
-            std::memcpy(data, alloc->data, count * sizeof(T));
+            std::memcpy(newAlloc.block, alloc.block, count * sizeof(T));
 
-            ::operator delete[](alloc->data, static_cast<std::align_val_t>(BUFFER_ALIGNMENT));
+            pool.release(alloc);
 
-            alloc->data = data;
+            alloc = newAlloc;
             state.limit = newCapacity > state.limit ? state.limit : newCapacity;
             state.capacity = newCapacity;
          }
@@ -286,7 +250,7 @@ class Buffer
 
       Buffer &clear()
       {
-         if (alloc)
+         if (alloc.data)
          {
             state.limit = state.capacity;
             state.position = 0;
@@ -297,7 +261,7 @@ class Buffer
 
       Buffer &flip()
       {
-         if (alloc)
+         if (alloc.data)
          {
             state.limit = state.position;
             state.position = 0;
@@ -308,7 +272,7 @@ class Buffer
 
       Buffer &rewind()
       {
-         if (alloc)
+         if (alloc.data)
             state.position = 0;
 
          return *this;
@@ -317,41 +281,41 @@ class Buffer
       Buffer &get(T *data)
       {
          if (alloc && state.position < state.limit)
-            *data = alloc->data[state.position++];
+            *data = alloc.data[state.position++];
 
          return *this;
       }
 
       Buffer &put(const T *data)
       {
-         if (alloc && state.position < state.limit)
-            alloc->data[state.position++] = *data;
+         if (alloc.data && state.position < state.limit)
+            alloc.data[state.position++] = *data;
 
          return *this;
       }
 
       Buffer &get(T &value)
       {
-         if (alloc && state.position < state.limit)
-            value = alloc->data[state.position++];
+         if (alloc.data && state.position < state.limit)
+            value = alloc.data[state.position++];
 
          return *this;
       }
 
       Buffer &put(const T &value)
       {
-         if (alloc && state.position < state.limit)
-            alloc->data[state.position++] = value;
+         if (alloc.data && state.position < state.limit)
+            alloc.data[state.position++] = value;
 
          return *this;
       }
 
       Buffer &get(T *data, unsigned int size)
       {
-         if (alloc)
+         if (alloc.data)
          {
             int count = std::min(size, state.limit - state.position);
-            std::memcpy(data, alloc->data + state.position, count * sizeof(T));
+            std::memcpy(data, alloc.data + state.position, count * sizeof(T));
             state.position += count;
          }
 
@@ -360,10 +324,10 @@ class Buffer
 
       Buffer &put(const T *data, unsigned int size)
       {
-         if (alloc)
+         if (alloc.data)
          {
             int count = std::min(size, state.limit - state.position);
-            std::memcpy(alloc->data + state.position, data, count * sizeof(T));
+            std::memcpy(alloc.data + state.position, data, count * sizeof(T));
             state.position += count;
          }
 
@@ -373,10 +337,10 @@ class Buffer
       template <typename E>
       E reduce(E value, const std::function<E(E, T)> &handler) const
       {
-         if (alloc)
+         if (alloc.data)
          {
             for (int i = state.position; i < state.limit; ++i)
-               value = handler(value, alloc->data[i]);
+               value = handler(value, alloc.data[i]);
          }
 
          return value;
@@ -384,23 +348,26 @@ class Buffer
 
       void stream(const std::function<void(const T *, unsigned int)> &handler) const
       {
-         if (alloc)
+         if (alloc.data)
          {
-            for (int i = state.position; i < state.limit; i += alloc->stride)
-               handler(alloc->data + i, alloc->stride);
+            for (int i = state.position; i < state.limit; i += attrs.stride)
+               handler(alloc.data + i, attrs.stride);
          }
       }
 
       T &operator[](unsigned int index)
       {
-         return alloc->data[index];
+         return alloc.data[index];
       }
 
       const T &operator[](unsigned int index) const
       {
-         return alloc->data[index];
+         return alloc.data[index];
       }
 };
+
+template <class T>
+Pool<T> Buffer<T>::pool;
 
 }
 
