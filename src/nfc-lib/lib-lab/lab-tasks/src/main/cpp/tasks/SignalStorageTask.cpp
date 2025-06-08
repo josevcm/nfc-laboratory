@@ -113,17 +113,24 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Read)
+         switch (command->code)
          {
-            storageRead(command.value());
-         }
-         else if (command->code == Write)
-         {
-            storageWrite(command.value());
-         }
-         else if (command->code == Stop)
-         {
-            storageClose(command.value());
+            case Read:
+               storageRead(command.value());
+               break;
+
+            case Write:
+               storageRead(command.value());
+               break;
+
+            case Stop:
+               storageClose(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 

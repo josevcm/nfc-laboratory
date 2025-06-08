@@ -122,25 +122,32 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Start)
+         switch (command->code)
          {
-            startDevice(command.value());
-         }
-         else if (command->code == Stop)
-         {
-            stopDevice(command.value());
-         }
-         else if (command->code == Query)
-         {
-            queryDevice(command.value());
-         }
-         else if (command->code == Configure)
-         {
-            configDevice(command.value());
-         }
-         else if (command->code == Clear)
-         {
-            clearDevice(command.value());
+            case Start:
+               startDevice(command.value());
+               break;
+
+            case Stop:
+               stopDevice(command.value());
+               break;
+
+            case Query:
+               queryDevice(command.value());
+               break;
+
+            case Configure:
+               configDevice(command.value());
+               break;
+
+            case Clear:
+               clearDevice(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 

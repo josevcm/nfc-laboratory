@@ -98,25 +98,32 @@ struct RadioDecoderTask::Impl : RadioDecoderTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Start)
+         switch (command->code)
          {
-            startDecoder(command.value());
-         }
-         else if (command->code == Stop)
-         {
-            stopDecoder(command.value());
-         }
-         else if (command->code == Query)
-         {
-            queryDecoder(command.value());
-         }
-         else if (command->code == Configure)
-         {
-            configDecoder(command.value());
-         }
-         else if (command->code == Clear)
-         {
-            clearDecoder(command.value());
+            case Start:
+               startDecoder(command.value());
+               break;
+
+            case Stop:
+               stopDecoder(command.value());
+               break;
+
+            case Query:
+               queryDecoder(command.value());
+               break;
+
+            case Configure:
+               configDecoder(command.value());
+               break;
+
+            case Clear:
+               clearDecoder(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 

@@ -147,17 +147,24 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Read)
+         switch (command->code)
          {
-            readFile(command.value());
-         }
-         else if (command->code == Write)
-         {
-            writeFile(command.value());
-         }
-         else if (command->code == Clear)
-         {
-            clearQueue(command.value());
+            case Read:
+               readFile(command.value());
+               break;
+
+            case Write:
+               writeFile(command.value());
+               break;
+
+            case Clear:
+               clearQueue(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 

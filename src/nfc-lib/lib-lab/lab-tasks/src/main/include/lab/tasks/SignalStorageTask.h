@@ -52,7 +52,8 @@ class SignalStorageTask : public rt::Worker
          MissingFileName = -2,
          MissingStoragePath = -3,
          FileOpenFailed = -4,
-         InvalidStorageFormat = -5
+         InvalidStorageFormat = -5,
+         UnknownCommand = -9
       };
 
    private:

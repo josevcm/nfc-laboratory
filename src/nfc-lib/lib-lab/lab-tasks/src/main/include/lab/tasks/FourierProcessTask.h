@@ -41,6 +41,13 @@ class FourierProcessTask : public rt::Worker
          Streaming
       };
 
+      enum Error
+      {
+         NoError = 0,
+         InvalidConfig = -2,
+         UnknownCommand = -9
+      };
+
    private:
 
       struct Impl;

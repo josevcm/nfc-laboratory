@@ -142,9 +142,16 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Configure)
+         switch (command->code)
          {
-            configure(command.value());
+            case Configure:
+               configure(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 
@@ -193,7 +200,9 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       }
       else
       {
-         command.reject();
+         log->warn("invalid config data");
+
+         command.reject(InvalidConfig);
       }
    }
 

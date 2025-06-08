@@ -46,16 +46,17 @@ class TraceStorageTask : public rt::Worker
          Error
       };
 
-   enum Error
-   {
-      NoError = 0,
-      MissingParameters = -1,
-      MissingFileName = -2,
-      FileOpenFailed = -3,
-      InvalidStorageFormat = -4,
-      ReadDataFailed = -5,
-      WriteDataFailed = -6
-   };
+      enum Error
+      {
+         NoError = 0,
+         MissingParameters = -1,
+         MissingFileName = -2,
+         FileOpenFailed = -3,
+         InvalidStorageFormat = -4,
+         ReadDataFailed = -5,
+         WriteDataFailed = -6,
+         UnknownCommand = -9
+      };
 
    private:
 
