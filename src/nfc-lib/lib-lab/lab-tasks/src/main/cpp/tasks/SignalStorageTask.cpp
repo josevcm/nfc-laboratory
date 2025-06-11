@@ -120,7 +120,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
                break;
 
             case Write:
-               storageRead(command.value());
+               storageWrite(command.value());
                break;
 
             case Stop:
