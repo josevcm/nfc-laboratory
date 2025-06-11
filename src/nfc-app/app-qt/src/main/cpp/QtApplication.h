@@ -39,6 +39,8 @@ class QtApplication : public QApplication
 
       static void post(QEvent *event, int priority = Qt::NormalEventPriority);
 
+      static QString dataPath();
+
    protected:
 
       void startup();

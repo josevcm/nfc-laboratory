@@ -26,6 +26,7 @@
 #include <QPointer>
 #include <QThreadPool>
 #include <QSplashScreen>
+#include <QStandardPaths>
 
 #include "QtDecoder.h"
 #include "QtWindow.h"
@@ -242,6 +243,13 @@ void QtApplication::post(QEvent *event, int priority)
 {
    if (!Impl::shuttingDown)
       postEvent(instance(), event, priority);
+}
+
+QString QtApplication::dataPath()
+{
+   QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data");
+
+   return dataPath.absolutePath();
 }
 
 void QtApplication::customEvent(QEvent *event)

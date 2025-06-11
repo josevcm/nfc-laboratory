@@ -1682,9 +1682,13 @@ struct QtWindow::Impl
    /*
     * slots for interface actions
     */
-   void openFile()
+   void openFile() const
    {
-      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), "", tr("Capture (*.wav *.trz)"));
+      qInfo() << "open file";
+
+      QString dataPath = QtApplication::dataPath();
+
+      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath, tr("Capture (*.wav *.trz)"));
 
       if (fileName.isEmpty())
          return;
@@ -1710,8 +1714,10 @@ struct QtWindow::Impl
                                                   }));
    }
 
-   void saveFile()
+   void saveFile() const
    {
+      qInfo() << "save all events";
+
       QString path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
       QString date = QDateTime::currentDateTime().toString("yyyy_MM_dd-HH_mm_ss");
       QString name = QString("%1-trace.trz").arg(date);
@@ -1729,8 +1735,10 @@ struct QtWindow::Impl
       }
    }
 
-   void saveSelected()
+   void saveSelected() const
    {
+      qInfo() << "save selected events";
+
       QString path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
       QString date = QDateTime::currentDateTime().toString("yyyy_MM_dd-HH_mm_ss");
       QString name = QString("%1-trace.trz").arg(date);
@@ -1748,14 +1756,14 @@ struct QtWindow::Impl
       }
    }
 
-   void openStorage()
+   void openStorage() const
    {
-      QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data");
+      qInfo() << "open storage folder";
 
-      QDesktopServices::openUrl(QUrl::fromLocalFile(dataPath.absolutePath()));
+      QDesktopServices::openUrl(QUrl::fromLocalFile(QtApplication::dataPath()));
    }
 
-   void openConfig()
+   void openConfig() const
    {
       QString filePath = settings.fileName();
 
