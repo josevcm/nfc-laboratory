@@ -289,90 +289,17 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
    void signalWrite()
    {
-      bool writeFinished = false;
+      bool writeLogicFinished = true;
+      bool writeRadioFinished = true;
 
-      if (auto buffer = logicSignalQueue.get())
-      {
-         if (!buffer->isEmpty())
-         {
-            switch (buffer->type())
-            {
-               case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
-               {
-                  // create new storage file before first buffer is completed
-                  if (!logicStorage)
-                  {
-                     logicBufferKeys = std::vector<int>();
+      if (const auto buffer = logicSignalQueue.get())
+         writeLogicFinished = !writeLogicBuffer(buffer.value());
 
-                     for (int i = 0; i < buffer->stride(); i++)
-                        logicBufferKeys.push_back(i);
+      if (const auto buffer = radioSignalQueue.get())
+         writeRadioFinished = !writeRadioBuffer(buffer.value());
 
-                     logicStorage = open(fileName("logic"), buffer->sampleRate(), hw::SAMPLE_SIZE_8, buffer->stride(), logicBufferKeys, hw::RecordDevice::Mode::Write);
-                     writeFinished = !logicStorage;
-                  }
-
-                  if (!writeFinished)
-                  {
-                     // write buffer to storage
-                     logicStorage->write(*buffer);
-                  }
-               }
-            }
-         }
-         else if (logicStorage)
-         {
-            // write cache if has pending buffer
-            if (logicBufferCache)
-               logicStorage->write(logicBufferCache);
-
-            // close storage
-            logicStorage->close();
-            logicStorage.reset();
-
-            // mark as write finished if radio storage is also closed
-            writeFinished = !radioStorage;
-         }
-      }
-
-      if (auto buffer = radioSignalQueue.get())
-      {
-         if (!buffer->isEmpty())
-         {
-            // integrate new buffer interleaving with previous one store every offset change
-            if (interleaveBuffer(radioBufferKeys, radioBufferCache, *buffer))
-            {
-               // create new storage file before first buffer is completed
-               if (!radioStorage)
-               {
-                  radioStorage = open(fileName("radio"), radioBufferCache.sampleRate(), hw::SAMPLE_SIZE_16, radioBufferCache.stride(), radioBufferKeys, hw::RecordDevice::Mode::Write);
-                  writeFinished = !radioStorage;
-               }
-
-               if (!writeFinished)
-               {
-                  // write buffer to storage
-                  radioStorage->write(radioBufferCache);
-
-                  // and start again with new buffer
-                  radioBufferCache = *buffer;
-               }
-            }
-         }
-         else if (radioStorage)
-         {
-            // write cache if has pending buffer
-            if (radioBufferCache)
-               radioStorage->write(radioBufferCache);
-
-            radioStorage->close();
-            radioStorage.reset();
-
-            // mark as write finished if radio storage is also closed
-            writeFinished = !logicStorage;
-         }
-      }
-
-      if (writeFinished)
+      // both streams must be finished to reset storage
+      if (writeLogicFinished && writeRadioFinished)
       {
          log->info("storage write finished!");
 
@@ -385,42 +312,123 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       }
    }
 
-   static bool interleaveBuffer(std::vector<int> &keys, hw::SignalBuffer &cache, hw::SignalBuffer &buffer)
+   // static bool interleaveBuffer(std::vector<int> &keys, hw::SignalBuffer &cache, hw::SignalBuffer &buffer)
+   // {
+   //    // integrate new buffer interleaving with previous cache
+   //    if (cache && cache.offset() == buffer.offset())
+   //    {
+   //       // integrate new buffer interleaving with previous cache
+   //       hw::SignalBuffer interleaved(cache.size() + buffer.size(), cache.stride() + buffer.stride(), 1, cache.sampleRate(), cache.offset(), cache.decimation(), cache.type());
+   //
+   //       for (int i = 0; i < cache.elements(); i++)
+   //       {
+   //          // copy current buffer keep space to interleave new buffer
+   //          cache.get(interleaved.pull(cache.stride()), cache.stride());
+   //
+   //          // add incoming buffer
+   //          buffer.get(interleaved.pull(buffer.stride()), buffer.stride());
+   //       }
+   //
+   //       // flip buffer pointers
+   //       interleaved.flip();
+   //
+   //       // use interleaved buffer as new cache
+   //       cache = interleaved;
+   //    }
+   //
+   //    // initialize cache on first buffer
+   //    else if (!cache)
+   //    {
+   //       cache = buffer;
+   //    }
+   //
+   //    // check if keys contains buffer id
+   //    if (std::find(keys.begin(), keys.end(), buffer.id()) == keys.end())
+   //       keys.push_back(static_cast<int>(buffer.id()));
+   //
+   //    // return true if buffer offset has changed (cache is full and must be written)
+   //    return cache.offset() != buffer.offset();
+   // }
+
+   bool writeLogicBuffer(const hw::SignalBuffer &buffer)
    {
-      // integrate new buffer interleaving with previous cache
-      if (cache && cache.offset() == buffer.offset())
+      if (!buffer.isEmpty())
       {
-         // integrate new buffer interleaving with previous cache
-         hw::SignalBuffer interleaved(cache.size() + buffer.size(), cache.stride() + buffer.stride(), 1, cache.sampleRate(), cache.offset(), cache.decimation(), cache.type());
-
-         for (int i = 0; i < cache.elements(); i++)
+         if (buffer.type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES)
          {
-            // copy current buffer keep space to interleave new buffer
-            cache.get(interleaved.pull(cache.stride()), cache.stride());
+            // create new storage file before first buffer is completed
+            if (!logicStorage)
+            {
+               logicBufferKeys = std::vector<int>();
 
-            // add incoming buffer
-            buffer.get(interleaved.pull(buffer.stride()), buffer.stride());
+               for (int i = 0; i < buffer.stride(); i++)
+                  logicBufferKeys.push_back(i);
+
+               if (!((logicStorage = open(fileName("logic"), buffer.sampleRate(), hw::SAMPLE_SIZE_8, buffer.stride(), logicBufferKeys, hw::RecordDevice::Mode::Write))))
+                  return false;
+            }
+
+            // write buffer to storage
+            logicStorage->write(buffer);
+
+            return true;
          }
 
-         // flip buffer pointers
-         interleaved.flip();
-
-         // use interleaved buffer as new cache
-         cache = interleaved;
+         log->warn("unexpected buffer type: {}", {buffer.type()});
       }
 
-      // initialize cache on first buffer
-      else if (!cache)
+      // EOF buffer received, close storage if is open
+      if (logicStorage)
       {
-         cache = buffer;
+         // write cache if has pending buffer
+         if (logicBufferCache)
+            logicStorage->write(logicBufferCache);
+
+         // close storage
+         logicStorage->close();
+         logicStorage.reset();
+
+         return false;
       }
 
-      // check if keys contains buffer id
-      if (std::find(keys.begin(), keys.end(), buffer.id()) == keys.end())
-         keys.push_back(static_cast<int>(buffer.id()));
+      return true;
+   }
 
-      // return true if buffer offset has changed (cache is full and must be written)
-      return cache.offset() != buffer.offset();
+   bool writeRadioBuffer(const hw::SignalBuffer &buffer)
+   {
+      if (!buffer.isEmpty())
+      {
+         if (buffer.type() == hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES)
+         {
+            // create new storage file before first buffer is completed
+            if (!radioStorage)
+            {
+               if (!((radioStorage = open(fileName("radio"), radioBufferCache.sampleRate(), hw::SAMPLE_SIZE_16, radioBufferCache.stride(), radioBufferKeys, hw::RecordDevice::Mode::Write))))
+                  return false;
+            }
+
+            // write buffer to storage
+            radioStorage->write(buffer);
+
+            return true;
+         }
+
+         log->warn("unexpected buffer type: {}", {buffer.type()});
+      }
+
+      if (radioStorage)
+      {
+         // write cache if has pending buffer
+         if (radioBufferCache)
+            radioStorage->write(radioBufferCache);
+
+         radioStorage->close();
+         radioStorage.reset();
+
+         return false;
+      }
+
+      return true;
    }
 
    std::shared_ptr<hw::RecordDevice> open(const std::string &filename, unsigned int sampleRate, unsigned int sampleSize, unsigned int channels, std::vector<int> &keys, hw::RecordDevice::Mode mode)
@@ -458,7 +466,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       unsigned int channelCount = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
       unsigned int sampleOffset = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
 
-      hw::SignalBuffer buffer(65536 * channelCount, 1, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
+      hw::SignalBuffer buffer(65536 * channelCount, channelCount, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES);
 
       if (logicStorage->read(buffer) > 0)
       {
