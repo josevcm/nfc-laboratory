@@ -27,6 +27,7 @@
 #include <QStandardPaths>
 #include <QScreen>
 #include <QRegularExpression>
+#include <QDesktopServices>
 
 #include <rt/Subject.h>
 
@@ -1747,11 +1748,26 @@ struct QtWindow::Impl
       }
    }
 
+   void openStorage()
+   {
+      QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data");
+
+      QDesktopServices::openUrl(QUrl::fromLocalFile(dataPath.absolutePath()));
+   }
+
    void openConfig()
    {
-      //   QPointer<ConfigDialog> dialog = new ConfigDialog(this);
-      //
-      //   dialog->show();
+      QString filePath = settings.fileName();
+
+      QFileInfo info(filePath);
+
+      if (!info.exists())
+      {
+         qWarning("File not found: %s", qUtf8Printable(filePath));
+         return;
+      }
+
+      QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
    }
 
    void toggleStart(bool recording)
@@ -2469,7 +2485,7 @@ void QtWindow::saveFile()
    impl->saveFile();
 }
 
-void QtWindow::saveSelection()
+void QtWindow::saveSelected()
 {
    impl->saveSelected();
 }
@@ -2477,6 +2493,11 @@ void QtWindow::saveSelection()
 void QtWindow::openConfig()
 {
    impl->openConfig();
+}
+
+void QtWindow::openStorage()
+{
+   impl->openStorage();
 }
 
 void QtWindow::toggleListen()
