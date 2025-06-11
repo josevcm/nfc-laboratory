@@ -587,7 +587,7 @@ struct RealtekDevice::Impl
       return -1;
    }
 
-   int write(SignalBuffer &buffer)
+   int write(const SignalBuffer &buffer)
    {
       log->warn("write not supported on this device!");
 
@@ -882,7 +882,7 @@ int RealtekDevice::read(SignalBuffer &buffer)
    return impl->read(buffer);
 }
 
-int RealtekDevice::write(SignalBuffer &buffer)
+int RealtekDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }

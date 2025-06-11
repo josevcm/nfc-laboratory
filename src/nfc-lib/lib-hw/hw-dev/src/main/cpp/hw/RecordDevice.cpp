@@ -260,7 +260,7 @@ struct RecordDevice::Impl
       }
    }
 
-   int write(SignalBuffer &buffer)
+   int write(const SignalBuffer &buffer)
    {
       if (!file.is_open())
          return -1;
@@ -316,7 +316,7 @@ struct RecordDevice::Impl
    }
 
    template <typename T>
-   int writeScaledSamples(SignalBuffer &buffer, float scale)
+   int writeScaledSamples(const SignalBuffer &buffer, float scale)
    {
       T block[BUFFER_SIZE];
 
@@ -761,7 +761,7 @@ int RecordDevice::read(SignalBuffer &buffer)
    return impl->read(buffer);
 }
 
-int RecordDevice::write(SignalBuffer &buffer)
+int RecordDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }

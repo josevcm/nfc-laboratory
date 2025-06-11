@@ -52,7 +52,7 @@ class RecordDevice : public SignalDevice
 
       int read(SignalBuffer &buffer) override;
 
-      int write(SignalBuffer &buffer) override;
+      int write(const SignalBuffer &buffer) override;
 
    private:
 

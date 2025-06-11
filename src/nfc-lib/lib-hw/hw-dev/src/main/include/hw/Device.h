@@ -83,7 +83,7 @@ class Device
 
       virtual int read(BufferType &buffer) = 0;
 
-      virtual int write(BufferType &buffer) = 0;
+      virtual int write(const BufferType &buffer) = 0;
 };
 
 }

@@ -161,7 +161,7 @@ class DSLogicDevice : public LogicDevice
 
       int read(SignalBuffer &buffer) override;
 
-      int write(SignalBuffer &buffer) override;
+      int write(const SignalBuffer &buffer) override;
 
       static std::vector<std::string> enumerate();
 

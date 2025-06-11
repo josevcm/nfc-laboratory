@@ -513,7 +513,7 @@ struct AirspyDevice::Impl
       return -1;
    }
 
-   int write(SignalBuffer &buffer)
+   int write(const SignalBuffer &buffer)
    {
       log->warn("write not supported on this device!");
 
@@ -732,7 +732,7 @@ int AirspyDevice::read(SignalBuffer &buffer)
    return impl->read(buffer);
 }
 
-int AirspyDevice::write(SignalBuffer &buffer)
+int AirspyDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }

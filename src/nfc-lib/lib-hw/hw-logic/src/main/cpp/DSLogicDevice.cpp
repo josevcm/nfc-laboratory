@@ -2273,7 +2273,7 @@ int DSLogicDevice::read(SignalBuffer &buffer)
    return -1;
 }
 
-int DSLogicDevice::write(SignalBuffer &buffer)
+int DSLogicDevice::write(const SignalBuffer &buffer)
 {
    return -1;
 }

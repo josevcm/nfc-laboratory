@@ -428,7 +428,7 @@ struct MiriDevice::Impl
       return -1;
    }
 
-   int write(SignalBuffer &buffer)
+   int write(const SignalBuffer &buffer)
    {
       log->warn("write not supported on this device!");
 
@@ -635,7 +635,7 @@ int MiriDevice::read(SignalBuffer &buffer)
    return impl->read(buffer);
 }
 
-int MiriDevice::write(SignalBuffer &buffer)
+int MiriDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }
