@@ -310,7 +310,7 @@ struct RecordDevice::Impl
 
       buffer.flip();
 
-      sampleOffset += buffer.limit();
+      sampleOffset += buffer.elements();
 
       return static_cast<long>(buffer.limit());
    }
@@ -346,8 +346,8 @@ struct RecordDevice::Impl
          file.write(reinterpret_cast<const char *>(block), converted * sizeof(T));
       }
 
-      sampleCount += buffer.position();
-      sampleOffset += buffer.position();
+      sampleCount += buffer.elements();
+      sampleOffset += buffer.elements();
 
       return static_cast<long>(buffer.position());
    }
