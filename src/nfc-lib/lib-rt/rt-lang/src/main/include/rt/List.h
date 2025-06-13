@@ -42,7 +42,7 @@ class List
 
       List(List<T> &other)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
          list = std::move(other.list);
       }
 
@@ -50,7 +50,7 @@ class List
 
       inline long size() const
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
          return list.size();
       }
 
@@ -61,7 +61,7 @@ class List
 
       inline std::optional<T> front()
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
          if (!list.empty())
             return list.front();
@@ -71,14 +71,14 @@ class List
 
       inline void append(const T &item)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
          list.push_back(item);
       }
 
       template<class... S>
       inline void emplace(S &&... args)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
          list.emplace_back(args...);
       }
 
