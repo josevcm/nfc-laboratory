@@ -415,17 +415,17 @@ struct Iso7816::Impl : IsoTech
       protocolStatus.symbolConvention = DirectConvention;
 
       // calculate elementary time unit based on SYNC pattern
-      double etuSamples = (modulationStatus.syncEndTime - modulationStatus.syncStartTime) / 3.0;
+      const double etuSamples = (modulationStatus.syncEndTime - modulationStatus.syncStartTime) / 3.0;
 
       // calculate clock frequency based on measured ETU and default F / D parameters
-      double clockFrequency = (decoder->sampleRate / etuSamples) * (ISO_FI_TABLE[ISO_7816_FI_DEF] / ISO_DI_TABLE[ISO_7816_DI_DEF]);
+      const double clockFrequency = (decoder->sampleRate / etuSamples) * (ISO_FI_TABLE[ISO_7816_FI_DEF] / ISO_DI_TABLE[ISO_7816_DI_DEF]);
 
       // update protocol timings based on current ETU samples and set default Fi/Di values
       updateProtocol(clockFrequency, ISO_7816_FI_DEF, ISO_7816_DI_DEF);
 
       // configure frame timing parameters
-      frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
-      frameStatus.waitingTime = protocolStatus.characterWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
+      frameStatus.guardTime = protocolStatus.characterGuardTime; // - GT_THRESHOLD * protocolStatus.elementaryTime;
+      frameStatus.waitingTime = protocolStatus.characterWaitingTime; // + WT_THRESHOLD * protocolStatus.elementaryTime;
 
       // switch to read remain TS character
       modulationStatus.searchModeState = SEARCH_MODE_TS;
@@ -735,6 +735,12 @@ struct Iso7816::Impl : IsoTech
             frameStatus.frameType = IsoExchangeFrame;
             return true;
          }
+         // TODO: parche temporal, deberia tenerse en cuenta CWT pero el valor es demasiado pequeño
+         else
+         {
+            // reset search end time to wait for next character
+            modulationStatus.searchEndTime = 0;
+         }
 
          // could shouldn't, but check maximum frame size to release frame processing
          if (frameStatus.frameSize == protocolStatus.maximumInformationSize)
@@ -1001,11 +1007,11 @@ struct Iso7816::Impl : IsoTech
       }
       else
       {
-         frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
+         frameStatus.guardTime = protocolStatus.characterGuardTime; //- GT_THRESHOLD * protocolStatus.elementaryTime;
       }
 
       // waiting time is set by default to 960 ETUs for T=0 and 9600 ETUs for T=1
-      frameStatus.waitingTime = protocolStatus.characterWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
+      frameStatus.waitingTime = protocolStatus.characterWaitingTime; // + WT_THRESHOLD * protocolStatus.elementaryTime;
 
       // clear search to detect first start bit of next frame
       modulationStatus.searchStartTime = 0;
@@ -1028,7 +1034,7 @@ struct Iso7816::Impl : IsoTech
       if (frame.frameType() != IsoATRFrame)
          return false;
 
-      log->info("process ATR frame");
+      log->info("process ATR frame: {X}", {frame});
 
       bool updateParameters = false;
 
@@ -1146,7 +1152,13 @@ struct Iso7816::Impl : IsoTech
 
       unsigned int hb = frame[1] & 0x0f;
 
-      log->info("\thistorical bytes {}", {hb});
+      // extract historical bytes
+      if (hb > 0 && n + hb <= frame.size())
+      {
+         std::string bytes(reinterpret_cast<const char *>(frame.data()) + n, hb);
+
+         log->info("\thistorical bytes {}: '{}'", {hb, bytes});
+      }
 
       // check presence of TCK
       if (c)
@@ -1372,6 +1384,13 @@ struct Iso7816::Impl : IsoTech
       double frequencyFactor = ISO_FI_TABLE[fi];
       double baudRateFactor = ISO_DI_TABLE[di];
 
+      // update clock frequency
+      protocolStatus.clockFrequency = clockFrequency;
+      protocolStatus.frequencyFactor = static_cast<int>(frequencyFactor);
+      protocolStatus.baudRateFactor = static_cast<int>(baudRateFactor);
+      protocolStatus.frequencyFactorIndex = fi;
+      protocolStatus.baudRateFactorIndex = di;
+
       // initialize default protocol parameters for start decoding
       if (clockFrequency > 0)
       {
@@ -1379,10 +1398,27 @@ struct Iso7816::Impl : IsoTech
          protocolStatus.elementaryHalfTime = protocolStatus.elementaryTime / 2;
          protocolStatus.elementaryTimeUnit = protocolStatus.elementaryTime * decoder->sampleTime;
          protocolStatus.characterGuardTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.characterGuardTimeUnits));
-         protocolStatus.characterWaitingTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.characterWaitingTimeUnits * protocolStatus.baudRateFactor));
+         protocolStatus.characterWaitingTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.characterWaitingTimeUnits));
          protocolStatus.blockGuardTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.blockGuardTimeUnits));
-         protocolStatus.blockWaitingTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.blockWaitingTimeUnits * protocolStatus.baudRateFactor));
+         protocolStatus.blockWaitingTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.blockWaitingTimeUnits));
          protocolStatus.extraGuardTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.extraGuardTimeUnits));
+
+         // configure frame timing parameters
+         frameStatus.guardTime = protocolStatus.characterGuardTime; // - GT_THRESHOLD * protocolStatus.elementaryTime;
+         frameStatus.waitingTime = protocolStatus.characterWaitingTime; // + WT_THRESHOLD * protocolStatus.elementaryTime;
+         frameStatus.symbolRate = 1.0f / protocolStatus.elementaryTimeUnit;
+
+         // trace new protocol parameters
+         log->info("update protocol parameters, T{} ", {protocolStatus.protocolType});
+         log->info("\t clock frequency.......: {.2} MHz", {protocolStatus.clockFrequency / 1000000.0});
+         log->info("\t frequency adjustment..: Fi {} Fn {}", {protocolStatus.frequencyFactorIndex, protocolStatus.frequencyFactor});
+         log->info("\t baud rate adjustment..: Di {} Dn {}", {protocolStatus.baudRateFactorIndex, protocolStatus.baudRateFactor});
+         log->info("\t elementary time unit..: 1 ETU ({.3} us, {.2} samples)", {protocolStatus.elementaryTimeUnit * 1000000.0, protocolStatus.elementaryTime});
+         log->info("\t character guard time..: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.characterGuardTimeUnits, 1000000.0 * protocolStatus.characterGuardTime * decoder->sampleTime, protocolStatus.characterGuardTime});
+         log->info("\t character waiting time: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.characterWaitingTimeUnits, 1000000.0 * protocolStatus.characterWaitingTime * decoder->sampleTime, protocolStatus.characterWaitingTime});
+         log->info("\t block guard time......: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.blockGuardTimeUnits, 1000000.0 * protocolStatus.blockGuardTime * decoder->sampleTime, protocolStatus.blockGuardTime});
+         log->info("\t block waiting time....: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.blockWaitingTimeUnits, 1000000.0 * protocolStatus.blockWaitingTime * decoder->sampleTime, protocolStatus.blockWaitingTime});
+         log->info("\t extra guard time......: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.extraGuardTimeUnits, 1000000.0 * protocolStatus.extraGuardTime * decoder->sampleTime, protocolStatus.extraGuardTime});
       }
       else
       {
@@ -1396,27 +1432,8 @@ struct Iso7816::Impl : IsoTech
          protocolStatus.extraGuardTime = 0;
       }
 
-      // update clock frequency
-      protocolStatus.clockFrequency = clockFrequency;
-      protocolStatus.frequencyFactor = static_cast<int>(frequencyFactor);
-      protocolStatus.baudRateFactor = static_cast<int>(baudRateFactor);
-      protocolStatus.frequencyFactorIndex = fi;
-      protocolStatus.baudRateFactorIndex = di;
-
       // reset protocol parameters change flag
       protocolStatus.protocolParametersChange = false;
-
-      // trace new protocol parameters
-      log->info("update protocol parameters, T{} ", {protocolStatus.protocolType});
-      log->info("\tclock frequency.......: {.2} MHz", {protocolStatus.clockFrequency / 1000000.0});
-      log->info("\tfrequency adjustment..: Fi {} Fn {}", {protocolStatus.frequencyFactorIndex, protocolStatus.frequencyFactor});
-      log->info("\tbaud rate adjustment..: Di {} Dn {}", {protocolStatus.baudRateFactorIndex, protocolStatus.baudRateFactor});
-      log->info("\telementary time unit..: 1 ETU {.3} us ({.2} samples)", {protocolStatus.elementaryTimeUnit * 1000000.0, protocolStatus.elementaryTime});
-      log->info("\tcharacter guard time..: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.characterGuardTimeUnits, 1000000.0 * protocolStatus.characterGuardTime * decoder->sampleTime, protocolStatus.characterGuardTime});
-      log->info("\tcharacter waiting time: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.characterWaitingTimeUnits, 1000000.0 * protocolStatus.characterWaitingTime * decoder->sampleTime, protocolStatus.characterWaitingTime});
-      log->info("\tblock guard time......: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.blockGuardTimeUnits, 1000000.0 * protocolStatus.blockGuardTime * decoder->sampleTime, protocolStatus.blockGuardTime});
-      log->info("\tblock waiting time....: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.blockWaitingTimeUnits, 1000000.0 * protocolStatus.blockWaitingTime * decoder->sampleTime, protocolStatus.blockWaitingTime});
-      log->info("\textra guard time......: {} ETUs ({.3} us, {.2} samples)", {protocolStatus.extraGuardTimeUnits, 1000000.0 * protocolStatus.extraGuardTime * decoder->sampleTime, protocolStatus.extraGuardTime});
    }
 
    /*
