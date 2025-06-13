@@ -110,6 +110,9 @@ struct QtDecoder::Impl
    rt::Subject<hw::SignalBuffer>::Subscription adaptiveSignalSubscription;
    rt::Subject<hw::SignalBuffer>::Subscription storageSignalSubscription;
 
+   // storage status
+   QString storagePath;
+
    // device names and type
    QString logicDeviceName;
    QString logicDeviceType;
@@ -342,20 +345,20 @@ struct QtDecoder::Impl
    /*
     * start decoder and receiver task
     */
-   void doStartDecode(DecoderControlEvent *event) const
+   void doStartDecode(DecoderControlEvent *event)
    {
       qInfo() << "start decoder and receiver tasks";
 
       // if event contains file name and sample rate start recorder
       if (event->contains("storagePath"))
       {
-         QJsonObject command {{"storagePath", event->getString("storagePath")}};
+         storagePath = event->getString("storagePath");
 
          // clear storage queue
          taskStorageClear([=] {
 
             // start recorder and...
-            taskRecorderWrite(command, [=] {
+            taskRecorderWrite({{"storagePath", storagePath}}, [=] {
 
                if (!logicDeviceType.isEmpty())
                {
@@ -381,6 +384,8 @@ struct QtDecoder::Impl
       }
       else
       {
+         storagePath = QString();
+
          // clear storage queue
          taskStorageClear([=] {
 
@@ -416,15 +421,15 @@ struct QtDecoder::Impl
 
       // stop radio receiver task
       if (!logicDeviceType.isEmpty())
-      {
          taskLogicDeviceStop();
-      }
 
       // stop radio receiver task
       if (!radioDeviceType.isEmpty())
-      {
          taskRadioDeviceStop();
-      }
+
+      // stop radio receiver task
+      if (!storagePath.isEmpty())
+         taskRecorderStop();
    }
 
    /*
@@ -1461,6 +1466,16 @@ struct QtDecoder::Impl
       qInfo() << "clear storage task";
 
       storageCommandStream->next({lab::TraceStorageTask::Clear, onComplete, onReject});
+   }
+
+   /*
+    * stop storage task
+    */
+   void taskStorageStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      qInfo() << "stop storage task";
+
+      storageCommandStream->next({lab::TraceStorageTask::Stop, onComplete, onReject});
    }
 };
 
