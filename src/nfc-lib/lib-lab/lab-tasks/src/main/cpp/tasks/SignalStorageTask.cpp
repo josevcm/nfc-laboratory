@@ -322,9 +322,9 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
    void readLogic()
    {
-      unsigned int sampleRate = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
-      unsigned int channelCount = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
-      unsigned int sampleOffset = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
+      const unsigned int sampleRate = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
+      const unsigned int channelCount = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
+      const unsigned int sampleOffset = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
 
       hw::SignalBuffer buffer(65536 * channelCount, channelCount, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES);
 
@@ -332,7 +332,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       {
          log->debug("streaming logic [{}]: {} length {}", {buffer.id(), buffer.offset(), buffer.elements()});
 
-         radioSignalRawStream->next(buffer);
+         logicSignalRawStream->next(buffer);
       }
 
       if (logicStorage->isEof() || !logicStorage->isOpen())
@@ -349,9 +349,9 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
    void readRadio()
    {
-      unsigned int sampleRate = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
-      unsigned int channelCount = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
-      unsigned int sampleOffset = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
+      const unsigned int sampleRate = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
+      const unsigned int channelCount = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
+      const unsigned int sampleOffset = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
 
       switch (channelCount)
       {
