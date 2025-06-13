@@ -570,10 +570,10 @@ struct RealtekDevice::Impl
       return result;
    }
 
-   int read(SignalBuffer &buffer)
+   long read(SignalBuffer &buffer)
    {
       // lock buffer access
-      std::lock_guard<std::mutex> lock(streamMutex);
+      std::lock_guard lock(streamMutex);
 
       if (!streamQueue.empty())
       {
@@ -587,7 +587,7 @@ struct RealtekDevice::Impl
       return -1;
    }
 
-   int write(const SignalBuffer &buffer)
+   long write(const SignalBuffer &buffer)
    {
       log->warn("write not supported on this device!");
 
@@ -877,12 +877,12 @@ bool RealtekDevice::isStreaming() const
    return impl->isStreaming();
 }
 
-int RealtekDevice::read(SignalBuffer &buffer)
+long RealtekDevice::read(SignalBuffer &buffer)
 {
    return impl->read(buffer);
 }
 
-int RealtekDevice::write(const SignalBuffer &buffer)
+long RealtekDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }

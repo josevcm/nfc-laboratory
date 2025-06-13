@@ -2268,12 +2268,12 @@ bool DSLogicDevice::isStreaming() const
    return impl->deviceStatus == STATUS_START || impl->deviceStatus == STATUS_DATA;
 }
 
-int DSLogicDevice::read(SignalBuffer &buffer)
+long DSLogicDevice::read(SignalBuffer &buffer)
 {
    return -1;
 }
 
-int DSLogicDevice::write(const SignalBuffer &buffer)
+long DSLogicDevice::write(const SignalBuffer &buffer)
 {
    return -1;
 }

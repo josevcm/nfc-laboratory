@@ -159,9 +159,9 @@ class DSLogicDevice : public LogicDevice
 
       bool isStreaming() const override;
 
-      int read(SignalBuffer &buffer) override;
+      long read(SignalBuffer &buffer) override;
 
-      int write(const SignalBuffer &buffer) override;
+      long write(const SignalBuffer &buffer) override;
 
       static std::vector<std::string> enumerate();
 

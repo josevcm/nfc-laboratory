@@ -237,7 +237,7 @@ struct RecordDevice::Impl
       return file.is_open();
    }
 
-   int read(SignalBuffer &buffer)
+   long read(SignalBuffer &buffer)
    {
       if (!file.is_open())
          return -1;
@@ -260,7 +260,7 @@ struct RecordDevice::Impl
       }
    }
 
-   int write(const SignalBuffer &buffer)
+   long write(const SignalBuffer &buffer)
    {
       if (!file.is_open())
          return -1;
@@ -284,7 +284,7 @@ struct RecordDevice::Impl
    }
 
    template <typename T>
-   int readScaledSamples(SignalBuffer &buffer, float scale)
+   long readScaledSamples(SignalBuffer &buffer, float scale)
    {
       T block[BUFFER_SIZE];
 
@@ -312,11 +312,11 @@ struct RecordDevice::Impl
 
       sampleOffset += buffer.limit();
 
-      return static_cast<int>(buffer.limit());
+      return static_cast<long>(buffer.limit());
    }
 
    template <typename T>
-   int writeScaledSamples(const SignalBuffer &buffer, float scale)
+   long writeScaledSamples(const SignalBuffer &buffer, float scale)
    {
       T block[BUFFER_SIZE];
 
@@ -349,7 +349,7 @@ struct RecordDevice::Impl
       sampleCount += buffer.position();
       sampleOffset += buffer.position();
 
-      return static_cast<int>(buffer.position());
+      return static_cast<long>(buffer.position());
    }
 
    bool readHeader()
@@ -756,12 +756,12 @@ bool RecordDevice::isStreaming() const
    return impl->isStreaming();
 }
 
-int RecordDevice::read(SignalBuffer &buffer)
+long RecordDevice::read(SignalBuffer &buffer)
 {
    return impl->read(buffer);
 }
 
-int RecordDevice::write(const SignalBuffer &buffer)
+long RecordDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }

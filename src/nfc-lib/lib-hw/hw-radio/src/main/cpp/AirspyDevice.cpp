@@ -496,10 +496,10 @@ struct AirspyDevice::Impl
       return result;
    }
 
-   int read(SignalBuffer &buffer)
+   long read(SignalBuffer &buffer)
    {
       // lock buffer access
-      std::lock_guard<std::mutex> lock(streamMutex);
+      std::lock_guard lock(streamMutex);
 
       if (!streamQueue.empty())
       {
@@ -513,7 +513,7 @@ struct AirspyDevice::Impl
       return -1;
    }
 
-   int write(const SignalBuffer &buffer)
+   long write(const SignalBuffer &buffer)
    {
       log->warn("write not supported on this device!");
 
@@ -727,12 +727,12 @@ bool AirspyDevice::isStreaming() const
    return impl->isStreaming();
 }
 
-int AirspyDevice::read(SignalBuffer &buffer)
+long AirspyDevice::read(SignalBuffer &buffer)
 {
    return impl->read(buffer);
 }
 
-int AirspyDevice::write(const SignalBuffer &buffer)
+long AirspyDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }
