@@ -1467,16 +1467,6 @@ struct QtDecoder::Impl
 
       storageCommandStream->next({lab::TraceStorageTask::Clear, onComplete, onReject});
    }
-
-   /*
-    * stop storage task
-    */
-   void taskStorageStop(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
-   {
-      qInfo() << "stop storage task";
-
-      storageCommandStream->next({lab::TraceStorageTask::Stop, onComplete, onReject});
-   }
 };
 
 QtDecoder::QtDecoder() : impl(new Impl())
