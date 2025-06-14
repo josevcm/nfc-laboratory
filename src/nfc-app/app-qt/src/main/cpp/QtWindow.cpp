@@ -850,7 +850,9 @@ struct QtWindow::Impl
       const bool radioDecoderEnabled = radioDecoderStatus != RadioDecoderStatusEvent::Disabled;
 
       const bool fourierTaskEnabled = fourierStatus != FourierStatusEvent::Disabled;
+
       const bool deviceStreaming = logicDeviceStatus == LogicDeviceStatusEvent::Streaming || radioDeviceStatus == RadioDeviceStatusEvent::Streaming;
+      const bool decoderStreaming = logicDecoderStatus == LogicDecoderStatusEvent::Decoding || radioDecoderStatus == RadioDecoderStatusEvent::Decoding;
 
       // update feature status
       ui->featureLogicAcquire->setChecked(logicDeviceEnabled);
@@ -860,7 +862,7 @@ struct QtWindow::Impl
       ui->featureRadioSpectrum->setChecked(fourierTaskEnabled);
 
       // disable / enable actions based on streaming status
-      if (deviceStreaming)
+      if (deviceStreaming || decoderStreaming)
       {
          // disable features during streaming
          ui->featureLogicAcquire->setEnabled(false);
@@ -2037,10 +2039,6 @@ struct QtWindow::Impl
 
       // signal clear to decoder control
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Clear));
-
-      // update interface actions
-      updateStatus();
-      updateActions();
    }
 
    void resetView() const
