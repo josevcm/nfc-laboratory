@@ -727,6 +727,12 @@
             </property>
         </action>
         <action name="actionPause">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
             <property name="icon">
                 <iconset theme="action-pause"/>
             </property>

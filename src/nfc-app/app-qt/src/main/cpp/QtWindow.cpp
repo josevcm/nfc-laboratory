@@ -300,8 +300,9 @@ struct QtWindow::Impl
       // setup default action status
       ui->actionListen->setEnabled(false);
       ui->actionRecord->setEnabled(false);
-      ui->actionPause->setEnabled(false);
       ui->actionStop->setEnabled(false);
+      ui->actionPause->setEnabled(false);
+      ui->actionPause->setChecked(false);
 
       // setup display stretch
       ui->workbench->setStretchFactor(0, 3);
@@ -874,8 +875,8 @@ struct QtWindow::Impl
          // disable actions during streaming
          ui->actionListen->setEnabled(false);
          ui->actionRecord->setEnabled(false);
-         ui->actionPause->setEnabled(true);
          ui->actionStop->setEnabled(true);
+         ui->actionPause->setEnabled(true);
 
          // disable acquire limit combo
          acquireLimit->setEnabled(false);
@@ -892,8 +893,9 @@ struct QtWindow::Impl
          // reset actions to default state
          ui->actionListen->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
          ui->actionRecord->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
-         ui->actionPause->setEnabled(false);
          ui->actionStop->setEnabled(false);
+         ui->actionPause->setEnabled(false);
+         ui->actionPause->setChecked(false);
 
          // enable acquire limit combo
          acquireLimit->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
@@ -1845,8 +1847,9 @@ struct QtWindow::Impl
       ui->frequencyView->stop();
 
       // disable action to avoid multiple pause / stop
-      ui->actionPause->setEnabled(false);
       ui->actionStop->setEnabled(false);
+      ui->actionPause->setEnabled(false);
+      ui->actionPause->setChecked(false);
 
       // sync logic && radio view ranges
       syncDataRanges();
