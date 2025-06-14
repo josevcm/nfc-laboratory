@@ -36,6 +36,7 @@ class DecoderControlEvent : public QEvent
       {
          Start,
          Stop,
+         Pause,
          Clear,
          Change,
          ReadFile,

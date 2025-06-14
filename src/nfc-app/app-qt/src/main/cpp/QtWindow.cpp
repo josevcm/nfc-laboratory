@@ -300,6 +300,7 @@ struct QtWindow::Impl
       // setup default action status
       ui->actionListen->setEnabled(false);
       ui->actionRecord->setEnabled(false);
+      ui->actionPause->setEnabled(false);
       ui->actionStop->setEnabled(false);
 
       // setup display stretch
@@ -871,6 +872,7 @@ struct QtWindow::Impl
          // disable actions during streaming
          ui->actionListen->setEnabled(false);
          ui->actionRecord->setEnabled(false);
+         ui->actionPause->setEnabled(true);
          ui->actionStop->setEnabled(true);
 
          // disable acquire limit combo
@@ -888,6 +890,7 @@ struct QtWindow::Impl
          // reset actions to default state
          ui->actionListen->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
          ui->actionRecord->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
+         ui->actionPause->setEnabled(false);
          ui->actionStop->setEnabled(false);
 
          // enable acquire limit combo
@@ -1821,6 +1824,11 @@ struct QtWindow::Impl
       acquireTimer->start(timeLimit * 1000);
    }
 
+   void togglePause()
+   {
+      qInfo() << "decoder pausing";
+   }
+
    void toggleStop()
    {
       qInfo() << "decoder stopping";
@@ -1834,7 +1842,8 @@ struct QtWindow::Impl
       ui->framesView->stop();
       ui->frequencyView->stop();
 
-      // disable action to avoid multiple stop
+      // disable action to avoid multiple pause / stop
+      ui->actionPause->setEnabled(false);
       ui->actionStop->setEnabled(false);
 
       // sync logic && radio view ranges
@@ -2516,6 +2525,11 @@ void QtWindow::toggleListen()
 void QtWindow::toggleRecord()
 {
    impl->toggleStart(true);
+}
+
+void QtWindow::togglePause()
+{
+   impl->togglePause();
 }
 
 void QtWindow::toggleStop()

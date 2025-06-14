@@ -612,6 +612,7 @@
                 </property>
                 <addaction name="actionListen"/>
                 <addaction name="actionRecord"/>
+                <addaction name="actionPause"/>
                 <addaction name="actionStop"/>
             </widget>
             <widget class="QMenu" name="menuView">
@@ -691,6 +692,7 @@
             <addaction name="separator"/>
             <addaction name="actionListen"/>
             <addaction name="actionRecord"/>
+            <addaction name="actionPause"/>
             <addaction name="actionStop"/>
             <addaction name="separator"/>
             <addaction name="actionInfo"/>
@@ -698,7 +700,7 @@
         <widget class="QStatusBar" name="statusBar"/>
         <action name="actionListen">
             <property name="icon">
-                <iconset theme="action-listen"/>
+                <iconset theme="action-play"/>
             </property>
             <property name="text">
                 <string>Start</string>
@@ -722,6 +724,20 @@
             </property>
             <property name="shortcut">
                 <string>Ctrl+W</string>
+            </property>
+        </action>
+        <action name="actionPause">
+            <property name="icon">
+                <iconset theme="action-pause"/>
+            </property>
+            <property name="text">
+                <string>Pause</string>
+            </property>
+            <property name="toolTip">
+                <string>Pause acquisition</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+P</string>
             </property>
         </action>
         <action name="actionStop">
@@ -1206,6 +1222,12 @@
             <slot>toggleRecord()</slot>
         </connection>
         <connection>
+            <sender>actionPause</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>togglePause()</slot>
+        </connection>
+        <connection>
             <sender>actionStop</sender>
             <signal>triggered()</signal>
             <receiver>mainWindow</receiver>
@@ -1377,6 +1399,7 @@
         <slot>openStorage()</slot>
         <slot>toggleListen()</slot>
         <slot>toggleRecord()</slot>
+        <slot>togglePause()</slot>
         <slot>toggleStop()</slot>
         <slot>toggleTime()</slot>
         <slot>toggleFollow()</slot>
