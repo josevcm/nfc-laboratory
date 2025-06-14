@@ -424,8 +424,8 @@ struct Iso7816::Impl : IsoTech
       updateProtocol(clockFrequency, ISO_7816_FI_DEF, ISO_7816_DI_DEF);
 
       // configure frame timing parameters
-      frameStatus.guardTime = protocolStatus.characterGuardTime; // - GT_THRESHOLD * protocolStatus.elementaryTime;
-      frameStatus.waitingTime = protocolStatus.characterWaitingTime; // + WT_THRESHOLD * protocolStatus.elementaryTime;
+      frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
+      frameStatus.waitingTime = protocolStatus.characterWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
 
       // switch to read remain TS character
       modulationStatus.searchModeState = SEARCH_MODE_TS;
@@ -997,21 +997,17 @@ struct Iso7816::Impl : IsoTech
       if (protocolStatus.extraGuardTimeUnits == 255)
       {
          if (protocolStatus.protocolType == PROTO_T0)
-         {
             frameStatus.guardTime = (12 - GT_THRESHOLD) * protocolStatus.elementaryTime;
-         }
          else
-         {
             frameStatus.guardTime = (11 - GT_THRESHOLD) * protocolStatus.elementaryTime;
-         }
       }
       else
       {
-         frameStatus.guardTime = protocolStatus.characterGuardTime; //- GT_THRESHOLD * protocolStatus.elementaryTime;
+         frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
       }
 
       // waiting time is set by default to 960 ETUs for T=0 and 9600 ETUs for T=1
-      frameStatus.waitingTime = protocolStatus.characterWaitingTime; // + WT_THRESHOLD * protocolStatus.elementaryTime;
+      frameStatus.waitingTime = protocolStatus.characterWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
 
       // clear search to detect first start bit of next frame
       modulationStatus.searchStartTime = 0;
@@ -1404,8 +1400,8 @@ struct Iso7816::Impl : IsoTech
          protocolStatus.extraGuardTime = static_cast<unsigned int>(std::round(protocolStatus.elementaryTime * protocolStatus.extraGuardTimeUnits));
 
          // configure frame timing parameters
-         frameStatus.guardTime = protocolStatus.characterGuardTime; // - GT_THRESHOLD * protocolStatus.elementaryTime;
-         frameStatus.waitingTime = protocolStatus.characterWaitingTime; // + WT_THRESHOLD * protocolStatus.elementaryTime;
+         frameStatus.guardTime = protocolStatus.characterGuardTime - GT_THRESHOLD * protocolStatus.elementaryTime;
+         frameStatus.waitingTime = protocolStatus.characterWaitingTime + WT_THRESHOLD * protocolStatus.elementaryTime;
          frameStatus.symbolRate = 1.0f / protocolStatus.elementaryTimeUnit;
 
          // trace new protocol parameters
