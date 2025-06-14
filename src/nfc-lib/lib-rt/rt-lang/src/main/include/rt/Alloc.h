@@ -51,7 +51,7 @@ struct Alloc
       if (!((data = (T *)_aligned_malloc(size * sizeof(T), alignment))))
          throw std::bad_alloc();
 #else
-      if (posix_memalign(&block, alignment, size * sizeof(T)) != 0)
+      if (posix_memalign((void**)(&data), alignment, size * sizeof(T)) != 0)
          throw std::bad_alloc();
 #endif
 
