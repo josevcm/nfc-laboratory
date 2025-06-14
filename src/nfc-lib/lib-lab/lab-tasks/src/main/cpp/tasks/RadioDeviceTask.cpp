@@ -122,25 +122,32 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Start)
+         switch (command->code)
          {
-            startDevice(command.value());
-         }
-         else if (command->code == Stop)
-         {
-            stopDevice(command.value());
-         }
-         else if (command->code == Query)
-         {
-            queryDevice(command.value());
-         }
-         else if (command->code == Configure)
-         {
-            configDevice(command.value());
-         }
-         else if (command->code == Clear)
-         {
-            clearDevice(command.value());
+            case Start:
+               startDevice(command.value());
+               break;
+
+            case Stop:
+               stopDevice(command.value());
+               break;
+
+            case Query:
+               queryDevice(command.value());
+               break;
+
+            case Configure:
+               configDevice(command.value());
+               break;
+
+            case Clear:
+               clearDevice(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 
@@ -157,10 +164,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
             }
             else if (taskThroughput.average() > 0)
             {
-               log->info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
-
-               // reset throughput meter
-               taskThroughput.begin();
+               log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, signalQueue.size()});
             }
 
             // store last search time
@@ -406,7 +410,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
          data["model"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_MODEL));
          data["version"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_VERSION));
          data["serial"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_SERIAL));
-         data["status"] = radioReceiverEnabled ? (device->isStreaming() ? "streaming" : "idle") : "disabled";
+         data["status"] = radioReceiverEnabled ? (device->isStreaming() ? "streaming" : status == Flush ? "flush" : "idle") : "disabled";
 
          // device parameters
          data["centerFreq"] = std::get<unsigned int>(device->get(hw::RadioDevice::PARAM_TUNE_FREQUENCY));
@@ -477,7 +481,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       if (auto entry = signalQueue.get(timeout))
       {
          hw::SignalBuffer buffer = entry.value();
-         hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RAW_REAL, buffer.id());
+         hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, buffer.id());
 
          float *src = buffer.data();
          float *dst = result.pull(buffer.elements());
@@ -609,6 +613,8 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       }
       else if (radioReceiverStatus == Flush)
       {
+         log->info("flush receiver buffers");
+
          // send null buffer for EOF
          signalIqStream->next({});
          signalRawStream->next({});

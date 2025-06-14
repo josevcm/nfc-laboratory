@@ -27,7 +27,7 @@ namespace lab {
 
 bool NfcDecoderStatus::nextSample(hw::SignalBuffer &buffer)
 {
-   if (buffer.available() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_RAW_REAL)
+   if (buffer.available() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES)
       return false;
 
    // update signal clock and pulse filter

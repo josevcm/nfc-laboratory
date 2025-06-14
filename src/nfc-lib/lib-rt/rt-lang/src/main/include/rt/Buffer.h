@@ -2,7 +2,7 @@
 
   This file is part of NFC-LABORATORY.
 
-  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+  Copyright (C) 2025 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,104 +22,69 @@
 #ifndef RT_BUFFER_H
 #define RT_BUFFER_H
 
-#include <atomic>
 #include <cstring>
 #include <memory>
 #include <functional>
 
-#define BUFFER_ALIGNMENT 256
+#include <rt/Heap.h>
+
+#define ALLOC_ALIGNMENT 128
 
 namespace rt {
 
 template <class T>
 class Buffer
 {
-   struct Alloc
-   {
-      T *data = nullptr; // aligned payload data pointer
-      void *context = nullptr; // context payload
-      unsigned int type = 0; // data type
-      unsigned int stride = 0; // data stride, how many data has in one chunk for all channels
-      unsigned int interleave = 0; // data interleave, how many consecutive data has per channel
-      std::atomic<int> references; // block reference count
-
-      Alloc(unsigned int type, unsigned int capacity, unsigned int stride, unsigned int interleave, void *context) : data(nullptr), type(type), references(1), stride(stride), interleave(interleave), context(context)
-      {
-         // allocate raw memory including alignment space
-         data = static_cast<T *>(operator new[](capacity * sizeof(T), static_cast<std::align_val_t>(BUFFER_ALIGNMENT)));
-      }
-
-      ~Alloc()
-      {
-         // free buffer data
-         ::operator delete[](data, static_cast<std::align_val_t>(BUFFER_ALIGNMENT));
-      }
-
-      int attach()
-      {
-         return ++references;
-      }
-
-      int detach()
-      {
-         return --references;
-      }
-
-   } *alloc = nullptr;
+   std::shared_ptr<Alloc<T>> alloc;
 
    struct State
    {
       unsigned int position; // current data position
       unsigned int capacity; // buffer data capacity
       unsigned int limit; // buffer data limit
-
-      State(unsigned int position, unsigned int capacity, unsigned int limit) : position(position), capacity(capacity), limit(limit)
-      {
-      }
-
    } state;
+
+   struct Attrs
+   {
+      unsigned int type; // data type
+      unsigned int stride; // data stride, how many data has in one chunk for all channels
+      unsigned int interleave; // data interleave, how many consecutive data has per channel
+      void *context; // context payload
+   } attrs;
 
    public:
 
-      Buffer() : alloc(nullptr), state(0, 0, 0)
+      static Heap<T> heap;
+
+      Buffer() : state{0, 0, 0}, attrs{0, 0, 0, nullptr}
       {
       }
 
-      Buffer(const Buffer &other) : alloc(other.alloc), state(other.state)
+      Buffer(const Buffer &other) : alloc(other.alloc), state(other.state), attrs(other.attrs)
       {
-         if (alloc)
-            alloc->attach();
       }
 
-      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : alloc(new Alloc(type, capacity, stride, interleave, context)), state(0, capacity, capacity)
+      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : Buffer(capacity, type, stride, interleave, context)
       {
          if (data && capacity)
             put(data, capacity).flip();
       }
 
-      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : alloc(new Alloc(type, capacity, stride, interleave, context)), state(0, capacity, capacity)
+      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state{0, capacity, capacity}, attrs{type, stride, interleave, context}
       {
+         alloc = heap.alloc(capacity, ALLOC_ALIGNMENT);
       }
 
-      ~Buffer()
-      {
-         if (alloc && alloc->detach() == 0)
-            delete alloc;
-      }
+      ~Buffer() = default;
 
       Buffer &operator=(const Buffer &other)
       {
          if (&other == this)
             return *this;
 
-         if (alloc && alloc->detach() == 0)
-            delete alloc;
-
-         state = other.state;
          alloc = other.alloc;
-
-         if (alloc)
-            alloc->attach();
+         state = other.state;
+         attrs = other.attrs;
 
          return *this;
       }
@@ -145,21 +110,24 @@ class Buffer
 
       void reset()
       {
-         if (alloc && alloc->detach() == 0)
-            delete alloc;
-
+         alloc.reset();
          state = {0, 0, 0};
-         alloc = {nullptr};
+         attrs = {0, 0, 0, nullptr};
       }
 
       bool isValid() const
       {
-         return alloc;
+         return alloc != nullptr;
       }
 
       bool isEmpty() const
       {
          return state.position == state.limit;
+      }
+
+      bool isFull() const
+      {
+         return state.position == state.capacity;
       }
 
       unsigned int position() const
@@ -184,12 +152,12 @@ class Buffer
 
       unsigned int elements() const
       {
-         return alloc ? state.limit * alloc->interleave / alloc->stride : 0;
+         return alloc ? state.limit * attrs.interleave / attrs.stride : 0;
       }
 
       unsigned int stride() const
       {
-         return alloc ? alloc->stride : 0;
+         return alloc ? attrs.stride : 0;
       }
 
       unsigned int interleave() const
@@ -204,7 +172,7 @@ class Buffer
 
       unsigned int chunk() const
       {
-         return alloc ? alloc->stride * sizeof(T) : 0;
+         return alloc ? attrs.stride * sizeof(T) : 0;
       }
 
       operator bool() const
@@ -212,24 +180,19 @@ class Buffer
          return isValid();
       }
 
-      unsigned int references() const
-      {
-         return alloc ? static_cast<unsigned int>(alloc->references) : 0;
-      }
-
       unsigned int type() const
       {
-         return alloc ? alloc->type : 0;
+         return alloc->data ? attrs.type : 0;
       }
 
       void *context() const
       {
-         return alloc ? alloc->context : nullptr;
+         return alloc->data ? attrs.context : nullptr;
       }
 
       T *data() const
       {
-         return alloc ? alloc->data : nullptr;
+         return alloc->data ? alloc->data : nullptr;
       }
 
       T *pull(unsigned int size)
@@ -250,13 +213,13 @@ class Buffer
          {
             const int count = std::min(newCapacity, state.limit);
 
-            T *data = static_cast<T *>(operator new[](newCapacity * sizeof(T), static_cast<std::align_val_t>(BUFFER_ALIGNMENT)));
+            Alloc<T> newAlloc = heap.acquire(newCapacity, ALLOC_ALIGNMENT);
 
-            std::memcpy(data, alloc->data, count * sizeof(T));
+            std::memcpy(newAlloc->data, alloc->data, count * sizeof(T));
 
-            ::operator delete[](alloc->data, static_cast<std::align_val_t>(BUFFER_ALIGNMENT));
+            heap.release(alloc);
 
-            alloc->data = data;
+            alloc = newAlloc;
             state.limit = newCapacity > state.limit ? state.limit : newCapacity;
             state.capacity = newCapacity;
          }
@@ -366,8 +329,8 @@ class Buffer
       {
          if (alloc)
          {
-            for (int i = state.position; i < state.limit; i += alloc->stride)
-               handler(alloc->data + i, alloc->stride);
+            for (int i = state.position; i < state.limit; i += attrs.stride)
+               handler(alloc->data + i, attrs.stride);
          }
       }
 
@@ -381,6 +344,9 @@ class Buffer
          return alloc->data[index];
       }
 };
+
+template <class T>
+Heap<T> Buffer<T>::heap;
 
 }
 

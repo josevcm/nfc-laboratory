@@ -686,6 +686,9 @@
             <addaction name="actionZoom"/>
             <addaction name="actionWide"/>
             <addaction name="separator"/>
+            <addaction name="actionStorage"/>
+            <addaction name="actionSetup"/>
+            <addaction name="separator"/>
             <addaction name="actionListen"/>
             <addaction name="actionRecord"/>
             <addaction name="actionStop"/>
@@ -785,7 +788,24 @@
                 <string>Open Settings</string>
             </property>
             <property name="toolTip">
-                <string>Settings</string>
+                <string>Open Settings</string>
+            </property>
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <bold>false</bold>
+                </font>
+            </property>
+        </action>
+        <action name="actionStorage">
+            <property name="icon">
+                <iconset theme="action-storage"/>
+            </property>
+            <property name="text">
+                <string>Open Storage</string>
+            </property>
+            <property name="toolTip">
+                <string>Open Storage</string>
             </property>
             <property name="font">
                 <font>
@@ -1207,13 +1227,25 @@
             <sender>actionExport</sender>
             <signal>triggered()</signal>
             <receiver>mainWindow</receiver>
-            <slot>saveSelection()</slot>
+            <slot>saveSelected()</slot>
         </connection>
         <connection>
             <sender>actionClear</sender>
             <signal>triggered()</signal>
             <receiver>mainWindow</receiver>
             <slot>clearView()</slot>
+        </connection>
+        <connection>
+            <sender>actionStorage</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>openStorage()</slot>
+        </connection>
+        <connection>
+            <sender>actionSetup</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>openConfig()</slot>
         </connection>
         <connection>
             <sender>actionTime</sender>
@@ -1244,12 +1276,6 @@
             <signal>triggered()</signal>
             <receiver>mainWindow</receiver>
             <slot>zoomReset()</slot>
-        </connection>
-        <connection>
-            <sender>actionSetup</sender>
-            <signal>triggered()</signal>
-            <receiver>mainWindow</receiver>
-            <slot>openConfig()</slot>
         </connection>
         <connection>
             <sender>actionReset</sender>
@@ -1346,8 +1372,9 @@
         <slot>selectionChanged(QItemSelection,QItemSelection)</slot>
         <slot>openFile()</slot>
         <slot>saveFile()</slot>
-        <slot>saveSelection()</slot>
+        <slot>saveSelected()</slot>
         <slot>openConfig()</slot>
+        <slot>openStorage()</slot>
         <slot>toggleListen()</slot>
         <slot>toggleRecord()</slot>
         <slot>toggleStop()</slot>

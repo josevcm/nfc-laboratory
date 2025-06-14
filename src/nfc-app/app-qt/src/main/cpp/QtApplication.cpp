@@ -26,6 +26,7 @@
 #include <QPointer>
 #include <QThreadPool>
 #include <QSplashScreen>
+#include <QStandardPaths>
 
 #include "QtDecoder.h"
 #include "QtWindow.h"
@@ -63,6 +64,9 @@ struct QtApplication::Impl
    QMetaObject::Connection applicationShutdownConnection;
    QMetaObject::Connection splashScreenCloseConnection;
    QMetaObject::Connection windowReloadConnection;
+
+   //  shutdown flag
+   static bool shuttingDown;
 
    explicit Impl(QtApplication *app) : app(app), splash(QPixmap(":/app/app-splash"), Qt::WindowStaysOnTopHint)
    {
@@ -158,6 +162,8 @@ struct QtApplication::Impl
       qInfo() << "shutdown QT Interface";
 
       postEvent(instance(), new SystemShutdownEvent);
+
+      shuttingDown = true;
    }
 
    void showSplash(int timeout)
@@ -212,13 +218,15 @@ struct QtApplication::Impl
    }
 };
 
+bool QtApplication::Impl::shuttingDown = false;
+
 QtApplication::QtApplication(int &argc, char **argv) : QApplication(argc, argv), impl(new Impl(this))
 {
    // setup thread pool
    QThreadPool::globalInstance()->setMaxThreadCount(8);
 
    // startup interface
-   QTimer::singleShot(0, this, [=]() { startup(); });
+   QTimer::singleShot(0, this, [=] { startup(); });
 }
 
 void QtApplication::startup()
@@ -233,7 +241,15 @@ void QtApplication::shutdown()
 
 void QtApplication::post(QEvent *event, int priority)
 {
-   postEvent(instance(), event, priority);
+   if (!Impl::shuttingDown)
+      postEvent(instance(), event, priority);
+}
+
+QString QtApplication::dataPath()
+{
+   QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data");
+
+   return dataPath.absolutePath();
 }
 
 void QtApplication::customEvent(QEvent *event)

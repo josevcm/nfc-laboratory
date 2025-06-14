@@ -209,7 +209,7 @@ struct Usb::Impl
          shutdown = true;
 
          // wait for thread to finish
-         std::lock_guard<std::mutex> lock(threadMutex);
+         std::lock_guard lock(threadMutex);
 
          // closing libusb device
          libusb_close(hdl);

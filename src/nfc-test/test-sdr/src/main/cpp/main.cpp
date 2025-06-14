@@ -161,7 +161,7 @@ bool readSignal(const std::string &path, std::list<lab::RawFrame> &list)
 
    while (!source.isEof())
    {
-      hw::SignalBuffer samples(65536 * channelCount, channelCount, 1, sampleRate, 0, 0, hw::SignalType::SIGNAL_TYPE_RAW_REAL, 0);
+      hw::SignalBuffer samples(65536 * channelCount, channelCount, 1, sampleRate, 0, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, 0);
 
       if (source.read(samples) > 0)
       {

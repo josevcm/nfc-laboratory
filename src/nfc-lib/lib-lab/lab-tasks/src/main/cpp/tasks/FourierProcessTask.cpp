@@ -85,10 +85,10 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
    explicit Impl(int length = 1024) : AbstractTask("worker.FourierProcess", "fourier"), length(length)
    {
       // create fft buffers
-      fftIn = static_cast<float*>(mufft_alloc(length * sizeof(float) * 2));
-      fftOut = static_cast<float*>(mufft_alloc(length * sizeof(float) * 2));
-      fftMag = static_cast<float*>(mufft_alloc(length * sizeof(float)));
-      fftWin = static_cast<float*>(mufft_alloc(length * sizeof(float)));
+      fftIn = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
+      fftOut = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
+      fftMag = static_cast<float *>(mufft_alloc(length * sizeof(float)));
+      fftWin = static_cast<float *>(mufft_alloc(length * sizeof(float)));
 
       // create FFT plans
       fftC2C = mufft_create_plan_1d_c2c(length, MUFFT_FORWARD, MUFFT_FLAG_CPU_NO_AVX);
@@ -101,11 +101,8 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
       // subscribe to signal events
       signalIqSubscription = signalIqStream->subscribe([=](const hw::SignalBuffer &buffer) {
-         if (signalMutex.try_lock())
-         {
-            signalBuffer = buffer;
-            signalMutex.unlock();
-         }
+         std::lock_guard lock(signalMutex);
+         signalBuffer = buffer;
       });
    }
 
@@ -142,9 +139,16 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Configure)
+         switch (command->code)
          {
-            configure(command.value());
+            case Configure:
+               configure(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 
@@ -165,11 +169,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       if (std::chrono::steady_clock::now() - lastStatus > std::chrono::milliseconds(1000))
       {
          if (taskThroughput.average() > 0)
-         {
             log->info("average throughput {.2} Ksps", {taskThroughput.average() / 1E3});
-
-            taskThroughput.begin();
-         }
 
          // store last search time
          lastStatus = std::chrono::steady_clock::now();
@@ -197,21 +197,29 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       }
       else
       {
-         command.reject();
+         log->warn("invalid config data");
+
+         command.reject(InvalidConfig);
       }
    }
 
    void process()
    {
-      std::lock_guard lock(signalMutex);
+      hw::SignalBuffer localBuffer;
+
+      {
+         std::lock_guard lock(signalMutex);
+
+         localBuffer = signalBuffer;
+      }
 
       // IQ complex signal to real FFT transform
-      if (signalBuffer.isValid() && signalBuffer.type() == hw::SignalType::SIGNAL_TYPE_RAW_IQ)
+      if (localBuffer.isValid() && localBuffer.type() == hw::SignalType::SIGNAL_TYPE_RADIO_IQ)
       {
-         float *data = signalBuffer.data();
+         float *data = localBuffer.data();
 
          // calculate decimation for required bandwith
-         decimation = int(signalBuffer.sampleRate() / bandwidth);
+         decimation = int(localBuffer.sampleRate() / bandwidth);
 
          // apply signal windowing and decimation
 #if defined(__SSE2__) && defined(USE_SSE2)
@@ -307,7 +315,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 #endif
 
          // create output buffer
-         hw::SignalBuffer result(length, 1, 1, signalBuffer.sampleRate(), 0, decimation, hw::SignalType::SIGNAL_TYPE_FFT_BIN);
+         hw::SignalBuffer result(length, 1, 1, localBuffer.sampleRate(), 0, decimation, hw::SignalType::SIGNAL_TYPE_FFT_BIN);
 
          // add data width negative / positive frequency shift
          result.put(fftMag + (length >> 1), (length >> 1)).put(fftMag, (length >> 1)).flip();

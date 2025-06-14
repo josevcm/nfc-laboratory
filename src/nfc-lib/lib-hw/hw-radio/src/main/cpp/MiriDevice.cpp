@@ -411,10 +411,10 @@ struct MiriDevice::Impl
       return result;
    }
 
-   int read(SignalBuffer &buffer)
+   long read(SignalBuffer &buffer)
    {
       // lock buffer access
-      std::lock_guard<std::mutex> lock(streamMutex);
+      std::lock_guard lock(streamMutex);
 
       if (!streamQueue.empty())
       {
@@ -428,7 +428,7 @@ struct MiriDevice::Impl
       return -1;
    }
 
-   int write(SignalBuffer &buffer)
+   long write(const SignalBuffer &buffer)
    {
       log->warn("write not supported on this device!");
 
@@ -630,12 +630,12 @@ bool MiriDevice::isStreaming() const
    return impl->isStreaming();
 }
 
-int MiriDevice::read(SignalBuffer &buffer)
+long MiriDevice::read(SignalBuffer &buffer)
 {
    return impl->read(buffer);
 }
 
-int MiriDevice::write(SignalBuffer &buffer)
+long MiriDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }
@@ -665,7 +665,7 @@ int process_transfer(unsigned char *buf, uint32_t len, void *ctx)
       else
       {
          // lock buffer access
-         std::lock_guard<std::mutex> lock(device->streamMutex);
+         std::lock_guard lock(device->streamMutex);
 
          // discard oldest buffers
          if (device->streamQueue.size() >= MAX_QUEUE_SIZE)

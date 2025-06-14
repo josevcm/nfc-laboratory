@@ -50,7 +50,9 @@ struct AirspyDevice::Impl
    std::string deviceVendor;
    std::string deviceModel;
    std::string deviceVersion;
+
    int fileDesc = 0;
+
    unsigned int centerFreq = 40.68E6;
    unsigned int sampleRate = 10E6;
    unsigned int sampleSize = 16;
@@ -65,7 +67,7 @@ struct AirspyDevice::Impl
 
    int airspyResult = 0;
    airspy_device *airspyHandle = nullptr;
-   airspy_read_partid_serialno_t airspySerial{};
+   airspy_read_partid_serialno_t airspySerial {};
    airspy_sample_type airspySample = AIRSPY_SAMPLE_FLOAT32_IQ;
 
    std::mutex streamMutex;
@@ -207,77 +209,73 @@ struct AirspyDevice::Impl
 
    void close()
    {
-      if (airspyHandle)
-      {
-         // stop streaming if active...
-         stop();
+      if (!airspyHandle)
+         return;
 
-         // disable bias tee
-         if ((airspyResult = airspy_set_rf_bias(airspyHandle, 0)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_set_rf_bias: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      // stop streaming if active...
+      stop();
 
-         log->info("close device {}", {deviceName});
+      // disable bias tee
+      if ((airspyResult = airspy_set_rf_bias(airspyHandle, 0)) != AIRSPY_SUCCESS)
+         log->warn("failed airspy_set_rf_bias: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
 
-         // close device
-         if ((airspyResult = airspy_close(airspyHandle)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_close: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      log->info("close device {}", {deviceName});
 
-         deviceName = "";
-         deviceVersion = "";
-         airspyHandle = nullptr;
-      }
+      // close device
+      if ((airspyResult = airspy_close(airspyHandle)) != AIRSPY_SUCCESS)
+         log->warn("failed airspy_close: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+
+      deviceName = "";
+      deviceVersion = "";
+      airspyHandle = nullptr;
    }
 
    int start(RadioDevice::StreamHandler handler)
    {
-      if (airspyHandle)
-      {
-         log->info("start streaming for device {}", {deviceName});
+      if (!airspyHandle)
+         return -1;
 
-         // clear counters
-         samplesDropped = 0;
-         samplesReceived = 0;
+      log->info("start streaming for device {}", {deviceName});
 
-         // reset stream status
-         streamCallback = std::move(handler);
-         streamQueue = std::queue<SignalBuffer>();
+      // clear counters
+      samplesDropped = 0;
+      samplesReceived = 0;
 
-         // start reception
-         if ((airspyResult = airspy_start_rx(airspyHandle, process_transfer, this)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_start_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      // reset stream status
+      streamCallback = std::move(handler);
+      streamQueue = std::queue<SignalBuffer>();
 
-         // clear callback to disable receiver
-         if (airspyResult != AIRSPY_SUCCESS)
-            streamCallback = nullptr;
+      // start reception
+      if ((airspyResult = airspy_start_rx(airspyHandle, process_transfer, this)) != AIRSPY_SUCCESS)
+         log->warn("failed airspy_start_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
 
-         // sets stream start time
-         streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      // clear callback to disable receiver
+      if (airspyResult != AIRSPY_SUCCESS)
+         streamCallback = nullptr;
 
-         return airspyResult;
-      }
+      // sets stream start time
+      streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-      return -1;
+      return airspyResult;
    }
 
    int stop()
    {
-      if (airspyHandle && streamCallback)
-      {
-         log->info("stop streaming for device {}", {deviceName});
+      if (!airspyHandle || !streamCallback)
+         return 1;
 
-         // stop reception
-         if ((airspyResult = airspy_stop_rx(airspyHandle)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_stop_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      log->info("stop streaming for device {}", {deviceName});
 
-         // disable stream callback and queue
-         streamCallback = nullptr;
-         streamQueue = std::queue<SignalBuffer>();
-         streamTime = 0;
+      // stop reception
+      if ((airspyResult = airspy_stop_rx(airspyHandle)) != AIRSPY_SUCCESS)
+         log->warn("failed airspy_stop_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
 
-         return airspyResult;
-      }
+      // disable stream callback and queue
+      streamCallback = nullptr;
+      streamQueue = std::queue<SignalBuffer>();
+      streamTime = 0;
 
-      return -1;
+      return airspyResult;
    }
 
    bool isOpen() const
@@ -348,10 +346,8 @@ struct AirspyDevice::Impl
 
             return airspyResult;
          }
-         else
-         {
-            return setGainValue(gainValue);
-         }
+
+         return setGainValue(gainValue);
       }
 
       return 0;
@@ -500,10 +496,10 @@ struct AirspyDevice::Impl
       return result;
    }
 
-   int read(SignalBuffer &buffer)
+   long read(SignalBuffer &buffer)
    {
       // lock buffer access
-      std::lock_guard<std::mutex> lock(streamMutex);
+      std::lock_guard lock(streamMutex);
 
       if (!streamQueue.empty())
       {
@@ -517,7 +513,7 @@ struct AirspyDevice::Impl
       return -1;
    }
 
-   int write(SignalBuffer &buffer)
+   long write(const SignalBuffer &buffer)
    {
       log->warn("write not supported on this device!");
 
@@ -731,12 +727,12 @@ bool AirspyDevice::isStreaming() const
    return impl->isStreaming();
 }
 
-int AirspyDevice::read(SignalBuffer &buffer)
+long AirspyDevice::read(SignalBuffer &buffer)
 {
    return impl->read(buffer);
 }
 
-int AirspyDevice::write(SignalBuffer &buffer)
+long AirspyDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }
@@ -751,11 +747,11 @@ int process_transfer(airspy_transfer *transfer)
       switch (transfer->sample_type)
       {
          case AIRSPY_SAMPLE_FLOAT32_IQ:
-            buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count * 2, 2, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RAW_IQ);
+            buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count * 2, 2, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_IQ);
             break;
 
          case AIRSPY_SAMPLE_FLOAT32_REAL:
-            buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count, 1, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RAW_REAL);
+            buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count, 1, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
             break;
 
          default:

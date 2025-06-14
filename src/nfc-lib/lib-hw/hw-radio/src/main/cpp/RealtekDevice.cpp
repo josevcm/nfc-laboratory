@@ -26,6 +26,7 @@
 #undef ERROR
 #endif
 
+#include <atomic>
 #include <queue>
 #include <mutex>
 #include <thread>
@@ -569,10 +570,10 @@ struct RealtekDevice::Impl
       return result;
    }
 
-   int read(SignalBuffer &buffer)
+   long read(SignalBuffer &buffer)
    {
       // lock buffer access
-      std::lock_guard<std::mutex> lock(streamMutex);
+      std::lock_guard lock(streamMutex);
 
       if (!streamQueue.empty())
       {
@@ -586,7 +587,7 @@ struct RealtekDevice::Impl
       return -1;
    }
 
-   int write(SignalBuffer &buffer)
+   long write(const SignalBuffer &buffer)
    {
       log->warn("write not supported on this device!");
 
@@ -613,7 +614,7 @@ struct RealtekDevice::Impl
       {
          int length;
 
-         SignalBuffer buffer = SignalBuffer(BUFFER_SAMPLES * 2, 2, 1, sampleRate, samplesReceived, 0, SignalType::SIGNAL_TYPE_RAW_IQ);
+         SignalBuffer buffer = SignalBuffer(BUFFER_SAMPLES * 2, 2, 1, sampleRate, samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_IQ);
 
          while (buffer.available() > READER_SAMPLES && (rtlsdr_read_sync(rtlsdrHandle, data, sizeof(data), &length) == 0))
          {
@@ -876,12 +877,12 @@ bool RealtekDevice::isStreaming() const
    return impl->isStreaming();
 }
 
-int RealtekDevice::read(SignalBuffer &buffer)
+long RealtekDevice::read(SignalBuffer &buffer)
 {
    return impl->read(buffer);
 }
 
-int RealtekDevice::write(SignalBuffer &buffer)
+long RealtekDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }

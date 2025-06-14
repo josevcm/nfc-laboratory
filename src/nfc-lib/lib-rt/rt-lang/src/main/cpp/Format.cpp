@@ -133,40 +133,51 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
       {
          int offset = 0;
 
-         // format line as: 0000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
-         for (int i = 0; i < value->size(); i += 16)
+         if (mode.empty())
          {
-            offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%04X: ", i);
-
-            for (int j = 0; j < 16; j++)
+            // format line as: 0000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+            for (int i = 0; i < value->size(); i += 16)
             {
-               if (i + j < value->size())
-                  offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", (unsigned int)value->data()[i + j]);
-               else
-                  offset += snprintf(buffer + offset, sizeof(buffer) - offset, "   ");
-            }
+               offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%04X: ", i);
 
-            offset += snprintf(buffer + offset, sizeof(buffer) - offset, " ");
-
-            for (int j = 0; j < 16; j++)
-            {
-               if (i + j < value->size())
+               for (int j = 0; j < 16; j++)
                {
-                  offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%c", isprint(value->data()[i + j]) ? value->data()[i + j] : '.');
+                  if (i + j < value->size())
+                     offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", static_cast<unsigned int>(value->data()[i + j]));
+                  else
+                     offset += snprintf(buffer + offset, sizeof(buffer) - offset, "   ");
+               }
+
+               offset += snprintf(buffer + offset, sizeof(buffer) - offset, " ");
+
+               for (int j = 0; j < 16; j++)
+               {
+                  if (i + j < value->size())
+                  {
+                     offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%c", isprint(value->data()[i + j]) ? value->data()[i + j] : '.');
+                  }
+               }
+
+               if (i + 16 < value->size())
+               {
+                  offset += snprintf(buffer + offset, sizeof(buffer) - offset, "\n");
+
+                  // exit if print buffer is reached
+                  if (sizeof(buffer) - offset < 80)
+                  {
+                     snprintf(buffer + offset, sizeof(buffer) - offset, "...");
+
+                     break;
+                  }
                }
             }
-
-            if (i + 16 < value->size())
+         }
+         else if (mode == "x" || mode == "X")
+         {
+            // format as hex: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00...
+            for (int i = 0; i < value->size(); ++i)
             {
-               offset += snprintf(buffer + offset, sizeof(buffer) - offset, "\n");
-
-               // exit if print buffer is reached
-               if (sizeof(buffer) - offset < 80)
-               {
-                  snprintf(buffer + offset, sizeof(buffer) - offset, "...");
-
-                  break;
-               }
+               offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", static_cast<unsigned int>(value->data()[i]));
             }
          }
       }

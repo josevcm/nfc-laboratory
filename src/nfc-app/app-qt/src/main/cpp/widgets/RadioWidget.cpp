@@ -159,7 +159,7 @@ struct RadioWidget::Impl
 
       switch (buffer.type())
       {
-         case hw::SignalType::SIGNAL_TYPE_RAW_REAL:
+         case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
          {
             for (int i = 0; i < buffer.elements(); i++)
             {
@@ -172,7 +172,7 @@ struct RadioWidget::Impl
             break;
          }
 
-         case hw::SignalType::SIGNAL_TYPE_ADV_REAL:
+         case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
          {
             for (int i = 0; i < buffer.limit(); i += 2)
             {

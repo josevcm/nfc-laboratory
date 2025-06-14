@@ -96,25 +96,32 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Start)
+         switch (command->code)
          {
-            startDecoder(command.value());
-         }
-         else if (command->code == Stop)
-         {
-            stopDecoder(command.value());
-         }
-         else if (command->code == Query)
-         {
-            queryDecoder(command.value());
-         }
-         else if (command->code == Configure)
-         {
-            configDecoder(command.value());
-         }
-         else if (command->code == Clear)
-         {
-            clearDecoder(command.value());
+            case Start:
+               startDecoder(command.value());
+               break;
+
+            case Stop:
+               stopDecoder(command.value());
+               break;
+
+            case Query:
+               queryDecoder(command.value());
+               break;
+
+            case Configure:
+               configDecoder(command.value());
+               break;
+
+            case Clear:
+               clearDecoder(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 
@@ -128,11 +135,7 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
          if (std::chrono::steady_clock::now() - lastStatus > std::chrono::milliseconds(1000))
          {
             if (taskThroughput.average() > 0)
-            {
                log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, logicSignalQueue.size()});
-
-               taskThroughput.begin();
-            }
 
             lastStatus = std::chrono::steady_clock::now();
          }
@@ -201,11 +204,17 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
 
    void configDecoder(rt::Event &command)
    {
+      static json lastConfig;
+
       if (auto data = command.get<std::string>("data"))
       {
          auto config = json::parse(data.value());
 
-         log->info("change config: {}", {config.dump()});
+         if (lastConfig != config)
+         {
+            lastConfig = config;
+            log->info("change config: {}", {config.dump()});
+         }
 
          // update current configuration
          currentConfig.merge_patch(config);
@@ -282,19 +291,18 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
    {
       if (const auto buffer = logicSignalQueue.get())
       {
-         int frames = 0;
-
-         log->trace("decode new buffer {} offset {} with {} samples", {buffer->id(), buffer->offset(), buffer->elements()});
-
-         for (const auto &frame: decoder->nextFrames(buffer.value()))
+         if (buffer->isValid())
          {
-            decoderFrameStream->next(frame);
-            frames++;
+            log->trace("decode new buffer {} offset {} with {} samples", {buffer->id(), buffer->offset(), buffer->elements()});
+
+            taskThroughput.update(buffer->elements());
+
+            for (const auto &frame: decoder->nextFrames(buffer.value()))
+            {
+               decoderFrameStream->next(frame);
+            }
          }
-
-         taskThroughput.update(buffer->elements());
-
-         if (!buffer->isValid())
+         else
          {
             log->info("decoder EOF buffer received, finish!");
 

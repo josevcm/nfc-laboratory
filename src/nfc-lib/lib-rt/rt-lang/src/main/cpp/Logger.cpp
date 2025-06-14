@@ -23,6 +23,7 @@
 #include <pthread.h>
 
 #include <map>
+#include <atomic>
 #include <memory>
 #include <string>
 #include <fstream>
