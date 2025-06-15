@@ -28,6 +28,7 @@ const int RadioDeviceStatusEvent::Type = registerEventType();
 
 const QString RadioDeviceStatusEvent::Absent = "absent";
 const QString RadioDeviceStatusEvent::Idle = "idle";
+const QString RadioDeviceStatusEvent::Paused = "paused";
 const QString RadioDeviceStatusEvent::Streaming = "streaming";
 const QString RadioDeviceStatusEvent::Disabled = "disabled";
 
@@ -56,6 +57,11 @@ bool RadioDeviceStatusEvent::isAbsent() const
 bool RadioDeviceStatusEvent::isIdle() const
 {
    return hasStatus() && status() == Idle;
+}
+
+bool RadioDeviceStatusEvent::isPaused() const
+{
+   return hasStatus() && status() == Paused;
 }
 
 bool RadioDeviceStatusEvent::isStreaming() const

@@ -35,6 +35,7 @@ class RadioDeviceStatusEvent : public QEvent
 
       static const QString Absent;
       static const QString Idle;
+      static const QString Paused;
       static const QString Streaming;
       static const QString Disabled;
 
@@ -51,6 +52,8 @@ class RadioDeviceStatusEvent : public QEvent
       bool isAbsent() const;
 
       bool isIdle() const;
+
+      bool isPaused() const;
 
       bool isStreaming() const;
 

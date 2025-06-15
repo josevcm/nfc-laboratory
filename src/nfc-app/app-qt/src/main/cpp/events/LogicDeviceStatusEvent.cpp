@@ -29,6 +29,7 @@ const int LogicDeviceStatusEvent::Type = registerEventType();
 const QString LogicDeviceStatusEvent::Absent = "absent";
 const QString LogicDeviceStatusEvent::Idle = "idle";
 const QString LogicDeviceStatusEvent::Streaming = "streaming";
+const QString LogicDeviceStatusEvent::Paused = "paused";
 const QString LogicDeviceStatusEvent::Disabled = "disabled";
 
 LogicDeviceStatusEvent::LogicDeviceStatusEvent() : QEvent(static_cast<QEvent::Type>(Type))
@@ -56,6 +57,11 @@ bool LogicDeviceStatusEvent::isAbsent() const
 bool LogicDeviceStatusEvent::isIdle() const
 {
    return hasStatus() && status() == Idle;
+}
+
+bool LogicDeviceStatusEvent::isPaused() const
+{
+   return hasStatus() && status() == Paused;
 }
 
 bool LogicDeviceStatusEvent::isStreaming() const
