@@ -73,6 +73,7 @@ struct AirspyDevice::Impl
    std::mutex streamMutex;
    std::queue<SignalBuffer> streamQueue;
    StreamHandler streamCallback;
+   bool streamPaused = false;
 
    long long samplesReceived = 0;
    long long samplesDropped = 0;
@@ -230,7 +231,7 @@ struct AirspyDevice::Impl
       airspyHandle = nullptr;
    }
 
-   int start(RadioDevice::StreamHandler handler)
+   int start(StreamHandler handler)
    {
       if (!airspyHandle)
          return -1;
@@ -242,6 +243,7 @@ struct AirspyDevice::Impl
       samplesReceived = 0;
 
       // reset stream status
+      streamPaused = false;
       streamCallback = std::move(handler);
       streamQueue = std::queue<SignalBuffer>();
 
@@ -271,6 +273,7 @@ struct AirspyDevice::Impl
          log->warn("failed airspy_stop_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
 
       // disable stream callback and queue
+      streamPaused = false;
       streamCallback = nullptr;
       streamQueue = std::queue<SignalBuffer>();
       streamTime = 0;
@@ -283,15 +286,36 @@ struct AirspyDevice::Impl
       if (!airspyHandle || !streamCallback)
          return 1;
 
-      return 0;
+      log->info("pause streaming for device {}", {deviceName});
+
+      // stop reception
+      if ((airspyResult = airspy_stop_rx(airspyHandle)) != AIRSPY_SUCCESS)
+         log->warn("failed airspy_stop_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+
+      // set paused state
+      streamPaused = airspyResult == AIRSPY_SUCCESS;
+
+      return airspyResult;
    }
 
    int resume()
    {
-      if (!airspyHandle || !streamCallback)
-         return 1;
+      if (!airspyHandle || !streamCallback || !streamPaused)
+         return -1;
 
-      return 0;
+      log->info("resume streaming for device {}", {deviceName});
+
+      // start reception
+      if ((airspyResult = airspy_start_rx(airspyHandle, process_transfer, this)) != AIRSPY_SUCCESS)
+         log->warn("failed airspy_start_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+
+      // clear callback to disable receiver
+      if (airspyResult != AIRSPY_SUCCESS)
+         streamCallback = nullptr;
+
+      streamPaused = false;
+
+      return airspyResult;
    }
 
    bool isOpen() const
@@ -313,7 +337,7 @@ struct AirspyDevice::Impl
 
    bool isPaused() const
    {
-      return false;
+      return airspyHandle && streamPaused;
    }
 
    bool isStreaming() const

@@ -82,7 +82,8 @@ struct RealtekDevice::Impl
    rtlsdr_tuner rtlsdrTuner;
 
    std::mutex workerMutex;
-   std::atomic_bool workerStreaming {false};
+   std::atomic_bool workerPaused {false};
+   std::atomic_bool workerRunning {false};
    std::thread workerThread;
 
    std::mutex streamMutex;
@@ -277,7 +278,8 @@ struct RealtekDevice::Impl
          log->info("start streaming for device {}", {deviceName});
 
          // set streaming flag to enable worker
-         workerStreaming = true;
+         workerRunning = true;
+         workerPaused = false;
 
          // run worker thread
          workerThread = std::thread([this] { streamWorker(); });
@@ -291,13 +293,14 @@ struct RealtekDevice::Impl
 
    int stop()
    {
-      if (!rtlsdrHandle || !workerStreaming)
+      if (!rtlsdrHandle || !workerRunning)
          return -1;
 
       log->info("stop streaming for device {}", {deviceName});
 
       // signal finish to running thread
-      workerStreaming = false;
+      workerRunning = false;
+      workerPaused = false;
 
       // wait until worker is finished
       std::lock_guard lock(workerMutex);
@@ -315,16 +318,29 @@ struct RealtekDevice::Impl
 
    int pause()
    {
-      if (!rtlsdrHandle || !workerStreaming)
-         return -1;
+      if (!rtlsdrHandle || !workerRunning)
+         return 1;
+
+      log->info("pause streaming for device {}", {deviceName});
+
+      // set paused state
+      workerPaused = true;
 
       return 0;
    }
 
    int resume()
    {
-      if (!rtlsdrHandle || !workerStreaming)
+      if (!rtlsdrHandle || !workerRunning || !workerPaused)
          return -1;
+
+      log->info("resume streaming for device {}", {deviceName});
+
+      // reset buffer to start streaming
+      if ((rtlsdrResult = rtlsdr_reset_buffer(rtlsdrHandle)) < 0)
+         log->warn("failed rtlsdr_reset_buffer: [{}] {}", {rtlsdrResult});
+
+      workerPaused = false;
 
       return 0;
    }
@@ -336,7 +352,7 @@ struct RealtekDevice::Impl
 
    bool isEof() const
    {
-      return !rtlsdrHandle || !workerStreaming;
+      return !rtlsdrHandle || !workerRunning;
    }
 
    bool isReady() const
@@ -346,12 +362,12 @@ struct RealtekDevice::Impl
 
    bool isPaused() const
    {
-      return false;
+      return rtlsdrHandle && workerPaused;
    }
 
    bool isStreaming() const
    {
-      return workerStreaming;
+      return rtlsdrHandle && workerRunning && !workerPaused;
    }
 
    int setCenterFreq(unsigned int value)
@@ -609,8 +625,15 @@ struct RealtekDevice::Impl
 
       log->info("stream worker started for device {}", {deviceName});
 
-      while (workerStreaming)
+      while (workerRunning)
       {
+         if (workerPaused)
+         {
+            // wait until worker is resumed
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            continue;
+         }
+
          int length;
 
          SignalBuffer buffer = SignalBuffer(BUFFER_SAMPLES * 2, 2, 1, sampleRate, samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_IQ);

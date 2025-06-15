@@ -955,6 +955,9 @@ struct QtWindow::Impl
 
    void updateStatus() const
    {
+      // flags for device status
+      const bool devicePaused = logicDeviceStatus == LogicDeviceStatusEvent::Paused || radioDeviceStatus == RadioDeviceStatusEvent::Paused;
+
       ui->actionInfo->setText("");
 
       if (enabledDevices.isEmpty())
@@ -962,7 +965,10 @@ struct QtWindow::Impl
       else
          ui->statusBar->showMessage(QString(tr("Detected %1").arg(enabledDevices.join(", "))));
 
-      if (!enabledDevices.isEmpty())
+      if (devicePaused)
+         ui->actionInfo->setText(QString("PAUSE, Remaining time %1:%2").arg(timeLimit / 60, 2, 10, QChar('0')).arg(timeLimit % 60, 2, 10, QChar('0')));
+
+      else if (!enabledDevices.isEmpty())
          ui->actionInfo->setText(tr("Devices Ready"));
 
       // show if not licensed devices are present
@@ -1808,21 +1814,17 @@ struct QtWindow::Impl
       // enable follow
       setFollowEnabled(true);
 
+      // get selected time limit
+      timeLimit = acquireLimit->currentData().toInt();
+
       // start decoder
       if (recording || settings.value("settings/recordEnabled", false).toBool())
       {
-         const QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data");
-
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {
-                                                        {"storagePath", dataPath.absolutePath()},
-                                                        {"timeLimit", timeLimit}
-                                                     }));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath()}}));
       }
       else
       {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {
-                                                        {"timeLimit", timeLimit}
-                                                     }));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {}));
       }
 
       acquireTimer->start(timeLimit * 1000);
