@@ -130,6 +130,11 @@ struct DSLogicDevice::Impl
    SignalBuffer buffer;
 
    /*
+    * Receive handler
+    */
+   StreamHandler streamHandler;
+
+   /*
     * Control commands.
     */
    const usb_rd_cmd rd_cmd_hw_status {.header {.dest = DSL_CTL_HW_STATUS, .size = sizeof(hwStatus)}, .data = &hwStatus};
@@ -454,6 +459,7 @@ struct DSLogicDevice::Impl
          return -1;
       }
 
+      streamHandler = handler;
       deviceStatus = STATUS_START;
 
       log->debug("acquisition started for device {}", {deviceName});
@@ -489,6 +495,7 @@ struct DSLogicDevice::Impl
       }
 
       deviceStatus = STATUS_STOP;
+      streamHandler = nullptr;
 
       log->debug("capture finished for device {}", {deviceName});
 
@@ -499,12 +506,61 @@ struct DSLogicDevice::Impl
    {
       log->debug("pause acquisition for device {}", {deviceName});
 
+      if (deviceStatus != STATUS_DATA)
+      {
+         log->error("failed to pause acquisition, deice is not streaming");
+         return -1;
+      }
+
+      // stop acquisition
+      if (!usbWrite(wr_cmd_acquisition_stop))
+      {
+         log->error("failed to pause acquisition");
+         return -1;
+      }
+
+      // cancel current transfers
+      for (const auto transfer: transfers)
+      {
+         usb.cancelTransfer(transfer);
+      }
+
+      deviceStatus = STATUS_PAUSE;
+
       return 0;
    }
 
    int resume()
    {
       log->debug("resume acquisition for device {}", {deviceName});
+
+      if (deviceStatus != STATUS_PAUSE)
+      {
+         log->error("failed to resume acquisition, deice is not paused");
+         return -1;
+      }
+
+      buffer.reset();
+
+      // setting FPGA before acquisition start
+      if (!fpgaSetup())
+      {
+         log->error("failed to setup FPGA");
+         return -1;
+      }
+
+      // setup usb transfers
+      usbTransfer(streamHandler);
+
+      // start acquisition
+      if (!usbWrite(wr_cmd_acquisition_start))
+      {
+         log->error("failed to resume acquisition");
+         deviceStatus = STATUS_ERROR;
+         return -1;
+      }
+
+      deviceStatus = STATUS_START;
 
       return 0;
    }
@@ -1896,7 +1952,7 @@ struct DSLogicDevice::Impl
          }
       }
 
-      log->debug("finish data transfer {} and clearing buffers", {transfer});
+      log->warn("finish data transfer {} and clearing buffers", {transfer});
 
       // remove transfer from list
       transfers.remove(transfer);
