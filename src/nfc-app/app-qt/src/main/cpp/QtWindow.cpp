@@ -1830,7 +1830,32 @@ struct QtWindow::Impl
 
    void togglePause()
    {
-      qInfo() << "decoder pausing";
+      if (ui->actionPause->isChecked())
+      {
+         qInfo() << "decoder pause, remaining time:" << acquireTimer->remainingTime();
+
+         // get remaining time
+         timeLimit = acquireTimer->remainingTime() / 1000;
+
+         // stopping timer
+         acquireTimer->stop();
+
+         // sync logic && radio view ranges
+         syncDataRanges();
+
+         // pause decoder
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Pause));
+      }
+      else
+      {
+         qInfo() << "decoder resume, remaining time:" << timeLimit;
+
+         // resume timer
+         acquireTimer->start(timeLimit * 1000);
+
+         // resume decoder
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Resume));
+      }
    }
 
    void toggleStop()
@@ -1943,7 +1968,6 @@ struct QtWindow::Impl
       {
          timeLimit = value;
          qInfo() << "capture time limit changed to" << timeLimit;
-         return;
       }
    }
 
