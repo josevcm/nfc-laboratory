@@ -471,28 +471,26 @@ struct DSLogicDevice::Impl
    {
       log->debug("stopping acquisition for device {}", {deviceName});
 
+      // if device is not started, just return
+      if (deviceStatus == STATUS_PAUSE)
+         return 0;
+
       // stop previous acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
-      {
          log->error("failed to stop acquisition");
-      }
 
       /* adc power down*/
       if (profile->dev_caps.feature_caps & CAPS_FEATURE_HMCAD1511)
       {
          if (!adcSetup(adc_power_down))
-         {
             log->error("failed to power down ADC");
-         }
       }
 
       log->debug("cancel pending transfers for device {}", {deviceName});
 
       // cancel current transfers
       for (const auto transfer: transfers)
-      {
          usb.cancelTransfer(transfer);
-      }
 
       deviceStatus = STATUS_STOP;
       streamHandler = nullptr;
@@ -514,16 +512,11 @@ struct DSLogicDevice::Impl
 
       // stop acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
-      {
          log->error("failed to pause acquisition");
-         return -1;
-      }
 
       // cancel current transfers
       for (const auto transfer: transfers)
-      {
          usb.cancelTransfer(transfer);
-      }
 
       deviceStatus = STATUS_PAUSE;
 
@@ -2341,6 +2334,11 @@ bool DSLogicDevice::isEof() const
 bool DSLogicDevice::isReady() const
 {
    return impl->deviceStatus >= STATUS_READY && impl->isReady();
+}
+
+bool DSLogicDevice::isPaused() const
+{
+   return impl->deviceStatus == STATUS_PAUSE;
 }
 
 bool DSLogicDevice::isStreaming() const

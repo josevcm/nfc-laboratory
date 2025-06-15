@@ -67,6 +67,8 @@ class RealtekDevice : public RadioDevice
 
       bool isReady() const override;
 
+      bool isPaused() const override;
+
       bool isStreaming() const override;
 
       long read(SignalBuffer &buffer) override;

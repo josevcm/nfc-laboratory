@@ -344,6 +344,11 @@ struct RealtekDevice::Impl
       return rtlsdrHandle;
    }
 
+   bool isPaused() const
+   {
+      return false;
+   }
+
    bool isStreaming() const
    {
       return workerStreaming;
@@ -874,6 +879,11 @@ bool RealtekDevice::isEof() const
 bool RealtekDevice::isReady() const
 {
    return impl->isReady();
+}
+
+bool RealtekDevice::isPaused() const
+{
+   return impl->isPaused();
 }
 
 bool RealtekDevice::isStreaming() const

@@ -311,6 +311,11 @@ struct AirspyDevice::Impl
       return airspyHandle && airspy_version_string_read(airspyHandle, version, sizeof(version)) == AIRSPY_SUCCESS;
    }
 
+   bool isPaused() const
+   {
+      return false;
+   }
+
    bool isStreaming() const
    {
       return airspyHandle && airspy_is_streaming(airspyHandle);
@@ -746,6 +751,11 @@ bool AirspyDevice::isEof() const
 bool AirspyDevice::isReady() const
 {
    return impl->isReady();
+}
+
+bool AirspyDevice::isPaused() const
+{
+   return impl->isPaused();
 }
 
 bool AirspyDevice::isStreaming() const

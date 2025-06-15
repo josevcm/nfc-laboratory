@@ -89,6 +89,10 @@ class LogicDevice : public SignalDevice
 
    public:
 
+      virtual bool isPaused() const = 0;
+
+      virtual bool isStreaming() const = 0;
+
       virtual int start(StreamHandler handler) = 0;
 
       virtual int stop() = 0;
@@ -102,6 +106,7 @@ class LogicDevice : public SignalDevice
       {
          return -1;
       }
+
 };
 
 }

@@ -232,11 +232,6 @@ struct RecordDevice::Impl
       return file.good();
    }
 
-   bool isStreaming() const
-   {
-      return file.is_open();
-   }
-
    long read(SignalBuffer &buffer)
    {
       if (!file.is_open())
@@ -749,11 +744,6 @@ bool RecordDevice::isEof() const
 bool RecordDevice::isReady() const
 {
    return impl->isReady();
-}
-
-bool RecordDevice::isStreaming() const
-{
-   return impl->isStreaming();
 }
 
 long RecordDevice::read(SignalBuffer &buffer)
