@@ -26,6 +26,7 @@
 #endif
 
 #include <fft.h>
+#include <cmath>
 #include <mutex>
 
 #include <rt/Throughput.h>
@@ -42,6 +43,7 @@ namespace lab {
 struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 {
    // FFT length and decimation
+   int window;
    int length;
    int decimation = 1;
    int bandwidth = 10E6 / 16;
@@ -82,13 +84,13 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
    // current receiver status
    int fourierTaskStatus = Streaming;
 
-   explicit Impl(int length = 1024) : AbstractTask("worker.FourierProcess", "fourier"), length(length)
+   explicit Impl(int length = 1024, int window = Hamming) : AbstractTask("worker.FourierProcess", "fourier"), length(length), window(window)
    {
       // create fft buffers
       fftIn = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
       fftOut = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
+      fftWin = static_cast<float *>(mufft_alloc(length * sizeof(float) * 2));
       fftMag = static_cast<float *>(mufft_alloc(length * sizeof(float)));
-      fftWin = static_cast<float *>(mufft_alloc(length * sizeof(float)));
 
       // create FFT plans
       fftC2C = mufft_create_plan_1d_c2c(length, MUFFT_FORWARD, MUFFT_FLAG_CPU_NO_AVX);
@@ -117,13 +119,28 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
 
    void start() override
    {
-      // initialize Hamming Window
-      for (int i = 0; i < length; i++)
+      switch (window)
       {
-         fftWin[i] = pow((float)sin(float(M_PI * i / length)), 2);
+         case Hamming: // Hamming
+            log->info("using Hamming window");
+            for (int n = 0, i = 0; n < length; ++n, i += 2)
+               fftWin[i + 0] = fftWin[i + 1] = static_cast<float>(std::pow(std::sin(static_cast<float>(M_PI * n / length)), 2));
+            break;
+
+         case Hann: // Hann
+            log->info("using Hann window");
+            for (int n = 0, i = 0; n < length; ++n, i += 2)
+               fftWin[i + 0] = fftWin[i + 1] = static_cast<float>(0.5 * (1.0 - std::cos((2.0 * M_PI * n) / (length - 1))));
+            break;
+
+         default: // no window
+            log->info("using no window");
+            for (int n = 0, i = 0; n < length; ++n, i += 2)
+               fftWin[i + 0] = fftWin[i + 1] = 1;
+            break;
       }
 
-      updateFourierStatus(FourierProcessTask::Streaming);
+      updateFourierStatus(Streaming);
    }
 
    void stop() override
@@ -218,15 +235,18 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
       {
          float *data = localBuffer.data();
 
-         // calculate decimation for required bandwith
-         decimation = int(localBuffer.sampleRate() / bandwidth);
+         // calculate decimation for required bandwidth
+         decimation = static_cast<int>(localBuffer.sampleRate() / bandwidth);
+
+         // offset from the start of the signal buffer to apply FFT, must be 16 byte aligned
+         int offset = 0;
 
          // apply signal windowing and decimation
 #if defined(__SSE2__) && defined(USE_SSE2)
-         for (int i = 0, w = 0; w < length; i += 8, w += 4)
+         for (int i = offset, n = 0; n < (length << 1); i += 8, n += 8)
          {
-            __m128 w1 = _mm_set_ps(fftWin[w + 1], fftWin[w + 1], fftWin[w + 0], fftWin[w + 0]);
-            __m128 w2 = _mm_set_ps(fftWin[w + 3], fftWin[w + 3], fftWin[w + 2], fftWin[w + 2]);
+            __m128 w1 = _mm_load_ps(fftWin + n + 0);
+            __m128 w2 = _mm_load_ps(fftWin + n + 4);
 
             __m128 a1 = _mm_load_ps(data + i * decimation + 0);
             __m128 a2 = _mm_load_ps(data + i * decimation + 4);
@@ -234,17 +254,17 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
             __m128 r1 = _mm_mul_ps(a1, w1);
             __m128 r2 = _mm_mul_ps(a2, w2);
 
-            _mm_store_ps(fftIn + i + 0, r1);
-            _mm_store_ps(fftIn + i + 4, r2);
+            _mm_store_ps(fftIn + n + 0, r1);
+            _mm_store_ps(fftIn + n + 4, r2);
          }
 #else
 #pragma GCC ivdep
-         for (int i = 0, w = 0; w < length; i += 4, w += 2)
+         for (int i = offset, n = 0; n < (length << 1); i += 4, n += 4)
          {
-            fftIn[i + 0] = data[decimation * i + 0] * fftWin[w + 0];
-            fftIn[i + 1] = data[decimation * i + 1] * fftWin[w + 0];
-            fftIn[i + 2] = data[decimation * i + 2] * fftWin[w + 1];
-            fftIn[i + 3] = data[decimation * i + 3] * fftWin[w + 1];
+            fftIn[n + 0] = data[decimation * i + 0] * fftWin[n + 0];
+            fftIn[n + 1] = data[decimation * i + 1] * fftWin[n + 1];
+            fftIn[n + 2] = data[decimation * i + 2] * fftWin[n + 2];
+            fftIn[n + 3] = data[decimation * i + 3] * fftWin[n + 3];
          }
 #endif
 
