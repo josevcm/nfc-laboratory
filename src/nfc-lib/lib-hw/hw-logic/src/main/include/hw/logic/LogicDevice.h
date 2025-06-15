@@ -92,6 +92,16 @@ class LogicDevice : public SignalDevice
       virtual int start(StreamHandler handler) = 0;
 
       virtual int stop() = 0;
+
+      virtual int pause()
+      {
+         return -1;
+      }
+
+      virtual int resume()
+      {
+         return -1;
+      }
 };
 
 }

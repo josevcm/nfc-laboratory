@@ -32,8 +32,10 @@ class LogicDeviceTask : public rt::Worker
 
       enum Command
       {
-         Stop,
          Start,
+         Stop,
+         Pause,
+         Resume,
          Query,
          Configure,
          Clear
@@ -43,6 +45,7 @@ class LogicDeviceTask : public rt::Worker
       {
          Absent,
          Streaming,
+         Paused,
          Flush,
          Idle
       };

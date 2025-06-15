@@ -278,6 +278,22 @@ struct AirspyDevice::Impl
       return airspyResult;
    }
 
+   int pause()
+   {
+      if (!airspyHandle || !streamCallback)
+         return 1;
+
+      return 0;
+   }
+
+   int resume()
+   {
+      if (!airspyHandle || !streamCallback)
+         return 1;
+
+      return 0;
+   }
+
    bool isOpen() const
    {
       return airspyHandle;
@@ -553,6 +569,16 @@ int AirspyDevice::start(StreamHandler handler)
 int AirspyDevice::stop()
 {
    return impl->stop();
+}
+
+int AirspyDevice::pause()
+{
+   return impl->pause();
+}
+
+int AirspyDevice::resume()
+{
+   return impl->resume();
 }
 
 rt::Variant AirspyDevice::get(int id, int channel) const

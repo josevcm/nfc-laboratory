@@ -19,7 +19,6 @@
 
 */
 
-
 #ifndef RADIO_REALTEKDEVICE_H
 #define RADIO_REALTEKDEVICE_H
 
@@ -53,6 +52,10 @@ class RealtekDevice : public RadioDevice
       int start(StreamHandler handler) override;
 
       int stop() override;
+
+      int pause() override;
+
+      int resume() override;
 
       rt::Variant get(int id, int channel = -1) const;
 

@@ -412,7 +412,7 @@ struct DSLogicDevice::Impl
       }
    }
 
-   bool start(const StreamHandler &handler)
+   int start(const StreamHandler &handler)
    {
       log->debug("starting acquisition for device {}", {deviceName});
 
@@ -433,14 +433,14 @@ struct DSLogicDevice::Impl
       if (!usbWrite(wr_cmd_acquisition_stop))
       {
          log->error("failed to stop previous acquisition");
-         return false;
+         return -1;
       }
 
       // setting FPGA before acquisition start
       if (!fpgaSetup())
       {
          log->error("failed to setup FPGA");
-         return false;
+         return -1;
       }
 
       // setup usb transfers
@@ -451,17 +451,17 @@ struct DSLogicDevice::Impl
       {
          log->error("failed to start acquisition");
          deviceStatus = STATUS_ERROR;
-         return false;
+         return -1;
       }
 
       deviceStatus = STATUS_START;
 
       log->debug("acquisition started for device {}", {deviceName});
 
-      return true;
+      return 0;
    }
 
-   bool stop()
+   int stop()
    {
       log->debug("stopping acquisition for device {}", {deviceName});
 
@@ -492,7 +492,21 @@ struct DSLogicDevice::Impl
 
       log->debug("capture finished for device {}", {deviceName});
 
-      return true;
+      return 0;
+   }
+
+   int pause()
+   {
+      log->debug("pause acquisition for device {}", {deviceName});
+
+      return 0;
+   }
+
+   int resume()
+   {
+      log->debug("resume acquisition for device {}", {deviceName});
+
+      return 0;
    }
 
    rt::Variant get(int id, int channel) const
@@ -2236,6 +2250,16 @@ int DSLogicDevice::start(StreamHandler handler)
 int DSLogicDevice::stop()
 {
    return impl->stop();
+}
+
+int DSLogicDevice::pause()
+{
+   return impl->pause();
+}
+
+int DSLogicDevice::resume()
+{
+   return impl->resume();
 }
 
 rt::Variant DSLogicDevice::get(int id, int channel) const

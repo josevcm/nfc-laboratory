@@ -234,87 +234,99 @@ struct RealtekDevice::Impl
 
    void close()
    {
-      if (rtlsdrHandle)
-      {
-         // stop streaming if active...
-         stop();
+      if (!rtlsdrHandle)
+         return;
 
-         log->info("close device {}", {deviceName});
+      // stop streaming if active...
+      stop();
 
-         // close underline device
-         if ((rtlsdrResult = rtlsdr_close(rtlsdrHandle)) < 0)
-            log->warn("failed rtlsdr_close: [{}]", {rtlsdrResult});
+      log->info("close device {}", {deviceName});
 
-         deviceName = "";
-         deviceVersion = "";
-         rtlsdrHandle = nullptr;
-      }
+      // close underline device
+      if ((rtlsdrResult = rtlsdr_close(rtlsdrHandle)) < 0)
+         log->warn("failed rtlsdr_close: [{}]", {rtlsdrResult});
+
+      deviceName = "";
+      deviceVersion = "";
+      rtlsdrHandle = nullptr;
    }
 
-   int start(RadioDevice::StreamHandler handler)
+   int start(StreamHandler handler)
    {
-      if (rtlsdrHandle)
+      if (!rtlsdrHandle)
+         return -1;
+
+      // delay worker start until method is finished
+      std::lock_guard lock(workerMutex);
+
+      // clear counters
+      samplesDropped = 0;
+      samplesReceived = 0;
+
+      // reset stream status
+      streamCallback = std::move(handler);
+      streamQueue = std::queue<SignalBuffer>();
+
+      // reset buffer to start streaming
+      if ((rtlsdrResult = rtlsdr_reset_buffer(rtlsdrHandle)) < 0)
+         log->warn("failed rtlsdr_reset_buffer: [{}] {}", {rtlsdrResult});
+
+      // enable worker thread on success
+      if (rtlsdrResult == 0)
       {
-         // delay worker start until method is finished
-         std::lock_guard lock(workerMutex);
+         log->info("start streaming for device {}", {deviceName});
 
-         // clear counters
-         samplesDropped = 0;
-         samplesReceived = 0;
+         // set streaming flag to enable worker
+         workerStreaming = true;
 
-         // reset stream status
-         streamCallback = std::move(handler);
-         streamQueue = std::queue<SignalBuffer>();
-
-         // reset buffer to start streaming
-         if ((rtlsdrResult = rtlsdr_reset_buffer(rtlsdrHandle)) < 0)
-            log->warn("failed rtlsdr_reset_buffer: [{}] {}", {rtlsdrResult});
-
-         // enable worker thread on success
-         if (rtlsdrResult == 0)
-         {
-            log->info("start streaming for device {}", {deviceName});
-
-            // set streaming flag to enable worker
-            workerStreaming = true;
-
-            // run worker thread
-            workerThread = std::thread([this] { streamWorker(); });
-         }
-
-         // sets stream start time
-         streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
-         return rtlsdrResult;
+         // run worker thread
+         workerThread = std::thread([this] { streamWorker(); });
       }
 
-      return -1;
+      // sets stream start time
+      streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+      return rtlsdrResult;
    }
 
    int stop()
    {
-      if (rtlsdrHandle && workerStreaming)
-      {
-         log->info("stop streaming for device {}", {deviceName});
+      if (!rtlsdrHandle || !workerStreaming)
+         return -1;
 
-         // signal finish to running thread
-         workerStreaming = false;
+      log->info("stop streaming for device {}", {deviceName});
 
-         // wait until worker is finished
-         std::lock_guard lock(workerMutex);
+      // signal finish to running thread
+      workerStreaming = false;
 
-         // wait for thread joint
-         workerThread.join();
+      // wait until worker is finished
+      std::lock_guard lock(workerMutex);
 
-         // disable stream callback and queue
-         streamCallback = nullptr;
-         streamQueue = std::queue<SignalBuffer>();
-         streamTime = 0;
+      // wait for thread joint
+      workerThread.join();
 
-         return 0;
-      }
+      // disable stream callback and queue
+      streamCallback = nullptr;
+      streamQueue = std::queue<SignalBuffer>();
+      streamTime = 0;
 
-      return -1;
+      return 0;
+   }
+
+   int pause()
+   {
+      if (!rtlsdrHandle || !workerStreaming)
+         return -1;
+
+      return 0;
+   }
+
+   int resume()
+   {
+      if (!rtlsdrHandle || !workerStreaming)
+         return -1;
+
+      return 0;
    }
 
    bool isOpen() const
@@ -341,85 +353,75 @@ struct RealtekDevice::Impl
    {
       centerFreq = value;
 
-      if (rtlsdrHandle)
-      {
-         log->debug("rtlsdr_set_center_freq({})", {centerFreq});
+      if (!rtlsdrHandle)
+         return 0;
 
-         if ((rtlsdrResult = rtlsdr_set_center_freq(rtlsdrHandle, centerFreq)) < 0)
-            log->warn("failed rtlsdr_set_center_freq: [{}]", {rtlsdrResult});
+      log->debug("rtlsdr_set_center_freq({})", {centerFreq});
 
-         return rtlsdrResult;
-      }
+      if ((rtlsdrResult = rtlsdr_set_center_freq(rtlsdrHandle, centerFreq)) < 0)
+         log->warn("failed rtlsdr_set_center_freq: [{}]", {rtlsdrResult});
 
-      return 0;
+      return rtlsdrResult;
    }
 
    int setSampleRate(unsigned int value)
    {
       sampleRate = value;
 
-      if (rtlsdrHandle)
-      {
-         log->debug("rtlsdr_set_sample_rate({})", {sampleRate});
+      if (!rtlsdrHandle)
+         return 0;
 
-         if ((rtlsdrResult = rtlsdr_set_sample_rate(rtlsdrHandle, sampleRate)) < 0)
-            log->warn("failed rtlsdr_set_sample_rate: [{}]", {rtlsdrResult});
+      log->debug("rtlsdr_set_sample_rate({})", {sampleRate});
 
-         return rtlsdrResult;
-      }
+      if ((rtlsdrResult = rtlsdr_set_sample_rate(rtlsdrHandle, sampleRate)) < 0)
+         log->warn("failed rtlsdr_set_sample_rate: [{}]", {rtlsdrResult});
 
-      return 0;
+      return rtlsdrResult;
    }
 
    int setGainMode(unsigned int mode)
    {
       gainMode = mode;
 
-      if (rtlsdrHandle)
+      if (!rtlsdrHandle)
+         return 0;
+
+      if (gainMode == Auto)
       {
-         if (gainMode == RealtekDevice::Auto)
-         {
-            log->debug("rtlsdr_set_tuner_gain_mode({})", {0});
+         log->debug("rtlsdr_set_tuner_gain_mode({})", {0});
 
-            // set automatic gain
-            if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtlsdrHandle, 0)) < 0)
-               log->warn("failed rtlsdr_set_tuner_gain_mode: [{}]", {rtlsdrResult});
+         // set automatic gain
+         if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtlsdrHandle, 0)) < 0)
+            log->warn("failed rtlsdr_set_tuner_gain_mode: [{}]", {rtlsdrResult});
 
-            return rtlsdrResult;
-         }
-         else
-         {
-            log->debug("rtlsdr_set_tuner_gain_mode({})", {1});
-
-            // set manual gain
-            if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtlsdrHandle, 1)) < 0)
-               log->warn("failed rtlsdr_set_tuner_gain: [{}]", {rtlsdrResult});
-
-            return setGainValue(gainValue);
-         }
+         return rtlsdrResult;
       }
 
-      return 0;
+      log->debug("rtlsdr_set_tuner_gain_mode({})", {1});
+
+      // set manual gain
+      if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtlsdrHandle, 1)) < 0)
+         log->warn("failed rtlsdr_set_tuner_gain: [{}]", {rtlsdrResult});
+
+      return setGainValue(gainValue);
    }
 
    int setGainValue(unsigned int value)
    {
       gainValue = value;
 
-      if (rtlsdrHandle)
+      if (!rtlsdrHandle)
+         return 0;
+
+      if (gainMode == RealtekDevice::Manual)
       {
-         if (gainMode == RealtekDevice::Manual)
-         {
-            log->debug("rtlsdr_set_tuner_gain({})", {gainValue});
+         log->debug("rtlsdr_set_tuner_gain({})", {gainValue});
 
-            if ((rtlsdrResult = rtlsdr_set_tuner_gain(rtlsdrHandle, gainValue)) < 0)
-               log->warn("failed rtlsdr_set_tuner_gain: [{}]", {rtlsdrResult});
-         }
-
-         return rtlsdrResult;
+         if ((rtlsdrResult = rtlsdr_set_tuner_gain(rtlsdrHandle, gainValue)) < 0)
+            log->warn("failed rtlsdr_set_tuner_gain: [{}]", {rtlsdrResult});
       }
 
-      return 0;
+      return rtlsdrResult;
    }
 
    int setTunerAgc(unsigned int value)
@@ -429,17 +431,15 @@ struct RealtekDevice::Impl
       if (tunerAgc)
          gainMode = RealtekDevice::Auto;
 
-      if (rtlsdrHandle)
-      {
-         log->debug("rtlsdr_set_tuner_gain_mode({})", {tunerAgc ? 0 : 1});
+      if (!rtlsdrHandle)
+         return 0;
 
-         if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtlsdrHandle, tunerAgc ? 0 : 1)) < 0)
-            log->warn("failed rtlsdr_set_tuner_gain_mode: [{}]", {rtlsdrResult});
+      log->debug("rtlsdr_set_tuner_gain_mode({})", {tunerAgc ? 0 : 1});
 
-         return rtlsdrResult;
-      }
+      if ((rtlsdrResult = rtlsdr_set_tuner_gain_mode(rtlsdrHandle, tunerAgc ? 0 : 1)) < 0)
+         log->warn("failed rtlsdr_set_tuner_gain_mode: [{}]", {rtlsdrResult});
 
-      return 0;
+      return rtlsdrResult;
    }
 
    int setMixerAgc(unsigned int value)
@@ -447,34 +447,32 @@ struct RealtekDevice::Impl
       mixerAgc = value;
 
       if (mixerAgc)
-         gainMode = RealtekDevice::Auto;
+         gainMode = Auto;
 
-      if (rtlsdrHandle)
-      {
-         log->debug("rtlsdr_set_agc_mode({})", {mixerAgc});
+      if (!rtlsdrHandle)
+         return 0;
 
-         if ((rtlsdrResult = rtlsdr_set_agc_mode(rtlsdrHandle, mixerAgc)) < 0)
-            log->warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
+      log->debug("rtlsdr_set_agc_mode({})", {mixerAgc});
 
-         return rtlsdrResult;
-      }
+      if ((rtlsdrResult = rtlsdr_set_agc_mode(rtlsdrHandle, mixerAgc)) < 0)
+         log->warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
 
-      return 0;
+      return rtlsdrResult;
    }
 
    int setDecimation(unsigned int value)
    {
       decimation = value;
 
-//      if (rtlsdrHandle)
-//      {
-//         log->debug("rtlsdr_set_agc_mode({})", {mixerAgc});
-//
-//         if ((rtlsdrResult = rtlsdr_set_agc_mode(rtlsdrHandle, mixerAgc)) < 0)
-//            log->warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
-//
-//         return rtlsdrResult;
-//      }
+      //      if (rtlsdrHandle)
+      //      {
+      //         log->debug("rtlsdr_set_agc_mode({})", {mixerAgc});
+      //
+      //         if ((rtlsdrResult = rtlsdr_set_agc_mode(rtlsdrHandle, mixerAgc)) < 0)
+      //            log->warn("failed rtlsdr_set_agc_mode: [{}]", {rtlsdrResult});
+      //
+      //         return rtlsdrResult;
+      //      }
 
       return -1;
    }
@@ -483,34 +481,30 @@ struct RealtekDevice::Impl
    {
       testMode = value;
 
-      if (rtlsdrHandle)
-      {
-         log->debug("rtlsdr_set_testmode({})", {testMode});
+      if (!rtlsdrHandle)
+         return 0;
 
-         if ((rtlsdrResult = rtlsdr_set_testmode(rtlsdrHandle, testMode)) < 0)
-            log->warn("failed rtlsdr_set_testmode: [{}]", {rtlsdrResult});
+      log->debug("rtlsdr_set_testmode({})", {testMode});
 
-         return rtlsdrResult;
-      }
+      if ((rtlsdrResult = rtlsdr_set_testmode(rtlsdrHandle, testMode)) < 0)
+         log->warn("failed rtlsdr_set_testmode: [{}]", {rtlsdrResult});
 
-      return 0;
+      return rtlsdrResult;
    }
 
    int setDirectSampling(unsigned int value)
    {
       directSampling = value;
 
-      if (rtlsdrHandle)
-      {
-         log->debug("rtlsdr_set_direct_sampling({})", {directSampling});
+      if (!rtlsdrHandle)
+         return 0;
 
-         if ((rtlsdrResult = rtlsdr_set_direct_sampling(rtlsdrHandle, directSampling)) < 0)
-            log->warn("failed rtlsdr_set_direct_sampling: [{}]", {rtlsdrResult});
+      log->debug("rtlsdr_set_direct_sampling({})", {directSampling});
 
-         return rtlsdrResult;
-      }
+      if ((rtlsdrResult = rtlsdr_set_direct_sampling(rtlsdrHandle, directSampling)) < 0)
+         log->warn("failed rtlsdr_set_direct_sampling: [{}]", {rtlsdrResult});
 
-      return 0;
+      return rtlsdrResult;
    }
 
    rt::Catalog supportedSampleRates() const
@@ -544,26 +538,26 @@ struct RealtekDevice::Impl
 
    rt::Catalog supportedGainValues() const
    {
+      if (!rtlsdrHandle)
+         return {};
+
       rt::Catalog result;
 
-      if (rtlsdrHandle)
+      int count = rtlsdr_get_tuner_gains(rtlsdrHandle, nullptr);
+
+      if (count > 0)
       {
-         int count = rtlsdr_get_tuner_gains(rtlsdrHandle, nullptr);
+         int values[1024];
 
-         if (count > 0)
+         rtlsdr_get_tuner_gains(rtlsdrHandle, values);
+
+         for (int i = 0; i < count; i++)
          {
-            int values[1024];
+            char buffer[64];
 
-            rtlsdr_get_tuner_gains(rtlsdrHandle, values);
+            snprintf(buffer, sizeof(buffer), "%.2f db", static_cast<float>(values[i]) / 10.0f);
 
-            for (int i = 0; i < count; i++)
-            {
-               char buffer[64];
-
-               snprintf(buffer, sizeof(buffer), "%.2f db", static_cast<float>(values[i]) / 10.0f);
-
-               result[values[i]] = buffer;
-            }
+            result[values[i]] = buffer;
          }
       }
 
@@ -650,7 +644,7 @@ struct RealtekDevice::Impl
             streamCallback(buffer);
          }
 
-            // or store buffer in receive queue
+         // or store buffer in receive queue
          else
          {
             // lock buffer access
@@ -703,6 +697,16 @@ int RealtekDevice::start(StreamHandler handler)
 int RealtekDevice::stop()
 {
    return impl->stop();
+}
+
+int RealtekDevice::pause()
+{
+   return impl->pause();
+}
+
+int RealtekDevice::resume()
+{
+   return impl->resume();
 }
 
 rt::Variant RealtekDevice::get(int id, int channel) const

@@ -103,6 +103,14 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
                stopDevice(command.value());
                break;
 
+            case Pause:
+               pauseDevice(command.value());
+               break;
+
+            case Resume:
+               resumeDevice(command.value());
+               break;
+
             case Query:
                queryDevice(command.value());
                break;
@@ -297,6 +305,54 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
          // set receiver in flush buffers status
          updateDeviceStatus(Flush);
+      }
+   }
+
+   void pauseDevice(const rt::Event &command)
+   {
+      if (!logicReceiverEnabled)
+      {
+         log->warn("device is disabled");
+         command.reject(TaskDisabled);
+         return;
+      }
+
+      if (device)
+      {
+         log->info("pause streaming for device {}", {std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_NAME))});
+
+         // pause underline receiver
+         device->pause();
+
+         // resolve command
+         command.resolve();
+
+         // set receiver in flush buffers status
+         updateDeviceStatus(Paused);
+      }
+   }
+
+   void resumeDevice(const rt::Event &command)
+   {
+      if (!logicReceiverEnabled)
+      {
+         log->warn("device is disabled");
+         command.reject(TaskDisabled);
+         return;
+      }
+
+      if (device)
+      {
+         log->info("resume streaming for device {}", {std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_NAME))});
+
+         // resume underline receiver
+         device->resume();
+
+         // resolve command
+         command.resolve();
+
+         // set receiver in flush buffers status
+         updateDeviceStatus(Streaming);
       }
    }
 

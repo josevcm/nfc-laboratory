@@ -55,6 +55,10 @@ class AirspyDevice : public RadioDevice
 
       int stop() override;
 
+      int pause() override;
+
+      int resume() override;
+
       rt::Variant get(int id, int channel = -1) const;
 
       bool set(int id, const rt::Variant &value, int channel = -1);
