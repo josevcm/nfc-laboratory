@@ -58,9 +58,9 @@
 
 #include "QtApplication.h"
 
-#include "QtDecoder.h"
+#include "QtControl.h"
 
-struct QtDecoder::Impl
+struct QtControl::Impl
 {
    // configuration
    QSettings settings;
@@ -1469,11 +1469,11 @@ struct QtDecoder::Impl
    }
 };
 
-QtDecoder::QtDecoder() : impl(new Impl())
+QtControl::QtControl() : impl(new Impl())
 {
 }
 
-void QtDecoder::handleEvent(QEvent *event)
+void QtControl::handleEvent(QEvent *event)
 {
    if (event->type() == SystemStartupEvent::Type)
       impl->systemStartupEvent(dynamic_cast<SystemStartupEvent *>(event));
