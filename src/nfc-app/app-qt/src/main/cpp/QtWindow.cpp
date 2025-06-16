@@ -876,7 +876,7 @@ struct QtWindow::Impl
          ui->actionListen->setEnabled(false);
          ui->actionRecord->setEnabled(false);
          ui->actionStop->setEnabled(true);
-         ui->actionPause->setEnabled(true);
+         ui->actionPause->setEnabled(decoderStreaming);
 
          // disable acquire limit combo
          acquireLimit->setEnabled(false);
@@ -904,8 +904,8 @@ struct QtWindow::Impl
       // flags for acquire status
       const bool logicAcquireEnabled = isActive(ui->featureLogicAcquire);
       const bool radioAcquireEnabled = isActive(ui->featureRadioAcquire);
-      const bool acquireEnabled = logicAcquireEnabled || radioAcquireEnabled;
       const bool spectrumEnabled = isActive(ui->featureRadioSpectrum);
+      // const bool acquireEnabled = logicAcquireEnabled || radioAcquireEnabled;
 
       // flags for data status
       const bool logicSignalPresent = ui->logicView->hasData();
