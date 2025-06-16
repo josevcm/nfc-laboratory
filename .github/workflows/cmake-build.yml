@@ -138,6 +138,7 @@ jobs:
         with:
           name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
           path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+          overwrite: true
 
       - name: 'Create release (Common)'
         if: startsWith(github.ref, 'refs/tags/')
