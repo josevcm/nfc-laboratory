@@ -902,8 +902,8 @@ struct QtWindow::Impl
       }
 
       // flags for acquire status
-      const bool logicAcquireEnabled = isActive(ui->featureLogicAcquire);
-      const bool radioAcquireEnabled = isActive(ui->featureRadioAcquire);
+      // const bool logicAcquireEnabled = isActive(ui->featureLogicAcquire);
+      // const bool radioAcquireEnabled = isActive(ui->featureRadioAcquire);
       const bool spectrumEnabled = isActive(ui->featureRadioSpectrum);
       // const bool acquireEnabled = logicAcquireEnabled || radioAcquireEnabled;
 
