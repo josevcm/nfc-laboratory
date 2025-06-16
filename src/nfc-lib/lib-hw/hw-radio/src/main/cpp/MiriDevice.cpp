@@ -280,6 +280,11 @@ struct MiriDevice::Impl
       return deviceHandle;
    }
 
+   bool isPaused() const
+   {
+      return false;
+   }
+
    bool isStreaming() const
    {
       return deviceHandle && streamCallback;
@@ -623,6 +628,11 @@ bool MiriDevice::isEof() const
 bool MiriDevice::isReady() const
 {
    return impl->isReady();
+}
+
+bool MiriDevice::isPaused() const
+{
+   return impl->isPaused();
 }
 
 bool MiriDevice::isStreaming() const

@@ -1,4 +1,6 @@
 /*
+Based on commit https://github.com/airspy/airspyone_host/commit/f26db232631e12ee12d39ec67fcb376a9a271701
+
 Copyright (C) 2014, Youssef Touil <youssef@airspy.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,9 +27,9 @@ THE SOFTWARE.
 
 #include <stdint.h>
 
-#define AIRSPY_HB_KERNEL_FLOAT_LEN 47
+#define HYDRASDR_HB_KERNEL_FLOAT_LEN 47
 
-const float AIRSPY_HB_KERNEL_FLOAT[AIRSPY_HB_KERNEL_FLOAT_LEN] =
+const float HYDRASDR_HB_KERNEL_FLOAT[HYDRASDR_HB_KERNEL_FLOAT_LEN] =
 {
 	-0.000998606272947510,
 	 0.000000000000000000,
@@ -78,9 +80,9 @@ const float AIRSPY_HB_KERNEL_FLOAT[AIRSPY_HB_KERNEL_FLOAT_LEN] =
 	-0.000998606272947510
 };
 
-#define AIRSPY_HB_KERNEL_INT16_LEN 47
+#define HYDRASDR_HB_KERNEL_INT16_LEN 47
 
-const int16_t AIRSPY_HB_KERNEL_INT16[AIRSPY_HB_KERNEL_INT16_LEN] =
+const int16_t HYDRASDR_HB_KERNEL_INT16[HYDRASDR_HB_KERNEL_INT16_LEN] =
 {
 	-33,
 	 0,

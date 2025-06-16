@@ -34,11 +34,11 @@ class SignalBuffer : public rt::Buffer<float>
 
       SignalBuffer();
 
+      SignalBuffer(const SignalBuffer &other);
+
       SignalBuffer(unsigned int length, unsigned int stride, unsigned int interleave, unsigned int samplerate, unsigned long long offset, unsigned int decimation, unsigned int type, unsigned int id = 0, void *context = nullptr);
 
       SignalBuffer(float *data, unsigned int length, unsigned int stride, unsigned int interleave, unsigned int samplerate, unsigned long long offset, unsigned int decimation, unsigned int type, unsigned int id = 0, void *context = nullptr);
-
-      SignalBuffer(const SignalBuffer &other);
 
       SignalBuffer &operator=(const SignalBuffer &other);
 

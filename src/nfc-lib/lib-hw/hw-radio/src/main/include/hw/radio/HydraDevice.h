@@ -2,7 +2,7 @@
 
   This file is part of NFC-LABORATORY.
 
-  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+  Copyright (C) 2025 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
 
 */
 
-#ifndef RADIO_MIRIDEVICE_H
-#define RADIO_MIRIDEVICE_H
+#ifndef RADIO_HYDRADEVICE_H
+#define RADIO_HYDRADEVICE_H
 
 #include <vector>
 #include <string>
@@ -30,7 +30,7 @@
 
 namespace hw {
 
-class MiriDevice : public RadioDevice
+class HydraDevice : public RadioDevice
 {
    public:
 
@@ -38,14 +38,14 @@ class MiriDevice : public RadioDevice
 
       enum GainMode
       {
-         Auto = 0, Manual = 1
+         Auto = 0, Linearity = 1, Sensitivity = 2
       };
 
    public:
 
-      explicit MiriDevice(int fd);
+      explicit HydraDevice(int fd);
 
-      explicit MiriDevice(const std::string &name);
+      explicit HydraDevice(const std::string &name);
 
       bool open(Mode mode) override;
 
@@ -54,6 +54,10 @@ class MiriDevice : public RadioDevice
       int start(StreamHandler handler) override;
 
       int stop() override;
+
+      int pause() override;
+
+      int resume() override;
 
       rt::Variant get(int id, int channel = -1) const;
 

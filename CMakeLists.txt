@@ -51,9 +51,9 @@ if(NOT LIBUSB_FOUND)
   message(FATAL_ERROR  "Please install libusb-1.0!")
 endif()
 
-message(STATUS "usb-1.0:")
-message(STATUS "  include:" ${LIBUSB_INCLUDE})
-message(STATUS "  library:" ${LIBUSB_LIBRARY})
+message(STATUS "libusb-1.0: found and using dynamic link mode")
+message(STATUS "  include: " ${LIBUSB_INCLUDE})
+message(STATUS "  library: " ${LIBUSB_LIBRARY})
 
 include_directories(${LIBUSB_INCLUDE})
 
@@ -62,30 +62,42 @@ include_directories(${LIBUSB_INCLUDE})
 #-------------------------------------------------------------------------------
 find_package(libairspy)
 
-if(NOT LIBAIRSPY_FOUND)
-  message(FATAL_ERROR  "Please install libairspy!")
+if(LIBAIRSPY_FOUND)
+  message(STATUS "libairspy: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBAIRSPY_INCLUDE})
+  message(STATUS "  library: " ${LIBAIRSPY_LIBRARY})
+  include_directories(${LIBAIRSPY_INCLUDE})
+else ()
+  message(STATUS  "libairspy: not found, using local bundle in static mode")
 endif()
 
-message(STATUS "airspy:")
-message(STATUS "  include:" ${LIBAIRSPY_INCLUDE})
-message(STATUS "  library:" ${LIBAIRSPY_LIBRARY})
+#-------------------------------------------------------------------------------
+# find dependency hydrasdr
+#-------------------------------------------------------------------------------
+find_package(libhydrasdr)
 
-include_directories(${LIBAIRSPY_INCLUDE})
+if(LIBHYDRASDR_FOUND)
+  message(STATUS "hydrasdr: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBHYDRASDR_INCLUDE})
+  message(STATUS "  library: " ${LIBHYDRASDR_LIBRARY})
+  include_directories(${LIBHYDRASDR_INCLUDE})
+else ()
+  message(STATUS  "libhydrasdr: not found, using local bundle in static mode")
+endif()
 
 #-------------------------------------------------------------------------------
 # find dependency rltsdr
 #-------------------------------------------------------------------------------
 find_package(librtlsdr)
 
-if(NOT LIBUSB_FOUND)
-  message(FATAL_ERROR  "Please install librtlsdr!")
+if(LIBRTLSDR_FOUND)
+  message(STATUS "librtlsdr: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBRTLSDR_INCLUDE})
+  message(STATUS "  library: " ${LIBRTLSDR_LIBRARY})
+  include_directories(${LIBRTLSDR_INCLUDE})
+else ()
+  message(STATUS  "librtlsdr not found, using local bundle in static mode")
 endif()
-
-message(STATUS "rtlsdr:")
-message(STATUS "  include:" ${LIBRTLSDR_INCLUDE})
-message(STATUS "  library:" ${LIBRTLSDR_LIBRARY})
-
-include_directories(${LIBRTLSDR_INCLUDE})
 
 #-------------------------------------------------------------------------------
 # configure files

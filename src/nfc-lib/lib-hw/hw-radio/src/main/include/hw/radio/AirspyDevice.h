@@ -47,13 +47,17 @@ class AirspyDevice : public RadioDevice
 
       explicit AirspyDevice(const std::string &name);
 
-      bool open(Device::Mode mode) override;
+      bool open(Mode mode) override;
 
       void close() override;
 
       int start(StreamHandler handler) override;
 
       int stop() override;
+
+      int pause() override;
+
+      int resume() override;
 
       rt::Variant get(int id, int channel = -1) const;
 
@@ -64,6 +68,8 @@ class AirspyDevice : public RadioDevice
       bool isEof() const override;
 
       bool isReady() const override;
+
+      bool isPaused() const override;
 
       bool isStreaming() const override;
 

@@ -24,26 +24,26 @@
 #include <chrono>
 #include <cinttypes>
 
-#include <airspy.h>
+#include <hydrasdr.h>
 
 #include <rt/Logger.h>
 
 #include <hw/SignalType.h>
 #include <hw/SignalBuffer.h>
 
-#include <hw/radio/AirspyDevice.h>
+#include <hw/radio/HydraDevice.h>
 
 #define MAX_QUEUE_SIZE 4
 
-#define DEVICE_TYPE_PREFIX "radio.airspy"
+#define DEVICE_TYPE_PREFIX "radio.hydra"
 
 namespace hw {
 
-int process_transfer(airspy_transfer *transfer);
+int process_transfer(hydrasdr_transfer *transfer);
 
-struct AirspyDevice::Impl
+struct HydraDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw.AirspyDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw.HydraDevice");
 
    std::string deviceName;
    std::string deviceSerial;
@@ -66,9 +66,9 @@ struct AirspyDevice::Impl
    unsigned int streamTime = 0;
 
    int airspyResult = 0;
-   airspy_device *airspyHandle = nullptr;
-   airspy_read_partid_serialno_t airspySerial {};
-   airspy_sample_type airspySample = AIRSPY_SAMPLE_FLOAT32_IQ;
+   hydrasdr_device *airspyHandle = nullptr;
+   hydrasdr_read_partid_serialno_t airspySerial {};
+   hydrasdr_sample_type airspySample = HYDRASDR_SAMPLE_FLOAT32_IQ;
 
    std::mutex streamMutex;
    std::queue<SignalBuffer> streamQueue;
@@ -80,17 +80,17 @@ struct AirspyDevice::Impl
 
    explicit Impl(std::string name) : deviceName(std::move(name))
    {
-      log->debug("created AirspyDevice for name [{}]", {this->deviceName});
+      log->debug("created HydraDevice for name [{}]", {this->deviceName});
    }
 
    explicit Impl(int fileDesc) : fileDesc(fileDesc)
    {
-      log->debug("created AirspyDevice for file descriptor [{}]", {fileDesc});
+      log->debug("created HydraDevice for file descriptor [{}]", {fileDesc});
    }
 
    ~Impl()
    {
-      log->debug("destroy AirspyDevice [{}]", {deviceName});
+      log->debug("destroy HydraDevice [{}]", {deviceName});
 
       close();
    }
@@ -101,7 +101,7 @@ struct AirspyDevice::Impl
 
       uint64_t devices[8];
 
-      int count = airspy_list_devices(devices, sizeof(devices) / sizeof(uint64_t));
+      int count = hydrasdr_list_devices(devices, sizeof(devices) / sizeof(uint64_t));
 
       for (int i = 0; i < count; i++)
       {
@@ -117,9 +117,9 @@ struct AirspyDevice::Impl
 
    bool open(Mode mode)
    {
-      airspy_device *handle = nullptr;
+      hydrasdr_device *handle = nullptr;
 
-      if (mode != Read)
+      if (mode != RadioDevice::Read)
       {
          log->warn("invalid device mode [{}]", {mode});
          return false;
@@ -141,7 +141,7 @@ struct AirspyDevice::Impl
       QByteArray node = device->name.mid(8).toLocal8Bit();
 
       // open Airspy device
-      result = airspy_open_fd(&device->handle, node.data(), device->fileDesc);
+      result = hydrasdr_open_fd(&device->handle, node.data(), device->fileDesc);
    }
    else
 #endif
@@ -155,26 +155,26 @@ struct AirspyDevice::Impl
          uint64_t sn = std::stoull(deviceSerial, nullptr, 10);
 
          // open Airspy device
-         airspyResult = airspy_open_sn(&handle, sn);
+         airspyResult = hydrasdr_open_sn(&handle, sn);
       }
 
-      if (airspyResult == AIRSPY_SUCCESS)
+      if (airspyResult == HYDRASDR_SUCCESS)
       {
          airspyHandle = handle;
 
          char tmp[128];
 
          // get version string
-         if ((airspyResult = airspy_version_string_read(handle, tmp, sizeof(tmp))) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_version_string_read: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+         if ((airspyResult = hydrasdr_version_string_read(handle, tmp, sizeof(tmp))) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_version_string_read: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
          // read board serial
-         if ((airspyResult = airspy_board_partid_serialno_read(handle, &airspySerial)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_board_partid_serialno_read: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+         if ((airspyResult = hydrasdr_board_partid_serialno_read(handle, &airspySerial)) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_board_partid_serialno_read: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
          // set sample type
-         if ((airspyResult = airspy_set_sample_type(handle, airspySample)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_set_sample_type: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+         if ((airspyResult = hydrasdr_set_sample_type(handle, airspySample)) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_set_sample_type: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
          // fill device info
          std::string vtmp = std::string(tmp); // format "AirSpy MINI v1.0.0-rc10-6-g4008185 2020-05-08"
@@ -203,7 +203,7 @@ struct AirspyDevice::Impl
          return true;
       }
 
-      log->warn("failed airspy_open_sn: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      log->warn("failed hydrasdr_open_sn: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
       return false;
    }
@@ -217,14 +217,14 @@ struct AirspyDevice::Impl
       stop();
 
       // disable bias tee
-      if ((airspyResult = airspy_set_rf_bias(airspyHandle, 0)) != AIRSPY_SUCCESS)
-         log->warn("failed airspy_set_rf_bias: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      if ((airspyResult = hydrasdr_set_rf_bias(airspyHandle, 0)) != HYDRASDR_SUCCESS)
+         log->warn("failed hydrasdr_set_rf_bias: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
       log->info("close device {}", {deviceName});
 
       // close device
-      if ((airspyResult = airspy_close(airspyHandle)) != AIRSPY_SUCCESS)
-         log->warn("failed airspy_close: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      if ((airspyResult = hydrasdr_close(airspyHandle)) != HYDRASDR_SUCCESS)
+         log->warn("failed hydrasdr_close: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
       deviceName = "";
       deviceVersion = "";
@@ -248,11 +248,11 @@ struct AirspyDevice::Impl
       streamQueue = std::queue<SignalBuffer>();
 
       // start reception
-      if ((airspyResult = airspy_start_rx(airspyHandle, process_transfer, this)) != AIRSPY_SUCCESS)
-         log->warn("failed airspy_start_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      if ((airspyResult = hydrasdr_start_rx(airspyHandle, process_transfer, this)) != HYDRASDR_SUCCESS)
+         log->warn("failed hydrasdr_start_rx: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
       // clear callback to disable receiver
-      if (airspyResult != AIRSPY_SUCCESS)
+      if (airspyResult != HYDRASDR_SUCCESS)
          streamCallback = nullptr;
 
       // sets stream start time
@@ -269,8 +269,8 @@ struct AirspyDevice::Impl
       log->info("stop streaming for device {}", {deviceName});
 
       // stop reception
-      if ((airspyResult = airspy_stop_rx(airspyHandle)) != AIRSPY_SUCCESS)
-         log->warn("failed airspy_stop_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      if ((airspyResult = hydrasdr_stop_rx(airspyHandle)) != HYDRASDR_SUCCESS)
+         log->warn("failed hydrasdr_stop_rx: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
       // disable stream callback and queue
       streamPaused = false;
@@ -289,11 +289,11 @@ struct AirspyDevice::Impl
       log->info("pause streaming for device {}", {deviceName});
 
       // stop reception
-      if ((airspyResult = airspy_stop_rx(airspyHandle)) != AIRSPY_SUCCESS)
-         log->warn("failed airspy_stop_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      if ((airspyResult = hydrasdr_stop_rx(airspyHandle)) != HYDRASDR_SUCCESS)
+         log->warn("failed hydrasdr_stop_rx: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
       // set paused state
-      streamPaused = airspyResult == AIRSPY_SUCCESS;
+      streamPaused = airspyResult == HYDRASDR_SUCCESS;
 
       return airspyResult;
    }
@@ -306,11 +306,11 @@ struct AirspyDevice::Impl
       log->info("resume streaming for device {}", {deviceName});
 
       // start reception
-      if ((airspyResult = airspy_start_rx(airspyHandle, process_transfer, this)) != AIRSPY_SUCCESS)
-         log->warn("failed airspy_start_rx: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+      if ((airspyResult = hydrasdr_start_rx(airspyHandle, process_transfer, this)) != HYDRASDR_SUCCESS)
+         log->warn("failed hydrasdr_start_rx: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
       // clear callback to disable receiver
-      if (airspyResult != AIRSPY_SUCCESS)
+      if (airspyResult != HYDRASDR_SUCCESS)
          streamCallback = nullptr;
 
       streamPaused = false;
@@ -325,14 +325,14 @@ struct AirspyDevice::Impl
 
    bool isEof() const
    {
-      return !airspyHandle || !airspy_is_streaming(airspyHandle);
+      return !airspyHandle || !hydrasdr_is_streaming(airspyHandle);
    }
 
    bool isReady() const
    {
       char version[1];
 
-      return airspyHandle && airspy_version_string_read(airspyHandle, version, sizeof(version)) == AIRSPY_SUCCESS;
+      return airspyHandle && hydrasdr_version_string_read(airspyHandle, version, sizeof(version)) == HYDRASDR_SUCCESS;
    }
 
    bool isPaused() const
@@ -342,7 +342,7 @@ struct AirspyDevice::Impl
 
    bool isStreaming() const
    {
-      return airspyHandle && airspy_is_streaming(airspyHandle);
+      return airspyHandle && hydrasdr_is_streaming(airspyHandle);
    }
 
    int setCenterFreq(unsigned int value)
@@ -351,8 +351,8 @@ struct AirspyDevice::Impl
 
       if (airspyHandle)
       {
-         if ((airspyResult = airspy_set_freq(airspyHandle, centerFreq)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_set_freq: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+         if ((airspyResult = hydrasdr_set_freq(airspyHandle, centerFreq)) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_set_freq: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
          return airspyResult;
       }
@@ -366,8 +366,8 @@ struct AirspyDevice::Impl
 
       if (airspyHandle)
       {
-         if ((airspyResult = airspy_set_samplerate(airspyHandle, sampleRate)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_set_samplerate: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+         if ((airspyResult = hydrasdr_set_samplerate(airspyHandle, sampleRate)) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_set_samplerate: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
          return airspyResult;
       }
@@ -381,13 +381,13 @@ struct AirspyDevice::Impl
 
       if (airspyHandle)
       {
-         if (gainMode == AirspyDevice::Auto)
+         if (gainMode == HydraDevice::Auto)
          {
-            if ((airspyResult = airspy_set_lna_agc(airspyHandle, tunerAgc)) != AIRSPY_SUCCESS)
-               log->warn("failed airspy_set_lna_agc: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+            if ((airspyResult = hydrasdr_set_lna_agc(airspyHandle, tunerAgc)) != HYDRASDR_SUCCESS)
+               log->warn("failed hydrasdr_set_lna_agc: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
-            if ((airspyResult = airspy_set_mixer_agc(airspyHandle, mixerAgc)) != AIRSPY_SUCCESS)
-               log->warn("failed airspy_set_mixer_agc: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+            if ((airspyResult = hydrasdr_set_mixer_agc(airspyHandle, mixerAgc)) != HYDRASDR_SUCCESS)
+               log->warn("failed hydrasdr_set_mixer_agc: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
             return airspyResult;
          }
@@ -404,15 +404,15 @@ struct AirspyDevice::Impl
 
       if (airspyHandle)
       {
-         if (gainMode == AirspyDevice::Linearity)
+         if (gainMode == HydraDevice::Linearity)
          {
-            if ((airspyResult = airspy_set_linearity_gain(airspyHandle, gainValue)) != AIRSPY_SUCCESS)
-               log->warn("failed airspy_set_linearity_gain: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+            if ((airspyResult = hydrasdr_set_linearity_gain(airspyHandle, gainValue)) != HYDRASDR_SUCCESS)
+               log->warn("failed hydrasdr_set_linearity_gain: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
          }
-         else if (gainMode == AirspyDevice::Sensitivity)
+         else if (gainMode == HydraDevice::Sensitivity)
          {
-            if ((airspyResult = airspy_set_sensitivity_gain(airspyHandle, gainValue)) != AIRSPY_SUCCESS)
-               log->warn("failed airspy_set_linearity_gain: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+            if ((airspyResult = hydrasdr_set_sensitivity_gain(airspyHandle, gainValue)) != HYDRASDR_SUCCESS)
+               log->warn("failed hydrasdr_set_linearity_gain: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
          }
 
          return airspyResult;
@@ -426,12 +426,12 @@ struct AirspyDevice::Impl
       tunerAgc = value;
 
       if (tunerAgc)
-         gainMode = AirspyDevice::Auto;
+         gainMode = HydraDevice::Auto;
 
       if (airspyHandle)
       {
-         if ((airspyResult = airspy_set_lna_agc(airspyHandle, tunerAgc)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_set_lna_agc: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+         if ((airspyResult = hydrasdr_set_lna_agc(airspyHandle, tunerAgc)) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_set_lna_agc: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
          return airspyResult;
       }
@@ -444,12 +444,12 @@ struct AirspyDevice::Impl
       mixerAgc = value;
 
       if (mixerAgc)
-         gainMode = AirspyDevice::Auto;
+         gainMode = HydraDevice::Auto;
 
       if (airspyHandle)
       {
-         if ((airspyResult = airspy_set_mixer_agc(airspyHandle, mixerAgc)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_set_mixer_agc: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+         if ((airspyResult = hydrasdr_set_mixer_agc(airspyHandle, mixerAgc)) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_set_mixer_agc: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
          return airspyResult;
       }
@@ -463,8 +463,8 @@ struct AirspyDevice::Impl
 
       if (airspyHandle)
       {
-         if ((airspyResult = airspy_set_rf_bias(airspyHandle, biasTee)) != AIRSPY_SUCCESS)
-            log->warn("failed airspy_set_rf_bias: [{}] {}", {airspyResult, airspy_error_name(static_cast<airspy_error>(airspyResult))});
+         if ((airspyResult = hydrasdr_set_rf_bias(airspyHandle, biasTee)) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_set_rf_bias: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
 
          return airspyResult;
       }
@@ -495,10 +495,10 @@ struct AirspyDevice::Impl
       if (airspyHandle)
       {
          // get number of supported sample rates
-         airspy_get_samplerates(airspyHandle, &count, 0);
+         hydrasdr_get_samplerates(airspyHandle, &count, 0);
 
          // get list of supported sample rates
-         airspy_get_samplerates(airspyHandle, rates, count);
+         hydrasdr_get_samplerates(airspyHandle, rates, count);
 
          for (int i = 0; i < (int)count; i++)
          {
@@ -518,9 +518,9 @@ struct AirspyDevice::Impl
    {
       rt::Catalog result;
 
-      result[AirspyDevice::Auto] = "Auto";
-      result[AirspyDevice::Linearity] = "Linearity";
-      result[AirspyDevice::Sensitivity] = "Sensitivity";
+      result[HydraDevice::Auto] = "Auto";
+      result[HydraDevice::Linearity] = "Linearity";
+      result[HydraDevice::Sensitivity] = "Sensitivity";
 
       return result;
    }
@@ -567,50 +567,50 @@ struct AirspyDevice::Impl
 
 };
 
-AirspyDevice::AirspyDevice(const std::string &name) : impl(std::make_shared<Impl>(name))
+HydraDevice::HydraDevice(const std::string &name) : impl(std::make_shared<Impl>(name))
 {
 }
 
-AirspyDevice::AirspyDevice(int fd) : impl(std::make_shared<Impl>(fd))
+HydraDevice::HydraDevice(int fd) : impl(std::make_shared<Impl>(fd))
 {
 }
 
-std::vector<std::string> AirspyDevice::enumerate()
+std::vector<std::string> HydraDevice::enumerate()
 {
    return Impl::enumerate();
 }
 
-bool AirspyDevice::open(Mode mode)
+bool HydraDevice::open(Mode mode)
 {
    return impl->open(mode);
 }
 
-void AirspyDevice::close()
+void HydraDevice::close()
 {
    impl->close();
 }
 
-int AirspyDevice::start(StreamHandler handler)
+int HydraDevice::start(StreamHandler handler)
 {
    return impl->start(handler);
 }
 
-int AirspyDevice::stop()
+int HydraDevice::stop()
 {
    return impl->stop();
 }
 
-int AirspyDevice::pause()
+int HydraDevice::pause()
 {
    return impl->pause();
 }
 
-int AirspyDevice::resume()
+int HydraDevice::resume()
 {
    return impl->resume();
 }
 
-rt::Variant AirspyDevice::get(int id, int channel) const
+rt::Variant HydraDevice::get(int id, int channel) const
 {
    switch (id)
    {
@@ -688,7 +688,7 @@ rt::Variant AirspyDevice::get(int id, int channel) const
    }
 }
 
-bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
+bool HydraDevice::set(int id, const rt::Variant &value, int channel)
 {
    switch (id)
    {
@@ -762,55 +762,55 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
    }
 }
 
-bool AirspyDevice::isOpen() const
+bool HydraDevice::isOpen() const
 {
    return impl->isOpen();
 }
 
-bool AirspyDevice::isEof() const
+bool HydraDevice::isEof() const
 {
    return impl->isEof();
 }
 
-bool AirspyDevice::isReady() const
+bool HydraDevice::isReady() const
 {
    return impl->isReady();
 }
 
-bool AirspyDevice::isPaused() const
+bool HydraDevice::isPaused() const
 {
    return impl->isPaused();
 }
 
-bool AirspyDevice::isStreaming() const
+bool HydraDevice::isStreaming() const
 {
    return impl->isStreaming();
 }
 
-long AirspyDevice::read(SignalBuffer &buffer)
+long HydraDevice::read(SignalBuffer &buffer)
 {
    return impl->read(buffer);
 }
 
-long AirspyDevice::write(const SignalBuffer &buffer)
+long HydraDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }
 
-int process_transfer(airspy_transfer *transfer)
+int process_transfer(hydrasdr_transfer *transfer)
 {
    // check device validity
-   if (auto *device = static_cast<AirspyDevice::Impl *>(transfer->ctx))
+   if (auto *device = static_cast<HydraDevice::Impl *>(transfer->ctx))
    {
       SignalBuffer buffer;
 
       switch (transfer->sample_type)
       {
-         case AIRSPY_SAMPLE_FLOAT32_IQ:
+         case HYDRASDR_SAMPLE_FLOAT32_IQ:
             buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count * 2, 2, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_IQ);
             break;
 
-         case AIRSPY_SAMPLE_FLOAT32_REAL:
+         case HYDRASDR_SAMPLE_FLOAT32_REAL:
             buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count, 1, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
             break;
 

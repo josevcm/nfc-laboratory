@@ -142,7 +142,7 @@ struct RecordDevice::Impl
          return false;
       }
 
-      std::string path = name.find("record://") == 0 ? name.substr(9) : name;
+      const std::string path = name.find("record://") == 0 ? name.substr(9) : name;
 
       close();
 
