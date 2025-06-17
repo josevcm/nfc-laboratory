@@ -134,6 +134,14 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
                stopDevice(command.value());
                break;
 
+            case Pause:
+               pauseDevice(command.value());
+               break;
+
+            case Resume:
+               resumeDevice(command.value());
+               break;
+
             case Query:
                queryDevice(command.value());
                break;
@@ -334,6 +342,54 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       }
    }
 
+   void pauseDevice(const rt::Event &command)
+   {
+      if (!radioReceiverEnabled)
+      {
+         log->warn("device is disabled");
+         command.reject(TaskDisabled);
+         return;
+      }
+
+      if (device)
+      {
+         log->info("pause streaming for device {}", {std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_NAME))});
+
+         // pause underline receiver
+         device->pause();
+
+         // resolve command
+         command.resolve();
+
+         // set receiver in flush buffers status
+         updateDeviceStatus(Paused);
+      }
+   }
+
+   void resumeDevice(const rt::Event &command)
+   {
+      if (!radioReceiverEnabled)
+      {
+         log->warn("device is disabled");
+         command.reject(TaskDisabled);
+         return;
+      }
+
+      if (device)
+      {
+         log->info("resume streaming for device {}", {std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_NAME))});
+
+         // resume underline receiver
+         device->resume();
+
+         // resolve command
+         command.resolve();
+
+         // set receiver in flush buffers status
+         updateDeviceStatus(Streaming);
+      }
+   }
+
    void queryDevice(const rt::Event &command)
    {
       log->debug("query status");
@@ -412,7 +468,6 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
          data["model"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_MODEL));
          data["version"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_VERSION));
          data["serial"] = std::get<std::string>(device->get(hw::RadioDevice::PARAM_DEVICE_SERIAL));
-         data["status"] = radioReceiverEnabled ? (device->isStreaming() ? "streaming" : status == Flush ? "flush" : "idle") : "disabled";
 
          // device parameters
          data["centerFreq"] = std::get<unsigned int>(device->get(hw::RadioDevice::PARAM_TUNE_FREQUENCY));
@@ -428,6 +483,17 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
          // device statistics
          data["samplesRead"] = std::get<long long>(device->get(hw::RadioDevice::PARAM_SAMPLES_READ));
          data["samplesLost"] = std::get<long long>(device->get(hw::RadioDevice::PARAM_SAMPLES_LOST));
+
+         if (!radioReceiverEnabled)
+            data["status"] = "disabled";
+         else if (device->isPaused())
+            data["status"] = "paused";
+         else if (device->isStreaming())
+            data["status"] = "streaming";
+         else if (status == Flush)
+            data["status"] = "flush";
+         else
+            data["status"] = "idle";
 
          // send capabilities on data attach
          if (full)

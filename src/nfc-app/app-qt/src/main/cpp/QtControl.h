@@ -26,7 +26,7 @@
 #include <QSettings>
 #include <QSharedPointer>
 
-class QtDecoder : public QObject
+class QtControl : public QObject
 {
       Q_OBJECT
 
@@ -34,7 +34,7 @@ class QtDecoder : public QObject
 
    public:
 
-      explicit QtDecoder();
+      explicit QtControl();
 
       void handleEvent(QEvent *event);
 

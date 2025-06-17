@@ -58,9 +58,9 @@
 
 #include "QtApplication.h"
 
-#include "QtDecoder.h"
+#include "QtControl.h"
 
-struct QtDecoder::Impl
+struct QtControl::Impl
 {
    // configuration
    QSettings settings;
@@ -299,6 +299,16 @@ struct QtDecoder::Impl
             doStopDecode(event);
             break;
          }
+         case DecoderControlEvent::Pause:
+         {
+            doPauseDecode(event);
+            break;
+         }
+         case DecoderControlEvent::Resume:
+         {
+            doResumeDecode(event);
+            break;
+         }
          case DecoderControlEvent::Clear:
          {
             doClearBuffers(event);
@@ -430,6 +440,38 @@ struct QtDecoder::Impl
       // stop radio receiver task
       if (!storagePath.isEmpty())
          taskRecorderStop();
+   }
+
+   /*
+    * pause all tasks to finish decoding
+    */
+   void doPauseDecode(DecoderControlEvent *event) const
+   {
+      qInfo() << "pause decoder and receiver tasks";
+
+      // stop radio receiver task
+      if (!logicDeviceType.isEmpty())
+         taskLogicDevicePause();
+
+      // stop radio receiver task
+      if (!radioDeviceType.isEmpty())
+         taskRadioDevicePause();
+   }
+
+   /*
+    * resume all tasks
+    */
+   void doResumeDecode(DecoderControlEvent *event) const
+   {
+      qInfo() << "resume decoder and receiver tasks";
+
+      // stop radio receiver task
+      if (!logicDeviceType.isEmpty())
+         taskLogicDeviceResume();
+
+      // stop radio receiver task
+      if (!radioDeviceType.isEmpty())
+         taskRadioDeviceResume();
    }
 
    /*
@@ -1305,6 +1347,26 @@ struct QtDecoder::Impl
    }
 
    /*
+    * pause logic task
+    */
+   void taskLogicDevicePause(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      qInfo() << "pause logic device task";
+
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Pause, onComplete, onReject});
+   }
+
+   /*
+    * resume logic task
+    */
+   void taskLogicDeviceResume(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      qInfo() << "resume logic device task";
+
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Resume, onComplete, onReject});
+   }
+
+   /*
     * enquire logic status
     */
    void taskLogicDeviceQuery(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
@@ -1354,6 +1416,26 @@ struct QtDecoder::Impl
       qInfo() << "stop radio device task";
 
       radioDeviceCommandStream->next({lab::RadioDeviceTask::Stop, onComplete, onReject});
+   }
+
+   /*
+    * pause radio task
+    */
+   void taskRadioDevicePause(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      qInfo() << "pause radio device task";
+
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Pause, onComplete, onReject});
+   }
+
+   /*
+    * resume radio task
+    */
+   void taskRadioDeviceResume(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      qInfo() << "resume radio device task";
+
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Resume, onComplete, onReject});
    }
 
    /*
@@ -1469,11 +1551,11 @@ struct QtDecoder::Impl
    }
 };
 
-QtDecoder::QtDecoder() : impl(new Impl())
+QtControl::QtControl() : impl(new Impl())
 {
 }
 
-void QtDecoder::handleEvent(QEvent *event)
+void QtControl::handleEvent(QEvent *event)
 {
    if (event->type() == SystemStartupEvent::Type)
       impl->systemStartupEvent(dynamic_cast<SystemStartupEvent *>(event));

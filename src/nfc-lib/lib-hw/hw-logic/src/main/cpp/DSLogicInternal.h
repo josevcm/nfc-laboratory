@@ -245,6 +245,7 @@ enum DeviceStatus
    STATUS_TRIGGERED = 3,
    STATUS_DATA = 4,
    STATUS_STOP = 5,
+   STATUS_PAUSE = 6,
    STATUS_FINISH = 7,
    STATUS_ABORT = 8,
 };

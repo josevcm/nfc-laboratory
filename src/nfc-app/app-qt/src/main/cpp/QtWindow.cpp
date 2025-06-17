@@ -301,6 +301,8 @@ struct QtWindow::Impl
       ui->actionListen->setEnabled(false);
       ui->actionRecord->setEnabled(false);
       ui->actionStop->setEnabled(false);
+      ui->actionPause->setEnabled(false);
+      ui->actionPause->setChecked(false);
 
       // setup display stretch
       ui->workbench->setStretchFactor(0, 3);
@@ -849,7 +851,9 @@ struct QtWindow::Impl
       const bool radioDecoderEnabled = radioDecoderStatus != RadioDecoderStatusEvent::Disabled;
 
       const bool fourierTaskEnabled = fourierStatus != FourierStatusEvent::Disabled;
+
       const bool deviceStreaming = logicDeviceStatus == LogicDeviceStatusEvent::Streaming || radioDeviceStatus == RadioDeviceStatusEvent::Streaming;
+      const bool decoderStreaming = logicDecoderStatus == LogicDecoderStatusEvent::Decoding || radioDecoderStatus == RadioDecoderStatusEvent::Decoding;
 
       // update feature status
       ui->featureLogicAcquire->setChecked(logicDeviceEnabled);
@@ -859,7 +863,7 @@ struct QtWindow::Impl
       ui->featureRadioSpectrum->setChecked(fourierTaskEnabled);
 
       // disable / enable actions based on streaming status
-      if (deviceStreaming)
+      if (deviceStreaming || decoderStreaming)
       {
          // disable features during streaming
          ui->featureLogicAcquire->setEnabled(false);
@@ -872,6 +876,7 @@ struct QtWindow::Impl
          ui->actionListen->setEnabled(false);
          ui->actionRecord->setEnabled(false);
          ui->actionStop->setEnabled(true);
+         ui->actionPause->setEnabled(decoderStreaming);
 
          // disable acquire limit combo
          acquireLimit->setEnabled(false);
@@ -889,16 +894,18 @@ struct QtWindow::Impl
          ui->actionListen->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
          ui->actionRecord->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
          ui->actionStop->setEnabled(false);
+         ui->actionPause->setEnabled(false);
+         ui->actionPause->setChecked(false);
 
          // enable acquire limit combo
          acquireLimit->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
       }
 
       // flags for acquire status
-      const bool logicAcquireEnabled = isActive(ui->featureLogicAcquire);
-      const bool radioAcquireEnabled = isActive(ui->featureRadioAcquire);
-      const bool acquireEnabled = logicAcquireEnabled || radioAcquireEnabled;
+      // const bool logicAcquireEnabled = isActive(ui->featureLogicAcquire);
+      // const bool radioAcquireEnabled = isActive(ui->featureRadioAcquire);
       const bool spectrumEnabled = isActive(ui->featureRadioSpectrum);
+      // const bool acquireEnabled = logicAcquireEnabled || radioAcquireEnabled;
 
       // flags for data status
       const bool logicSignalPresent = ui->logicView->hasData();
@@ -948,6 +955,9 @@ struct QtWindow::Impl
 
    void updateStatus() const
    {
+      // flags for device status
+      const bool devicePaused = logicDeviceStatus == LogicDeviceStatusEvent::Paused || radioDeviceStatus == RadioDeviceStatusEvent::Paused;
+
       ui->actionInfo->setText("");
 
       if (enabledDevices.isEmpty())
@@ -955,7 +965,10 @@ struct QtWindow::Impl
       else
          ui->statusBar->showMessage(QString(tr("Detected %1").arg(enabledDevices.join(", "))));
 
-      if (!enabledDevices.isEmpty())
+      if (devicePaused)
+         ui->actionInfo->setText(QString("PAUSE, Remaining time %1:%2").arg(timeLimit / 60, 2, 10, QChar('0')).arg(timeLimit % 60, 2, 10, QChar('0')));
+
+      else if (!enabledDevices.isEmpty())
          ui->actionInfo->setText(tr("Devices Ready"));
 
       // show if not licensed devices are present
@@ -1801,24 +1814,50 @@ struct QtWindow::Impl
       // enable follow
       setFollowEnabled(true);
 
+      // get selected time limit
+      timeLimit = acquireLimit->currentData().toInt();
+
       // start decoder
       if (recording || settings.value("settings/recordEnabled", false).toBool())
       {
-         const QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data");
-
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {
-                                                        {"storagePath", dataPath.absolutePath()},
-                                                        {"timeLimit", timeLimit}
-                                                     }));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath()}}));
       }
       else
       {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {
-                                                        {"timeLimit", timeLimit}
-                                                     }));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {}));
       }
 
       acquireTimer->start(timeLimit * 1000);
+   }
+
+   void togglePause()
+   {
+      if (ui->actionPause->isChecked())
+      {
+         qInfo() << "decoder pause, remaining time:" << acquireTimer->remainingTime();
+
+         // get remaining time
+         timeLimit = acquireTimer->remainingTime() / 1000;
+
+         // stopping timer
+         acquireTimer->stop();
+
+         // sync logic && radio view ranges
+         syncDataRanges();
+
+         // pause decoder
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Pause));
+      }
+      else
+      {
+         qInfo() << "decoder resume, remaining time:" << timeLimit;
+
+         // resume timer
+         acquireTimer->start(timeLimit * 1000);
+
+         // resume decoder
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Resume));
+      }
    }
 
    void toggleStop()
@@ -1834,8 +1873,10 @@ struct QtWindow::Impl
       ui->framesView->stop();
       ui->frequencyView->stop();
 
-      // disable action to avoid multiple stop
+      // disable action to avoid multiple pause / stop
       ui->actionStop->setEnabled(false);
+      ui->actionPause->setEnabled(false);
+      ui->actionPause->setChecked(false);
 
       // sync logic && radio view ranges
       syncDataRanges();
@@ -1929,7 +1970,6 @@ struct QtWindow::Impl
       {
          timeLimit = value;
          qInfo() << "capture time limit changed to" << timeLimit;
-         return;
       }
    }
 
@@ -2028,10 +2068,6 @@ struct QtWindow::Impl
 
       // signal clear to decoder control
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Clear));
-
-      // update interface actions
-      updateStatus();
-      updateActions();
    }
 
    void resetView() const
@@ -2516,6 +2552,11 @@ void QtWindow::toggleListen()
 void QtWindow::toggleRecord()
 {
    impl->toggleStart(true);
+}
+
+void QtWindow::togglePause()
+{
+   impl->togglePause();
 }
 
 void QtWindow::toggleStop()

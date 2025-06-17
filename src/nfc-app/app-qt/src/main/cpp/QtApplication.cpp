@@ -28,7 +28,7 @@
 #include <QSplashScreen>
 #include <QStandardPaths>
 
-#include "QtDecoder.h"
+#include "QtControl.h"
 #include "QtWindow.h"
 
 #include "features/Caps.h"
@@ -55,7 +55,7 @@ struct QtApplication::Impl
    QPointer<QtWindow> window;
 
    // decoder control
-   QPointer<QtDecoder> decoder;
+   QPointer<QtControl> decoder;
 
    // splash screen
    QSplashScreen splash;
@@ -77,7 +77,7 @@ struct QtApplication::Impl
       window = new QtWindow();
 
       // create decoder control interface
-      decoder = new QtDecoder();
+      decoder = new QtControl();
 
       // connect shutdown signal
       applicationShutdownConnection = connect(app, &QtApplication::aboutToQuit, app, &QtApplication::shutdown);

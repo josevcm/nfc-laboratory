@@ -54,6 +54,8 @@ class QtWindow : public QMainWindow
 
       void toggleRecord();
 
+      void togglePause();
+
       void toggleStop();
 
       void toggleTime();

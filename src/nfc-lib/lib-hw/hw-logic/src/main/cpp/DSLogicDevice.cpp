@@ -130,6 +130,11 @@ struct DSLogicDevice::Impl
    SignalBuffer buffer;
 
    /*
+    * Receive handler
+    */
+   StreamHandler streamHandler;
+
+   /*
     * Control commands.
     */
    const usb_rd_cmd rd_cmd_hw_status {.header {.dest = DSL_CTL_HW_STATUS, .size = sizeof(hwStatus)}, .data = &hwStatus};
@@ -412,7 +417,7 @@ struct DSLogicDevice::Impl
       }
    }
 
-   bool start(const StreamHandler &handler)
+   int start(const StreamHandler &handler)
    {
       log->debug("starting acquisition for device {}", {deviceName});
 
@@ -433,14 +438,14 @@ struct DSLogicDevice::Impl
       if (!usbWrite(wr_cmd_acquisition_stop))
       {
          log->error("failed to stop previous acquisition");
-         return false;
+         return -1;
       }
 
       // setting FPGA before acquisition start
       if (!fpgaSetup())
       {
          log->error("failed to setup FPGA");
-         return false;
+         return -1;
       }
 
       // setup usb transfers
@@ -451,48 +456,106 @@ struct DSLogicDevice::Impl
       {
          log->error("failed to start acquisition");
          deviceStatus = STATUS_ERROR;
-         return false;
+         return -1;
       }
 
+      streamHandler = handler;
       deviceStatus = STATUS_START;
 
       log->debug("acquisition started for device {}", {deviceName});
 
-      return true;
+      return 0;
    }
 
-   bool stop()
+   int stop()
    {
       log->debug("stopping acquisition for device {}", {deviceName});
 
+      // if device is not started, just return
+      if (deviceStatus == STATUS_PAUSE)
+         return 0;
+
       // stop previous acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
-      {
          log->error("failed to stop acquisition");
-      }
 
       /* adc power down*/
       if (profile->dev_caps.feature_caps & CAPS_FEATURE_HMCAD1511)
       {
          if (!adcSetup(adc_power_down))
-         {
             log->error("failed to power down ADC");
-         }
       }
 
       log->debug("cancel pending transfers for device {}", {deviceName});
 
       // cancel current transfers
       for (const auto transfer: transfers)
-      {
          usb.cancelTransfer(transfer);
-      }
 
       deviceStatus = STATUS_STOP;
+      streamHandler = nullptr;
 
       log->debug("capture finished for device {}", {deviceName});
 
-      return true;
+      return 0;
+   }
+
+   int pause()
+   {
+      log->debug("pause acquisition for device {}", {deviceName});
+
+      if (deviceStatus != STATUS_DATA)
+      {
+         log->error("failed to pause acquisition, deice is not streaming");
+         return -1;
+      }
+
+      // stop acquisition
+      if (!usbWrite(wr_cmd_acquisition_stop))
+         log->error("failed to pause acquisition");
+
+      // cancel current transfers
+      for (const auto transfer: transfers)
+         usb.cancelTransfer(transfer);
+
+      deviceStatus = STATUS_PAUSE;
+
+      return 0;
+   }
+
+   int resume()
+   {
+      log->debug("resume acquisition for device {}", {deviceName});
+
+      if (deviceStatus != STATUS_PAUSE)
+      {
+         log->error("failed to resume acquisition, deice is not paused");
+         return -1;
+      }
+
+      buffer.reset();
+
+      // setting FPGA before acquisition start
+      if (!fpgaSetup())
+      {
+         log->error("failed to setup FPGA");
+         return -1;
+      }
+
+      // setup usb transfers
+      usbTransfer(streamHandler);
+
+      // start acquisition
+      if (!usbWrite(wr_cmd_acquisition_start))
+      {
+         log->error("failed to resume acquisition");
+         deviceStatus = STATUS_ERROR;
+         return -1;
+      }
+
+      deviceStatus = STATUS_START;
+
+      return 0;
    }
 
    rt::Variant get(int id, int channel) const
@@ -1882,7 +1945,7 @@ struct DSLogicDevice::Impl
          }
       }
 
-      log->debug("finish data transfer {} and clearing buffers", {transfer});
+      log->warn("finish data transfer {} and clearing buffers", {transfer});
 
       // remove transfer from list
       transfers.remove(transfer);
@@ -2238,6 +2301,16 @@ int DSLogicDevice::stop()
    return impl->stop();
 }
 
+int DSLogicDevice::pause()
+{
+   return impl->pause();
+}
+
+int DSLogicDevice::resume()
+{
+   return impl->resume();
+}
+
 rt::Variant DSLogicDevice::get(int id, int channel) const
 {
    return impl->get(id, channel);
@@ -2261,6 +2334,11 @@ bool DSLogicDevice::isEof() const
 bool DSLogicDevice::isReady() const
 {
    return impl->deviceStatus >= STATUS_READY && impl->isReady();
+}
+
+bool DSLogicDevice::isPaused() const
+{
+   return impl->deviceStatus == STATUS_PAUSE;
 }
 
 bool DSLogicDevice::isStreaming() const

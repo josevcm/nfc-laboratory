@@ -48,6 +48,12 @@ class FourierProcessTask : public rt::Worker
          UnknownCommand = -9
       };
 
+      enum Window
+      {
+         Hamming = 0,
+         Hann = 1
+      };
+
    private:
 
       struct Impl;
