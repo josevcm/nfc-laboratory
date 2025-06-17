@@ -99,7 +99,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       log->info("registering devices");
 
       hw::DeviceFactory::registerDevice("radio.airspy", []() -> std::vector<std::string> { return hw::AirspyDevice::enumerate(); }, [](const std::string &name) -> hw::RadioDevice *{ return new hw::AirspyDevice(name); });
-      hw::DeviceFactory::registerDevice("radio.hydra", []() -> std::vector<std::string> { return hw::HydraDevice::enumerate(); }, [](const std::string &name) -> hw::RadioDevice *{ return new hw::HydraDevice(name); });
+      hw::DeviceFactory::registerDevice("radio.hydrasdr", []() -> std::vector<std::string> { return hw::HydraDevice::enumerate(); }, [](const std::string &name) -> hw::RadioDevice *{ return new hw::HydraDevice(name); });
       hw::DeviceFactory::registerDevice("radio.rtlsdr", []() -> std::vector<std::string> { return hw::RealtekDevice::enumerate(); }, [](const std::string &name) -> hw::RealtekDevice *{ return new hw::RealtekDevice(name); });
       hw::DeviceFactory::registerDevice("radio.miri", []() -> std::vector<std::string> { return hw::MiriDevice::enumerate(); }, [](const std::string &name) -> hw::MiriDevice *{ return new hw::MiriDevice(name); });
    }

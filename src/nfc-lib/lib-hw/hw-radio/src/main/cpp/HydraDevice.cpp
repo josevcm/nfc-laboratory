@@ -35,7 +35,7 @@
 
 #define MAX_QUEUE_SIZE 4
 
-#define DEVICE_TYPE_PREFIX "radio.hydra"
+#define DEVICE_TYPE_PREFIX "radio.hydrasdr"
 
 namespace hw {
 

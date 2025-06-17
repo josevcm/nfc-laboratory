@@ -60,6 +60,8 @@ class RadioDevice : public SignalDevice
 
       virtual bool isPaused() const = 0;
 
+      virtual bool isStreaming() const = 0;
+
       virtual int start(StreamHandler handler) = 0;
 
       virtual int stop() = 0;

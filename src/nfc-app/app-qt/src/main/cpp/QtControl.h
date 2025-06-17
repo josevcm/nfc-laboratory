@@ -43,4 +43,4 @@ class QtControl : public QObject
       QSharedPointer<Impl> impl;
 };
 
-#endif //NFC_LAB_QTCONTROL_H
+#endif //APP_QTCONTROL_H

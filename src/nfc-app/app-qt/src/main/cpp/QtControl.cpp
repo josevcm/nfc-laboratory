@@ -135,6 +135,19 @@ struct QtControl::Impl
          })
       },
       {
+         "radio.hydrasdr", QJsonObject({
+            {"enabled", true},
+            {"centerFreq", 40680000},
+            {"sampleRate", 10000000},
+            {"gainMode", 1}, // linearity
+            {"gainValue", 4}, // 4db
+            {"mixerAgc", 0},
+            {"tunerAgc", 0},
+            {"biasTee", 0},
+            {"directSampling", 0}
+         })
+      },
+      {
          "radio.rtlsdr", QJsonObject({
             {"enabled", true},
             {"centerFreq", 27120000},
