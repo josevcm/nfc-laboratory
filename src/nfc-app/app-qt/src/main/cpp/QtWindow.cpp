@@ -966,7 +966,7 @@ struct QtWindow::Impl
          ui->statusBar->showMessage(QString(tr("Detected %1").arg(enabledDevices.join(", "))));
 
       if (devicePaused)
-         ui->actionInfo->setText(QString("PAUSE, Remaining time %1:%2").arg(timeLimit / 60, 2, 10, QChar('0')).arg(timeLimit % 60, 2, 10, QChar('0')));
+         ui->actionInfo->setText(QString("PAUSED, Remaining time %1:%2").arg(timeLimit / 60, 2, 10, QChar('0')).arg(timeLimit % 60, 2, 10, QChar('0')));
 
       else if (!enabledDevices.isEmpty())
          ui->actionInfo->setText(tr("Devices Ready"));
