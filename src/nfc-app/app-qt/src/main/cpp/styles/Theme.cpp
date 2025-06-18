@@ -53,83 +53,83 @@ const QIcon Theme::parityErrorIcon(QIcon::fromTheme("alert-circle-filled"));
 const QIcon Theme::syncErrorIcon(QIcon::fromTheme("alert-circle-filled"));
 
 const QColor Theme::defaultTextColor = QColor(0xE0, 0xE0, 0xE0, 0xff);
-const QPen Theme::defaultTextPen = Theme::makePen(Theme::defaultTextColor);
-const QFont Theme::defaultTextFont = Theme::makeFont("Verdana", 9, QFont::Normal);
-const QFont Theme::monospaceTextFont = Theme::makeFont("Verdana", 9, QFont::Normal, false, QFont::TypeWriter);
+const QPen Theme::defaultTextPen = makePen(defaultTextColor);
+const QFont Theme::defaultTextFont = makeFont("Verdana", 9, QFont::Normal);
+const QFont Theme::monospaceTextFont = makeFont("Verdana", 9, QFont::Normal, false, QFont::TypeWriter);
 
-const QPen Theme::defaultAxisPen = Theme::makePen({0x74, 0x74, 0x7b, 0xff});
-const QPen Theme::defaultTickPen = Theme::makePen({0x74, 0x74, 0x7b, 0xff});
-const QPen Theme::defaultGridPen = Theme::makePen({0x44, 0x44, 0x4e, 0xff}, Qt::DotLine);
+const QPen Theme::defaultAxisPen = makePen({0x74, 0x74, 0x7b, 0xff});
+const QPen Theme::defaultTickPen = makePen({0x74, 0x74, 0x7b, 0xff});
+const QPen Theme::defaultGridPen = makePen({0x44, 0x44, 0x4e, 0xff}, Qt::DotLine);
 
 const QColor Theme::defaultLabelColor({0xF0, 0xF0, 0xF0, 0xFF});
 const QPen Theme::defaultLabelPen({0x2B, 0x2B, 0x2B, 0x70});
 const QBrush Theme::defaultLabelBrush({0x2B, 0x2B, 0x2B, 0xC0});
 const QFont Theme::defaultLabelFont("Roboto", 9, QFont::Normal);
 
-const QPen Theme::defaultBracketPen = Theme::makePen({0xC0, 0xC0, 0xC0, 0xff});
-const QPen Theme::defaultBracketLabelPen = Theme::makePen({0x00, 0x00, 0x00, 0x00}, Qt::NoPen);
+const QPen Theme::defaultBracketPen = makePen({0xC0, 0xC0, 0xC0, 0xff});
+const QPen Theme::defaultBracketLabelPen = makePen({0x00, 0x00, 0x00, 0x00}, Qt::NoPen);
 const QColor Theme::defaultBracketLabelColor = QColor(0xC0, 0xC0, 0xC0, 0xff);
-const QFont Theme::defaultBracketLabelFont = Theme::makeFont("Roboto", 9, QFont::Normal);
-const QBrush Theme::defaultBracketLabelBrush = Theme::makeBrush({0x00, 0x00, 0x00, 0x00}, Qt::NoBrush);
+const QFont Theme::defaultBracketLabelFont = makeFont("Roboto", 9, QFont::Normal);
+const QBrush Theme::defaultBracketLabelBrush = makeBrush({0x00, 0x00, 0x00, 0x00}, Qt::NoBrush);
 
-const QPen Theme::defaultMarkerPen = Theme::makePen({0xFF, 0x90, 0x90, 0xFF}, Qt::SolidLine, 2.5f);
-const QBrush Theme::defaultMarkerBrush = Theme::makeBrush({0xC0, 0x65, 0x91, 0x30});
-const QPen Theme::defaultMarkerActivePen = Theme::makePen({0xC0, 0x65, 0x91, 0x52});
-const QBrush Theme::defaultMarkerActiveBrush = Theme::makeBrush({0xC0, 0x65, 0x91, 0x52});
+const QPen Theme::defaultMarkerPen = makePen({0xFF, 0x90, 0x90, 0xFF}, Qt::SolidLine, 2.5f);
+const QBrush Theme::defaultMarkerBrush = makeBrush({0xC0, 0x65, 0x91, 0x30});
+const QPen Theme::defaultMarkerActivePen = makePen({0xC0, 0x65, 0x91, 0x52});
+const QBrush Theme::defaultMarkerActiveBrush = makeBrush({0xC0, 0x65, 0x91, 0x52});
 
-const QPen Theme::defaultSelectionPen = Theme::makePen({0x00, 0x80, 0xFF, 0x50});
-const QBrush Theme::defaultSelectionBrush = Theme::makeBrush({0x00, 0x80, 0xFF, 0x50});
-const QPen Theme::defaultActiveSelectionPen = Theme::makePen({0x00, 0x80, 0xFF, 0x50});
-const QBrush Theme::defaultActiveSelectionBrush = Theme::makeBrush({0x00, 0x80, 0xFF, 0x50});
+const QPen Theme::defaultSelectionPen = makePen({0x00, 0x80, 0xFF, 0x50});
+const QBrush Theme::defaultSelectionBrush = makeBrush({0x00, 0x80, 0xFF, 0x50});
+const QPen Theme::defaultActiveSelectionPen = makePen({0x00, 0x80, 0xFF, 0x50});
+const QBrush Theme::defaultActiveSelectionBrush = makeBrush({0x00, 0x80, 0xFF, 0x50});
 
 const QColor Theme::defaultLogicIOColor = QColor(0x13, 0x99, 0x49, 0xF0);
-const QPen Theme::defaultLogicIOPen = Theme::makePen(Theme::defaultLogicIOColor);
-const QBrush Theme::defaultLogicIOBrush = Theme::makeBrush(Theme::defaultLogicIOColor);
+const QPen Theme::defaultLogicIOPen = makePen(defaultLogicIOColor);
+const QBrush Theme::defaultLogicIOBrush = makeBrush(defaultLogicIOColor);
 
 const QColor Theme::defaultLogicCLKColor = QColor(0x75, 0x50, 0x7B, 0xF0);
-const QPen Theme::defaultLogicCLKPen = Theme::makePen(Theme::defaultLogicCLKColor);
-const QBrush Theme::defaultLogicCLKBrush = Theme::makeBrush(Theme::defaultLogicCLKColor);
+const QPen Theme::defaultLogicCLKPen = makePen(defaultLogicCLKColor);
+const QBrush Theme::defaultLogicCLKBrush = makeBrush(defaultLogicCLKColor);
 
 const QColor Theme::defaultLogicRSTColor = QColor(0x34, 0x65, 0xA4, 0xF0);
-const QPen Theme::defaultLogicRSTPen = Theme::makePen(Theme::defaultLogicRSTColor);
-const QBrush Theme::defaultLogicRSTBrush = Theme::makeBrush(Theme::defaultLogicRSTColor);
+const QPen Theme::defaultLogicRSTPen = makePen(defaultLogicRSTColor);
+const QBrush Theme::defaultLogicRSTBrush = makeBrush(defaultLogicRSTColor);
 
 const QColor Theme::defaultLogicVCCColor = QColor(0xA4, 0x40, 0x40, 0xF0);
-const QPen Theme::defaultLogicVCCPen = Theme::makePen(Theme::defaultLogicVCCColor);
-const QBrush Theme::defaultLogicVCCBrush = Theme::makeBrush(Theme::defaultLogicVCCColor);
+const QPen Theme::defaultLogicVCCPen = makePen(defaultLogicVCCColor);
+const QBrush Theme::defaultLogicVCCBrush = makeBrush(defaultLogicVCCColor);
 
 const QColor Theme::defaultRadioNFCColor = QColor(0x20, 0x90, 0x35, 0xF0);
-const QPen Theme::defaultRadioNFCPen = Theme::makePen(Theme::defaultRadioNFCColor);
-const QBrush Theme::defaultRadioNFCBrush = Theme::makeBrush(Theme::defaultRadioNFCColor);
+const QPen Theme::defaultRadioNFCPen = makePen(defaultRadioNFCColor);
+const QBrush Theme::defaultRadioNFCBrush = makeBrush(defaultRadioNFCColor);
 
-const QColor Theme::defaultNfcAColor = QColor(0x13, 0x99, 0x49, 0xC0);
-const QPen Theme::defaultNfcAPen = Theme::makePen(Theme::defaultNfcAColor);
-const QBrush Theme::defaultNfcABrush = Theme::makeBrush(Theme::defaultNfcAColor);
-const QBrush Theme::responseNfcABrush = Theme::makeBrush(Theme::defaultNfcAColor, Qt::Dense4Pattern);
+const QColor Theme::defaultNfcAColor = QColor(0x13, 0x99, 0x49, 0xF0);
+const QPen Theme::defaultNfcAPen = makePen(defaultNfcAColor);
+const QBrush Theme::defaultNfcABrush = makeBrush(defaultNfcAColor);
+const QBrush Theme::responseNfcABrush = makeBrush(defaultNfcAColor, Qt::Dense4Pattern);
 
-const QColor Theme::defaultNfcBColor = QColor(0x13, 0x68, 0xE9, 0xC0);
-const QPen Theme::defaultNfcBPen = Theme::makePen(Theme::defaultNfcBColor);
-const QBrush Theme::defaultNfcBBrush = Theme::makeBrush(Theme::defaultNfcBColor);
-const QBrush Theme::responseNfcBBrush = Theme::makeBrush(Theme::defaultNfcBColor, Qt::Dense4Pattern);
+const QColor Theme::defaultNfcBColor = QColor(0x34, 0x65, 0xA4, 0xF0);
+const QPen Theme::defaultNfcBPen = makePen(defaultNfcBColor);
+const QBrush Theme::defaultNfcBBrush = makeBrush(defaultNfcBColor);
+const QBrush Theme::responseNfcBBrush = makeBrush(defaultNfcBColor, Qt::Dense4Pattern);
 
-const QColor Theme::defaultNfcFColor = QColor(0xE5, 0x09, 0x14, 0xC0);
-const QPen Theme::defaultNfcFPen = Theme::makePen(Theme::defaultNfcFColor);
-const QBrush Theme::defaultNfcFBrush = Theme::makeBrush(Theme::defaultNfcFColor);
-const QBrush Theme::responseNfcFBrush = Theme::makeBrush(Theme::defaultNfcFColor, Qt::Dense4Pattern);
+const QColor Theme::defaultNfcFColor = QColor(0xA4, 0x40, 0x40, 0xF0);
+const QPen Theme::defaultNfcFPen = makePen(defaultNfcFColor);
+const QBrush Theme::defaultNfcFBrush = makeBrush(defaultNfcFColor);
+const QBrush Theme::responseNfcFBrush = makeBrush(defaultNfcFColor, Qt::Dense4Pattern);
 
-const QColor Theme::defaultNfcVColor = QColor(0x9C, 0x00, 0xFF, 0xC0);
-const QPen Theme::defaultNfcVPen = Theme::makePen(Theme::defaultNfcVColor);
-const QBrush Theme::defaultNfcVBrush = Theme::makeBrush(Theme::defaultNfcVColor);
-const QBrush Theme::responseNfcVBrush = Theme::makeBrush(Theme::defaultNfcVColor, Qt::Dense4Pattern);
+const QColor Theme::defaultNfcVColor = QColor(0x75, 0x50, 0x7B, 0xF0);
+const QPen Theme::defaultNfcVPen = makePen(defaultNfcVColor);
+const QBrush Theme::defaultNfcVBrush = makeBrush(defaultNfcVColor);
+const QBrush Theme::responseNfcVBrush = makeBrush(defaultNfcVColor, Qt::Dense4Pattern);
 
-const QPen Theme::defaultSignalPen = Theme::makePen({0xE0, 0xE0, 0xE0, 0xFF});
-const QBrush Theme::defaultSignalBrush = Theme::makeBrush({0x00, 0x40, 0x90, 0x50});
+const QPen Theme::defaultSignalPen = makePen({0xE0, 0xE0, 0xE0, 0xFF});
+const QBrush Theme::defaultSignalBrush = makeBrush({0x00, 0x40, 0x90, 0x50});
 
-const QPen Theme::defaultCarrierPen = Theme::makePen(0x707070);
-const QBrush Theme::defaultCarrierBrush = Theme::makeBrush({0x80, 0x70, 0x60, 0x50}, Qt::Dense4Pattern);
+const QPen Theme::defaultCarrierPen = makePen(0x707070);
+const QBrush Theme::defaultCarrierBrush = makeBrush({0x80, 0x70, 0x60, 0x50}, Qt::Dense4Pattern);
 
-const QPen Theme::defaultFrequencyPen = Theme::makePen({0x90, 0x90, 0x90, 0xFF}, Qt::SolidLine, 2.0f);
-const QBrush Theme::defaultFrequencyBrush = Theme::makeBrush({0x00, 0x00, 0xFF, 0x14});
+const QPen Theme::defaultFrequencyPen = makePen({0x90, 0x90, 0x90, 0xFF}, Qt::SolidLine, 2.0f);
+const QBrush Theme::defaultFrequencyBrush = makeBrush({0x00, 0x00, 0xFF, 0x14});
 
 const QColor Theme::defaultCenterFreqColor({0xF0, 0xF0, 0xF0, 0xFF});
 const QFont Theme::defaultCenterFreqFont("Roboto", 9, QFont::Bold);
