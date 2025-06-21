@@ -97,9 +97,7 @@ struct QtWindow::Impl
       {40, "40 sec"},
       {60, "1 min"},
       {120, "2 min"},
-      {300, "5 min"},
-      {600, "10 min"},
-      {3600, "30 min"},
+      {300, "5 min"}
    };
 
    // global parameters
