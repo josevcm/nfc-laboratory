@@ -125,7 +125,7 @@ void IsoDecoder::Impl::initialize()
    log->warn("initialize ISO decoder");
 
    // clear signal master clock
-   decoder.signalClock = 0;
+   decoder.signalClock = -1;
 
    // configure only if samplerate > 0
    if (decoder.sampleRate > 0)

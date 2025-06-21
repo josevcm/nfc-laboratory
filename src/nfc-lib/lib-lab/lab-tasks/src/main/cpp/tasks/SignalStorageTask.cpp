@@ -575,7 +575,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
    }
 };
 
-SignalStorageTask::SignalStorageTask() : Worker("SignalStorageTask")
+SignalStorageTask::SignalStorageTask() : Worker("SignalStorage")
 {
 }
 

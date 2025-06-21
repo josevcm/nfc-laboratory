@@ -280,7 +280,7 @@ struct Iso7816::Impl : IsoTech
          vccChange.setFramePhase(IsoAnyPhase);
          vccChange.setSampleStart(decoder->signalClock);
          vccChange.setSampleEnd(decoder->signalClock);
-         vccChange.setSampleEnd(decoder->sampleRate);
+         vccChange.setSampleRate(decoder->sampleRate);
          vccChange.setTimeStart(static_cast<double>(decoder->signalClock) / static_cast<double>(decoder->sampleRate));
          vccChange.setTimeEnd(static_cast<double>(decoder->signalClock) / static_cast<double>(decoder->sampleRate));
          vccChange.setDateTime(decoder->streamTime + vccChange.timeStart());
@@ -296,7 +296,7 @@ struct Iso7816::Impl : IsoTech
          rstChange.setFramePhase(IsoAnyPhase);
          rstChange.setSampleStart(decoder->signalClock);
          rstChange.setSampleEnd(decoder->signalClock);
-         rstChange.setSampleEnd(decoder->sampleRate);
+         rstChange.setSampleRate(decoder->sampleRate);
          rstChange.setTimeStart(static_cast<double>(decoder->signalClock) / static_cast<double>(decoder->sampleRate));
          rstChange.setTimeEnd(static_cast<double>(decoder->signalClock) / static_cast<double>(decoder->sampleRate));
          rstChange.setDateTime(decoder->streamTime + rstChange.timeStart());

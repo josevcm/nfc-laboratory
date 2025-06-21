@@ -458,7 +458,7 @@ struct RadioDecoderTask::Impl : RadioDecoderTask, AbstractTask
    }
 };
 
-RadioDecoderTask::RadioDecoderTask() : Worker("FrameDecoderTask")
+RadioDecoderTask::RadioDecoderTask() : Worker("FrameDecoder")
 {
 }
 

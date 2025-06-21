@@ -1088,7 +1088,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
    }
 };
 
-TraceStorageTask::TraceStorageTask() : Worker("TraceStorageTask")
+TraceStorageTask::TraceStorageTask() : Worker("TraceStorage")
 {
 }
 

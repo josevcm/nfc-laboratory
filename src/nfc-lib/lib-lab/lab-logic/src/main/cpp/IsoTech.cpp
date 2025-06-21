@@ -40,9 +40,9 @@ bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)
    buffer.get(sampleData, ch);
 
    // initialize last samples
-   if (signalClock == 0)
+   if (signalClock < 0)
    {
-      // #pragma omp simd
+#pragma omp simd
       for (int i = 0; i < ch; i++)
       {
          sampleLast[i] = sampleData[i];
@@ -50,7 +50,7 @@ bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)
    }
 
    // calculate data edges from previous samples
-   // #pragma omp simd
+#pragma omp simd
    for (int i = 0; i < ch; i++)
    {
       sampleEdge[i] = sampleData[i] - sampleLast[i];
