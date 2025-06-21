@@ -47,7 +47,7 @@ class HydraDevice : public RadioDevice
 
       explicit HydraDevice(const std::string &name);
 
-      bool open(Device::Mode mode) override;
+      bool open(Mode mode) override;
 
       void close() override;
 

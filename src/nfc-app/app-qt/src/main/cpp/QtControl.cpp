@@ -119,10 +119,31 @@ struct QtControl::Impl
    QString radioDeviceName;
    QString radioDeviceType;
 
+   // device enabled flags
+   bool logicDeviceEnabled = false;
+   bool radioDeviceEnabled = false;
+
+   // decoder enabled flags
+   bool logicDecoderEnabled = false;
+   bool radioDecoderEnabled = false;
+
    // default parameters for receivers
    QJsonObject defaultDeviceConfig = {
       {
          "radio.airspy", QJsonObject({
+            {"enabled", true},
+            {"centerFreq", 40680000},
+            {"sampleRate", 10000000},
+            {"gainMode", 1}, // linearity
+            {"gainValue", 4}, // 4db
+            {"mixerAgc", 0},
+            {"tunerAgc", 0},
+            {"biasTee", 0},
+            {"directSampling", 0}
+         })
+      },
+      {
+         "radio.hydrasdr", QJsonObject({
             {"enabled", true},
             {"centerFreq", 40680000},
             {"sampleRate", 10000000},
@@ -370,7 +391,7 @@ struct QtControl::Impl
             // start recorder and...
             taskRecorderWrite({{"storagePath", storagePath}}, [=] {
 
-               if (!logicDeviceType.isEmpty())
+               if (!logicDeviceType.isEmpty() && logicDeviceEnabled)
                {
                   // start decoder and...
                   taskLogicDecoderStart([=] {
@@ -380,7 +401,7 @@ struct QtControl::Impl
                                         });
                }
 
-               if (!radioDeviceType.isEmpty())
+               if (!radioDeviceType.isEmpty() && radioDeviceEnabled)
                {
                   // start decoder and...
                   taskRadioDecoderStart([=] {
@@ -399,7 +420,7 @@ struct QtControl::Impl
          // clear storage queue
          taskStorageClear([=] {
 
-            if (!logicDeviceType.isEmpty())
+            if (!logicDeviceType.isEmpty() && logicDeviceEnabled)
             {
                // start decoder and...
                taskLogicDecoderStart([=] {
@@ -409,7 +430,7 @@ struct QtControl::Impl
                                      });
             }
 
-            if (!radioDeviceType.isEmpty())
+            if (!radioDeviceType.isEmpty() && radioDeviceEnabled)
             {
                // start decoder and...
                taskRadioDecoderStart([=] {
@@ -938,6 +959,10 @@ struct QtControl::Impl
       {
          QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
 
+         // update enabled flag
+         if (status.contains("status"))
+            logicDeviceEnabled = status["status"].toString() != "disabled";
+
          // configure device for first time
          if (logicDeviceName != status["name"].toString())
          {
@@ -1004,6 +1029,9 @@ struct QtControl::Impl
       if (auto data = event.get<std::string>("data"))
       {
          QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         if (status.contains("status"))
+            logicDecoderEnabled = status["status"].toString() != "disabled";
 
          QtApplication::post(LogicDecoderStatusEvent::create(status));
       }
@@ -1077,6 +1105,11 @@ struct QtControl::Impl
       {
          const QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
 
+         // update enabled flag
+         if (status.contains("status"))
+            radioDeviceEnabled = status["status"].toString() != "disabled";
+
+         // configure device for first time
          if (radioDeviceName != status["name"].toString())
          {
             radioDeviceName = status["name"].toString();
@@ -1142,6 +1175,9 @@ struct QtControl::Impl
       if (const auto data = event.get<std::string>("data"))
       {
          const QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
+
+         if (status.contains("status"))
+            radioDecoderEnabled = status["status"].toString() != "disabled";
 
          QtApplication::post(RadioDecoderStatusEvent::create(status));
       }

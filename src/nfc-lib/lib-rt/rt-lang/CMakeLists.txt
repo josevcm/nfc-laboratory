@@ -7,6 +7,7 @@ add_library(rt-lang STATIC
         src/main/cpp/Executor.cpp
         src/main/cpp/FileSystem.cpp
         src/main/cpp/Format.cpp
+        src/main/cpp/Library.cpp
         src/main/cpp/Map.cpp
         src/main/cpp/Package.cpp
         src/main/cpp/Worker.cpp

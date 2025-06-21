@@ -3,12 +3,12 @@
      height="24"
      viewBox="0 0 24 24"
      stroke-width="2"
-     stroke="#ff6644"
+     stroke="#D95F5F"
      fill="none"
      stroke-linecap="round"
      stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z" fill="ff8844"/>
-  <path d="M8 5.072a8 8 0 1 1 -3.995 7.213l-.005 -.285l.005 -.285a8 8 0 0 1 3.995 -6.643z" fill="#ff6644" />
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <path d="M8 5.072a8 8 0 1 1 -3.995 7.213l-.005 -.285l.005 -.285a8 8 0 0 1 3.995 -6.643z" fill="#D95F5F" />
 </svg>
 
 

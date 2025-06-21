@@ -119,7 +119,7 @@ struct AirspyDevice::Impl
    {
       airspy_device *handle = nullptr;
 
-      if (mode != RadioDevice::Read)
+      if (mode != Read)
       {
          log->warn("invalid device mode [{}]", {mode});
          return false;

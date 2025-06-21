@@ -835,8 +835,8 @@ static int airspy_open_init(airspy_device_t** device, uint64_t serial_number)
 		return AIRSPY_ERROR_NO_MEM;
 	}
 
-	lib_device->cnv_f = iqconverter_float_create(HB_KERNEL_FLOAT, HB_KERNEL_FLOAT_LEN);
-	lib_device->cnv_i = iqconverter_int16_create(HB_KERNEL_INT16, HB_KERNEL_INT16_LEN);
+	lib_device->cnv_f = iqconverter_float_create(AIRSPY_HB_KERNEL_FLOAT, AIRSPY_HB_KERNEL_FLOAT_LEN);
+	lib_device->cnv_i = iqconverter_int16_create(AIRSPY_HB_KERNEL_INT16, AIRSPY_HB_KERNEL_INT16_LEN);
 
 	pthread_cond_init(&lib_device->consumer_cv, NULL);
 	pthread_mutex_init(&lib_device->consumer_mp, NULL);

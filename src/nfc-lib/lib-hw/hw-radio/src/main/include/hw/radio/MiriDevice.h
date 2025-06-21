@@ -47,7 +47,7 @@ class MiriDevice : public RadioDevice
 
       explicit MiriDevice(const std::string &name);
 
-      bool open(Device::Mode mode) override;
+      bool open(Mode mode) override;
 
       void close() override;
 

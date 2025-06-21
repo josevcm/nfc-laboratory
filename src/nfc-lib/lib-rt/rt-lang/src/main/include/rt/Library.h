@@ -1,8 +1,8 @@
 /*
 
-  This file is part of NFC-LABORATORY.
+This file is part of NFC-LABORATORY.
 
-  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+  Copyright (C) 2025 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,28 +19,35 @@
 
 */
 
-#ifndef APP_QTCONTROL_H
-#define APP_QTCONTROL_H
+#ifndef LIBRARY_H
+#define LIBRARY_H
 
-#include <QObject>
-#include <QSettings>
-#include <QSharedPointer>
+#include <memory>
 
-class QtControl : public QObject
+namespace rt {
+
+// TODO: WORK IN PROGRESS...
+class Library
 {
-      Q_OBJECT
-
-      struct Impl;
+   struct Impl;
 
    public:
 
-      explicit QtControl();
+      Library(const std::string &name);
 
-      void handleEvent(QEvent *event);
+      ~Library();
+
+      bool isLoaded() const;
+
+      template <typename T>
+      T resolve(const std::string &symbol);
 
    private:
 
-      QSharedPointer<Impl> impl;
+      std::shared_ptr<Impl> impl;
+
 };
 
-#endif //APP_QTCONTROL_H
+}
+
+#endif //LIBRARY_H
