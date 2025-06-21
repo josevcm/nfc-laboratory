@@ -218,7 +218,7 @@ struct IsoDecoderStatus
    unsigned int sampleRate = 0;
 
    // signal master clock
-   unsigned int signalClock = 0;
+   unsigned int signalClock = -1;
 
    // reference time for all decoded frames
    unsigned int streamTime = 0;
