@@ -360,7 +360,7 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
    }
 };
 
-FourierProcessTask::FourierProcessTask() : Worker("FourierProcessTask")
+FourierProcessTask::FourierProcessTask() : Worker("FourierProcess")
 {
 }
 

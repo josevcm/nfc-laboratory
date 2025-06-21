@@ -345,7 +345,7 @@ struct LogicDecoderTask::Impl : LogicDecoderTask, AbstractTask
    }
 };
 
-LogicDecoderTask::LogicDecoderTask() : Worker("LogicDecoderTask")
+LogicDecoderTask::LogicDecoderTask() : Worker("LogicDecoder")
 {
 }
 

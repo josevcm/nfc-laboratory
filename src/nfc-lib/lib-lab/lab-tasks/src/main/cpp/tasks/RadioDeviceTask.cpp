@@ -691,7 +691,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
    }
 };
 
-RadioDeviceTask::RadioDeviceTask() : Worker("RadioDeviceTask")
+RadioDeviceTask::RadioDeviceTask() : Worker("RadioDevice")
 {
 }
 

@@ -123,7 +123,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       }
 
       // trace task throughput
-      if ((std::chrono::steady_clock::now() - lastStatus) > std::chrono::milliseconds(1000))
+      if (std::chrono::steady_clock::now() - lastStatus > std::chrono::milliseconds(1000))
       {
          if (taskThroughput.average() > 0)
             log->info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
@@ -273,7 +273,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
    }
 };
 
-SignalResamplingTask::SignalResamplingTask() : Worker("AdaptiveSamplingTask")
+SignalResamplingTask::SignalResamplingTask() : Worker("SignalResampling")
 {
 }
 

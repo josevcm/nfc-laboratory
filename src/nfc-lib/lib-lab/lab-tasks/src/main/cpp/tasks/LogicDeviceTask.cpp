@@ -486,7 +486,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
    }
 };
 
-LogicDeviceTask::LogicDeviceTask() : Worker("LogicDeviceTask")
+LogicDeviceTask::LogicDeviceTask() : Worker("LogicDevice")
 {
 }
 
