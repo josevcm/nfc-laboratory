@@ -39,8 +39,6 @@
 #include "events/SystemShutdownEvent.h"
 #include "events/DecoderControlEvent.h"
 
-#include "dialogs/LicenseDialog.h"
-
 #include "QtApplication.h"
 
 struct QtApplication::Impl

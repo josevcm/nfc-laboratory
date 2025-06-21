@@ -52,7 +52,6 @@
 #include <events/SystemStartupEvent.h>
 
 #include <dialogs/InspectDialog.h>
-#include <dialogs/LicenseDialog.h>
 
 #include <styles/Theme.h>
 

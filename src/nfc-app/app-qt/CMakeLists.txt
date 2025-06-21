@@ -40,7 +40,6 @@ set(SOURCES
         src/main/cpp/events/SystemStartupEvent.cpp
         src/main/cpp/dialogs/ConfigDialog.cpp
         src/main/cpp/dialogs/InspectDialog.cpp
-        src/main/cpp/dialogs/LicenseDialog.cpp
         src/main/cpp/features/Caps.cpp
         src/main/cpp/format/DataFormat.cpp
         src/main/cpp/graph/AxisLabel.cpp
