@@ -34,11 +34,13 @@ class TraceStorageTask : public rt::Worker
       {
          Clear,
          Read,
-         Write
+         Write,
+         Config,
       };
 
       enum Status
       {
+         Idle,
          Reading,
          Writing,
          Progress,

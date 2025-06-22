@@ -19,6 +19,10 @@
 
 */
 
+#include <fstream>
+#include <iostream>
+#include <cstdio>
+
 #include <rt/Format.h>
 #include <rt/Package.h>
 #include <rt/FileSystem.h>
@@ -59,6 +63,12 @@ struct SampleHdr
    uint32_t info[6];
 };
 
+struct Sample
+{
+   unsigned char value;
+   unsigned short offset;
+};
+
 struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 {
    // out storage subject for frames
@@ -85,8 +95,14 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
    rt::BlockingQueue<RawFrame> frameQueue;
 
    // signal stream queue buffer
+   rt::BlockingQueue<hw::SignalBuffer> signalQueue;
    rt::BlockingQueue<hw::SignalBuffer> logicSignalQueue;
    rt::BlockingQueue<hw::SignalBuffer> radioSignalQueue;
+
+   // temp files
+   std::string tempPath = "./temp/";
+   std::map<std::string, std::fstream> cacheFiles;
+   std::map<std::string, unsigned long> cacheOffset;
 
    Impl() : AbstractTask("worker.TraceStorage", "storage")
    {
@@ -113,25 +129,40 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
       // subscribe to signal events
       adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-         // if (buffer.isValid())
-         // {
-         //    switch (buffer.type())
-         //    {
-         //       case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
-         //          logicSignalQueue.add(buffer);
-         //          break;
-         //       case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
-         //          radioSignalQueue.add(buffer);
-         //          break;
-         //       default:
-         //          break;
-         //    }
-         // }
+         if (buffer.isValid())
+         {
+            switch (buffer.type())
+            {
+               case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
+               case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
+                  signalQueue.add(buffer);
+                  break;
+               // case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
+               //    logicSignalQueue.add(buffer);
+               //    break;
+               // case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
+               //    radioSignalQueue.add(buffer);
+               //    break;
+               default:
+                  break;
+            }
+         }
       });
+   }
+
+   ~Impl() override
+   {
+      // close all temp files
+      for (auto &entry: cacheFiles)
+      {
+         if (entry.second.is_open())
+            entry.second.close();
+      }
    }
 
    void start() override
    {
+      updateStorageStatus(Idle);
    }
 
    void stop() override
@@ -150,15 +181,19 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          switch (command->code)
          {
             case Read:
-               readFile(command.value());
+               readTrace(command.value());
                break;
 
             case Write:
-               writeFile(command.value());
+               writeTrace(command.value());
                break;
 
             case Clear:
-               clearQueue(command.value());
+               clearTrace(command.value());
+               break;
+
+            case Config:
+               configTrace(command.value());
                break;
 
             default:
@@ -168,12 +203,73 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          }
       }
 
-      wait(50);
+      processQueue();
 
       return true;
    }
 
-   void readFile(const rt::Event &command)
+   void processQueue()
+   {
+      if (const auto buffer = signalQueue.get(50))
+      {
+         switch (buffer->type())
+         {
+            case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
+               appendLogicSignal(*buffer);
+               break;
+            case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
+               appendRadioSignal(*buffer);
+               break;
+            default:
+               break;
+         }
+      }
+   }
+
+   void appendLogicSignal(const hw::SignalBuffer &buffer)
+   {
+      std::string name = "logic-" + std::to_string(buffer.id());
+
+      // get temp file for this channel
+      auto &tempFile = cacheFile(name);
+
+      // write to temp file
+      if (!tempFile.is_open())
+         return;
+
+      log->info("append logic signal buffer [{}]: {} length {}", {buffer.id(), buffer.offset(), buffer.elements()});
+
+      // last and current sample
+      Sample sample {};
+      unsigned long lastOffset = cacheOffset[name];
+
+      for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
+      {
+         auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
+
+         // write sample data (offset, sample
+         sample.value = static_cast<unsigned char>(buffer[i + 0] > 0.5 ? 1 : 0);
+         sample.offset = static_cast<unsigned short>(offset - lastOffset);
+
+         // write differential sample to temp file
+         tempFile.write(reinterpret_cast<const char *>(&sample), sizeof(sample));
+
+         // update differential values
+         lastOffset = offset;
+      }
+
+      // flush temp file
+      tempFile.flush();
+
+      // update last offset
+      cacheOffset[name] = lastOffset;
+   }
+
+   void appendRadioSignal(const hw::SignalBuffer &buffer)
+   {
+   }
+
+   void readTrace(const rt::Event &command)
    {
       int error = MissingParameters;
 
@@ -208,7 +304,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       command.reject(error, storageError.at(error));
    }
 
-   void writeFile(const rt::Event &command)
+   void writeTrace(const rt::Event &command)
    {
       int error = MissingParameters;
 
@@ -239,7 +335,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       command.reject(error);
    }
 
-   void clearQueue(const rt::Event &command)
+   void clearTrace(const rt::Event &command)
    {
       log->info("clear {} entries from frame cache", {frameQueue.size()});
       frameQueue.clear();
@@ -253,6 +349,21 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       log->info("clear all entries completed!");
 
       command.resolve();
+   }
+
+   void configTrace(const rt::Event &command)
+   {
+      if (auto data = command.get<std::string>("data"))
+      {
+         auto config = json::parse(data.value());
+
+         if (config.contains("tempPath"))
+         {
+            tempPath = config["tempPath"];
+
+            log->info("change temp path: {}", {tempPath});
+         }
+      }
    }
 
    int readTraceFile(const std::string &file)
@@ -646,7 +757,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       unsigned int sampleCount = 0;
 
       // initialize header
-      SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 2, .info = {}};
+      SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 3, .info = {}};
 
       // header buffer
       hw::SignalBuffer header;
@@ -688,7 +799,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
       hdr.info[INFO_TOTAL_SAMPLES] = sampleCount;
 
-      unsigned int size = sizeof(hdr) + sampleCount * 2;
+      unsigned int size = sizeof(hdr) + sampleCount * 3; // 2 byte time delta + 1 byte sample delta
 
       log->info("add logic entry {} with size {}", {name, size});
       log->debug("\tstream id....: {}", {hdr.info[INFO_STREAM_ID]});
@@ -1026,6 +1137,27 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       }
 
       return NoError;
+   }
+
+   std::fstream &cacheFile(const std::string &name)
+   {
+      // get temp file for this channel or create a new one if it does not exist
+      if (cacheFiles.find(name) == cacheFiles.end())
+      {
+         log->info("create new temp file for: {}", {name});
+
+         rt::FileSystem::createPath(tempPath);
+
+         std::string fileName = tempPath + "/" + name + ".dat";
+         std::fstream tempFile(fileName, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+
+         cacheFiles.emplace(name, std::move(tempFile));
+
+         if (!cacheFiles[name].is_open())
+            log->error("failed to open temp file: {}", {fileName});
+      }
+
+      return cacheFiles[name];
    }
 
    int writeRadioData(rt::Package &package, double timeStart, double timeEnd)
