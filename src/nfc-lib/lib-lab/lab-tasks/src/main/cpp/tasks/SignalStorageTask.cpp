@@ -112,15 +112,15 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
          switch (command->code)
          {
             case Read:
-               storageRead(command.value());
+               readStorage(command.value());
                break;
 
             case Write:
-               storageWrite(command.value());
+               writeStorage(command.value());
                break;
 
             case Stop:
-               storageClose(command.value());
+               closeStorage(command.value());
                break;
 
             default:
@@ -149,7 +149,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       return true;
    }
 
-   void storageRead(const rt::Event &command)
+   void readStorage(const rt::Event &command)
    {
       int error = MissingParameters;
 
@@ -208,7 +208,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       updateStorageStatus(Idle);
    }
 
-   void storageWrite(const rt::Event &command)
+   void writeStorage(const rt::Event &command)
    {
       int error = MissingParameters;
 
@@ -244,7 +244,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       updateStorageStatus(Idle);
    }
 
-   void storageClose(const rt::Event &command)
+   void closeStorage(const rt::Event &command)
    {
       if (logicStorage)
       {
