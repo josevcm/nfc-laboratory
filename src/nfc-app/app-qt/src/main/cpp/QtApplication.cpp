@@ -243,11 +243,34 @@ void QtApplication::post(QEvent *event, int priority)
       postEvent(instance(), event, priority);
 }
 
-QString QtApplication::dataPath()
+QDir QtApplication::dataPath()
 {
-   QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data");
+   return {QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data"};
+}
 
-   return dataPath.absolutePath();
+QDir QtApplication::tempPath()
+{
+   return {QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/tmp"};
+}
+
+QFile QtApplication::dataFile(const QString &fileName)
+{
+   QDir dataPath = QtApplication::dataPath();
+
+   if (!dataPath.exists())
+      dataPath.mkpath(".");
+
+   return {dataPath.absoluteFilePath(fileName)};
+}
+
+QFile QtApplication::tempFile(const QString &fileName)
+{
+   QDir tempPath = QtApplication::tempPath();
+
+   if (!tempPath.exists())
+      tempPath.mkpath(".");
+
+   return {tempPath.absoluteFilePath(fileName)};
 }
 
 void QtApplication::customEvent(QEvent *event)

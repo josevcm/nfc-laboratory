@@ -22,14 +22,14 @@
 #ifndef APP_QTAPPLICATION_H
 #define APP_QTAPPLICATION_H
 
-#include <QSettings>
+#include <QDir>
+#include <QFile>
 #include <QApplication>
-#include <QMainWindow>
 #include <QSharedPointer>
 
 class QtApplication : public QApplication
 {
-   Q_OBJECT
+      Q_OBJECT
 
       struct Impl;
 
@@ -39,7 +39,15 @@ class QtApplication : public QApplication
 
       static void post(QEvent *event, int priority = Qt::NormalEventPriority);
 
-      static QString dataPath();
+      static QDir dataPath();
+
+      static QFile dataFile(const QString &fileName);
+
+      static QDir tempPath();
+
+      static QFile tempFile(const QString &fileName);
+
+      void handleEvent(QEvent *event) const;
 
    protected:
 

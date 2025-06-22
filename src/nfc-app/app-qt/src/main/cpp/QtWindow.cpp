@@ -1696,9 +1696,9 @@ struct QtWindow::Impl
    {
       qInfo() << "open file";
 
-      QString dataPath = QtApplication::dataPath();
+      QDir dataPath = QtApplication::dataPath();
 
-      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath, tr("Capture (*.wav *.trz)"));
+      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath.absolutePath(), tr("Capture (*.wav *.trz)"));
 
       if (fileName.isEmpty())
          return;
@@ -1770,7 +1770,7 @@ struct QtWindow::Impl
    {
       qInfo() << "open storage folder";
 
-      QDesktopServices::openUrl(QUrl::fromLocalFile(QtApplication::dataPath()));
+      QDesktopServices::openUrl(QUrl::fromLocalFile(QtApplication::dataPath().absolutePath()));
    }
 
    void openConfig() const
@@ -1817,7 +1817,7 @@ struct QtWindow::Impl
       // start decoder
       if (recording || settings.value("settings/recordEnabled", false).toBool())
       {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath()}}));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath().absolutePath()}}));
       }
       else
       {
