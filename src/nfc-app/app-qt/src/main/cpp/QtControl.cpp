@@ -294,6 +294,8 @@ struct QtControl::Impl
          if (allowedFeatures.match(Caps::RADIO_SPECTRUM).hasMatch())
             fourierInitialize();
       }
+
+      storageInitialize();
    }
 
    /*
@@ -1238,9 +1240,19 @@ struct QtControl::Impl
    }
 
    /*
+    * setup storage task
+    */
+   void storageInitialize() const
+   {
+      QJsonObject config {{"tempPath", QtApplication::tempPath().absolutePath()}};
+
+      taskStorageConfig(config);
+   }
+
+   /*
     * process storage status event
     */
-   void storageStatusChange(const rt::Event &event)
+   void storageStatusChange(const rt::Event &event) const
    {
       if (const auto data = event.get<std::string>("data"))
       {
@@ -1550,6 +1562,18 @@ struct QtControl::Impl
       qInfo() << "stop recorder task";
 
       recorderCommandStream->next({lab::SignalStorageTask::Stop, onComplete, onReject});
+   }
+
+   /*
+    * config storage task
+    */
+   void taskStorageConfig(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      const QJsonDocument doc(data);
+
+      qInfo() << "configure storage task";
+
+      storageCommandStream->next({lab::TraceStorageTask::Config, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
