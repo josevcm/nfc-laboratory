@@ -393,25 +393,8 @@ struct QtControl::Impl
             // start recorder and...
             taskRecorderWrite({{"storagePath", storagePath}}, [=] {
 
-               if (!logicDeviceType.isEmpty() && logicDeviceEnabled)
-               {
-                  // start decoder and...
-                  taskLogicDecoderStart([=] {
-                                           taskLogicDeviceStart();
-                                        }, [=](int, const std::string &) {
-                                           taskLogicDeviceStart();
-                                        });
-               }
-
-               if (!radioDeviceType.isEmpty() && radioDeviceEnabled)
-               {
-                  // start decoder and...
-                  taskRadioDecoderStart([=] {
-                                           taskRadioDeviceStart();
-                                        }, [=](int, const std::string &) {
-                                           taskRadioDeviceStart();
-                                        });
-               }
+               // ...start logic and radio devices
+               startDecoders();
             });
          });
       }
@@ -422,25 +405,8 @@ struct QtControl::Impl
          // clear storage queue
          taskStorageClear([=] {
 
-            if (!logicDeviceType.isEmpty() && logicDeviceEnabled)
-            {
-               // start decoder and...
-               taskLogicDecoderStart([=] {
-                                        taskLogicDeviceStart();
-                                     }, [=](int, const std::string &) {
-                                        taskLogicDeviceStart();
-                                     });
-            }
-
-            if (!radioDeviceType.isEmpty() && radioDeviceEnabled)
-            {
-               // start decoder and...
-               taskRadioDecoderStart([=] {
-                                        taskRadioDeviceStart();
-                                     }, [=](int, const std::string &) {
-                                        taskRadioDeviceStart();
-                                     });
-            }
+            // ...start logic and radio devices
+            startDecoders();
          });
       }
    }
@@ -756,7 +722,7 @@ struct QtControl::Impl
             return;
          }
 
-         unsigned int channelCount = std::get<unsigned int>(file.get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
+         const unsigned int channelCount = std::get<unsigned int>(file.get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
 
          // clear storage queue
          taskStorageClear([=] {
@@ -764,17 +730,31 @@ struct QtControl::Impl
             // if contains 4 channels... trigger logic decoder start
             if (channelCount >= 3)
             {
-               taskLogicDecoderStart([=] {
+               if (logicDecoderEnabled)
+               {
+                  taskLogicDecoderStart([=] {
+                     taskRecorderRead(command);
+                  });
+               }
+               else
+               {
                   taskRecorderRead(command);
-               });
+               }
             }
 
             // if contains 1 or 2 channels... trigger radio decoder start
             else if (channelCount <= 2)
             {
-               taskRadioDecoderStart([=] {
+               if (radioDecoderEnabled)
+               {
+                  taskRadioDecoderStart([=] {
+                     taskRecorderRead(command);
+                  });
+               }
+               else
+               {
                   taskRecorderRead(command);
-               });
+               }
             }
          });
       }
@@ -824,6 +804,42 @@ struct QtControl::Impl
 
       // clear storage
       taskStorageClear();
+   }
+
+   /*
+    * start logic / radio decoders using configured flags
+    */
+   void startDecoders()
+   {
+      // start logic decoder task
+      if (logicDeviceEnabled && !logicDeviceType.isEmpty())
+      {
+         if (logicDecoderEnabled)
+         {
+            taskLogicDecoderStart([=] {
+               taskLogicDeviceStart();
+            });
+         }
+         else
+         {
+            taskLogicDeviceStart();
+         }
+      }
+
+      // start radio decoder task
+      if (radioDeviceEnabled && !radioDeviceType.isEmpty())
+      {
+         if (radioDecoderEnabled)
+         {
+            taskRadioDecoderStart([=] {
+               taskRadioDeviceStart();
+            });
+         }
+         else
+         {
+            taskRadioDeviceStart();
+         }
+      }
    }
 
    /*
