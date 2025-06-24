@@ -849,6 +849,7 @@ struct QtWindow::Impl
 
       const bool fourierTaskEnabled = fourierStatus != FourierStatusEvent::Disabled;
 
+      const bool devicePaused = logicDeviceStatus == LogicDeviceStatusEvent::Paused || radioDeviceStatus == RadioDeviceStatusEvent::Paused;
       const bool deviceStreaming = logicDeviceStatus == LogicDeviceStatusEvent::Streaming || radioDeviceStatus == RadioDeviceStatusEvent::Streaming;
       const bool decoderStreaming = logicDecoderStatus == LogicDecoderStatusEvent::Decoding || radioDecoderStatus == RadioDecoderStatusEvent::Decoding;
 
@@ -860,7 +861,7 @@ struct QtWindow::Impl
       ui->featureRadioSpectrum->setChecked(fourierTaskEnabled);
 
       // disable / enable actions based on streaming status
-      if (deviceStreaming || decoderStreaming)
+      if (devicePaused || deviceStreaming || decoderStreaming)
       {
          // disable features during streaming
          ui->featureLogicAcquire->setEnabled(false);
@@ -873,7 +874,7 @@ struct QtWindow::Impl
          ui->actionListen->setEnabled(false);
          ui->actionRecord->setEnabled(false);
          ui->actionStop->setEnabled(true);
-         ui->actionPause->setEnabled(decoderStreaming);
+         ui->actionPause->setEnabled(true);
 
          // disable acquire limit combo
          acquireLimit->setEnabled(false);
