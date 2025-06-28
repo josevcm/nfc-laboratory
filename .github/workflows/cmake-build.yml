@@ -6,6 +6,7 @@ on:
       - '*' # any tag
     branches:
       - develop
+      - feature/*
 
 jobs:
   build:
@@ -27,8 +28,8 @@ jobs:
         shell: bash
         run: |
           echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-          echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
-          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && 'latest' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-version=${{ (startsWith(github.ref_name, 'master') || startsWith(github.ref_name, 'develop') || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-name=${{ (startsWith(github.ref_name, 'master') || startsWith(github.ref_name, 'develop') || startsWith(github.ref_name, 'feature')) && 'latest' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
       - name: 'Set reusable strings (Windows)'

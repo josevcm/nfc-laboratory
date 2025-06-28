@@ -2,11 +2,11 @@ name: CMake for windows platform
 
 on:
   push:
-    tags:
-      - '*' # any tag
-    branches:
-      - master
-      - feature/*
+#    tags:
+#      - '*' # any tag
+#    branches:
+#      - master
+#      - feature/*
 
 jobs:
   build:
