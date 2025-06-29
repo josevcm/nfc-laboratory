@@ -198,8 +198,8 @@ jobs:
         with:
           draft: false
           prerelease: true
-          name: Latest Build ${{ github.run_number }}
-          tag_name: Latest-${{ github.run_number }}
+          name: Snapshot Build
+          tag_name: snapshot-build
           files: ./release/*
           body: |
             This is the latest snapshot build for version ${{ github.ref }}.
