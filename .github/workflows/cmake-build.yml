@@ -1,4 +1,4 @@
-name: CMake for Ubuntu platform
+name: Multiplatform Build and Release
 
 on:
   push:
@@ -9,21 +9,19 @@ on:
       - feature/*
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, windows-latest ]
-        build_type: [ Release ]
+  build-linux:
+
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: linux-artifact
 
     steps:
 
-      - name: 'Check out code (Common)'
+      - name: 'Check out code'
         uses: actions/checkout@v4
 
-      - name: 'Set reusable strings (Common)'
+      - name: 'Set reusable strings'
         id: strings-common
         shell: bash
         run: |
@@ -32,11 +30,33 @@ jobs:
           echo "build-version=${{ (startsWith(github.ref_name, 'master') || startsWith(github.ref_name, 'develop') || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
-      - name: 'Set reusable strings (Windows)'
-        if: runner.os == 'Windows'
-        id: strings-windows
+      - name: 'Install dependencies'
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
+
+      - name: 'Build project'
+        run: |
+          dpkg-buildpackage -us -uc -j${{ steps.strings-common.outputs.cpu-count }} 
+
+  build-windows:
+
+    runs-on: windows-latest
+    outputs:
+      artifact-name: windows-artifact
+
+    steps:
+
+      - name: 'Check out code'
+        uses: actions/checkout@v4
+
+      - name: 'Set reusable strings'
+        id: strings-common
         shell: bash
         run: |
+          echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+          echo "build-name=${{ (startsWith(github.ref_name, 'master') || startsWith(github.ref_name, 'develop') || startsWith(github.ref_name, 'feature')) && 'latest' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-version=${{ (startsWith(github.ref_name, 'master') || startsWith(github.ref_name, 'develop') || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "qt-dir=${{ github.workspace }}/qt/6.7.2/mingw_64" >> "$GITHUB_OUTPUT"
           echo "ninja-dir=${{ github.workspace }}/tools/ninja" >> "$GITHUB_OUTPUT"
           echo "cmake-dir=${{ github.workspace }}/tools/cmake_64" >> "$GITHUB_OUTPUT"
@@ -45,10 +65,10 @@ jobs:
           echo "package-dir=${{ github.workspace }}/build/installer/package" >> "$GITHUB_OUTPUT"
           echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-lab/data" >> "$GITHUB_OUTPUT"
           echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-lab/meta" >> "$GITHUB_OUTPUT"
+          echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
-      - name: 'Cache dependencies (Windows)'
+      - name: 'Cache dependencies'
         id: cache-dependencies
-        if: runner.os == 'Windows'
         uses: actions/cache@v4
         with:
           key: ${{ runner.os }}-qt-dependencies
@@ -56,14 +76,8 @@ jobs:
             ${{ github.workspace }}/qt
             ${{ github.workspace }}/tools
 
-      - name: 'Install dependencies (Ubuntu)'
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt update
-          sudo apt install -y build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
-
-      - name: 'Install dependencies (Windows)'
-        if: runner.os == 'Windows' && steps.cache-dependencies.outputs.cache-hit != 'true'
+      - name: 'Install dependencies'
+        if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
           choco install aqt -y --no-progress -r
           aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ github.workspace }}/qt
@@ -72,13 +86,7 @@ jobs:
           aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ github.workspace }}
 
-      - name: 'Build project (Ubuntu)'
-        if: runner.os == 'Linux'
-        run: |
-          dpkg-buildpackage -us -uc -j${{ steps.strings-common.outputs.cpu-count }} 
-
-      - name: 'Build project (Windows)'
-        if: runner.os == 'Windows'
+      - name: 'Build project'
         run: |
           ${{ steps.strings-windows.outputs.cmake-dir }}/bin/cmake `
             -S ${{ github.workspace }} `
@@ -94,8 +102,7 @@ jobs:
             --build ${{ steps.strings-common.outputs.build-dir }} `
             --target nfc-lab --parallel ${{ steps.strings-common.outputs.cpu-count }} 
 
-      - name: 'Create installer (Windows)'
-        if: runner.os == 'Windows'
+      - name: 'Create installer'
         run: |
           # create installer folders
           New-Item -Force -ItemType "directory" -Path ${{ steps.strings-windows.outputs.package-data-dir }}
@@ -133,45 +140,45 @@ jobs:
             -p ${{ steps.strings-windows.outputs.package-dir }} `
             ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
 
-#      - name: 'Upload artifact (Windows)'
-#        if: runner.os == 'Windows'
-#        uses: actions/upload-artifact@v4
+      #      - name: 'Upload artifact (Windows)'
+      #        if: runner.os == 'Windows'
+      #        uses: actions/upload-artifact@v4
+      #        with:
+      #          name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+      #          path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+      #          overwrite: true
+
+#      - name: 'Create release (Tag)'
+#        if: github.ref_type == 'tag'
+#        uses: softprops/action-gh-release@v2
+#        id: create-release
 #        with:
-#          name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-#          path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-#          overwrite: true
-
-      - name: 'Create release (Tag)'
-        if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
-        id: create-release
-        with:
-          draft: false
-          prerelease: false
-          name: Latest Build ${{ github.run_number }}
-          tag_name: Latest-${{ github.run_number }}
-          body: |
-            This is the latest snapshot build for version ${{ github.ref }}.
-          files: |
-            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 'Create release (Snapshot)'
-        if: github.ref_type != 'tag'
-        uses: softprops/action-gh-release@v2
-        id: create-release
-        with:
-          draft: false
-          prerelease: true
-          name: Latest Build ${{ github.run_number }}
-          tag_name: Latest-${{ github.run_number }}
-          body: |
-            This is the latest snapshot build for version ${{ github.ref }}.
-          files: |
-            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          draft: false
+#          prerelease: false
+#          name: Latest Build ${{ github.run_number }}
+#          tag_name: Latest-${{ github.run_number }}
+#          body: |
+#            This is the latest snapshot build for version ${{ github.ref }}.
+#          files: |
+#            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: 'Create release (Snapshot)'
+#        if: github.ref_type != 'tag'
+#        uses: softprops/action-gh-release@v2
+#        id: create-release
+#        with:
+#          draft: false
+#          prerelease: true
+#          name: Latest Build ${{ github.run_number }}
+#          tag_name: Latest-${{ github.run_number }}
+#          body: |
+#            This is the latest snapshot build for version ${{ github.ref }}.
+#          files: |
+#            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 #      - name: 'Create release (Common)'
 #        if: startsWith(github.ref, 'refs/tags/')
