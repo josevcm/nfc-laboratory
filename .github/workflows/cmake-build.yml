@@ -152,7 +152,7 @@ jobs:
       - name: 'Create release (Tag)'
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
-        id: create-release
+        id: create-release-tag
         with:
           draft: false
           prerelease: false
@@ -168,7 +168,7 @@ jobs:
       - name: 'Create release (Snapshot)'
         if: github.ref_type != 'tag'
         uses: softprops/action-gh-release@v2
-        id: create-release
+        id: create-release-snapshot
         with:
           draft: false
           prerelease: true
