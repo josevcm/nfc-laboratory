@@ -10,6 +10,9 @@ on:
 
 jobs:
 
+  #
+  # Linux build job
+  #
   build-linux:
 
     runs-on: ubuntu-latest
@@ -25,7 +28,6 @@ jobs:
         id: strings-linux
         shell: bash
         run: |
-          echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
           echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && 'snapshot' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
@@ -44,14 +46,13 @@ jobs:
           sudo apt update
           sudo apt install -y devscripts build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
 
-      - name: 'Set version'
+      - name: 'Build project'
         run: |
+          export DEBEMAIL="josevcm@gmail.com"
+          export DEBFULLNAME="Jose Vicente Campos"
           echo "Setting version: ${{ steps.strings-linux.outputs.build-version }}"
           dch --create --package nfc-lab --newversion "${{ steps.strings-linux.outputs.build-version }}" "Automated build"
           dch --release --distribution unstable ""
-
-      - name: 'Build project'
-        run: |
           dpkg-buildpackage -us -uc -j${{ steps.strings-linux.outputs.cpu-count }} 
 
       - name: Show output files
@@ -61,8 +62,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-artifact
-          path: ${{ github.workspace }}/nfc-lab_${{ steps.strings-linux.outputs.build-version }}_*.deb
+          path: ../*.deb
 
+  #
+  # Windows build job
+  #
   build-windows:
 
     runs-on: windows-latest
@@ -170,6 +174,9 @@ jobs:
           name: windows-artifact
           path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
 
+  #
+  # Create release job
+  #
   create-release:
 
     runs-on: ubuntu-latest
@@ -179,11 +186,11 @@ jobs:
 
     steps:
 
-#      - name: Download Linux Artifact
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: linux-artifact
-#          path: ./release
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-artifact
+          path: ./release
 
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
@@ -220,94 +227,3 @@ jobs:
             This is the latest snapshot build for version ${{ github.ref }}.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      #      - name: 'Create release (Common)'
-      #        if: startsWith(github.ref, 'refs/tags/')
-      #        uses: actions/create-release@v1
-      #        id: create-release
-      #        with:
-      #          draft: false
-      #          prerelease: false
-      #          release_name: ${{ github.ref }}
-      #          tag_name: ${{ github.ref }}
-      #          body: |
-      #            This is the release for version ${{ github.ref }}.
-      #        env:
-      #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #
-      #      - name: 'Upload release (Windows)'
-      #        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
-      #        uses: actions/upload-release-asset@v1
-      #        with:
-      #          upload_url: ${{ steps.create-release.outputs.upload_url }}
-      #          asset_name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-      #          asset_path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-      #          asset_content_type: application/octet-stream
-      #        env:
-      #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
-      #      - name: 'Upload artifact (Windows)'
-      #        if: runner.os == 'Windows'
-      #        uses: actions/upload-artifact@v4
-      #        with:
-      #          name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-      #          path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-      #          overwrite: true
-
-#      - name: 'Create release (Tag)'
-#        if: github.ref_type == 'tag'
-#        uses: softprops/action-gh-release@v2
-#        id: create-release
-#        with:
-#          draft: false
-#          prerelease: false
-#          name: Latest Build ${{ github.run_number }}
-#          tag_name: Latest-${{ github.run_number }}
-#          body: |
-#            This is the latest snapshot build for version ${{ github.ref }}.
-#          files: |
-#            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#
-#      - name: 'Create release (Snapshot)'
-#        if: github.ref_type != 'tag'
-#        uses: softprops/action-gh-release@v2
-#        id: create-release
-#        with:
-#          draft: false
-#          prerelease: true
-#          name: Latest Build ${{ github.run_number }}
-#          tag_name: Latest-${{ github.run_number }}
-#          body: |
-#            This is the latest snapshot build for version ${{ github.ref }}.
-#          files: |
-#            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-#      - name: 'Create release (Common)'
-#        if: startsWith(github.ref, 'refs/tags/')
-#        uses: actions/create-release@v1
-#        id: create-release
-#        with:
-#          draft: false
-#          prerelease: false
-#          release_name: ${{ github.ref }}
-#          tag_name: ${{ github.ref }}
-#          body: |
-#            This is the release for version ${{ github.ref }}.
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#
-#      - name: 'Upload release (Windows)'
-#        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
-#        uses: actions/upload-release-asset@v1
-#        with:
-#          upload_url: ${{ steps.create-release.outputs.upload_url }}
-#          asset_name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-#          asset_path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-#          asset_content_type: application/octet-stream
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
