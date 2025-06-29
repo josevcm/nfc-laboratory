@@ -47,7 +47,7 @@ jobs:
       - name: 'Set version'
         run: |
           echo "Setting version: ${{ steps.strings-linux.outputs.build-version }}"
-          dch --create --package mypackage --newversion "${{ steps.strings-linux.outputs.build-version }}" "Automated build"
+          dch --create --package nfc-lab --newversion "${{ steps.strings-linux.outputs.build-version }}" "Automated build"
           dch --release --distribution unstable ""
 
       - name: 'Build project'
