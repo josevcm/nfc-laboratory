@@ -152,7 +152,7 @@ jobs:
       - name: 'Upload artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+          name: windows-artifact
           path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
 
   create-release:
