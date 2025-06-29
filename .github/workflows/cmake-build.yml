@@ -71,7 +71,7 @@ jobs:
         id: cache-dependencies
         uses: actions/cache@v4
         with:
-          key: ${{ runner.os }}-qt-dependencies
+          key: windows-latest-qt-dependencies
           path: |
             ${{ github.workspace }}/qt
             ${{ github.workspace }}/tools
