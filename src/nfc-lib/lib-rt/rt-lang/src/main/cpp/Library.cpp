@@ -58,7 +58,7 @@ struct Library::Impl
 #if defined(_WIN32)
       handle = LoadLibraryA(path.c_str());
 #else
-      impl->handle = dlopen(path.c_str(), RTLD_LAZY);
+      handle = dlopen(path.c_str(), RTLD_LAZY);
 #endif
 
       if (handle)
