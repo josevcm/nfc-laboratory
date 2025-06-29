@@ -57,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-artifact
-          path: ../*.deb
+          path: ${{ github.workspace }}/../*.deb
 
   #
   # Windows build job
@@ -167,7 +167,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: ../*.exe
+          path: ${{ github.workspace }}/../*.exe
 
   #
   # Create release job
