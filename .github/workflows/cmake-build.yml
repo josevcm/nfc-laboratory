@@ -30,6 +30,15 @@ jobs:
           echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
+      - name: 'Cache dependencies'
+        id: cache-dependencies
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-apt-cache-${{ hashFiles('**/debian/control') }}
+          restore-keys: ${{ runner.os }}-apt-cache-
+          path: |
+            /var/cache/apt/archives
+
       - name: 'Install dependencies'
         run: |
           sudo apt update
@@ -37,9 +46,8 @@ jobs:
 
       - name: 'Set version'
         run: |
-          VERSION=${{ steps.strings-linux.outputs.build-name }}
-          echo "Setting version: $VERSION"
-          dch --create --package mypackage --newversion "$VERSION" "Automated build"
+          echo "Setting version: ${{ steps.strings-linux.outputs.build-name }}"
+          dch --create --package mypackage --newversion "${{ steps.strings-linux.outputs.build-name }}" "Automated build"
           dch --release --distribution unstable ""
 
       - name: 'Build project'
@@ -87,7 +95,7 @@ jobs:
         id: cache-dependencies
         uses: actions/cache@v4
         with:
-          key: windows-latest-qt-dependencies
+          key: ${{ runner.os }}-qt-dependencies
           path: |
             ${{ github.workspace }}/qt
             ${{ github.workspace }}/tools
