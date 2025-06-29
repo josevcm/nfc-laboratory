@@ -36,8 +36,7 @@ jobs:
         id: cache-dependencies
         uses: actions/cache@v4
         with:
-          key: ${{ runner.os }}-apt-cache-${{ hashFiles('**/debian/control') }}
-          restore-keys: ${{ runner.os }}-apt-cache-
+          key: ${{ runner.os }}-apt-cache
           path: |
             /var/cache/apt/archives
 
@@ -50,13 +49,9 @@ jobs:
         run: |
           export DEBEMAIL="josevcm@gmail.com"
           export DEBFULLNAME="Jose Vicente Campos"
-          echo "Setting version: ${{ steps.strings-linux.outputs.build-version }}"
           dch --create --package nfc-lab --newversion "${{ steps.strings-linux.outputs.build-version }}" "Automated build"
           dch --release --distribution unstable ""
           dpkg-buildpackage -us -uc -j${{ steps.strings-linux.outputs.cpu-count }} 
-
-      - name: Show output files
-        run: ls -lh ..
 
       - name: 'Upload artifact'
         uses: actions/upload-artifact@v4
@@ -166,13 +161,13 @@ jobs:
             --verbose `
             -c ${{ steps.strings-windows.outputs.build-dir }}/installer/config/config.xml `
             -p ${{ steps.strings-windows.outputs.package-dir }} `
-            ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+            ../nfc-lab-${{ steps.strings-windows.outputs.build-version }}-x86_64.exe
 
       - name: 'Upload artifact'
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+          path: ../*.exe
 
   #
   # Create release job
@@ -214,7 +209,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Create release (Snapshot)'
-        if: github.ref_name == 'master' || github.ref_name == 'develop'
+        if: github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature/')
         uses: softprops/action-gh-release@v2
         id: create-release-snapshot
         with:
