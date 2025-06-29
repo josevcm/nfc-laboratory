@@ -26,14 +26,21 @@ jobs:
         shell: bash
         run: |
           echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && 'latest' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && 'snapshot' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
       - name: 'Install dependencies'
         run: |
           sudo apt update
-          sudo apt install -y build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
+          sudo apt install -y devscripts build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
+
+      - name: 'Set version'
+        run: |
+          VERSION=${{ steps.strings-linux.outputs.build-name }}
+          echo "Setting version: $VERSION"
+          dch --create --package mypackage --newversion "$VERSION" "Automated build"
+          dch --release --distribution unstable ""
 
       - name: 'Build project'
         run: |
@@ -42,11 +49,11 @@ jobs:
       - name: Show output files
         run: ls -lh ..
 
-#      - name: 'Upload artifact'
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
-#          path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+      - name: 'Upload artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifact
+          path: ${{ github.workspace }}/nfc-lab_${{ steps.strings-linux.outputs.build-name }}_*.deb
 
   build-windows:
 
@@ -64,7 +71,7 @@ jobs:
         shell: bash
         run: |
           echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && 'latest' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && 'snapshot' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "qt-dir=${{ github.workspace }}/qt/6.7.2/mingw_64" >> "$GITHUB_OUTPUT"
           echo "ninja-dir=${{ github.workspace }}/tools/ninja" >> "$GITHUB_OUTPUT"
@@ -192,7 +199,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Create release (Snapshot)'
-        if: github.ref_type != 'tag'
+        if: github.ref_name == 'master' || github.ref_name == 'develop'
         uses: softprops/action-gh-release@v2
         id: create-release-snapshot
         with:
