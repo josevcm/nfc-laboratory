@@ -133,35 +133,67 @@ jobs:
             -p ${{ steps.strings-windows.outputs.package-dir }} `
             ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
 
-      - name: 'Upload artifact (Windows)'
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-          path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-          overwrite: true
+#      - name: 'Upload artifact (Windows)'
+#        if: runner.os == 'Windows'
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+#          path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+#          overwrite: true
 
-      - name: 'Create release (Common)'
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/create-release@v1
+      - name: 'Create release (Tag)'
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
         id: create-release
         with:
           draft: false
           prerelease: false
-          release_name: ${{ github.ref }}
-          tag_name: ${{ github.ref }}
+          name: Latest Build ${{ github.run_number }}
+          tag_name: Latest-${{ github.run_number }}
           body: |
-            This is the release for version ${{ github.ref }}.
+            This is the latest snapshot build for version ${{ github.ref }}.
+          files: |
+            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 'Upload release (Windows)'
-        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-release-asset@v1
+      - name: 'Create release (Snapshot)'
+        if: github.ref_type != 'tag'
+        uses: softprops/action-gh-release@v2
+        id: create-release
         with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-          asset_path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
-          asset_content_type: application/octet-stream
+          draft: false
+          prerelease: true
+          name: Latest Build ${{ github.run_number }}
+          tag_name: Latest-${{ github.run_number }}
+          body: |
+            This is the latest snapshot build for version ${{ github.ref }}.
+          files: |
+            ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+#      - name: 'Create release (Common)'
+#        if: startsWith(github.ref, 'refs/tags/')
+#        uses: actions/create-release@v1
+#        id: create-release
+#        with:
+#          draft: false
+#          prerelease: false
+#          release_name: ${{ github.ref }}
+#          tag_name: ${{ github.ref }}
+#          body: |
+#            This is the release for version ${{ github.ref }}.
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: 'Upload release (Windows)'
+#        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
+#        uses: actions/upload-release-asset@v1
+#        with:
+#          upload_url: ${{ steps.create-release.outputs.upload_url }}
+#          asset_name: nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+#          asset_path: ${{ steps.strings-common.outputs.build-dir }}/nfc-lab-${{ steps.strings-common.outputs.build-name }}-installer-x86_64.exe
+#          asset_content_type: application/octet-stream
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
