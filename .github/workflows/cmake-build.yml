@@ -39,6 +39,15 @@ jobs:
         run: |
           dpkg-buildpackage -us -uc -j${{ steps.strings-linux.outputs.cpu-count }} 
 
+      - name: Show output files
+        run: ls -lh ..
+
+#      - name: 'Upload artifact'
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+#          path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+
   build-windows:
 
     runs-on: windows-latest
@@ -140,6 +149,12 @@ jobs:
             -p ${{ steps.strings-windows.outputs.package-dir }} `
             ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
 
+      - name: 'Upload artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+          path: ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+
   create-release:
 
     runs-on: ubuntu-latest
@@ -148,6 +163,18 @@ jobs:
       - build-windows
 
     steps:
+
+#      - name: Download Linux Artifact
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: linux-artifact
+#          path: ./release
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifact
+          path: ./release
 
       - name: 'Create release (Tag)'
         if: github.ref_type == 'tag'
@@ -158,10 +185,9 @@ jobs:
           prerelease: false
           name: Latest Build ${{ github.run_number }}
           tag_name: Latest-${{ github.run_number }}
+          files: ./release/*
           body: |
-            This is the latest snapshot build for version ${{ github.ref }}.
-          files: |
-            ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
+            This is the release build for version ${{ github.ref }}.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -174,10 +200,9 @@ jobs:
           prerelease: true
           name: Latest Build ${{ github.run_number }}
           tag_name: Latest-${{ github.run_number }}
+          files: ./release/*
           body: |
             This is the latest snapshot build for version ${{ github.ref }}.
-          files: |
-            ${{ steps.strings-windows.outputs.build-dir }}/nfc-lab-${{ steps.strings-windows.outputs.build-name }}-installer-x86_64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
