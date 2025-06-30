@@ -28,6 +28,7 @@
 #include <QSplashScreen>
 #include <QStandardPaths>
 
+#include "QtCache.h"
 #include "QtControl.h"
 #include "QtWindow.h"
 
@@ -49,11 +50,14 @@ struct QtApplication::Impl
    // global settings
    QSettings settings;
 
-   // interface control
-   QPointer<QtWindow> window;
+   // decoder control
+   QPointer<QtCache> cache;
 
    // decoder control
-   QPointer<QtControl> decoder;
+   QPointer<QtControl> control;
+
+   // interface control
+   QPointer<QtWindow> window;
 
    // splash screen
    QSplashScreen splash;
@@ -71,11 +75,14 @@ struct QtApplication::Impl
       // show splash screen
       showSplash(settings.value("settings/splashScreen", "2500").toInt());
 
-      // create user interface window
-      window = new QtWindow();
+      // create cache interface
+      cache = new QtCache();
 
       // create decoder control interface
-      decoder = new QtControl();
+      control = new QtControl(cache);
+
+      // create user interface window
+      window = new QtWindow(cache);
 
       // connect shutdown signal
       applicationShutdownConnection = connect(app, &QtApplication::aboutToQuit, app, &QtApplication::shutdown);
@@ -212,7 +219,7 @@ struct QtApplication::Impl
    void handleEvent(QEvent *event) const
    {
       window->handleEvent(event);
-      decoder->handleEvent(event);
+      control->handleEvent(event);
    }
 };
 

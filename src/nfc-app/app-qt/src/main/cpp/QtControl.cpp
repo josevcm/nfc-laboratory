@@ -58,10 +58,14 @@
 
 #include "QtApplication.h"
 
+#include "QtCache.h"
 #include "QtControl.h"
 
 struct QtControl::Impl
 {
+   // data cache
+   QtCache *cache;
+
    // configuration
    QSettings settings;
 
@@ -89,6 +93,8 @@ struct QtControl::Impl
    rt::Subject<lab::RawFrame> *storageFrameStream = nullptr;
 
    // signal data subjects
+   rt::Subject<hw::SignalBuffer> *logicSignalStream = nullptr;
+   rt::Subject<hw::SignalBuffer> *radioSignalStream = nullptr;
    rt::Subject<hw::SignalBuffer> *adaptiveSignalStream = nullptr;
    rt::Subject<hw::SignalBuffer> *storageSignalStream = nullptr;
 
@@ -107,6 +113,8 @@ struct QtControl::Impl
    rt::Subject<lab::RawFrame>::Subscription storageFrameSubscription;
 
    // signal stream subscriptions
+   rt::Subject<hw::SignalBuffer>::Subscription logicSignalSubscription;
+   rt::Subject<hw::SignalBuffer>::Subscription radioSignalSubscription;
    rt::Subject<hw::SignalBuffer>::Subscription adaptiveSignalSubscription;
    rt::Subject<hw::SignalBuffer>::Subscription storageSignalSubscription;
 
@@ -191,7 +199,7 @@ struct QtControl::Impl
       }
    };
 
-   explicit Impl()
+   explicit Impl(QtCache *cache) : cache(cache)
    {
       // create status subjects
       logicDecoderStatusStream = rt::Subject<rt::Event>::name("logic.decoder.status");
@@ -217,6 +225,8 @@ struct QtControl::Impl
       storageFrameStream = rt::Subject<lab::RawFrame>::name("storage.frame");
 
       // create signal subject
+      logicSignalStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
+      radioSignalStream = rt::Subject<hw::SignalBuffer>::name("radio.signal.raw");
       adaptiveSignalStream = rt::Subject<hw::SignalBuffer>::name("adaptive.signal");
       storageSignalStream = rt::Subject<hw::SignalBuffer>::name("storage.signal");
    }
@@ -265,6 +275,14 @@ struct QtControl::Impl
 
       storageFrameSubscription = storageFrameStream->subscribe([this](const lab::RawFrame &frame) {
          radioDecoderFrameEvent(frame);
+      });
+
+      logicSignalSubscription = logicSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+         signalCacheEvent(buffer);
+      });
+
+      radioSignalSubscription = radioSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+         signalCacheEvent(buffer);
       });
 
       adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
@@ -1281,6 +1299,14 @@ struct QtControl::Impl
    /*
     * process new received buffer
     */
+   void signalCacheEvent(const hw::SignalBuffer &buffer)
+   {
+      cache->append(buffer);
+   }
+
+   /*
+    * process new received buffer
+    */
    void signalBufferEvent(const hw::SignalBuffer &buffer)
    {
       QtApplication::post(new SignalBufferEvent(buffer), Qt::LowEventPriority);
@@ -1627,7 +1653,7 @@ struct QtControl::Impl
    }
 };
 
-QtControl::QtControl() : impl(new Impl())
+QtControl::QtControl(QtCache *cache) : impl(new Impl(cache))
 {
 }
 

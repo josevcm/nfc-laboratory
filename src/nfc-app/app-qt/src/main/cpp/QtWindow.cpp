@@ -61,6 +61,7 @@
 
 #include "QtApplication.h"
 
+#include "QtCache.h"
 #include "QtConfig.h"
 #include "QtWindow.h"
 
@@ -69,6 +70,9 @@
 
 struct QtWindow::Impl
 {
+   // data cache
+   QtCache *cache;
+
    // application window
    QtWindow *window;
 
@@ -208,17 +212,18 @@ struct QtWindow::Impl
    QMetaObject::Connection refreshTimerTimeoutConnection;
    QMetaObject::Connection acquireTimerTimeoutConnection;
 
-   explicit Impl(QtWindow *window) : window(window),
-                                     ui(new Ui_QtWindow()),
-                                     allowedDevices(".*"),
-                                     allowedFeatures(".*"),
-                                     acquireLimit(new QComboBox()),
-                                     streamModel(new StreamModel()),
-                                     parserModel(new ParserModel()),
-                                     streamFilter(new StreamFilter()),
-                                     inspectDialog(new InspectDialog(window)),
-                                     refreshTimer(new QTimer()),
-                                     acquireTimer(new QTimer())
+   explicit Impl(QtCache *cache, QtWindow *window) : cache(cache),
+                                                     window(window),
+                                                     ui(new Ui_QtWindow()),
+                                                     allowedDevices(".*"),
+                                                     allowedFeatures(".*"),
+                                                     acquireLimit(new QComboBox()),
+                                                     streamModel(new StreamModel()),
+                                                     parserModel(new ParserModel()),
+                                                     streamFilter(new StreamFilter()),
+                                                     inspectDialog(new InspectDialog(window)),
+                                                     refreshTimer(new QTimer()),
+                                                     acquireTimer(new QTimer())
    {
       // fft signal subject stream
       frequencyStream = rt::Subject<hw::SignalBuffer>::name("signal.fft");
@@ -2485,7 +2490,7 @@ struct QtWindow::Impl
    }
 };
 
-QtWindow::QtWindow() : impl(new Impl(this))
+QtWindow::QtWindow(QtCache *cache) : impl(new Impl(cache, this))
 {
    // configure window properties
    setAttribute(Qt::WA_OpaquePaintEvent, true);

@@ -23,6 +23,7 @@ set(SOURCES
         src/main/cpp/main.cpp
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
+        src/main/cpp/QtCache.cpp
         src/main/cpp/QtControl.cpp
         src/main/cpp/QtWindow.cpp
         src/main/cpp/events/ConsoleLogEvent.cpp

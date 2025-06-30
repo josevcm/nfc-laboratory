@@ -26,6 +26,8 @@
 #include <QSettings>
 #include <QSharedPointer>
 
+class QtCache;
+
 class QtControl : public QObject
 {
       Q_OBJECT
@@ -34,7 +36,7 @@ class QtControl : public QObject
 
    public:
 
-      explicit QtControl();
+      explicit QtControl(QtCache *cache);
 
       void handleEvent(QEvent *event);
 

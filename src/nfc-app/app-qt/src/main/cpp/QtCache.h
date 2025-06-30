@@ -34,15 +34,17 @@ namespace lab {
 class RawFrame;
 }
 
-class QtMemory : public QObject
+class QtCache : public QObject
 {
-   Q_OBJECT
+      Q_OBJECT
 
       struct Impl;
 
    public:
 
-      explicit QtMemory();
+      explicit QtCache();
+
+   public slots:
 
       void append(const lab::RawFrame &frame);
 
@@ -58,6 +60,5 @@ class QtMemory : public QObject
 
       QSharedPointer<Impl> impl;
 };
-
 
 #endif //NFC_LAB_QTMEMORY_H
