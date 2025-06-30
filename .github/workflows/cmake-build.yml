@@ -5,8 +5,7 @@ on:
     tags:
       - '*' # any tag
     branches:
-      - develop
-      - feature/*
+      - master
 
 jobs:
 
@@ -28,8 +27,8 @@ jobs:
         id: strings-linux
         shell: bash
         run: |
-          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && 'snapshot' || github.ref_name }}" >> "$GITHUB_OUTPUT"
-          echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && 'snapshot' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
 #      - name: 'Cache dependencies'
@@ -79,8 +78,8 @@ jobs:
         shell: bash
         run: |
           echo "build-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && 'snapshot' || github.ref_name }}" >> "$GITHUB_OUTPUT"
-          echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && 'snapshot' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "qt-dir=${{ github.workspace }}/qt/6.7.2/mingw_64" >> "$GITHUB_OUTPUT"
           echo "ninja-dir=${{ github.workspace }}/tools/ninja" >> "$GITHUB_OUTPUT"
           echo "cmake-dir=${{ github.workspace }}/tools/cmake_64" >> "$GITHUB_OUTPUT"
@@ -210,7 +209,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Create release (Snapshot)'
-        if: github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature/')
+        if: github.ref_name == 'master' || github.ref_name == 'develop'
         uses: softprops/action-gh-release@v2
         id: create-release-snapshot
         with:
