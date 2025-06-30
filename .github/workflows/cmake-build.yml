@@ -51,13 +51,14 @@ jobs:
           export DEBFULLNAME="Jose Vicente Campos"
           dch --create --package nfc-lab --newversion "${{ steps.strings-linux.outputs.build-version }}" "Automated build"
           dch --release --distribution unstable ""
-          dpkg-buildpackage -us -uc -j${{ steps.strings-linux.outputs.cpu-count }} 
+          dpkg-buildpackage -us -uc -j${{ steps.strings-linux.outputs.cpu-count }}
+          mv ../*.deb .
 
       - name: 'Upload artifact'
         uses: actions/upload-artifact@v4
         with:
           name: linux-artifact
-          path: ${{ github.workspace }}/../*.deb
+          path: ${{ github.workspace }}/*.deb
 
   #
   # Windows build job
@@ -161,13 +162,13 @@ jobs:
             --verbose `
             -c ${{ steps.strings-windows.outputs.build-dir }}/installer/config/config.xml `
             -p ${{ steps.strings-windows.outputs.package-dir }} `
-            ../nfc-lab-${{ steps.strings-windows.outputs.build-version }}-x86_64.exe
+            nfc-lab-${{ steps.strings-windows.outputs.build-version }}-x86_64.exe
 
       - name: 'Upload artifact'
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: ${{ github.workspace }}/../*.exe
+          path: ${{ github.workspace }}/*.exe
 
   #
   # Create release job
