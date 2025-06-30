@@ -182,17 +182,17 @@ class Buffer
 
       unsigned int type() const
       {
-         return alloc->data ? attrs.type : 0;
+         return alloc && alloc->data ? attrs.type : 0;
       }
 
       void *context() const
       {
-         return alloc->data ? attrs.context : nullptr;
+         return alloc && alloc->data ? attrs.context : nullptr;
       }
 
       T *data() const
       {
-         return alloc->data ? alloc->data : nullptr;
+         return alloc && alloc->data ? alloc->data : nullptr;
       }
 
       T *pull(unsigned int size)

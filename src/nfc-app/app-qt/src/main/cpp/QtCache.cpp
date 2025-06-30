@@ -112,10 +112,13 @@ struct QtCache::Impl
    {
       QFile *file = cacheFile(type, id);
 
-      if (file->isOpen())
-      {
+      if (!file->isOpen())
+         return;
 
-      }
+      qInfo() << "Write cache buffe:" << buffer.offset();
+
+      // write content to file
+      file->write(reinterpret_cast<const char *>(buffer.data()), buffer.size());
    }
 
    QFile *cacheFile(const QString &type, unsigned int id)
@@ -127,7 +130,10 @@ struct QtCache::Impl
          return signal[name];
 
       // build fileName
-      QString fileName = QtApplication::tempPath().absoluteFilePath(name + ".dat");
+      QString fileName = QtApplication::tempPath().absoluteFilePath(name + ".cache");
+
+      //
+      qInfo() << "Creating cache file:" << fileName;
 
       // store in cache
       signal[name] = new QFile(fileName);
@@ -146,10 +152,12 @@ QtCache::QtCache() : impl(new Impl(this))
 
 void QtCache::append(const lab::RawFrame &frame)
 {
+   impl->append(frame);
 }
 
 void QtCache::append(const hw::SignalBuffer &buffer)
 {
+   impl->append(buffer);
 }
 
 void QtCache::clear()
