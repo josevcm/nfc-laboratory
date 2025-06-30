@@ -32,13 +32,13 @@ jobs:
           echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop' || startsWith(github.ref_name, 'feature')) && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
-      - name: 'Cache dependencies'
-        id: cache-dependencies
-        uses: actions/cache@v4
-        with:
-          key: ${{ runner.os }}-apt-cache
-          path: |
-            /var/cache/apt/archives
+#      - name: 'Cache dependencies'
+#        id: cache-dependencies
+#        uses: actions/cache@v4
+#        with:
+#          key: ${{ runner.os }}-apt-cache
+#          path: |
+#            /var/cache/apt/archives
 
       - name: 'Install dependencies'
         run: |
@@ -201,11 +201,11 @@ jobs:
         with:
           draft: false
           prerelease: false
-          name: Latest Build ${{ github.run_number }}
-          tag_name: Latest-${{ github.run_number }}
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           files: ./release/*
           body: |
-            This is the release build for version ${{ github.ref }}.
+            This is the release build for version ${{ github.ref_name }}.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -220,6 +220,6 @@ jobs:
           tag_name: snapshot-build
           files: ./release/*
           body: |
-            This is the latest snapshot build for version ${{ github.ref }}.
+            This is the latest snapshot build for ${{ github.ref }}.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
