@@ -604,7 +604,6 @@
                 </property>
                 <addaction name="actionOpen"/>
                 <addaction name="actionSave"/>
-                <addaction name="actionExport"/>
             </widget>
             <widget class="QMenu" name="menuDevice">
                 <property name="title">
@@ -682,7 +681,6 @@
             </attribute>
             <addaction name="actionOpen"/>
             <addaction name="actionSave"/>
-            <addaction name="actionExport"/>
             <addaction name="actionClear"/>
             <addaction name="actionZoom"/>
             <addaction name="actionWide"/>
@@ -786,20 +784,6 @@
             </property>
             <property name="shortcut">
                 <string>Ctrl+S</string>
-            </property>
-        </action>
-        <action name="actionExport">
-            <property name="icon">
-                <iconset theme="action-selected"/>
-            </property>
-            <property name="text">
-                <string>Save Selected</string>
-            </property>
-            <property name="toolTip">
-                <string>Save Selected Trace To File</string>
-            </property>
-            <property name="shortcut">
-                <string>Ctrl+E</string>
             </property>
         </action>
         <action name="actionSetup">
@@ -1252,12 +1236,6 @@
             <slot>saveFile()</slot>
         </connection>
         <connection>
-            <sender>actionExport</sender>
-            <signal>triggered()</signal>
-            <receiver>mainWindow</receiver>
-            <slot>saveSelected()</slot>
-        </connection>
-        <connection>
             <sender>actionClear</sender>
             <signal>triggered()</signal>
             <receiver>mainWindow</receiver>
@@ -1400,7 +1378,6 @@
         <slot>selectionChanged(QItemSelection,QItemSelection)</slot>
         <slot>openFile()</slot>
         <slot>saveFile()</slot>
-        <slot>saveSelected()</slot>
         <slot>openConfig()</slot>
         <slot>openStorage()</slot>
         <slot>toggleListen()</slot>

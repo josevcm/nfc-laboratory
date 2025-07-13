@@ -156,6 +156,14 @@ struct QtWindow::Impl
    QString logicDecoderStatus = LogicDecoderStatusEvent::Disabled;
    QString radioDecoderStatus = RadioDecoderStatusEvent::Disabled;
 
+   // working range
+   double receivedTimeFrom = 0.0;
+   double receivedTimeTo = 0.0;
+
+   // selected range
+   double selectedTimeFrom = 0.0;
+   double selectedTimeTo = 0.0;
+
    // interface
    QSharedPointer<Ui_QtWindow> ui;
 
@@ -684,10 +692,24 @@ struct QtWindow::Impl
          if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL)
          {
             ui->logicView->append(event->buffer());
+
+            // update received time range
+            if (ui->logicView->dataLowerRange() < receivedTimeFrom || receivedTimeFrom == 0.0)
+               receivedTimeFrom = ui->logicView->dataLowerRange();
+
+            if (ui->logicView->dataUpperRange() > receivedTimeTo || receivedTimeTo == 0.0)
+               receivedTimeTo = ui->logicView->dataUpperRange();
          }
          else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL)
          {
             ui->radioView->append(event->buffer());
+
+            // update received time range
+            if (ui->radioView->dataLowerRange() < receivedTimeFrom || receivedTimeFrom == 0.0)
+               receivedTimeFrom = ui->logicView->dataLowerRange();
+
+            if (ui->radioView->dataUpperRange() > receivedTimeTo || receivedTimeTo == 0.0)
+               receivedTimeTo = ui->logicView->dataUpperRange();
          }
       }
       else
@@ -938,7 +960,6 @@ struct QtWindow::Impl
       // if no data is present, disable related actions
       ui->actionClear->setEnabled(signalPresent);
       ui->actionSave->setEnabled(signalPresent);
-      ui->actionExport->setEnabled(signalSelected);
       ui->actionTime->setEnabled(signalPresent);
       ui->actionZoom->setEnabled(signalSelected);
       ui->actionWide->setEnabled(!signalWide);
@@ -1698,7 +1719,7 @@ struct QtWindow::Impl
    /*
     * slots for interface actions
     */
-   void openFile() const
+   void openFile()
    {
       qInfo() << "open file";
 
@@ -1732,42 +1753,26 @@ struct QtWindow::Impl
 
    void saveFile() const
    {
-      qInfo() << "save all events";
+      qInfo() << "save signal trace";
+
+      bool hasSelection = selectedTimeTo > selectedTimeFrom;
+
+      double writeTimeFrom = hasSelection ? selectedTimeFrom : receivedTimeFrom;
+      double writeTimeTo = hasSelection ? selectedTimeTo : receivedTimeTo;
 
       QString path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
       QString date = QDateTime::currentDateTime().toString("yyyy_MM_dd-HH_mm_ss");
       QString name = QString("%1-trace.trz").arg(date);
 
-      QString fileName = Theme::saveFileDialog(window, tr("Save trace file"), path + "/" + name, tr("Trace (*.trz)"));
+      QString fileName = Theme::saveFileDialog(window, hasSelection ? tr("Save selection to trace file") : tr("Save all to trace file"), path + "/" + name, tr("Trace (*.trz)"));
 
       if (!fileName.isEmpty())
       {
          QtApplication::post(new DecoderControlEvent(DecoderControlEvent::WriteFile, {
                                                         {"fileName", fileName},
                                                         {"sampleRate", radioSampleRate},
-                                                        {"timeStart", ui->radioView->dataLowerRange()},
-                                                        {"timeEnd", ui->radioView->dataUpperRange()}
-                                                     }));
-      }
-   }
-
-   void saveSelected() const
-   {
-      qInfo() << "save selected events";
-
-      QString path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
-      QString date = QDateTime::currentDateTime().toString("yyyy_MM_dd-HH_mm_ss");
-      QString name = QString("%1-trace.trz").arg(date);
-
-      QString fileName = Theme::saveFileDialog(window, tr("Save trace file"), path + "/" + name, tr("Trace (*.trz)"));
-
-      if (!fileName.isEmpty())
-      {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::WriteFile, {
-                                                        {"fileName", fileName},
-                                                        {"sampleRate", radioSampleRate},
-                                                        {"timeStart", ui->radioView->selectionLowerRange()},
-                                                        {"timeEnd", ui->radioView->selectionUpperRange()}
+                                                        {"timeStart", writeTimeFrom},
+                                                        {"timeEnd", writeTimeTo}
                                                      }));
       }
    }
@@ -2051,7 +2056,7 @@ struct QtWindow::Impl
       ui->framesView->repaint();
    }
 
-   void clearView() const
+   void clearView()
    {
       qInfo() << "clear events and views";
 
@@ -2068,6 +2073,12 @@ struct QtWindow::Impl
       ui->logicView->clear();
       ui->radioView->clear();
       ui->frequencyView->clear();
+
+      // clear ranges
+      receivedTimeFrom = 0.0;
+      receivedTimeTo = 0.0;
+      selectedTimeFrom = 0.0;
+      selectedTimeTo = 0.0;
 
       // signal clear to decoder control
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Clear));
@@ -2217,6 +2228,9 @@ struct QtWindow::Impl
       QSignalBlocker radioViewBlocker(ui->radioView);
       QSignalBlocker decodeViewBlocker(ui->decodeView->selectionModel());
 
+      selectedTimeFrom = from;
+      selectedTimeTo = to;
+
       ui->logicView->select(from, to);
       ui->logicView->repaint();
 
@@ -2271,6 +2285,9 @@ struct QtWindow::Impl
       QSignalBlocker framesViewBlocker(ui->framesView);
       QSignalBlocker decodeViewBlocker(ui->decodeView->selectionModel());
 
+      selectedTimeFrom = from;
+      selectedTimeTo = to;
+
       ui->radioView->select(from, to);
       ui->radioView->repaint();
 
@@ -2320,6 +2337,9 @@ struct QtWindow::Impl
       QSignalBlocker logicViewBlocker(ui->logicView);
       QSignalBlocker framesViewBlocker(ui->framesView);
       QSignalBlocker decodeViewBlocker(ui->decodeView->selectionModel());
+
+      selectedTimeFrom = from;
+      selectedTimeTo = to;
 
       ui->logicView->select(from, to);
       ui->logicView->repaint();
@@ -2530,11 +2550,6 @@ void QtWindow::openFile()
 void QtWindow::saveFile()
 {
    impl->saveFile();
-}
-
-void QtWindow::saveSelected()
-{
-   impl->saveSelected();
 }
 
 void QtWindow::openConfig()

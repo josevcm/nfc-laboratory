@@ -46,8 +46,6 @@ class QtWindow : public QMainWindow
 
       void saveFile();
 
-      void saveSelected();
-
       void openConfig();
 
       void openStorage();
