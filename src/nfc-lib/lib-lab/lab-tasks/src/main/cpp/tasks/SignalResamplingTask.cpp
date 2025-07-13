@@ -149,14 +149,14 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
          // adaptive resample for raw real signal
          case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
          {
-            processRawReal(buffer);
+            processRadioSignal(buffer);
             break;
          }
 
          // adaptive resample for stream logic signal
          case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
          {
-            processRawLogic(buffer);
+            processLogicSignal(buffer);
             break;
          }
 
@@ -165,7 +165,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       }
    }
 
-   void processRawReal(const hw::SignalBuffer &buffer)
+   void processRadioSignal(const hw::SignalBuffer &buffer)
    {
       hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, buffer.id());
 
@@ -228,7 +228,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       taskThroughput.update(buffer.elements());
    }
 
-   void processRawLogic(const hw::SignalBuffer &buffer)
+   void processLogicSignal(const hw::SignalBuffer &buffer)
    {
       unsigned int ch = buffer.stride();
 
