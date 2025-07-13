@@ -277,13 +277,13 @@ struct QtControl::Impl
          radioDecoderFrameEvent(frame);
       });
 
-      logicSignalSubscription = logicSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-         signalCacheEvent(buffer);
-      });
+      // logicSignalSubscription = logicSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+      //    signalCacheEvent(buffer);
+      // });
 
-      radioSignalSubscription = radioSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-         signalCacheEvent(buffer);
-      });
+      // radioSignalSubscription = radioSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+      //    signalCacheEvent(buffer);
+      // });
 
       adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
          signalBufferEvent(buffer);
