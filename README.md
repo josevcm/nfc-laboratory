@@ -564,9 +564,12 @@ This project is published under the terms of the GPLv3 license, however there ar
 licenses, please check if you are interested in this work.
 
 - AirSpy SDR driver at `src/nfc-lib/lib-ext/airspy` see https://github.com/airspy/airspyone_host
+- HydraSDR driver at `src/nfc-lib/lib-ext/hydrasdr` see https://github.com/hydrasdr/rfone_host
+- MiriSDR driver at `src/nfc-lib/lib-ext/mirisdr` see https://github.com/f4exb/libmirisdr-4
 - RTL SDR driver at `src/nfc-lib/lib-ext/rtlsdr` see https://osmocom.org/projects/rtl-sdr
-- nlohmann json at `src/nfc-lib/lib-ext/nlohmann` see https://github.com/nlohmann/json
 - mufft library at `src/nfc-lib/lib-ext/mufft` see https://github.com/Themaister/muFFT
+- nlohmann json at `src/nfc-lib/lib-ext/nlohmann` see https://github.com/nlohmann/json
+- microtar at `src/nfc-lib/lib-ext/microtar` see https://github.com/rxi/microtar
 - QCustomPlot at `src/nfc-app/app-qt/src/main/cpp/3party/customplot` see https://www.qcustomplot.com/
 - QDarkStyleSheet at `src/nfc-app/app-qt/src/main/assets/theme` see https://github.com/ColinDuquesnoy/QDarkStyleSheet
 - Crapto1 at `src/nfc-lib/lib-ext/crapto1`
