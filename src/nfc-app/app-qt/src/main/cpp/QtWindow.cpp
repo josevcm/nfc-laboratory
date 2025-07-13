@@ -929,10 +929,10 @@ struct QtWindow::Impl
          ui->signalLabel->setText(tr("Start acquisition or open a trace file"));
 
       // show views based on selected features
-      ui->logicView->setVisible(logicSignalPresent && logicDecoderEnabled);
-      ui->radioView->setVisible(radioSignalPresent && radioDecoderEnabled);
-      ui->signalScroll->setVisible(signalPresent && decoderEnabled);
-      ui->signalLabel->setVisible(!signalPresent || !decoderEnabled);
+      ui->logicView->setVisible(logicSignalPresent);
+      ui->radioView->setVisible(radioSignalPresent);
+      ui->signalScroll->setVisible(signalPresent);
+      ui->signalLabel->setVisible(!signalPresent);
       ui->frequencyView->setEnabled(spectrumEnabled);
 
       // if no data is present, disable related actions
