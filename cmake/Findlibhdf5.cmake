@@ -12,12 +12,13 @@ else (LIBHDF5_LIBRARY AND LIBHDF5_INCLUDE)
                 /opt/local/include
                 ${CMAKE_SOURCE_DIR}/dll/hdf5/include
             PATH_SUFFIXES
-                libhdf5
+                hdf5/serial
     )
 
     find_library(LIBHDF5_LIBRARY
             NAMES
                 hdf5
+                hdf5_serial
             PATHS
                 /usr/local/lib64
                 /opt/local/lib64

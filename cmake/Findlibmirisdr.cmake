@@ -11,8 +11,6 @@ else (LIBMIRISDR_LIBRARY AND LIBMIRISDR_INCLUDE)
                 /usr/local/include
                 /opt/local/include
                 ${CMAKE_SOURCE_DIR}/dll/mirisdr/include
-            PATH_SUFFIXES
-                libmirisdr
     )
 
     find_library(LIBMIRISDR_LIBRARY
