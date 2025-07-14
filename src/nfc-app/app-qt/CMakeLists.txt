@@ -124,11 +124,12 @@ target_link_libraries(nfc-lab
         hw-logic
         hw-radio
         rt-lang
-        ed25519
         Qt6::Core
         Qt6::Widgets
         Qt6::Network
-        Qt6::PrintSupport)
+        Qt6::PrintSupport
+        ${LIBHDF5_LIBRARY}
+)
 
 # Install targets
 if (UNIX)

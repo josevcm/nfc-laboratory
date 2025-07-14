@@ -12,7 +12,7 @@ else (LIBHYDRASDR_LIBRARY AND LIBHYDRASDR_INCLUDE)
                 /opt/local/include
                 ${CMAKE_SOURCE_DIR}/dll/airspy/include
             PATH_SUFFIXES
-                libairspy
+                libhydrasdr
     )
 
     find_library(LIBHYDRASDR_LIBRARY

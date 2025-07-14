@@ -100,6 +100,34 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
+# find dependency mirisdr
+#-------------------------------------------------------------------------------
+find_package(libmirisdr)
+
+if(LIBMIRISDR_FOUND)
+  message(STATUS "libmirisdr: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBMIRISDR_INCLUDE})
+  message(STATUS "  library: " ${LIBMIRISDR_LIBRARY})
+  include_directories(${LIBMIRISDR_INCLUDE})
+else ()
+  message(STATUS  "libmirisdr not found, using local bundle in static mode")
+endif()
+
+#-------------------------------------------------------------------------------
+# find dependency rltsdr
+#-------------------------------------------------------------------------------
+find_package(libhdf5)
+
+if(LIBHDF5_FOUND)
+  message(STATUS "libhdf5: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBHDF5_INCLUDE})
+  message(STATUS "  library: " ${LIBHDF5_LIBRARY})
+  include_directories(${LIBHDF5_INCLUDE})
+else ()
+  message(STATUS  "libhdf5 not found, using local bundle in static mode")
+endif()
+
+#-------------------------------------------------------------------------------
 # configure files
 #-------------------------------------------------------------------------------
 
