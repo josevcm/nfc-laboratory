@@ -1330,9 +1330,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          std::string fileName = tempPath + "/" + name + ".dat";
          std::fstream tempFile(fileName, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
 
-         cacheFile.emplace(name, std::move(tempFile));
-
-         if (cacheFile[name].is_open())
+         if (tempFile.is_open())
          {
             // initialize header
             SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 3, .info = {}};
@@ -1343,16 +1341,19 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             hdr.info[INFO_TOTAL_SAMPLES] = 0;
             hdr.info[INFO_SAMPLE_RATE] = sampleRate;
 
-            if (!tempFile.write(reinterpret_cast<const char *>(&hdr), sizeof(hdr)))
+            if (tempFile.write(reinterpret_cast<const char *>(&hdr), sizeof(hdr)).fail())
             {
-               log->error("failed to write header to temp file: {}", {fileName});
-               cacheFile[name].close();
+               log->error("failed to write header to temp file: {}", {std::strerror(errno)});
+               tempFile.close();
             }
          }
          else
          {
-            log->error("failed to open temp file: {}", {fileName});
+            log->error("failed to open temp file: {}", {std::strerror(errno)});
          }
+
+         // move file to cache
+         cacheFile.emplace(name, std::move(tempFile));
       }
 
       return cacheFile[name];
