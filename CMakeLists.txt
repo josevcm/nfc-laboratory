@@ -43,7 +43,7 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
 endif ()
 
 #-------------------------------------------------------------------------------
-# find dependency libusb-1.0
+# find dependency libusb-1.0 MANDATORY
 #-------------------------------------------------------------------------------
 find_package(libusb-1.0)
 
@@ -58,7 +58,7 @@ message(STATUS "  library: " ${LIBUSB_LIBRARY})
 include_directories(${LIBUSB_INCLUDE})
 
 #-------------------------------------------------------------------------------
-# find dependency airspy
+# find dependency airspy OPTIONAL
 #-------------------------------------------------------------------------------
 find_package(libairspy)
 
@@ -72,7 +72,7 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
-# find dependency hydrasdr
+# find dependency hydrasdr OPTIONAL
 #-------------------------------------------------------------------------------
 find_package(libhydrasdr)
 
@@ -86,7 +86,7 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
-# find dependency rltsdr
+# find dependency rltsdr OPTIONAL
 #-------------------------------------------------------------------------------
 find_package(librtlsdr)
 
@@ -100,7 +100,7 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
-# find dependency mirisdr
+# find dependency mirisdr OPTIONAL
 #-------------------------------------------------------------------------------
 find_package(libmirisdr)
 
@@ -114,7 +114,7 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
-# find dependency rltsdr
+# find dependency hdf5 OPTIONAL
 #-------------------------------------------------------------------------------
 find_package(libhdf5)
 
