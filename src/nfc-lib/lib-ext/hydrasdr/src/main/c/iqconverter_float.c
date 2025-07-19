@@ -211,7 +211,11 @@ static _inline float process_fir_taps(const float *kernel, const float *queue, i
 #ifdef __FreeBSD__
 	float sum = acc[0];
 #else
+#ifdef __SSE2__
 	float sum = acc[0];
+#else
+	float sum = acc.m128_f32[0];
+#endif
 #endif
 
 #endif

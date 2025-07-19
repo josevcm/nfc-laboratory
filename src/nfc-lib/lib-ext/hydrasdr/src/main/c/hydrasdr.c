@@ -39,14 +39,16 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 #include "iqconverter_int16.h"
 #include "filters.h"
 
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 202311L
 #ifndef bool
 typedef int bool;
 #define true 1
 #define false 0
 #endif
+#endif
 
-#define PACKET_SIZE (12)
-#define UNPACKED_SIZE (16)
+#define UNPACKED_SIZE (16) /* ADC Sample unpacked size in bits */
+#define PACKED_SIZE (12) /* ADC Sample Packed size in bits */
 #define RAW_BUFFER_COUNT (8)
 
 #ifdef HYDRASDR_BIG_ENDIAN
@@ -73,6 +75,23 @@ typedef int bool;
 #define SAMPLE_TYPE_IS_IQ(x) ((x) == HYDRASDR_SAMPLE_FLOAT32_IQ || (x) == HYDRASDR_SAMPLE_INT16_IQ)
 #define LIBUSB_CTRL_TIMEOUT_MS (500)
 #define LIBUSB_CTRL_TIMEOUT_CHIPERASE_MS (32000) // W25Q80DV Chip Erase Time up to 8s or 64KB Erase Block(s)(16blocks of 64KB) 32s max
+
+#define HYDRASDR_EXPECTED_FW_PREFIX "HydraSDR RFOne"
+#define HYDRASDR_EXPECTED_FW_PREFIX_LEN (14)
+
+/* Supported VID/PID combinations for HydraSDR RFOne */
+typedef struct {
+	uint16_t vid;
+	uint16_t pid;
+	const char* description;
+} hydrasdr_usb_device_id_t;
+
+static const hydrasdr_usb_device_id_t hydrasdr_usb_device_ids[] = {
+	{ 0x1d50, 0x60a1, "HydraSDR RFOne Legacy VID/PID" }, /* Legacy OpenMoko VID/PID */
+	{ 0x38af, 0x0001, "HydraSDR RFOne Official VID/PID" }, /* Official usb.org VID 14511/0x38af VERNOUX BENJAMIN / PID 0x0001 */
+};
+
+#define HYDRASDR_USB_DEVICE_COUNT (sizeof(hydrasdr_usb_device_ids) / sizeof(hydrasdr_usb_device_ids[0]))
 
 typedef struct {
 	uint64_t freq_hz;
@@ -112,9 +131,6 @@ typedef struct hydrasdr_device
 	bool reset_command; /* HYDRASDR_RESET command executed ? */
 } hydrasdr_device_t;
 
-static const uint16_t hydrasdr_usb_vid = 0x1d50;
-static const uint16_t hydrasdr_usb_pid = 0x60a1;
-
 #define STR_PREFIX_SERIAL_HYDRASDR_SIZE (12)
 
 #define SERIAL_HYDRASDR_EXPECTED_SIZE (28)
@@ -127,6 +143,20 @@ uint8_t hydrasdr_linearity_lna_gains[GAIN_COUNT] = { 14, 14, 14, 13, 12, 10, 9, 
 uint8_t hydrasdr_sensitivity_vga_gains[GAIN_COUNT] = { 13, 12, 11, 10, 9, 8, 7, 6, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4 };
 uint8_t hydrasdr_sensitivity_mixer_gains[GAIN_COUNT] = { 12, 12, 12, 12, 11, 10, 10, 9, 9, 8, 7, 4, 4, 4, 3, 2, 2, 1, 0, 0, 0, 0 };
 uint8_t hydrasdr_sensitivity_lna_gains[GAIN_COUNT] = { 14, 14, 14, 14, 14, 14, 14, 14, 14, 13, 12, 12, 9, 9, 8, 7, 6, 5, 3, 2, 1, 0 };
+
+/* Helper function to check if VID/PID combination is supported */
+static bool is_hydrasdr_device(uint16_t vid, uint16_t pid)
+{
+	int i;
+
+	for (i = 0; i < HYDRASDR_USB_DEVICE_COUNT; i++) {
+		if (hydrasdr_usb_device_ids[i].vid == vid && hydrasdr_usb_device_ids[i].pid == pid) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 static int cancel_transfers(hydrasdr_device_t* device)
 {
@@ -609,8 +639,6 @@ static void hydrasdr_open_exit(hydrasdr_device_t* device)
 
 static void hydrasdr_open_device(hydrasdr_device_t* device,
 	int* ret,
-	uint16_t vid,
-	uint16_t pid,
 	uint64_t serial_number_val)
 {
 	int i;
@@ -625,6 +653,7 @@ static void hydrasdr_open_device(hydrasdr_device_t* device,
 	int serial_descriptor_index;
 	struct libusb_device_descriptor device_descriptor;
 	unsigned char serial_number[SERIAL_HYDRASDR_EXPECTED_SIZE + 1];
+	char firmware_version[255 + 1];
 
 	libusb_dev_handle = &device->usb_device;
 	*libusb_dev_handle = NULL;
@@ -641,70 +670,84 @@ static void hydrasdr_open_device(hydrasdr_device_t* device,
 	{
 		libusb_get_device_descriptor(dev, &device_descriptor);
 
-		if ((device_descriptor.idVendor == vid) &&
-			(device_descriptor.idProduct == pid))
+		/* Check if this device matches any of our supported VID/PID combinations */
+		if (!is_hydrasdr_device(device_descriptor.idVendor, device_descriptor.idProduct))
 		{
-			if (serial_number_val != SERIAL_NUMBER_UNUSED)
+			continue;
+		}
+
+		if (serial_number_val != SERIAL_NUMBER_UNUSED)
+		{
+			serial_descriptor_index = device_descriptor.iSerialNumber;
+			if (serial_descriptor_index > 0)
 			{
-				serial_descriptor_index = device_descriptor.iSerialNumber;
-				if (serial_descriptor_index > 0)
+				if (libusb_open(dev, libusb_dev_handle) != 0)
 				{
-					if (libusb_open(dev, libusb_dev_handle) != 0)
+					*libusb_dev_handle = NULL;
+					continue;
+				}
+				dev_handle = *libusb_dev_handle;
+				serial_number_len = libusb_get_string_descriptor_ascii(dev_handle,
+					serial_descriptor_index,
+					serial_number,
+					sizeof(serial_number));
+				if (serial_number_len == SERIAL_HYDRASDR_EXPECTED_SIZE)
+				{
+					uint64_t serial = 0;
+					// use same code to determine device's serial number as in hydrasdr_list_devices()
 					{
-						*libusb_dev_handle = NULL;
-						continue;
+						char *start, *end;
+
+						serial_number[SERIAL_HYDRASDR_EXPECTED_SIZE] = 0;
+						start = (char*)(serial_number + STR_PREFIX_SERIAL_HYDRASDR_SIZE);
+						end = NULL;
+						serial = strtoull(start, &end, 16);
 					}
-					dev_handle = *libusb_dev_handle;
-					serial_number_len = libusb_get_string_descriptor_ascii(dev_handle,
-						serial_descriptor_index,
-						serial_number,
-						sizeof(serial_number));
-					if (serial_number_len == SERIAL_HYDRASDR_EXPECTED_SIZE)
+
+					if (serial == serial_number_val)
 					{
-						uint64_t serial = 0;
-						// use same code to determine device's serial number as in hydrasdr_list_devices()
-						{
-							char *start, *end;
-
-							serial_number[SERIAL_HYDRASDR_EXPECTED_SIZE] = 0;
-							start = (char*)(serial_number + STR_PREFIX_SERIAL_HYDRASDR_SIZE);
-							end = NULL;
-							serial = strtoull(start, &end, 16);
-						}
-
-						if (serial == serial_number_val)
-						{
 #ifdef __linux__
-							/* Check whether a kernel driver is attached to interface #0. If so, we'll
-							* need to detach it.
-							*/
-							if (libusb_kernel_driver_active(dev_handle, 0))
-							{
-								libusb_detach_kernel_driver(dev_handle, 0);
-							}
-#endif
-							result = libusb_set_configuration(dev_handle, 1);
-							if (result != 0)
-							{
-								libusb_close(dev_handle);
-								*libusb_dev_handle = NULL;
-								continue;
-							}
-							result = libusb_claim_interface(dev_handle, 0);
-							if (result != 0)
-							{
-								libusb_close(dev_handle);
-								*libusb_dev_handle = NULL;
-								continue;
-							}
-							break;
+						/* Check whether a kernel driver is attached to interface #0. If so, we'll
+						* need to detach it.
+						*/
+						if (libusb_kernel_driver_active(dev_handle, 0))
+						{
+							libusb_detach_kernel_driver(dev_handle, 0);
 						}
-						else
+#endif
+						result = libusb_set_configuration(dev_handle, 1);
+						if (result != 0)
 						{
 							libusb_close(dev_handle);
 							*libusb_dev_handle = NULL;
 							continue;
 						}
+						result = libusb_claim_interface(dev_handle, 0);
+						if (result != 0)
+						{
+							libusb_close(dev_handle);
+							*libusb_dev_handle = NULL;
+							continue;
+						}
+
+						// Verify this is a legitimate HydraSDR device by checking firmware version string
+						result = hydrasdr_version_string_read(device, &firmware_version[0], 255);
+						if (result != HYDRASDR_SUCCESS) {
+							libusb_release_interface(dev_handle, 0);
+							libusb_close(dev_handle);
+							*libusb_dev_handle = NULL;
+							continue;
+						}
+
+						// Check if firmware version string starts with expected prefix
+						if (strncmp(firmware_version, HYDRASDR_EXPECTED_FW_PREFIX, HYDRASDR_EXPECTED_FW_PREFIX_LEN) != 0) {
+							libusb_release_interface(dev_handle, 0);
+							libusb_close(dev_handle);
+							*libusb_dev_handle = NULL;
+							continue;
+						}
+
+						break;
 					}
 					else
 					{
@@ -713,37 +756,61 @@ static void hydrasdr_open_device(hydrasdr_device_t* device,
 						continue;
 					}
 				}
-			}
-			else
-			{
-				if (libusb_open(dev, libusb_dev_handle) == 0)
+				else
 				{
-					dev_handle = *libusb_dev_handle;
-#ifdef __linux__
-					/* Check whether a kernel driver is attached to interface #0. If so, we'll
-					* need to detach it.
-					*/
-					if (libusb_kernel_driver_active(dev_handle, 0))
-					{
-						libusb_detach_kernel_driver(dev_handle, 0);
-					}
-#endif
-					result = libusb_set_configuration(dev_handle, 1);
-					if (result != 0)
-					{
-						libusb_close(dev_handle);
-						*libusb_dev_handle = NULL;
-						continue;
-					}
-					result = libusb_claim_interface(dev_handle, 0);
-					if (result != 0)
-					{
-						libusb_close(dev_handle);
-						*libusb_dev_handle = NULL;
-						continue;
-					}
-					break;
+					libusb_close(dev_handle);
+					*libusb_dev_handle = NULL;
+					continue;
 				}
+			}
+		}
+		else
+		{
+			if (libusb_open(dev, libusb_dev_handle) == 0)
+			{
+				dev_handle = *libusb_dev_handle;
+#ifdef __linux__
+				/* Check whether a kernel driver is attached to interface #0. If so, we'll
+				* need to detach it.
+				*/
+				if (libusb_kernel_driver_active(dev_handle, 0))
+				{
+					libusb_detach_kernel_driver(dev_handle, 0);
+				}
+#endif
+				result = libusb_set_configuration(dev_handle, 1);
+				if (result != 0)
+				{
+					libusb_close(dev_handle);
+					*libusb_dev_handle = NULL;
+					continue;
+				}
+				result = libusb_claim_interface(dev_handle, 0);
+				if (result != 0)
+				{
+					libusb_close(dev_handle);
+					*libusb_dev_handle = NULL;
+					continue;
+				}
+
+				// Verify this is a legitimate HydraSDR device by checking firmware version string
+				result = hydrasdr_version_string_read(device, &firmware_version[0], 255);
+				if (result != HYDRASDR_SUCCESS) {
+					libusb_release_interface(dev_handle, 0);
+					libusb_close(dev_handle);
+					*libusb_dev_handle = NULL;
+					continue;
+				}
+
+				// Check if firmware version string starts with expected prefix
+				if (strncmp(firmware_version, HYDRASDR_EXPECTED_FW_PREFIX, HYDRASDR_EXPECTED_FW_PREFIX_LEN) != 0) {
+					libusb_release_interface(dev_handle, 0);
+					libusb_close(dev_handle);
+					*libusb_dev_handle = NULL;
+					continue;
+				}
+
+				break;
 			}
 		}
 	}
@@ -861,8 +928,6 @@ static int hydrasdr_open_init(hydrasdr_device_t** device, uint64_t serial_number
 	if (fd == FILE_DESCRIPTOR_UNUSED) {
 		hydrasdr_open_device(lib_device,
 			&result,
-			hydrasdr_usb_vid,
-			hydrasdr_usb_pid,
 			serial_number);
 	}
 	else {
@@ -891,23 +956,27 @@ static int hydrasdr_open_init(hydrasdr_device_t** device, uint64_t serial_number
 	if (result == HYDRASDR_SUCCESS)
 	{
 		lib_device->supported_samplerates = (uint32_t *) malloc(lib_device->supported_samplerate_count * sizeof(uint32_t));
+		if (lib_device->supported_samplerates == NULL)
+		{
+			hydrasdr_open_exit(lib_device);
+			free(lib_device);
+			return HYDRASDR_ERROR_NO_MEM;
+		}
 		result = hydrasdr_read_samplerates_from_fw(lib_device, lib_device->supported_samplerates, lib_device->supported_samplerate_count);
 		if (result != HYDRASDR_SUCCESS)
 		{
 			free(lib_device->supported_samplerates);
+			hydrasdr_open_exit(lib_device);
+			free(lib_device->supported_samplerates);
+			free(lib_device);
+			return result;
 		}
 	}
-
-	if (result != HYDRASDR_SUCCESS)
+	else
 	{
-		lib_device->supported_samplerate_count = 2;
-		lib_device->supported_samplerates = (uint32_t *) malloc(lib_device->supported_samplerate_count * sizeof(uint32_t));
-		if (lib_device->supported_samplerates == NULL)
-		{
-			return HYDRASDR_ERROR_NO_MEM;
-		}
-		lib_device->supported_samplerates[0] = 10000000;
-		lib_device->supported_samplerates[1] = 2500000;
+		hydrasdr_open_exit(lib_device);
+		free(lib_device);
+		return result;
 	}
 
 	hydrasdr_set_packing(lib_device, 0);
@@ -915,14 +984,15 @@ static int hydrasdr_open_init(hydrasdr_device_t** device, uint64_t serial_number
 	result = allocate_transfers(lib_device);
 	if (result != 0)
 	{
+		free_transfers(lib_device);
 		hydrasdr_open_exit(lib_device);
 		free(lib_device->supported_samplerates);
 		free(lib_device);
 		return HYDRASDR_ERROR_NO_MEM;
 	}
 
-	lib_device->cnv_f = iqconverter_float_create(HYDRASDR_HB_KERNEL_FLOAT, HYDRASDR_HB_KERNEL_FLOAT_LEN);
-	lib_device->cnv_i = iqconverter_int16_create(HYDRASDR_HB_KERNEL_INT16, HYDRASDR_HB_KERNEL_INT16_LEN);
+	lib_device->cnv_f = iqconverter_float_create(HB_KERNEL_FLOAT, HB_KERNEL_FLOAT_LEN);
+	lib_device->cnv_i = iqconverter_int16_create(HB_KERNEL_INT16, HB_KERNEL_INT16_LEN);
 
 	pthread_cond_init(&lib_device->consumer_cv, NULL);
 	pthread_mutex_init(&lib_device->consumer_mp, NULL);
@@ -984,46 +1054,48 @@ int hydrasdr_list_devices(uint64_t *serials, int count)
 	{
 		libusb_get_device_descriptor(dev, &device_descriptor);
 
-		if ((device_descriptor.idVendor == hydrasdr_usb_vid) &&
-			(device_descriptor.idProduct == hydrasdr_usb_pid))
+		/* Check if this device matches any of our supported VID/PID combinations */
+		if (!is_hydrasdr_device(device_descriptor.idVendor, device_descriptor.idProduct))
 		{
-			serial_descriptor_index = device_descriptor.iSerialNumber;
-			if (serial_descriptor_index > 0)
+			continue;
+		}
+
+		serial_descriptor_index = device_descriptor.iSerialNumber;
+		if (serial_descriptor_index > 0)
+		{
+			if (libusb_open(dev, &libusb_dev_handle) != 0)
 			{
-				if (libusb_open(dev, &libusb_dev_handle) != 0)
+				continue;
+			}
+
+			serial_number_len = libusb_get_string_descriptor_ascii(libusb_dev_handle,
+				serial_descriptor_index,
+				serial_number,
+				sizeof(serial_number));
+
+			if (serial_number_len == SERIAL_HYDRASDR_EXPECTED_SIZE)
+			{
+				char *start, *end;
+				uint64_t serial;
+
+				serial_number[SERIAL_HYDRASDR_EXPECTED_SIZE] = 0;
+				start = (char*)(serial_number + STR_PREFIX_SERIAL_HYDRASDR_SIZE);
+				end = NULL;
+				serial = strtoull(start, &end, 16);
+				if (serial == 0 && start == end)
 				{
+					libusb_close(libusb_dev_handle);
 					continue;
 				}
 
-				serial_number_len = libusb_get_string_descriptor_ascii(libusb_dev_handle,
-					serial_descriptor_index,
-					serial_number,
-					sizeof(serial_number));
-
-				if (serial_number_len == SERIAL_HYDRASDR_EXPECTED_SIZE)
+				if (serials)
 				{
-					char *start, *end;
-					uint64_t serial;
-
-					serial_number[SERIAL_HYDRASDR_EXPECTED_SIZE] = 0;
-					start = (char*)(serial_number + STR_PREFIX_SERIAL_HYDRASDR_SIZE);
-					end = NULL;
-					serial = strtoull(start, &end, 16);
-					if (serial == 0 && start == end)
-					{
-						libusb_close(libusb_dev_handle);
-						continue;
-					}
-
-					if (serials)
-					{
-						serials[output_count] = serial;
-					}
-					output_count++;
+					serials[output_count] = serial;
 				}
-
-				libusb_close(libusb_dev_handle);
+				output_count++;
 			}
+
+			libusb_close(libusb_dev_handle);
 		}
 	}
 
@@ -1938,7 +2010,18 @@ int hydrasdr_list_devices(uint64_t *serials, int count)
 			return  HYDRASDR_ERROR_LIBUSB;
 		}
 
-		packing_enabled = value ? true : false;
+		if(value == 1)
+		{
+			/* 1 = Enable Packing */
+			packing_enabled = true;
+		} else
+		{
+			/* 
+			 0 = Disable Packing, 
+			 2 = Disable Packing+Header
+			*/
+			packing_enabled = false;
+		}
 		if (packing_enabled != device->packing_enabled)
 		{
 			cancel_transfers(device);
@@ -2056,7 +2139,10 @@ int hydrasdr_list_devices(uint64_t *serials, int count)
 		switch (board_id)
 		{
 		case HYDRASDR_BOARD_ID_PROTO_HYDRASDR:
-			return "HYDRASDR";
+			return hydrasdr_usb_device_ids[0].description;
+
+		case HYDRASDR_BOARD_ID_HYDRASDR_RFONE_OFFICIAL:
+			return hydrasdr_usb_device_ids[1].description;
 
 		case HYDRASDR_BOARD_ID_INVALID:
 			return "Invalid Board ID";
