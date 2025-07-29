@@ -19,11 +19,6 @@
 
 */
 
-#include <fstream>
-#include <iostream>
-#include <cstdio>
-#include <limits>
-
 #include <rt/Format.h>
 #include <rt/Package.h>
 #include <rt/FileSystem.h>
@@ -64,18 +59,6 @@ struct SampleHdr
    uint32_t info[6];
 };
 
-struct SampleData
-{
-   char delta;
-   short offset;
-};
-
-struct SampleTail
-{
-   unsigned short value;
-   unsigned long long position;
-};
-
 struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 {
    // out storage subject for frames
@@ -102,14 +85,8 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
    rt::BlockingQueue<RawFrame> frameQueue;
 
    // signal stream queue buffer
-   rt::BlockingQueue<hw::SignalBuffer> signalQueue;
    rt::BlockingQueue<hw::SignalBuffer> logicSignalQueue;
    rt::BlockingQueue<hw::SignalBuffer> radioSignalQueue;
-
-   // temp files
-   std::string tempPath = "./tmp/";
-   std::map<std::string, SampleTail> cacheTail;
-   std::map<std::string, std::fstream> cacheFile;
 
    Impl() : AbstractTask("worker.TraceStorage", "storage")
    {
@@ -136,29 +113,25 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
       // subscribe to signal events
       adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-         if (buffer.isValid())
-         {
-            switch (buffer.type())
-            {
-               case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
-               case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
-                  signalQueue.add(buffer);
-                  break;
-               default:
-                  break;
-            }
-         }
+         // if (buffer.isValid())
+         // {
+         //    switch (buffer.type())
+         //    {
+         //       case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
+         //          logicSignalQueue.add(buffer);
+         //          break;
+         //       case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
+         //          radioSignalQueue.add(buffer);
+         //          break;
+         //       default:
+         //          break;
+         //    }
+         // }
       });
-   }
-
-   ~Impl() override
-   {
-      cacheFile.clear();
    }
 
    void start() override
    {
-      updateStorageStatus(Idle);
    }
 
    void stop() override
@@ -177,19 +150,15 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          switch (command->code)
          {
             case Read:
-               readTrace(command.value());
+               readFile(command.value());
                break;
 
             case Write:
-               writeTrace(command.value());
+               writeFile(command.value());
                break;
 
             case Clear:
-               clearTrace(command.value());
-               break;
-
-            case Config:
-               configTrace(command.value());
+               clearQueue(command.value());
                break;
 
             default:
@@ -199,73 +168,12 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          }
       }
 
-      processQueue();
+      wait(50);
 
       return true;
    }
 
-   void processQueue()
-   {
-      if (const auto buffer = signalQueue.get(50))
-      {
-         switch (buffer->type())
-         {
-            case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
-               cacheSignal(*buffer, "logic-" + std::to_string(buffer->id()), 1);
-               break;
-            case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
-               cacheSignal(*buffer, "radio-" + std::to_string(buffer->id()), 1 << 15);
-               break;
-            default:
-               break;
-         }
-      }
-   }
-
-   void cacheSignal(const hw::SignalBuffer &buffer, const std::string name, float scale)
-   {
-      // get temp file for this channel
-      auto &tempFile = cacheStore(name, buffer.id(), buffer.sampleRate());
-
-      // write to temp file
-      if (!tempFile.is_open())
-         return;
-
-      // initialize offset if not present
-      if (cacheTail.find(name) == cacheTail.end())
-         cacheTail.emplace(name, SampleTail {0, 0});
-
-      log->debug("caching {} signal buffer [{}]: {} length {}", {name, buffer.id(), buffer.offset(), buffer.elements()});
-
-      // current sample and last sample
-      SampleData sampleData {};
-      SampleTail sampleTail = cacheTail[name];
-
-      for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
-      {
-         auto value = static_cast<short>(buffer[i + 0] * scale);
-         auto position = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
-
-         // write sample data (offset, sample
-         sampleData.delta = static_cast<char>(value - sampleTail.value);
-         sampleData.offset = static_cast<short>(position - sampleTail.position);
-
-         // update differential values
-         sampleTail.value = value;
-         sampleTail.position = position;
-
-         // write differential sample to temp file
-         tempFile.write(reinterpret_cast<const char *>(&sampleData), sizeof(sampleData));
-      }
-
-      // flush temp file
-      tempFile.flush();
-
-      // update last offset
-      cacheTail[name] = sampleTail;
-   }
-
-   void readTrace(const rt::Event &command)
+   void readFile(const rt::Event &command)
    {
       int error = MissingParameters;
 
@@ -300,7 +208,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       command.reject(error, storageError.at(error));
    }
 
-   void writeTrace(const rt::Event &command)
+   void writeFile(const rt::Event &command)
    {
       int error = MissingParameters;
 
@@ -331,14 +239,10 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       command.reject(error);
    }
 
-   void clearTrace(const rt::Event &command)
+   void clearQueue(const rt::Event &command)
    {
       log->info("clear {} entries from frame cache", {frameQueue.size()});
-
       frameQueue.clear();
-      signalQueue.clear();
-      cacheTail.clear();
-      cacheFile.clear();
 
       log->info("clear {} entries from logic buffer cache", {logicSignalQueue.size()});
       logicSignalQueue.clear();
@@ -349,21 +253,6 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       log->info("clear all entries completed!");
 
       command.resolve();
-   }
-
-   void configTrace(const rt::Event &command)
-   {
-      if (auto data = command.get<std::string>("data"))
-      {
-         auto config = json::parse(data.value());
-
-         if (config.contains("tempPath"))
-         {
-            tempPath = config["tempPath"];
-
-            log->info("change temp path: {}", {tempPath});
-         }
-      }
    }
 
    int readTraceFile(const std::string &file)
@@ -450,12 +339,12 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             break;
 
          // add logic signal
-         // if ((result = writeLogicData(package, rangeStart, rangeEnd)) != NoError)
-         // break;
+         if ((result = writeLogicData(package, rangeStart, rangeEnd)) != NoError)
+            break;
 
          // add radio signal
-         // if ((result = writeRadioData(package, rangeStart, rangeEnd)) != NoError)
-         // break;
+         if ((result = writeRadioData(package, rangeStart, rangeEnd)) != NoError)
+            break;
 
          break;
       }
@@ -750,299 +639,122 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       return 0;
    }
 
-   int writeDataEntry(rt::Package &package, const std::string &name, std::fstream &cache, double rangeStart, double rangeEnd)
+   int writeLogicEntry(rt::Package &package, const std::string &name, unsigned int id, double rangeStart, double rangeEnd)
    {
-      // read header from cache file
-      SampleHdr hdr {};
-      SampleData data[1024];
-
-      cache.seekg(0, std::ios::beg);
-      cache.read(reinterpret_cast<std::istream::char_type *>(&hdr), sizeof(hdr));
-
-      // compute sample range
-      unsigned int sampleStart = static_cast<unsigned int>(hdr.info[INFO_SAMPLE_RATE] * rangeStart);
-      unsigned int sampleEnd = static_cast<unsigned int>(hdr.info[INFO_SAMPLE_RATE] * rangeEnd);
-      unsigned int sampleTime = 0;
+      unsigned int sampleStart = 0;
+      unsigned int sampleEnd = 0;
       unsigned int sampleCount = 0;
 
-      std::streamoff offsetStart = 0;
-      std::streamoff offsetEnd = std::numeric_limits<std::streamoff>::max();
-      std::streamoff offsetRead = cache.tellg();
+      // initialize header
+      SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 2, .info = {}};
 
-      while (!cache.eof() && cache.gcount() > 0)
+      // header buffer
+      hw::SignalBuffer header;
+
+      // count total samples to store between time range
+      for (const auto &buffer: logicSignalQueue)
       {
-         cache.read(reinterpret_cast<std::istream::char_type *>(&data), sizeof(data));
+         // skip other channels
+         if (buffer.id() != id)
+            continue;
 
-         for (int n = 0, i = 0; n < cache.gcount() && sampleTime < sampleEnd; n += sizeof(SampleData), ++i)
+         // catch first buffer
+         if (!header)
          {
-            sampleTime += data[i].offset;
+            header = buffer;
 
-            if (sampleTime < sampleStart)
-               offsetStart = offsetRead + i;
-            else if (sampleTime > sampleEnd)
-               offsetEnd = offsetRead + i;
-            else
-               ++sampleCount;
+            // compute sample range
+            sampleStart = static_cast<unsigned int>(header.sampleRate() * rangeStart);
+            sampleEnd = static_cast<unsigned int>(header.sampleRate() * rangeEnd);
+
+            // version 2 info contain buffer ID and SAMPLE RATE
+            hdr.info[INFO_START_OFFSET] = std::max(static_cast<unsigned int>(header.offset()), sampleStart);
+            hdr.info[INFO_STREAM_ID] = header.id();
+            hdr.info[INFO_SAMPLE_RATE] = header.sampleRate();
+         }
+
+         // count samples for this channel
+         for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
+         {
+            const auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
+
+            if (offset > sampleEnd)
+               break;
+
+            if (offset >= sampleStart)
+               sampleCount++;
          }
       }
 
-      // // rebuild header
-      // hdr.info[INFO_START_OFFSET] = std::max(static_cast<unsigned int>(0), sampleStart);
-      //
-      // unsigned int size = sizeof(hdr) + sampleCount * 3; // 2 byte time delta + 1 byte sample delta
-      //
-      // // write entry header
-      // if (package.addEntry(name, sizeof(size)) != 0)
-      // {
-      //    log->error("failed to add logic signal header");
-      //    return WriteDataFailed;
-      // }
-      //
-      // // write signal header
-      // if (package.writeData(&hdr, sizeof(hdr)) != 0)
-      // {
-      //    log->error("failed to write logic signal header");
-      //    return WriteDataFailed;
-      // }
-      //
-      // SampleData data {};
-      // unsigned int sampleOffset = 0;
-      // unsigned int sampleCount = 0;
-      //
-      // while ()
-      // {
-      //    // read one sample data
-      //    cache.read(reinterpret_cast<std::istream::char_type *>(&data), sizeof(data));
-      //
-      //    sampleOffset += static_cast<unsigned long>(data.offset);
-      //    sampleCount++;
-      // }
+      hdr.info[INFO_TOTAL_SAMPLES] = sampleCount;
 
-      // // header buffer
-      // hw::SignalBuffer header;
-      //
-      // // count total samples to store between time range
-      //
-      // for (const auto &buffer: logicSignalQueue)
-      // {
-      //    // skip other channels
-      //    if (buffer.id() != id)
-      //       continue;
-      //
-      //    // catch first buffer
-      //    if (!header)
-      //    {
-      //       header = buffer;
-      //
-      //       // compute sample range
-      //       sampleStart = static_cast<unsigned int>(header.sampleRate() * rangeStart);
-      //       sampleEnd = static_cast<unsigned int>(header.sampleRate() * rangeEnd);
-      //
-      //       // version 2 info contain buffer ID and SAMPLE RATE
-      //       hdr.info[INFO_START_OFFSET] = std::max(static_cast<unsigned int>(header.offset()), sampleStart);
-      //       hdr.info[INFO_STREAM_ID] = header.id();
-      //       hdr.info[INFO_SAMPLE_RATE] = header.sampleRate();
-      //    }
-      //
-      //    // count samples for this channel
-      //    for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
-      //    {
-      //       const auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
-      //
-      //       if (offset > sampleEnd)
-      //          break;
-      //
-      //       if (offset >= sampleStart)
-      //          sampleCount++;
-      //    }
-      // }
-      //
-      // hdr.info[INFO_TOTAL_SAMPLES] = sampleCount;
-      //
-      // unsigned int size = sizeof(hdr) + sampleCount * 3; // 2 byte time delta + 1 byte sample delta
-      //
-      // log->info("add logic entry {} with size {}", {name, size});
-      // log->debug("\tstream id....: {}", {hdr.info[INFO_STREAM_ID]});
-      // log->debug("\tstream offset: {}", {hdr.info[INFO_START_OFFSET]});
-      // log->debug("\tsample rate..: {}", {hdr.info[INFO_SAMPLE_RATE]});
-      // log->debug("\ttotal samples: {}", {hdr.info[INFO_TOTAL_SAMPLES]});
-      //
-      // // write entry header
-      // if (package.addEntry(name, size) != 0)
-      // {
-      //    log->error("failed to add logic signal header");
-      //    return WriteDataFailed;
-      // }
-      //
-      // // write signal header
-      // if (package.writeData(&hdr, sizeof(hdr)) != 0)
-      // {
-      //    log->error("failed to write logic signal header");
-      //    return WriteDataFailed;
-      // }
-      //
-      // unsigned int lastOffset = sampleStart;
-      //
-      // // write sample data
-      // for (const auto &buffer: logicSignalQueue)
-      // {
-      //    // skip other channels
-      //    if (buffer.id() != id)
-      //       continue;
-      //
-      //    std::shared_ptr<unsigned char> chunk(new unsigned char[buffer.elements() * 2]);
-      //
-      //    int o = 0;
-      //
-      //    for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
-      //    {
-      //       auto sample = buffer[i + 0] > 0.5 ? 1 : 0;
-      //       auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
-      //
-      //       if (offset > sampleEnd)
-      //          break;
-      //
-      //       if (offset < sampleStart)
-      //          continue;
-      //
-      //       // write sample data (offset, sample
-      //       chunk.get()[o++] = static_cast<unsigned char>(offset - lastOffset);
-      //       chunk.get()[o++] = static_cast<unsigned char>(sample);
-      //
-      //       // update differential values
-      //       lastOffset = offset;
-      //    }
-      //
-      //    log->debug("\twrite data, offset {} size {} start {}", {buffer.offset(), o, buffer.offset() + chunk.get()[0]});
-      //
-      //    if (package.writeData(chunk.get(), o) != 0)
-      //    {
-      //       log->error("failed to write logic signal chunk");
-      //       return WriteDataFailed;
-      //    }
-      // }
-      //
-      // log->info("\t{} samples stored for logic channel {}", {sampleCount, id});
+      unsigned int size = sizeof(hdr) + sampleCount * 2;
+
+      log->info("add logic entry {} with size {}", {name, size});
+      log->debug("\tstream id....: {}", {hdr.info[INFO_STREAM_ID]});
+      log->debug("\tstream offset: {}", {hdr.info[INFO_START_OFFSET]});
+      log->debug("\tsample rate..: {}", {hdr.info[INFO_SAMPLE_RATE]});
+      log->debug("\ttotal samples: {}", {hdr.info[INFO_TOTAL_SAMPLES]});
+
+      // write entry header
+      if (package.addEntry(name, size) != 0)
+      {
+         log->error("failed to add logic signal header");
+         return WriteDataFailed;
+      }
+
+      // write signal header
+      if (package.writeData(&hdr, sizeof(hdr)) != 0)
+      {
+         log->error("failed to write logic signal header");
+         return WriteDataFailed;
+      }
+
+      unsigned int lastOffset = sampleStart;
+
+      // write sample data
+      for (const auto &buffer: logicSignalQueue)
+      {
+         // skip other channels
+         if (buffer.id() != id)
+            continue;
+
+         std::shared_ptr<unsigned char> chunk(new unsigned char[buffer.elements() * 2]);
+
+         int o = 0;
+
+         for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
+         {
+            auto sample = buffer[i + 0] > 0.5 ? 1 : 0;
+            auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
+
+            if (offset > sampleEnd)
+               break;
+
+            if (offset < sampleStart)
+               continue;
+
+            // write sample data (offset, sample
+            chunk.get()[o++] = static_cast<unsigned char>(offset - lastOffset);
+            chunk.get()[o++] = static_cast<unsigned char>(sample);
+
+            // update differential values
+            lastOffset = offset;
+         }
+
+         log->debug("\twrite data, offset {} size {} start {}", {buffer.offset(), o, buffer.offset() + chunk.get()[0]});
+
+         if (package.writeData(chunk.get(), o) != 0)
+         {
+            log->error("failed to write logic signal chunk");
+            return WriteDataFailed;
+         }
+      }
+
+      log->info("\t{} samples stored for logic channel {}", {sampleCount, id});
 
       return NoError;
    }
-
-   // int writeLogicEntryOld(rt::Package &package, const std::string &name, unsigned int id, double rangeStart, double rangeEnd)
-   // {
-   //    unsigned int sampleStart = 0;
-   //    unsigned int sampleEnd = 0;
-   //    unsigned int sampleCount = 0;
-   //
-   //    // initialize header
-   //    SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 3, .info = {}};
-   //
-   //    // header buffer
-   //    hw::SignalBuffer header;
-   //
-   //    // count total samples to store between time range
-   //    for (const auto &buffer: logicSignalQueue)
-   //    {
-   //       // skip other channels
-   //       if (buffer.id() != id)
-   //          continue;
-   //
-   //       // catch first buffer
-   //       if (!header)
-   //       {
-   //          header = buffer;
-   //
-   //          // compute sample range
-   //          sampleStart = static_cast<unsigned int>(header.sampleRate() * rangeStart);
-   //          sampleEnd = static_cast<unsigned int>(header.sampleRate() * rangeEnd);
-   //
-   //          // version 2 info contain buffer ID and SAMPLE RATE
-   //          hdr.info[INFO_START_OFFSET] = std::max(static_cast<unsigned int>(header.offset()), sampleStart);
-   //          hdr.info[INFO_STREAM_ID] = header.id();
-   //          hdr.info[INFO_SAMPLE_RATE] = header.sampleRate();
-   //       }
-   //
-   //       // count samples for this channel
-   //       for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
-   //       {
-   //          const auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
-   //
-   //          if (offset > sampleEnd)
-   //             break;
-   //
-   //          if (offset >= sampleStart)
-   //             sampleCount++;
-   //       }
-   //    }
-   //
-   //    hdr.info[INFO_TOTAL_SAMPLES] = sampleCount;
-   //
-   //    unsigned int size = sizeof(hdr) + sampleCount * 3; // 2 byte time delta + 1 byte sample delta
-   //
-   //    log->info("add logic entry {} with size {}", {name, size});
-   //    log->debug("\tstream id....: {}", {hdr.info[INFO_STREAM_ID]});
-   //    log->debug("\tstream offset: {}", {hdr.info[INFO_START_OFFSET]});
-   //    log->debug("\tsample rate..: {}", {hdr.info[INFO_SAMPLE_RATE]});
-   //    log->debug("\ttotal samples: {}", {hdr.info[INFO_TOTAL_SAMPLES]});
-   //
-   //    // write entry header
-   //    if (package.addEntry(name, size) != 0)
-   //    {
-   //       log->error("failed to add logic signal header");
-   //       return WriteDataFailed;
-   //    }
-   //
-   //    // write signal header
-   //    if (package.writeData(&hdr, sizeof(hdr)) != 0)
-   //    {
-   //       log->error("failed to write logic signal header");
-   //       return WriteDataFailed;
-   //    }
-   //
-   //    unsigned int lastOffset = sampleStart;
-   //
-   //    // write sample data
-   //    for (const auto &buffer: logicSignalQueue)
-   //    {
-   //       // skip other channels
-   //       if (buffer.id() != id)
-   //          continue;
-   //
-   //       std::shared_ptr<unsigned char> chunk(new unsigned char[buffer.elements() * 2]);
-   //
-   //       int o = 0;
-   //
-   //       for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
-   //       {
-   //          auto sample = buffer[i + 0] > 0.5 ? 1 : 0;
-   //          auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
-   //
-   //          if (offset > sampleEnd)
-   //             break;
-   //
-   //          if (offset < sampleStart)
-   //             continue;
-   //
-   //          // write sample data (offset, sample
-   //          chunk.get()[o++] = static_cast<unsigned char>(offset - lastOffset);
-   //          chunk.get()[o++] = static_cast<unsigned char>(sample);
-   //
-   //          // update differential values
-   //          lastOffset = offset;
-   //       }
-   //
-   //       log->debug("\twrite data, offset {} size {} start {}", {buffer.offset(), o, buffer.offset() + chunk.get()[0]});
-   //
-   //       if (package.writeData(chunk.get(), o) != 0)
-   //       {
-   //          log->error("failed to write logic signal chunk");
-   //          return WriteDataFailed;
-   //       }
-   //    }
-   //
-   //    log->info("\t{} samples stored for logic channel {}", {sampleCount, id});
-   //
-   //    return NoError;
-   // }
 
    int readRadioEntry(rt::Package &package, unsigned int length)
    {
@@ -1262,7 +974,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             if (offset < sampleStart)
                continue;
 
-            // write sample data (offset, sample)
+            // write sample data (offset, sample
             chunk.get()[o++] = static_cast<char>((offset - lastOffset) & 0xff);
             chunk.get()[o++] = static_cast<char>((sample - lastSample) & 0xff);
             chunk.get()[o++] = static_cast<char>((sample - lastSample) >> 8);
@@ -1302,13 +1014,11 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
       log->info("detected {} logic channels", {channels.size()});
 
-      for (auto &name: cacheFile)
+      for (auto id: channels)
       {
-         // check if name starts with "logic-"
-         if (name.first.find("logic-") != 0)
-            continue;
+         std::string name = rt::Format::format("logic-{}.apcm", {id});
 
-         if ((result = writeDataEntry(package, name.first, name.second, rangeStart, rangeEnd)) != NoError)
+         if ((result = writeLogicEntry(package, name, id, rangeStart, rangeEnd)) != NoError)
          {
             log->error("failed to write logic signal entry");
             return result;
@@ -1316,46 +1026,6 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       }
 
       return NoError;
-   }
-
-   std::fstream &cacheStore(const std::string &name, unsigned int id, unsigned int sampleRate)
-   {
-      // get temp file for this channel or create a new one if it does not exist
-      if (cacheFile.find(name) == cacheFile.end())
-      {
-         log->info("create new temp file for: {}", {name});
-
-         rt::FileSystem::createPath(tempPath);
-
-         std::string fileName = tempPath + "/" + name + ".dat";
-         std::fstream tempFile(fileName, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
-
-         cacheFile.emplace(name, std::move(tempFile));
-
-         if (cacheFile[name].is_open())
-         {
-            // initialize header
-            SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 3, .info = {}};
-
-            // version 2 info contain buffer ID and SAMPLE RATE
-            hdr.info[INFO_STREAM_ID] = id;
-            hdr.info[INFO_START_OFFSET] = 0;
-            hdr.info[INFO_TOTAL_SAMPLES] = 0;
-            hdr.info[INFO_SAMPLE_RATE] = sampleRate;
-
-            if (!tempFile.write(reinterpret_cast<const char *>(&hdr), sizeof(hdr)))
-            {
-               log->error("failed to write header to temp file: {}", {fileName});
-               cacheFile[name].close();
-            }
-         }
-         else
-         {
-            log->error("failed to open temp file: {}", {fileName});
-         }
-      }
-
-      return cacheFile[name];
    }
 
    int writeRadioData(rt::Package &package, double timeStart, double timeEnd)
