@@ -3040,6 +3040,7 @@ void QCPDataContainer<DataType>::clear()
   mData.clear();
   mPreallocIteration = 0;
   mPreallocSize = 0;
+  QList<DataType>().swap(mData);
 }
 
 /*!

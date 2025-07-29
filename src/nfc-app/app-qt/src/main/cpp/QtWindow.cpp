@@ -27,6 +27,7 @@
 #include <QStandardPaths>
 #include <QScreen>
 #include <QRegularExpression>
+#include <QDesktopServices>
 
 #include <rt/Subject.h>
 
@@ -51,7 +52,6 @@
 #include <events/SystemStartupEvent.h>
 
 #include <dialogs/InspectDialog.h>
-#include <dialogs/LicenseDialog.h>
 
 #include <styles/Theme.h>
 
@@ -61,6 +61,7 @@
 
 #include "QtApplication.h"
 
+#include "QtCache.h"
 #include "QtConfig.h"
 #include "QtWindow.h"
 
@@ -69,6 +70,9 @@
 
 struct QtWindow::Impl
 {
+   // data cache
+   QtCache *cache;
+
    // application window
    QtWindow *window;
 
@@ -97,9 +101,7 @@ struct QtWindow::Impl
       {40, "40 sec"},
       {60, "1 min"},
       {120, "2 min"},
-      {300, "5 min"},
-      {600, "10 min"},
-      {3600, "30 min"},
+      {300, "5 min"}
    };
 
    // global parameters
@@ -153,6 +155,14 @@ struct QtWindow::Impl
    // last decoder status received
    QString logicDecoderStatus = LogicDecoderStatusEvent::Disabled;
    QString radioDecoderStatus = RadioDecoderStatusEvent::Disabled;
+
+   // working range
+   double receivedTimeFrom = 0.0;
+   double receivedTimeTo = 0.0;
+
+   // selected range
+   double selectedTimeFrom = 0.0;
+   double selectedTimeTo = 0.0;
 
    // interface
    QSharedPointer<Ui_QtWindow> ui;
@@ -210,17 +220,18 @@ struct QtWindow::Impl
    QMetaObject::Connection refreshTimerTimeoutConnection;
    QMetaObject::Connection acquireTimerTimeoutConnection;
 
-   explicit Impl(QtWindow *window) : window(window),
-                                     ui(new Ui_QtWindow()),
-                                     allowedDevices(".*"),
-                                     allowedFeatures(".*"),
-                                     acquireLimit(new QComboBox()),
-                                     streamModel(new StreamModel()),
-                                     parserModel(new ParserModel()),
-                                     streamFilter(new StreamFilter()),
-                                     inspectDialog(new InspectDialog(window)),
-                                     refreshTimer(new QTimer()),
-                                     acquireTimer(new QTimer())
+   explicit Impl(QtCache *cache, QtWindow *window) : cache(cache),
+                                                     window(window),
+                                                     ui(new Ui_QtWindow()),
+                                                     allowedDevices(".*"),
+                                                     allowedFeatures(".*"),
+                                                     acquireLimit(new QComboBox()),
+                                                     streamModel(new StreamModel()),
+                                                     parserModel(new ParserModel()),
+                                                     streamFilter(new StreamFilter()),
+                                                     inspectDialog(new InspectDialog(window)),
+                                                     refreshTimer(new QTimer()),
+                                                     acquireTimer(new QTimer())
    {
       // fft signal subject stream
       frequencyStream = rt::Subject<hw::SignalBuffer>::name("signal.fft");
@@ -300,6 +311,8 @@ struct QtWindow::Impl
       ui->actionListen->setEnabled(false);
       ui->actionRecord->setEnabled(false);
       ui->actionStop->setEnabled(false);
+      ui->actionPause->setEnabled(false);
+      ui->actionPause->setChecked(false);
 
       // setup display stretch
       ui->workbench->setStretchFactor(0, 3);
@@ -443,9 +456,9 @@ struct QtWindow::Impl
       });
 
       // create logic channels
+      ui->logicView->addChannel(1, {Theme::defaultSignalPen, Theme::defaultLogicCLKPen, Theme::defaultLogicCLKBrush, Theme::defaultTextPen, Theme::defaultLabelFont, "CLK"});
       ui->logicView->addChannel(0, {Theme::defaultSignalPen, Theme::defaultLogicIOPen, Theme::defaultLogicIOBrush, Theme::defaultTextPen, Theme::defaultLabelFont, "IO"});
       ui->logicView->addChannel(2, {Theme::defaultSignalPen, Theme::defaultLogicRSTPen, Theme::defaultLogicRSTBrush, Theme::defaultSignalPen, Theme::defaultLabelFont, "RST"});
-      ui->logicView->addChannel(1, {Theme::defaultSignalPen, Theme::defaultLogicCLKPen, Theme::defaultLogicCLKBrush, Theme::defaultTextPen, Theme::defaultLabelFont, "CLK"});
       ui->logicView->addChannel(3, {Theme::defaultSignalPen, Theme::defaultLogicVCCPen, Theme::defaultLogicVCCBrush, Theme::defaultSignalPen, Theme::defaultLabelFont, "VCC"});
 
       // acquire timer is one shot
@@ -676,13 +689,27 @@ struct QtWindow::Impl
    {
       if (event->buffer().isValid())
       {
-         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RAW_LOGIC || event->buffer().type() == hw::SignalType::SIGNAL_TYPE_ADV_LOGIC)
+         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL)
          {
             ui->logicView->append(event->buffer());
+
+            // update received time range
+            if (ui->logicView->dataLowerRange() < receivedTimeFrom || receivedTimeFrom == 0.0)
+               receivedTimeFrom = ui->logicView->dataLowerRange();
+
+            if (ui->logicView->dataUpperRange() > receivedTimeTo || receivedTimeTo == 0.0)
+               receivedTimeTo = ui->logicView->dataUpperRange();
          }
-         else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RAW_REAL || event->buffer().type() == hw::SignalType::SIGNAL_TYPE_ADV_REAL)
+         else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL)
          {
             ui->radioView->append(event->buffer());
+
+            // update received time range
+            if (ui->radioView->dataLowerRange() < receivedTimeFrom || receivedTimeFrom == 0.0)
+               receivedTimeFrom = ui->logicView->dataLowerRange();
+
+            if (ui->radioView->dataUpperRange() > receivedTimeTo || receivedTimeTo == 0.0)
+               receivedTimeTo = ui->logicView->dataUpperRange();
          }
       }
       else
@@ -816,13 +843,6 @@ struct QtWindow::Impl
       featureRadioSpectrum = allowedFeatures.match(Caps::RADIO_SPECTRUM).hasMatch();
       featureSignalRecord = allowedFeatures.match(Caps::SIGNAL_RECORD).hasMatch();
 
-      // qInfo() << "featureLogicAcquire" << featureLogicAcquire;
-      // qInfo() << "featureLogicDecoder" << featureLogicDecoder;
-      // qInfo() << "featureRadioAcquire" << featureRadioAcquire;
-      // qInfo() << "featureRadioDecoder" << featureRadioDecoder;
-      // qInfo() << "featureRadioSpectrum" << featureRadioSpectrum;
-      // qInfo() << "featureSignalRecord" << featureSignalRecord;
-
       // show available actions based on licensed features
       ui->featureLogicAcquire->setVisible(featureLogicAcquire);
       ui->featureLogicDecoder->setVisible(featureLogicDecoder);
@@ -845,23 +865,20 @@ struct QtWindow::Impl
    void updateActions() const
    {
       // flags for device status
-      bool logicDevicePresent = logicDeviceStatus != LogicDeviceStatusEvent::Absent;
-      bool radioDevicePresent = radioDeviceStatus != RadioDeviceStatusEvent::Absent;
+      const bool logicDevicePresent = logicDeviceStatus != LogicDeviceStatusEvent::Absent;
+      const bool radioDevicePresent = radioDeviceStatus != RadioDeviceStatusEvent::Absent;
 
-      bool logicDeviceEnabled = logicDeviceStatus != LogicDeviceStatusEvent::Disabled;
-      bool radioDeviceEnabled = radioDeviceStatus != RadioDeviceStatusEvent::Disabled;
+      const bool logicDeviceEnabled = logicDeviceStatus != LogicDeviceStatusEvent::Disabled;
+      const bool radioDeviceEnabled = radioDeviceStatus != RadioDeviceStatusEvent::Disabled;
 
-      bool logicDecoderEnabled = logicDecoderStatus != LogicDecoderStatusEvent::Disabled;
-      bool radioDecoderEnabled = radioDecoderStatus != RadioDecoderStatusEvent::Disabled;
+      const bool logicDecoderEnabled = logicDecoderStatus != LogicDecoderStatusEvent::Disabled;
+      const bool radioDecoderEnabled = radioDecoderStatus != RadioDecoderStatusEvent::Disabled;
 
-      bool fourierTaskEnabled = fourierStatus != FourierStatusEvent::Disabled;
-      bool deviceStreaming = logicDeviceStatus == LogicDeviceStatusEvent::Streaming || radioDeviceStatus == RadioDeviceStatusEvent::Streaming;
+      const bool fourierTaskEnabled = fourierStatus != FourierStatusEvent::Disabled;
 
-      // qInfo() << "logicDeviceEnabled" << logicDeviceEnabled;
-      // qInfo() << "logicDecoderEnabled" << logicDecoderEnabled;
-      // qInfo() << "radioDeviceEnabled" << radioDeviceEnabled;
-      // qInfo() << "radioDecoderEnabled" << radioDecoderEnabled;
-      // qInfo() << "fourierTaskEnabled" << fourierTaskEnabled;
+      const bool devicePaused = logicDeviceStatus == LogicDeviceStatusEvent::Paused || radioDeviceStatus == RadioDeviceStatusEvent::Paused;
+      const bool deviceStreaming = logicDeviceStatus == LogicDeviceStatusEvent::Streaming || radioDeviceStatus == RadioDeviceStatusEvent::Streaming;
+      const bool decoderStreaming = logicDecoderStatus == LogicDecoderStatusEvent::Decoding || radioDecoderStatus == RadioDecoderStatusEvent::Decoding;
 
       // update feature status
       ui->featureLogicAcquire->setChecked(logicDeviceEnabled);
@@ -871,7 +888,7 @@ struct QtWindow::Impl
       ui->featureRadioSpectrum->setChecked(fourierTaskEnabled);
 
       // disable / enable actions based on streaming status
-      if (deviceStreaming)
+      if (devicePaused || deviceStreaming || decoderStreaming)
       {
          // disable features during streaming
          ui->featureLogicAcquire->setEnabled(false);
@@ -884,6 +901,7 @@ struct QtWindow::Impl
          ui->actionListen->setEnabled(false);
          ui->actionRecord->setEnabled(false);
          ui->actionStop->setEnabled(true);
+         ui->actionPause->setEnabled(true);
 
          // disable acquire limit combo
          acquireLimit->setEnabled(false);
@@ -901,26 +919,28 @@ struct QtWindow::Impl
          ui->actionListen->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
          ui->actionRecord->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
          ui->actionStop->setEnabled(false);
+         ui->actionPause->setEnabled(false);
+         ui->actionPause->setChecked(false);
 
          // enable acquire limit combo
          acquireLimit->setEnabled(isActive(ui->featureLogicAcquire) || isActive(ui->featureRadioAcquire));
       }
 
       // flags for acquire status
-      bool logicAcquireEnabled = isActive(ui->featureLogicAcquire);
-      bool radioAcquireEnabled = isActive(ui->featureRadioAcquire);
-      bool acquireEnabled = logicAcquireEnabled || radioAcquireEnabled;
-      bool spectrumEnabled = isActive(ui->featureRadioSpectrum);
+      // const bool logicAcquireEnabled = isActive(ui->featureLogicAcquire);
+      // const bool radioAcquireEnabled = isActive(ui->featureRadioAcquire);
+      const bool spectrumEnabled = isActive(ui->featureRadioSpectrum);
+      // const bool acquireEnabled = logicAcquireEnabled || radioAcquireEnabled;
 
       // flags for data status
-      bool logicSignalPresent = ui->logicView->hasData();
-      bool radioSignalPresent = ui->radioView->hasData();
-      bool logicSignalWide = ui->logicView->viewSizeRange() >= ui->logicView->dataSizeRange();
-      bool radioSignalWide = ui->radioView->viewSizeRange() >= ui->radioView->dataSizeRange();
-      bool signalSelected = ui->logicView->selectionSizeRange() > 0 || ui->radioView->selectionSizeRange() > 0;
-      bool signalPresent = logicSignalPresent || radioSignalPresent;
-      bool signalWide = logicSignalWide || radioSignalWide;
-      bool decoderEnabled = logicDecoderEnabled || radioDecoderEnabled;
+      const bool logicSignalPresent = ui->logicView->hasData();
+      const bool radioSignalPresent = ui->radioView->hasData();
+      const bool logicSignalWide = ui->logicView->viewSizeRange() >= ui->logicView->dataSizeRange();
+      const bool radioSignalWide = ui->radioView->viewSizeRange() >= ui->radioView->dataSizeRange();
+      const bool signalSelected = ui->logicView->selectionSizeRange() > 0 || ui->radioView->selectionSizeRange() > 0;
+      const bool signalPresent = logicSignalPresent || radioSignalPresent;
+      const bool signalWide = logicSignalWide || radioSignalWide;
+      const bool decoderEnabled = logicDecoderEnabled || radioDecoderEnabled;
 
       // update signal label
       if (signalPresent && !decoderEnabled)
@@ -931,16 +951,15 @@ struct QtWindow::Impl
          ui->signalLabel->setText(tr("Start acquisition or open a trace file"));
 
       // show views based on selected features
-      ui->logicView->setVisible(logicSignalPresent && logicDecoderEnabled);
-      ui->radioView->setVisible(radioSignalPresent && radioDecoderEnabled);
-      ui->signalScroll->setVisible(signalPresent && decoderEnabled);
-      ui->signalLabel->setVisible(!signalPresent || !decoderEnabled);
+      ui->logicView->setVisible(logicSignalPresent);
+      ui->radioView->setVisible(radioSignalPresent);
+      ui->signalScroll->setVisible(signalPresent);
+      ui->signalLabel->setVisible(!signalPresent);
       ui->frequencyView->setEnabled(spectrumEnabled);
 
       // if no data is present, disable related actions
       ui->actionClear->setEnabled(signalPresent);
       ui->actionSave->setEnabled(signalPresent);
-      ui->actionExport->setEnabled(signalSelected);
       ui->actionTime->setEnabled(signalPresent);
       ui->actionZoom->setEnabled(signalSelected);
       ui->actionWide->setEnabled(!signalWide);
@@ -960,6 +979,9 @@ struct QtWindow::Impl
 
    void updateStatus() const
    {
+      // flags for device status
+      const bool devicePaused = logicDeviceStatus == LogicDeviceStatusEvent::Paused || radioDeviceStatus == RadioDeviceStatusEvent::Paused;
+
       ui->actionInfo->setText("");
 
       if (enabledDevices.isEmpty())
@@ -967,7 +989,10 @@ struct QtWindow::Impl
       else
          ui->statusBar->showMessage(QString(tr("Detected %1").arg(enabledDevices.join(", "))));
 
-      if (!enabledDevices.isEmpty())
+      if (devicePaused)
+         ui->actionInfo->setText(QString("PAUSED, Remaining time %1:%2").arg(timeLimit / 60, 2, 10, QChar('0')).arg(timeLimit % 60, 2, 10, QChar('0')));
+
+      else if (!enabledDevices.isEmpty())
          ui->actionInfo->setText(tr("Devices Ready"));
 
       // show if not licensed devices are present
@@ -986,7 +1011,7 @@ struct QtWindow::Impl
       if (logicDecoderStatus == value)
          return false;
 
-      qInfo().noquote() << "logic decoder status changed from " << logicDecoderStatus << "to" << value;
+      qInfo().noquote() << "logic decoder status changed from [" << logicDecoderStatus << "] to [" << value << "]";
 
       // reset view on decoder stop
       if (value == LogicDecoderStatusEvent::Idle && logicDecoderStatus == LogicDecoderStatusEvent::Decoding)
@@ -1031,9 +1056,9 @@ struct QtWindow::Impl
       if (logicDeviceName == value)
          return false;
 
-      logicDeviceName = value;
+      qInfo().noquote() << "logic device name changed from [" << logicDeviceName << "] to [" << value << "]";
 
-      qInfo() << "logic device name changed to" << logicDeviceName;
+      logicDeviceName = value;
 
       return true;
    }
@@ -1042,6 +1067,8 @@ struct QtWindow::Impl
    {
       if (logicDeviceModel == value)
          return false;
+
+      qInfo().noquote() << "logic device model changed from [" << logicDeviceModel << "] to [" << value << "]";
 
       logicDeviceModel = value;
 
@@ -1059,8 +1086,6 @@ struct QtWindow::Impl
          }
       }
 
-      qInfo() << "logic device model changed to" << logicDeviceModel;
-
       return true;
    }
 
@@ -1068,6 +1093,8 @@ struct QtWindow::Impl
    {
       if (logicDeviceSerial == value)
          return false;
+
+      qInfo().noquote() << "logic device serial changed from [" << logicDeviceSerial << "] to [" << value << "]";
 
       logicDeviceSerial = value;
       logicDeviceLicensed = allowedDevices.match(logicDeviceSerial).hasMatch();
@@ -1102,6 +1129,8 @@ struct QtWindow::Impl
       if (logicDeviceStatus == value)
          return false;
 
+      qInfo().noquote() << "logic device status changed from [" << logicDeviceStatus << "] to [" << value << "]";
+
       logicDeviceStatus = value;
 
       if (logicDeviceStatus == LogicDeviceStatusEvent::Absent)
@@ -1116,8 +1145,6 @@ struct QtWindow::Impl
          logicDeviceLicensed = false;
       }
 
-      qInfo() << "logic device status changed to:" << logicDeviceStatus;
-
       return true;
    }
 
@@ -1126,9 +1153,9 @@ struct QtWindow::Impl
       if (logicSampleRate == value)
          return false;
 
-      logicSampleRate = value;
+      qInfo().noquote() << "logic device sample rate changed from [" << logicSampleRate << "] to [" << value << "]";
 
-      qInfo() << "logic device sample rate changed to:" << logicSampleRate;
+      logicSampleRate = value;
 
       return true;
    }
@@ -1138,9 +1165,9 @@ struct QtWindow::Impl
       if (logicSampleCount == value)
          return false;
 
-      logicSampleCount = value;
+      qInfo().noquote() << "logic device sample count changed from [" << logicSampleCount << "] to [" << value << "]";
 
-      qDebug() << "logic device sample count changed to:" << logicSampleCount;
+      logicSampleCount = value;
 
       return true;
    }
@@ -1153,7 +1180,7 @@ struct QtWindow::Impl
       if (radioDecoderStatus == value)
          return false;
 
-      qInfo().noquote() << "radio decoder status changed from " << radioDecoderStatus << "to" << value;
+      qInfo().noquote() << "radio decoder status changed from [" << radioDecoderStatus << "] to [" << value << "]";
 
       // reset view on decoder stop
       if (value == RadioDecoderStatusEvent::Idle && radioDecoderStatus == RadioDecoderStatusEvent::Decoding)
@@ -1237,6 +1264,8 @@ struct QtWindow::Impl
       if (radioDeviceName == value)
          return false;
 
+      qInfo().noquote() << "radio device name changed from [" << radioDeviceName << "] to [" << value << "]";
+
       radioDeviceName = value;
 
       qInfo() << "radio device name changed to:" << radioDeviceName;
@@ -1248,6 +1277,8 @@ struct QtWindow::Impl
    {
       if (radioDeviceModel == value)
          return false;
+
+      qInfo().noquote() << "radio device model changed from [" << radioDeviceModel << "] to [" << value << "]";
 
       radioDeviceModel = value;
 
@@ -1265,8 +1296,6 @@ struct QtWindow::Impl
          }
       }
 
-      qInfo() << "radio device model changed to:" << radioDeviceModel;
-
       return true;
    }
 
@@ -1274,6 +1303,8 @@ struct QtWindow::Impl
    {
       if (radioDeviceSerial == value)
          return false;
+
+      qInfo().noquote() << "radio device name serial from [" << radioDeviceSerial << "] to [" << value << "]";
 
       radioDeviceSerial = value;
       radioDeviceLicensed = allowedDevices.match(radioDeviceSerial).hasMatch();
@@ -1309,6 +1340,8 @@ struct QtWindow::Impl
       if (radioDeviceStatus == value)
          return false;
 
+      qInfo().noquote() << "radio device device status from [" << radioDeviceStatus << "] to [" << value << "]";
+
       radioDeviceStatus = value;
 
       if (radioDeviceStatus == RadioDeviceStatusEvent::Absent)
@@ -1323,8 +1356,6 @@ struct QtWindow::Impl
          radioGainValue = -1;
          radioDeviceLicensed = false;
       }
-
-      qInfo() << "radio device status changed to:" << radioDeviceStatus;
 
       changeGainMode(radioGainMode);
       changeGainValue(radioGainValue);
@@ -1376,11 +1407,11 @@ struct QtWindow::Impl
       if (radioCenterFrequency == value)
          return false;
 
+      qInfo().noquote() << "radio device device frequency from [" << radioCenterFrequency << "] to [" << value << "]";
+
       radioCenterFrequency = value;
 
       ui->frequencyView->setCenterFreq(radioCenterFrequency);
-
-      qInfo() << "radio device frequency changed to:" << radioCenterFrequency;
 
       return true;
    }
@@ -1390,11 +1421,11 @@ struct QtWindow::Impl
       if (radioSampleRate == value)
          return false;
 
+      qInfo().noquote() << "radio device device sample rate from [" << radioSampleRate << "] to [" << value << "]";
+
       radioSampleRate = value;
 
       ui->frequencyView->setSampleRate(radioSampleRate);
-
-      qInfo() << "radio device sample rate changed to:" << radioSampleRate;
 
       return true;
    }
@@ -1404,9 +1435,9 @@ struct QtWindow::Impl
       if (radioGainMode == value)
          return false;
 
-      radioGainMode = value;
+      qInfo().noquote() << "radio device device gain mode from [" << radioGainMode << "] to [" << value << "]";
 
-      qInfo() << "radio device gain mode changed to:" << radioGainMode;
+      radioGainMode = value;
 
       return true;
    }
@@ -1416,12 +1447,12 @@ struct QtWindow::Impl
       if (radioGainValue == value || !radioGainKeys.contains(value))
          return false;
 
+      qInfo().noquote() << "radio device device gain value from [" << radioGainValue << "] to [" << value << "]";
+
       radioGainValue = value;
 
       ui->gainValue->setValue(static_cast<int>(radioGainKeys.indexOf(radioGainValue)));
       ui->gainLabel->setText(radioGainValues[radioGainValue]);
-
-      qInfo() << "radio device gain value changed to:" << radioGainValue;
 
       return true;
    }
@@ -1431,9 +1462,9 @@ struct QtWindow::Impl
       if (radioBiasTee == value)
          return false;
 
-      radioBiasTee = value;
+      qInfo().noquote() << "radio device device bias-tee from [" << radioBiasTee << "] to [" << value << "]";
 
-      qInfo() << "radio device biasTee value changed to:" << radioBiasTee;
+      radioBiasTee = value;
 
       return true;
    }
@@ -1443,9 +1474,9 @@ struct QtWindow::Impl
       if (radioDirectSampling == value)
          return false;
 
-      radioDirectSampling = value;
+      qInfo().noquote() << "radio device device direct sampling from [" << radioDirectSampling << "] to [" << value << "]";
 
-      qInfo() << "radio device direct sampling changed to:" << radioDirectSampling;
+      radioDirectSampling = value;
 
       return true;
    }
@@ -1455,9 +1486,9 @@ struct QtWindow::Impl
       if (radioSampleCount == value)
          return false;
 
-      radioSampleCount = value;
+      qInfo().noquote() << "radio device device direct sample count from [" << radioSampleCount << "] to [" << value << "]";
 
-      qDebug() << "radio device sample count changed to:" << radioSampleCount;
+      radioSampleCount = value;
 
       return true;
    }
@@ -1477,9 +1508,9 @@ struct QtWindow::Impl
       if (fourierStatus == value)
          return false;
 
-      fourierStatus = value;
+      qInfo().noquote() << "update fourier transformer state from [" << fourierStatus << "] to [" << value << "]";
 
-      qInfo() << "fourier status changed to:" << fourierStatus;
+      fourierStatus = value;
 
       return true;
    }
@@ -1690,7 +1721,11 @@ struct QtWindow::Impl
     */
    void openFile()
    {
-      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), "", tr("Capture (*.wav *.trz)"));
+      qInfo() << "open file";
+
+      QDir dataPath = QtApplication::dataPath();
+
+      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath.absolutePath(), tr("Capture (*.wav *.trz)"));
 
       if (fileName.isEmpty())
          return;
@@ -1716,49 +1751,52 @@ struct QtWindow::Impl
                                                   }));
    }
 
-   void saveFile()
+   void saveFile() const
    {
+      qInfo() << "save signal trace";
+
+      bool hasSelection = selectedTimeTo > selectedTimeFrom;
+
+      double writeTimeFrom = hasSelection ? selectedTimeFrom : receivedTimeFrom;
+      double writeTimeTo = hasSelection ? selectedTimeTo : receivedTimeTo;
+
       QString path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
       QString date = QDateTime::currentDateTime().toString("yyyy_MM_dd-HH_mm_ss");
       QString name = QString("%1-trace.trz").arg(date);
 
-      QString fileName = Theme::saveFileDialog(window, tr("Save trace file"), path + "/" + name, tr("Trace (*.trz)"));
+      QString fileName = Theme::saveFileDialog(window, hasSelection ? tr("Save selection to trace file") : tr("Save all to trace file"), path + "/" + name, tr("Trace (*.trz)"));
 
       if (!fileName.isEmpty())
       {
          QtApplication::post(new DecoderControlEvent(DecoderControlEvent::WriteFile, {
                                                         {"fileName", fileName},
                                                         {"sampleRate", radioSampleRate},
-                                                        {"timeStart", ui->radioView->dataLowerRange()},
-                                                        {"timeEnd", ui->radioView->dataUpperRange()}
+                                                        {"timeStart", writeTimeFrom},
+                                                        {"timeEnd", writeTimeTo}
                                                      }));
       }
    }
 
-   void saveSelected()
+   void openStorage() const
    {
-      QString path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
-      QString date = QDateTime::currentDateTime().toString("yyyy_MM_dd-HH_mm_ss");
-      QString name = QString("%1-trace.trz").arg(date);
+      qInfo() << "open storage folder";
 
-      QString fileName = Theme::saveFileDialog(window, tr("Save trace file"), path + "/" + name, tr("Trace (*.trz)"));
+      QDesktopServices::openUrl(QUrl::fromLocalFile(QtApplication::dataPath().absolutePath()));
+   }
 
-      if (!fileName.isEmpty())
+   void openConfig() const
+   {
+      QString filePath = settings.fileName();
+
+      QFileInfo info(filePath);
+
+      if (!info.exists())
       {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::WriteFile, {
-                                                        {"fileName", fileName},
-                                                        {"sampleRate", radioSampleRate},
-                                                        {"timeStart", ui->radioView->selectionLowerRange()},
-                                                        {"timeEnd", ui->radioView->selectionUpperRange()}
-                                                     }));
+         qWarning("File not found: %s", qUtf8Printable(filePath));
+         return;
       }
-   }
 
-   void openConfig()
-   {
-      //   QPointer<ConfigDialog> dialog = new ConfigDialog(this);
-      //
-      //   dialog->show();
+      QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
    }
 
    void toggleStart(bool recording)
@@ -1784,24 +1822,50 @@ struct QtWindow::Impl
       // enable follow
       setFollowEnabled(true);
 
+      // get selected time limit
+      timeLimit = acquireLimit->currentData().toInt();
+
       // start decoder
       if (recording || settings.value("settings/recordEnabled", false).toBool())
       {
-         const QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data");
-
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {
-                                                        {"storagePath", dataPath.absolutePath()},
-                                                        {"timeLimit", timeLimit}
-                                                     }));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath().absolutePath()}}));
       }
       else
       {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {
-                                                        {"timeLimit", timeLimit}
-                                                     }));
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {}));
       }
 
       acquireTimer->start(timeLimit * 1000);
+   }
+
+   void togglePause()
+   {
+      if (ui->actionPause->isChecked())
+      {
+         qInfo() << "decoder pause, remaining time:" << acquireTimer->remainingTime();
+
+         // get remaining time
+         timeLimit = acquireTimer->remainingTime() / 1000;
+
+         // stopping timer
+         acquireTimer->stop();
+
+         // sync logic && radio view ranges
+         syncDataRanges();
+
+         // pause decoder
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Pause));
+      }
+      else
+      {
+         qInfo() << "decoder resume, remaining time:" << timeLimit;
+
+         // resume timer
+         acquireTimer->start(timeLimit * 1000);
+
+         // resume decoder
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Resume));
+      }
    }
 
    void toggleStop()
@@ -1817,8 +1881,10 @@ struct QtWindow::Impl
       ui->framesView->stop();
       ui->frequencyView->stop();
 
-      // disable action to avoid multiple stop
+      // disable action to avoid multiple pause / stop
       ui->actionStop->setEnabled(false);
+      ui->actionPause->setEnabled(false);
+      ui->actionPause->setChecked(false);
 
       // sync logic && radio view ranges
       syncDataRanges();
@@ -1912,7 +1978,6 @@ struct QtWindow::Impl
       {
          timeLimit = value;
          qInfo() << "capture time limit changed to" << timeLimit;
-         return;
       }
    }
 
@@ -1991,7 +2056,7 @@ struct QtWindow::Impl
       ui->framesView->repaint();
    }
 
-   void clearView() const
+   void clearView()
    {
       qInfo() << "clear events and views";
 
@@ -2009,12 +2074,14 @@ struct QtWindow::Impl
       ui->radioView->clear();
       ui->frequencyView->clear();
 
+      // clear ranges
+      receivedTimeFrom = 0.0;
+      receivedTimeTo = 0.0;
+      selectedTimeFrom = 0.0;
+      selectedTimeTo = 0.0;
+
       // signal clear to decoder control
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Clear));
-
-      // update interface actions
-      updateStatus();
-      updateActions();
    }
 
    void resetView() const
@@ -2161,6 +2228,9 @@ struct QtWindow::Impl
       QSignalBlocker radioViewBlocker(ui->radioView);
       QSignalBlocker decodeViewBlocker(ui->decodeView->selectionModel());
 
+      selectedTimeFrom = from;
+      selectedTimeTo = to;
+
       ui->logicView->select(from, to);
       ui->logicView->repaint();
 
@@ -2215,6 +2285,9 @@ struct QtWindow::Impl
       QSignalBlocker framesViewBlocker(ui->framesView);
       QSignalBlocker decodeViewBlocker(ui->decodeView->selectionModel());
 
+      selectedTimeFrom = from;
+      selectedTimeTo = to;
+
       ui->radioView->select(from, to);
       ui->radioView->repaint();
 
@@ -2264,6 +2337,9 @@ struct QtWindow::Impl
       QSignalBlocker logicViewBlocker(ui->logicView);
       QSignalBlocker framesViewBlocker(ui->framesView);
       QSignalBlocker decodeViewBlocker(ui->decodeView->selectionModel());
+
+      selectedTimeFrom = from;
+      selectedTimeTo = to;
 
       ui->logicView->select(from, to);
       ui->logicView->repaint();
@@ -2434,7 +2510,7 @@ struct QtWindow::Impl
    }
 };
 
-QtWindow::QtWindow() : impl(new Impl(this))
+QtWindow::QtWindow(QtCache *cache) : impl(new Impl(cache, this))
 {
    // configure window properties
    setAttribute(Qt::WA_OpaquePaintEvent, true);
@@ -2476,14 +2552,14 @@ void QtWindow::saveFile()
    impl->saveFile();
 }
 
-void QtWindow::saveSelection()
-{
-   impl->saveSelected();
-}
-
 void QtWindow::openConfig()
 {
    impl->openConfig();
+}
+
+void QtWindow::openStorage()
+{
+   impl->openStorage();
 }
 
 void QtWindow::toggleListen()
@@ -2494,6 +2570,11 @@ void QtWindow::toggleListen()
 void QtWindow::toggleRecord()
 {
    impl->toggleStart(true);
+}
+
+void QtWindow::togglePause()
+{
+   impl->togglePause();
 }
 
 void QtWindow::toggleStop()

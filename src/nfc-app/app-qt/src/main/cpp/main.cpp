@@ -26,6 +26,7 @@
 #include <QDir>
 #include <QLocale>
 #include <QSslSocket>
+#include <QSettings>
 #include <QStandardPaths>
 
 #include <rt/Logger.h>

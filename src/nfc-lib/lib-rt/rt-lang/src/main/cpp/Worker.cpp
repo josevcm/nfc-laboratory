@@ -37,7 +37,7 @@ struct Worker::Impl
    // worker name
    std::string name;
 
-   // loop intreval
+   // loop interval
    int interval;
 
    // alive synchronization condition

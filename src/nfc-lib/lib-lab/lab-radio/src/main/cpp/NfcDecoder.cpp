@@ -295,10 +295,10 @@ NfcDecoder::Impl::Impl() : nfca(&decoder), nfcb(&decoder), nfcf(&decoder), nfcv(
 void NfcDecoder::Impl::initialize()
 {
    // clear signal parameters
-   decoder.signalParams = {0,};
+   decoder.signalParams = {};
 
    // clear signal master clock
-   decoder.signalClock = 0;
+   decoder.signalClock = -1;
 
    // configure only if samplerate > 0
    if (decoder.sampleRate > 0)

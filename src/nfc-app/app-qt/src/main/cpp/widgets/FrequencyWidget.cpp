@@ -202,9 +202,12 @@ struct FrequencyWidget::Impl
                maximumRange = upperFreq;
 
             // process frequency bins and transform to logarithmic scale
-#pragma GCC ivdep
+            const double scale = 2.0 * 10.0;
+            const double fftInv = 1.0 / double(fftSize);
+
+            #pragma omp simd
             for (int i = 0; i < buffer.elements(); i++)
-               temp[i] = 2.0 * 10 * log10(buffer[i] / double(fftSize));
+               temp[i] = scale * log10(buffer[i] * fftInv);
 
             // filter frequency and apply decay animation
             for (int i = 2; i < buffer.elements() - 2; i++)

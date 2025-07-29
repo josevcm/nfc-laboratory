@@ -113,20 +113,20 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
       // subscribe to signal events
       adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-         if (buffer.isValid())
-         {
-            switch (buffer.type())
-            {
-               case hw::SignalType::SIGNAL_TYPE_ADV_LOGIC:
-                  logicSignalQueue.add(buffer);
-                  break;
-               case hw::SignalType::SIGNAL_TYPE_ADV_REAL:
-                  radioSignalQueue.add(buffer);
-                  break;
-               default:
-                  break;
-            }
-         }
+         // if (buffer.isValid())
+         // {
+         //    switch (buffer.type())
+         //    {
+         //       case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
+         //          logicSignalQueue.add(buffer);
+         //          break;
+         //       case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
+         //          radioSignalQueue.add(buffer);
+         //          break;
+         //       default:
+         //          break;
+         //    }
+         // }
       });
    }
 
@@ -147,21 +147,28 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Read)
+         switch (command->code)
          {
-            readFile(command.value());
-         }
-         else if (command->code == Write)
-         {
-            writeFile(command.value());
-         }
-         else if (command->code == Clear)
-         {
-            clearQueue(command.value());
+            case Read:
+               readFile(command.value());
+               break;
+
+            case Write:
+               writeFile(command.value());
+               break;
+
+            case Clear:
+               clearQueue(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 
-      wait(250);
+      wait(50);
 
       return true;
    }
@@ -232,17 +239,20 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       command.reject(error);
    }
 
-   void clearQueue(const rt::Event &event)
+   void clearQueue(const rt::Event &command)
    {
       log->info("clear {} entries from frame cache", {frameQueue.size()});
-      log->info("clear {} entries from logic buffer cache", {logicSignalQueue.size()});
-      log->info("clear {} entries from radio buffer cache", {radioSignalQueue.size()});
-
       frameQueue.clear();
+
+      log->info("clear {} entries from logic buffer cache", {logicSignalQueue.size()});
       logicSignalQueue.clear();
+
+      log->info("clear {} entries from radio buffer cache", {radioSignalQueue.size()});
       radioSignalQueue.clear();
 
-      event.resolve();
+      log->info("clear all entries completed!");
+
+      command.resolve();
    }
 
    int readTraceFile(const std::string &file)
@@ -597,7 +607,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
          log->debug("\tread data, offset {} size {} start {}", {position, size, position + chunk[0]});
 
-         hw::SignalBuffer buffer(size, 2, 1, sampleRate, position, 0, hw::SignalType::SIGNAL_TYPE_ADV_LOGIC, streamId);
+         hw::SignalBuffer buffer(size, 2, 1, sampleRate, position, 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL, streamId);
 
          for (int i = 0; i < size; i += 2)
          {
@@ -834,7 +844,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
          log->debug("\tread data, offset {} size {} start {}", {position, size, position + chunk[0]});
 
-         hw::SignalBuffer buffer((size / 3) * 2, 2, 1, sampleRate, position, 0, hw::SignalType::SIGNAL_TYPE_ADV_REAL, streamId);
+         hw::SignalBuffer buffer((size / 3) * 2, 2, 1, sampleRate, position, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, streamId);
 
          for (int i = 0; i < size; i += 3)
          {
@@ -1078,7 +1088,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
    }
 };
 
-TraceStorageTask::TraceStorageTask() : Worker("TraceStorageTask")
+TraceStorageTask::TraceStorageTask() : Worker("TraceStorage")
 {
 }
 

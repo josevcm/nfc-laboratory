@@ -19,7 +19,6 @@
 
 */
 
-
 #ifndef RADIO_REALTEKDEVICE_H
 #define RADIO_REALTEKDEVICE_H
 
@@ -46,13 +45,17 @@ class RealtekDevice : public RadioDevice
 
       explicit RealtekDevice(const std::string &name);
 
-      bool open(Device::Mode mode) override;
+      bool open(Mode mode) override;
 
       void close() override;
 
       int start(StreamHandler handler) override;
 
       int stop() override;
+
+      int pause() override;
+
+      int resume() override;
 
       rt::Variant get(int id, int channel = -1) const;
 
@@ -64,11 +67,13 @@ class RealtekDevice : public RadioDevice
 
       bool isReady() const override;
 
+      bool isPaused() const override;
+
       bool isStreaming() const override;
 
-      int read(SignalBuffer &buffer) override;
+      long read(SignalBuffer &buffer) override;
 
-      int write(SignalBuffer &buffer) override;
+      long write(const SignalBuffer &buffer) override;
 
       static std::vector<std::string> enumerate();
 

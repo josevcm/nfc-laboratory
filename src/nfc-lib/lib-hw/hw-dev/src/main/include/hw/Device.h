@@ -79,11 +79,9 @@ class Device
 
       virtual bool isReady() const = 0;
 
-      virtual bool isStreaming() const = 0;
+      virtual long read(BufferType &buffer) = 0;
 
-      virtual int read(BufferType &buffer) = 0;
-
-      virtual int write(BufferType &buffer) = 0;
+      virtual long write(const BufferType &buffer) = 0;
 };
 
 }

@@ -10,9 +10,10 @@
         <file>actions/scalable/action-filter.svg</file>
         <file>actions/scalable/action-follow.svg</file>
         <file>actions/scalable/action-help.svg</file>
-        <file>actions/scalable/action-listen.svg</file>
+        <file>actions/scalable/action-play.svg</file>
         <file>actions/scalable/action-logic.svg</file>
         <file>actions/scalable/action-open.svg</file>
+        <file>actions/scalable/action-pause.svg</file>
         <file>actions/scalable/action-radio.svg</file>
         <file>actions/scalable/action-record.svg</file>
         <file>actions/scalable/action-refresh.svg</file>
@@ -22,6 +23,7 @@
         <file>actions/scalable/action-setup.svg</file>
         <file>actions/scalable/action-spectrum.svg</file>
         <file>actions/scalable/action-stop.svg</file>
+        <file>actions/scalable/action-storage.svg</file>
         <file>actions/scalable/action-stream.svg</file>
         <file>actions/scalable/action-time.svg</file>
         <file>actions/scalable/action-wide.svg</file>

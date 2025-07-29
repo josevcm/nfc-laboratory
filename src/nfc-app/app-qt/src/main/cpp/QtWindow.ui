@@ -604,7 +604,6 @@
                 </property>
                 <addaction name="actionOpen"/>
                 <addaction name="actionSave"/>
-                <addaction name="actionExport"/>
             </widget>
             <widget class="QMenu" name="menuDevice">
                 <property name="title">
@@ -612,6 +611,7 @@
                 </property>
                 <addaction name="actionListen"/>
                 <addaction name="actionRecord"/>
+                <addaction name="actionPause"/>
                 <addaction name="actionStop"/>
             </widget>
             <widget class="QMenu" name="menuView">
@@ -681,13 +681,16 @@
             </attribute>
             <addaction name="actionOpen"/>
             <addaction name="actionSave"/>
-            <addaction name="actionExport"/>
             <addaction name="actionClear"/>
             <addaction name="actionZoom"/>
             <addaction name="actionWide"/>
             <addaction name="separator"/>
+            <addaction name="actionStorage"/>
+            <addaction name="actionSetup"/>
+            <addaction name="separator"/>
             <addaction name="actionListen"/>
             <addaction name="actionRecord"/>
+            <addaction name="actionPause"/>
             <addaction name="actionStop"/>
             <addaction name="separator"/>
             <addaction name="actionInfo"/>
@@ -695,7 +698,7 @@
         <widget class="QStatusBar" name="statusBar"/>
         <action name="actionListen">
             <property name="icon">
-                <iconset theme="action-listen"/>
+                <iconset theme="action-play"/>
             </property>
             <property name="text">
                 <string>Start</string>
@@ -719,6 +722,26 @@
             </property>
             <property name="shortcut">
                 <string>Ctrl+W</string>
+            </property>
+        </action>
+        <action name="actionPause">
+            <property name="checkable">
+                <bool>true</bool>
+            </property>
+            <property name="checked">
+                <bool>false</bool>
+            </property>
+            <property name="icon">
+                <iconset theme="action-pause"/>
+            </property>
+            <property name="text">
+                <string>Pause</string>
+            </property>
+            <property name="toolTip">
+                <string>Pause acquisition</string>
+            </property>
+            <property name="shortcut">
+                <string>Ctrl+P</string>
             </property>
         </action>
         <action name="actionStop">
@@ -763,20 +786,6 @@
                 <string>Ctrl+S</string>
             </property>
         </action>
-        <action name="actionExport">
-            <property name="icon">
-                <iconset theme="action-selected"/>
-            </property>
-            <property name="text">
-                <string>Save Selected</string>
-            </property>
-            <property name="toolTip">
-                <string>Save Selected Trace To File</string>
-            </property>
-            <property name="shortcut">
-                <string>Ctrl+E</string>
-            </property>
-        </action>
         <action name="actionSetup">
             <property name="icon">
                 <iconset theme="action-setup"/>
@@ -785,7 +794,24 @@
                 <string>Open Settings</string>
             </property>
             <property name="toolTip">
-                <string>Settings</string>
+                <string>Open Settings</string>
+            </property>
+            <property name="font">
+                <font>
+                    <family>Verdana</family>
+                    <bold>false</bold>
+                </font>
+            </property>
+        </action>
+        <action name="actionStorage">
+            <property name="icon">
+                <iconset theme="action-storage"/>
+            </property>
+            <property name="text">
+                <string>Open Storage</string>
+            </property>
+            <property name="toolTip">
+                <string>Open Storage</string>
             </property>
             <property name="font">
                 <font>
@@ -1186,6 +1212,12 @@
             <slot>toggleRecord()</slot>
         </connection>
         <connection>
+            <sender>actionPause</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>togglePause()</slot>
+        </connection>
+        <connection>
             <sender>actionStop</sender>
             <signal>triggered()</signal>
             <receiver>mainWindow</receiver>
@@ -1204,16 +1236,22 @@
             <slot>saveFile()</slot>
         </connection>
         <connection>
-            <sender>actionExport</sender>
-            <signal>triggered()</signal>
-            <receiver>mainWindow</receiver>
-            <slot>saveSelection()</slot>
-        </connection>
-        <connection>
             <sender>actionClear</sender>
             <signal>triggered()</signal>
             <receiver>mainWindow</receiver>
             <slot>clearView()</slot>
+        </connection>
+        <connection>
+            <sender>actionStorage</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>openStorage()</slot>
+        </connection>
+        <connection>
+            <sender>actionSetup</sender>
+            <signal>triggered()</signal>
+            <receiver>mainWindow</receiver>
+            <slot>openConfig()</slot>
         </connection>
         <connection>
             <sender>actionTime</sender>
@@ -1244,12 +1282,6 @@
             <signal>triggered()</signal>
             <receiver>mainWindow</receiver>
             <slot>zoomReset()</slot>
-        </connection>
-        <connection>
-            <sender>actionSetup</sender>
-            <signal>triggered()</signal>
-            <receiver>mainWindow</receiver>
-            <slot>openConfig()</slot>
         </connection>
         <connection>
             <sender>actionReset</sender>
@@ -1346,10 +1378,11 @@
         <slot>selectionChanged(QItemSelection,QItemSelection)</slot>
         <slot>openFile()</slot>
         <slot>saveFile()</slot>
-        <slot>saveSelection()</slot>
         <slot>openConfig()</slot>
+        <slot>openStorage()</slot>
         <slot>toggleListen()</slot>
         <slot>toggleRecord()</slot>
+        <slot>togglePause()</slot>
         <slot>toggleStop()</slot>
         <slot>toggleTime()</slot>
         <slot>toggleFollow()</slot>

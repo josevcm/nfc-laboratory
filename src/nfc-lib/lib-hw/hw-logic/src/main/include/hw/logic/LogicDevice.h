@@ -89,9 +89,24 @@ class LogicDevice : public SignalDevice
 
    public:
 
+      virtual bool isPaused() const = 0;
+
+      virtual bool isStreaming() const = 0;
+
       virtual int start(StreamHandler handler) = 0;
 
       virtual int stop() = 0;
+
+      virtual int pause()
+      {
+         return -1;
+      }
+
+      virtual int resume()
+      {
+         return -1;
+      }
+
 };
 
 }

@@ -49,7 +49,8 @@ class RadioDecoderTask : public rt::Worker
       {
          NoError = 0,
          TaskDisabled = -1,
-         InvalidConfig = -2
+         InvalidConfig = -2,
+         UnknownCommand = -9
       };
 
    private:

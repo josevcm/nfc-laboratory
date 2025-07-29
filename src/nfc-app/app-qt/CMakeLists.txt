@@ -23,7 +23,8 @@ set(SOURCES
         src/main/cpp/main.cpp
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
-        src/main/cpp/QtDecoder.cpp
+        src/main/cpp/QtCache.cpp
+        src/main/cpp/QtControl.cpp
         src/main/cpp/QtWindow.cpp
         src/main/cpp/events/ConsoleLogEvent.cpp
         src/main/cpp/events/DecoderControlEvent.cpp
@@ -40,7 +41,6 @@ set(SOURCES
         src/main/cpp/events/SystemStartupEvent.cpp
         src/main/cpp/dialogs/ConfigDialog.cpp
         src/main/cpp/dialogs/InspectDialog.cpp
-        src/main/cpp/dialogs/LicenseDialog.cpp
         src/main/cpp/features/Caps.cpp
         src/main/cpp/format/DataFormat.cpp
         src/main/cpp/graph/AxisLabel.cpp

@@ -48,11 +48,9 @@ class RecordDevice : public SignalDevice
 
       bool isReady() const override;
 
-      bool isStreaming() const override;
+      long read(SignalBuffer &buffer) override;
 
-      int read(SignalBuffer &buffer) override;
-
-      int write(SignalBuffer &buffer) override;
+      long write(const SignalBuffer &buffer) override;
 
    private:
 

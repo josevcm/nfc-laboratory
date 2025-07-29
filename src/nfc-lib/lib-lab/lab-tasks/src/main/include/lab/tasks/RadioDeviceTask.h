@@ -32,8 +32,10 @@ class RadioDeviceTask : public rt::Worker
 
       enum Command
       {
-         Stop,
          Start,
+         Stop,
+         Pause,
+         Resume,
          Query,
          Configure,
          Clear
@@ -42,16 +44,18 @@ class RadioDeviceTask : public rt::Worker
       enum Status
       {
          Absent,
-         Idle,
          Streaming,
-         Flush
+         Paused,
+         Flush,
+         Idle
       };
 
       enum Error
       {
          NoError = 0,
          TaskDisabled = -1,
-         InvalidConfig = -2
+         InvalidConfig = -2,
+         UnknownCommand = -9
       };
 
    private:

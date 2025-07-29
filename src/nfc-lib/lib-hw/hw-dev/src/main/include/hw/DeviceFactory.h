@@ -53,13 +53,11 @@ class DeviceFactory
       template<class T>
       static T *newInstance(const std::string &name)
       {
-         std::lock_guard<std::mutex> lock(mutex);
+         std::lock_guard lock(mutex);
 
-         std::string type = name.find("://") != std::string::npos ? name.substr(0, name.find("://")) : "";
+         const std::string type = name.find("://") != std::string::npos ? name.substr(0, name.find("://")) : "";
 
-         auto it = constructors.find(type);
-
-         if (it != constructors.end())
+         if (const auto it = constructors.find(type); it != constructors.end())
             return static_cast<T *>(it->second(name));
 
          return nullptr;

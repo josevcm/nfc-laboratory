@@ -142,7 +142,7 @@ struct RecordDevice::Impl
          return false;
       }
 
-      std::string path = name.find("record://") == 0 ? name.substr(9) : name;
+      const std::string path = name.find("record://") == 0 ? name.substr(9) : name;
 
       close();
 
@@ -232,12 +232,7 @@ struct RecordDevice::Impl
       return file.good();
    }
 
-   bool isStreaming() const
-   {
-      return file.is_open();
-   }
-
-   int read(SignalBuffer &buffer)
+   long read(SignalBuffer &buffer)
    {
       if (!file.is_open())
          return -1;
@@ -260,7 +255,7 @@ struct RecordDevice::Impl
       }
    }
 
-   int write(SignalBuffer &buffer)
+   long write(const SignalBuffer &buffer)
    {
       if (!file.is_open())
          return -1;
@@ -284,7 +279,7 @@ struct RecordDevice::Impl
    }
 
    template <typename T>
-   int readScaledSamples(SignalBuffer &buffer, float scale)
+   long readScaledSamples(SignalBuffer &buffer, float scale)
    {
       T block[BUFFER_SIZE];
 
@@ -310,13 +305,13 @@ struct RecordDevice::Impl
 
       buffer.flip();
 
-      sampleOffset += buffer.limit();
+      sampleOffset += buffer.elements();
 
-      return static_cast<int>(buffer.limit());
+      return static_cast<long>(buffer.limit());
    }
 
    template <typename T>
-   int writeScaledSamples(SignalBuffer &buffer, float scale)
+   long writeScaledSamples(const SignalBuffer &buffer, float scale)
    {
       T block[BUFFER_SIZE];
 
@@ -346,10 +341,10 @@ struct RecordDevice::Impl
          file.write(reinterpret_cast<const char *>(block), converted * sizeof(T));
       }
 
-      sampleCount += buffer.position();
-      sampleOffset += buffer.position();
+      sampleCount += buffer.elements();
+      sampleOffset += buffer.elements();
 
-      return static_cast<int>(buffer.position());
+      return static_cast<long>(buffer.position());
    }
 
    bool readHeader()
@@ -751,17 +746,12 @@ bool RecordDevice::isReady() const
    return impl->isReady();
 }
 
-bool RecordDevice::isStreaming() const
-{
-   return impl->isStreaming();
-}
-
-int RecordDevice::read(SignalBuffer &buffer)
+long RecordDevice::read(SignalBuffer &buffer)
 {
    return impl->read(buffer);
 }
 
-int RecordDevice::write(SignalBuffer &buffer)
+long RecordDevice::write(const SignalBuffer &buffer)
 {
    return impl->write(buffer);
 }

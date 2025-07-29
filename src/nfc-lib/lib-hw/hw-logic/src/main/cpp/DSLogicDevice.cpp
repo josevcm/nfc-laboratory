@@ -37,7 +37,8 @@
 #include "DSLogicInternal.h"
 
 #define DEVICE_TYPE_PREFIX "logic.dslogic"
-#define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 8
+#define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 64
+#define CHANNEL_BUFFER_SAMPLES 16384 // number of samples per buffer
 
 namespace hw {
 
@@ -126,7 +127,12 @@ struct DSLogicDevice::Impl
    /*
     * Received buffers
     */
-   std::vector<SignalBuffer> buffers;
+   SignalBuffer buffer;
+
+   /*
+    * Receive handler
+    */
+   StreamHandler streamHandler;
 
    /*
     * Control commands.
@@ -411,8 +417,10 @@ struct DSLogicDevice::Impl
       }
    }
 
-   bool start(const StreamHandler &handler)
+   int start(const StreamHandler &handler)
    {
+      log->debug("starting acquisition for device {}", {deviceName});
+
       deviceStatus = STATUS_INIT;
 
       captureSamples = (limitSamples + SAMPLES_ALIGN) & ~SAMPLES_ALIGN;
@@ -424,31 +432,20 @@ struct DSLogicDevice::Impl
       droppedSamples = 0;
       droppedBytes = 0;
 
+      buffer.reset();
+
       // stop previous acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
       {
          log->error("failed to stop previous acquisition");
-         return false;
+         return -1;
       }
 
       // setting FPGA before acquisition start
       if (!fpgaSetup())
       {
          log->error("failed to setup FPGA");
-         return false;
-      }
-
-      // prepare output buffers for enabled channels
-      buffers.clear();
-
-      for (const auto &ch: channels)
-      {
-         if (ch.enabled)
-         {
-            log->debug("create channel {} buffer, size {}", {ch.index, CHANNEL_BUFFER_SIZE});
-
-            buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_RAW_LOGIC, ch.index);
-         }
+         return -1;
       }
 
       // setup usb transfers
@@ -459,40 +456,106 @@ struct DSLogicDevice::Impl
       {
          log->error("failed to start acquisition");
          deviceStatus = STATUS_ERROR;
-         return false;
+         return -1;
       }
 
+      streamHandler = handler;
       deviceStatus = STATUS_START;
 
-      return true;
+      log->debug("acquisition started for device {}", {deviceName});
+
+      return 0;
    }
 
-   bool stop()
+   int stop()
    {
+      log->debug("stopping acquisition for device {}", {deviceName});
+
+      // if device is not started, just return
+      if (deviceStatus == STATUS_PAUSE)
+         return 0;
+
       // stop previous acquisition
       if (!usbWrite(wr_cmd_acquisition_stop))
-      {
          log->error("failed to stop acquisition");
-      }
 
       /* adc power down*/
       if (profile->dev_caps.feature_caps & CAPS_FEATURE_HMCAD1511)
       {
          if (!adcSetup(adc_power_down))
-         {
             log->error("failed to power down ADC");
-         }
       }
+
+      log->debug("cancel pending transfers for device {}", {deviceName});
 
       // cancel current transfers
       for (const auto transfer: transfers)
-      {
          usb.cancelTransfer(transfer);
-      }
 
       deviceStatus = STATUS_STOP;
+      streamHandler = nullptr;
 
-      return true;
+      log->debug("capture finished for device {}", {deviceName});
+
+      return 0;
+   }
+
+   int pause()
+   {
+      log->debug("pause acquisition for device {}", {deviceName});
+
+      if (deviceStatus != STATUS_DATA)
+      {
+         log->error("failed to pause acquisition, deice is not streaming");
+         return -1;
+      }
+
+      // stop acquisition
+      if (!usbWrite(wr_cmd_acquisition_stop))
+         log->error("failed to pause acquisition");
+
+      // cancel current transfers
+      for (const auto transfer: transfers)
+         usb.cancelTransfer(transfer);
+
+      deviceStatus = STATUS_PAUSE;
+
+      return 0;
+   }
+
+   int resume()
+   {
+      log->debug("resume acquisition for device {}", {deviceName});
+
+      if (deviceStatus != STATUS_PAUSE)
+      {
+         log->error("failed to resume acquisition, deice is not paused");
+         return -1;
+      }
+
+      buffer.reset();
+
+      // setting FPGA before acquisition start
+      if (!fpgaSetup())
+      {
+         log->error("failed to setup FPGA");
+         return -1;
+      }
+
+      // setup usb transfers
+      usbTransfer(streamHandler);
+
+      // start acquisition
+      if (!usbWrite(wr_cmd_acquisition_start))
+      {
+         log->error("failed to resume acquisition");
+         deviceStatus = STATUS_ERROR;
+         return -1;
+      }
+
+      deviceStatus = STATUS_START;
+
+      return 0;
    }
 
    rt::Variant get(int id, int channel) const
@@ -607,7 +670,7 @@ struct DSLogicDevice::Impl
          }
          case PARAM_LIMIT_SAMPLES:
          {
-            if (auto v = std::get_if<unsigned int>(&value))
+            if (auto v = std::get_if<unsigned long long>(&value))
             {
                limitSamples = *v;
                log->info("setting limit samples to {}", {limitSamples});
@@ -1856,7 +1919,7 @@ struct DSLogicDevice::Impl
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
          // split received data in one buffer per channel
-         std::vector<SignalBuffer> buffers = splitBuffers(transfer);
+         std::vector<SignalBuffer> buffers = interleave(transfer);
 
          // call user handler for each channel
          for (auto &buffer: buffers)
@@ -1882,7 +1945,7 @@ struct DSLogicDevice::Impl
          }
       }
 
-      log->debug("finish data transfer {} and clearing buffers", {transfer});
+      log->warn("finish data transfer {} and clearing buffers", {transfer});
 
       // remove transfer from list
       transfers.remove(transfer);
@@ -1897,66 +1960,124 @@ struct DSLogicDevice::Impl
       return nullptr;
    }
 
-   std::vector<SignalBuffer> splitBuffers(Usb::Transfer *transfer)
+   std::vector<SignalBuffer> interleave(Usb::Transfer *transfer)
    {
       std::vector<SignalBuffer> result;
 
-      // get channel index to be processed from data buffer
-      unsigned int c = (currentBytes >> 3) % validChannels;
+      unsigned int start = 0; // source buffer start index
+      unsigned int chunk = validChannels << 3; // minimum chunk size in bytes
+      unsigned int block = chunk << 3;
+      unsigned int round = CHANNEL_BUFFER_SIZE % block;
+      unsigned int size = CHANNEL_BUFFER_SIZE - round;
 
-      // get output buffer for first channel present in data buffer
-      SignalBuffer *buffer = &buffers[c];
-
-      // process each byte in data buffer and split into each channel buffer
-      for (unsigned int i = 0, n = currentBytes & 0x07; i < transfer->actual; i++, n++)
+      /*
+       * if have incomplete buffer, fill it with new received data
+       */
+      if (buffer)
       {
-         // append next 8 samples to channel buffer
-         buffer->put(dsl_samples[transfer->data[i]], 8);
+         unsigned int filled = (currentBytes % (size >> 3)) << 3; // filled samples
 
-         // once all buffers are filled, append them to result
-         if (c == validChannels - 1 && buffer->available() == 0)
+         start = transpose(buffer, filled % chunk, transfer->data, 0, transfer->actual);
+
+         buffer.flip();
+
+         result.push_back(buffer);
+
+         buffer.reset();
+      }
+
+      /*
+       * Interleave data from transfer buffer
+       */
+      // number of full buffers than can be processed with remain data
+      unsigned int remain = transfer->actual - start;
+      unsigned int buffers = remain / (size >> 3) + (remain % (size >> 3) ? 1 : 0);
+
+#pragma omp parallel for default(none) shared(start, transfer, result, size, buffers, currentSamples) schedule(static)
+      for (unsigned int k = 0; k < buffers; ++k)
+      {
+         // sample start position
+         unsigned long long bufferOffset = currentSamples + k * (size / validChannels);
+
+         // create new buffer for interleaved data
+         SignalBuffer buffer(size, validChannels, 1, samplerate, bufferOffset, 0, SIGNAL_TYPE_LOGIC_SAMPLES);
+
+         // transpose data from transfer buffer to interleaved buffer
+         transpose(buffer, 0, transfer->data, start + k * (size >> 3), transfer->actual);
+
+#pragma omp critical
          {
-            // copy split buffers to output result
-            result.insert(result.end(), buffers.begin(), buffers.end());
-
-            // clear buffers
-            buffers.clear();
-
-            // update current samples
-            currentSamples += buffer->elements();
-
-            // and create new channels buffers
-            for (const auto &ch: channels)
+            // or if buffer is not full, keep it for next transfer
+            if (buffer.isFull())
             {
-               if (ch.enabled)
-               {
-                  buffers.emplace_back(CHANNEL_BUFFER_SIZE, 1, 1, samplerate, currentSamples, 0, SIGNAL_TYPE_RAW_LOGIC, ch.index);
-               }
+               buffer.flip();
+               result.push_back(buffer);
+            }
+            // or add buffer to result
+            else
+            {
+               this->buffer = buffer;
             }
          }
-
-         // switch buffer every 8 samples
-         if (n % 8 == 7)
-         {
-            c = (c + 1) % validChannels;
-
-            buffer = &buffers[c];
-         }
       }
 
-      // update current bytes
+      // update current bytes and samples
       currentBytes += transfer->actual;
+      currentSamples += buffers * (size / validChannels);
 
-      // flip all buffers
-      for (auto &b: result)
-      {
-         b.flip();
-      }
+      // sort buffers by offset due to parallel processing can lead to unordered buffers
+      std::sort(result.begin(), result.end(), [](const SignalBuffer &a, const SignalBuffer &b) {
+         return a.offset() < b.offset();
+      });
 
       return result;
    }
 
-   bool isReady()
+   unsigned int transpose(SignalBuffer &buffer, unsigned int filled, const unsigned char *data, unsigned int source, unsigned int limit)
+   {
+      unsigned int ch = buffer.stride(); // number of channels
+      unsigned int chunk = (ch << 3); // chunk size in bytes for interleaved data
+      unsigned int pos = source % chunk;
+      unsigned int col = (pos >> 3);
+      unsigned int row = (pos & 0x07) << 3;
+
+      // transpose data from transfer buffer to interleaved buffer
+      for (; buffer.available() && source < limit;)
+      {
+         // reserve full buffer for interleaved data
+         float *target = !filled ? buffer.pull(ch << 6) : buffer.pull(0) - filled; // 64 * channels
+
+         // transpose full block of SAMPLES[64][validChannels]
+         for (unsigned int c = col; c < ch; ++c)
+         {
+            // transpose source block of 8 bytes
+            for (unsigned int i = row, t = c + row * ch; i < 8 && source < limit; ++i, ++source)
+            {
+               // float data conversion table
+               const float *samples = dsl_samples[data[source]];
+
+               // each byte contains 8 samples, so we need to transpose them
+               for (unsigned int r = 0; r < 8; ++r, t += ch)
+               {
+                  target[t] = samples[r];
+               }
+            }
+
+            // next loop start from first row
+            row = 0;
+         }
+
+         // next loop start from first column
+         col = 0;
+
+         // next block if not filled
+         filled = 0;
+      }
+
+      return source;
+   }
+
+   bool isReady() const
    {
       return usbRead(rd_cmd_fw_version);
    }
@@ -2180,6 +2301,16 @@ int DSLogicDevice::stop()
    return impl->stop();
 }
 
+int DSLogicDevice::pause()
+{
+   return impl->pause();
+}
+
+int DSLogicDevice::resume()
+{
+   return impl->resume();
+}
+
 rt::Variant DSLogicDevice::get(int id, int channel) const
 {
    return impl->get(id, channel);
@@ -2205,17 +2336,22 @@ bool DSLogicDevice::isReady() const
    return impl->deviceStatus >= STATUS_READY && impl->isReady();
 }
 
+bool DSLogicDevice::isPaused() const
+{
+   return impl->deviceStatus == STATUS_PAUSE;
+}
+
 bool DSLogicDevice::isStreaming() const
 {
    return impl->deviceStatus == STATUS_START || impl->deviceStatus == STATUS_DATA;
 }
 
-int DSLogicDevice::read(SignalBuffer &buffer)
+long DSLogicDevice::read(SignalBuffer &buffer)
 {
    return -1;
 }
 
-int DSLogicDevice::write(SignalBuffer &buffer)
+long DSLogicDevice::write(const SignalBuffer &buffer)
 {
    return -1;
 }

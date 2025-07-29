@@ -25,7 +25,7 @@
 namespace lab {
 
 // ISO7816 Default value for the frequency adjustment (Fi)
-constexpr int ISO_7816_FI_DEF = 0; // 372
+constexpr int ISO_7816_FI_DEF = 1; // 372
 
 // ISO7816 Default value for the baud rate divisor adjustment (Di)
 constexpr int ISO_7816_DI_DEF = 1; // 1
@@ -52,13 +52,13 @@ constexpr int ISO_7816_BWT_DEF = 9600;
 constexpr int ISO_7816_EGT_DEF = 0;
 
 // FN, frequency adjustment factor
-constexpr int ISO_FI_TABLE[] = {372, 372, 558, 744, 1116, 1488, 1860, 0, 0, 512, 768, 1024, 1536, 2048, 0, 0};
+constexpr int ISO_FI_TABLE[] = {0, 372, 558, 744, 1116, 1488, 1860, 0, 0, 512, 768, 1024, 1536, 2048, 0, 0};
 
 // DN, baud rate adjustment factor
 constexpr int ISO_DI_TABLE[] = {0, 1, 2, 4, 8, 16, 32, 64, 12, 20, 0, 0, 0, 0, 0, 0};
 
 // Max frequency in MHz
-constexpr int ISO_FM_TABLE[] = {4000000, 5000000, 6000000, 8000000, 12000000, 16000000, 20000000, 0, 0, 5000000, 7500000, 10000000, 15000000, 20000000, 0, 0};
+constexpr int ISO_FM_TABLE[] = {0, 5000000, 6000000, 8000000, 12000000, 5000000, 5000000, 0, 0, 12000000, 12000000, 12000000, 12000000, 12000000, 0, 0};
 
 // CWT, maximum delay between the leading edges of two consecutive characters in the block
 constexpr int ISO_CWT_TABLE[] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768};

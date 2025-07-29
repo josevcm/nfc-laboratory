@@ -10,7 +10,7 @@ else (LIBAIRSPY_LIBRARY AND LIBAIRSPY_INCLUDE)
                 /usr/include
                 /usr/local/include
                 /opt/local/include
-                ${CMAKE_SOURCE_DIR}/dll/airspy/include
+#                ${CMAKE_SOURCE_DIR}/dll/airspy/include
             PATH_SUFFIXES
                 libairspy
     )
@@ -25,11 +25,13 @@ else (LIBAIRSPY_LIBRARY AND LIBAIRSPY_INCLUDE)
                 /usr/local/lib
                 /opt/local/lib
                 /usr/lib
-                ${CMAKE_SOURCE_DIR}/dll/airspy/x86_64/lib
+#                ${CMAKE_SOURCE_DIR}/dll/airspy/x86_64/lib
     )
 
     if (LIBAIRSPY_INCLUDE AND LIBAIRSPY_LIBRARY)
         set(LIBAIRSPY_FOUND TRUE)
-    endif (LIBAIRSPY_INCLUDE AND LIBAIRSPY_LIBRARY)
+    else ()
+        set(LIBAIRSPY_LIBRARY "airspy")
+    endif ()
 
 endif (LIBAIRSPY_LIBRARY AND LIBAIRSPY_INCLUDE)

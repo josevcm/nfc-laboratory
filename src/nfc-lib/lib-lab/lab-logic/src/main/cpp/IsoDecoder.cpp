@@ -125,10 +125,7 @@ void IsoDecoder::Impl::initialize()
    log->warn("initialize ISO decoder");
 
    // clear signal master clock
-   decoder.signalClock = 0;
-
-   // clear signal cache
-   decoder.signalCache.reset();
+   decoder.signalClock = -1;
 
    // configure only if samplerate > 0
    if (decoder.sampleRate > 0)
@@ -191,7 +188,7 @@ std::list<RawFrame> IsoDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
          while (decoder.nextSample(samples))
          {
             if ((enabledTech & ENABLED_ISO7816) && iso7816.detect(frames))
-               break;
+            break;
          }
       }
 
@@ -207,9 +204,8 @@ std::list<RawFrame> IsoDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
                break;
          }
       }
-
    }
-   while (decoder.hasSamples(samples));
+   while (!samples.isEmpty());
 
    if (decoder.debug)
       decoder.debug->write();

@@ -194,33 +194,23 @@ struct LogicWidget::Impl
     */
    void append(const hw::SignalBuffer &buffer)
    {
-      if (!buffer.isValid() || !channels.contains(buffer.id()))
+      if (!buffer.isValid())
          return;
-
-      ChannelGraph *ch = channels[buffer.id()];
-
-      double offset = ch->offset();
-      double sampleRate = buffer.sampleRate();
-      double sampleStep = 1 / sampleRate;
-      double startTime = static_cast<double>(buffer.offset()) / sampleRate;
 
       switch (buffer.type())
       {
-         case hw::SignalType::SIGNAL_TYPE_RAW_LOGIC:
+         case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
          {
-            for (int i = 0; i < buffer.elements(); i++)
-            {
-               double time = std::fma(sampleStep, i, startTime);
-               double value = buffer[i];
+            if (!channels.contains(buffer.id()))
+               return;
 
-               ch->data()->add({time, offset + (value < threshold ? -height / 2 : +height / 2)});
-            }
+            ChannelGraph *ch = channels[buffer.id()];
 
-            break;
-         }
+            double offset = ch->offset();
+            double sampleRate = buffer.sampleRate();
+            double sampleStep = 1 / sampleRate;
+            double startTime = static_cast<double>(buffer.offset()) / sampleRate;
 
-         case hw::SignalType::SIGNAL_TYPE_ADV_LOGIC:
-         {
             for (int i = 0; i < buffer.limit(); i += 2)
             {
                double time = std::fma(sampleStep, buffer[i + 1], startTime);
@@ -229,19 +219,16 @@ struct LogicWidget::Impl
                ch->data()->add({time, offset + (value < threshold ? -height / 2 : +height / 2)});
             }
 
+            // remove old data when maximum memory threshold is reached
+            if (ch->data()->size() > maximumEntries)
+               ch->data()->removeBefore(ch->data()->at(ch->data()->size() - maximumEntries)->key);
+
+            // update graph
+            widget->setDataRange(ch->data()->at(0)->key, ch->data()->at(ch->data()->size() - 1)->key);
+
             break;
          }
-
-         default:
-            return;
       }
-
-      // remove old data when maximum memory threshold is reached
-      if (ch->data()->size() > maximumEntries)
-         ch->data()->removeBefore(ch->data()->at(ch->data()->size() - maximumEntries)->key);
-
-      // update graph
-      widget->setDataRange(ch->data()->at(0)->key, ch->data()->at(ch->data()->size() - 1)->key);
    }
 
    /**
@@ -254,10 +241,10 @@ struct LogicWidget::Impl
       ribbonMarker->clear();
 
       // clear graph data
-      for (const auto &channel: channels)
+      for (const auto &ch: channels)
       {
-         channel->data()->clear();
-         channel->selection().clear();
+         ch->data()->clear();
+         ch->selection().clear();
       }
 
       widget->setDataRange(0, 1E-6);

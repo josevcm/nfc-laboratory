@@ -110,7 +110,7 @@ struct NfcSignalDebug
       unsigned int channelCount = std::get<unsigned int>(recorder->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
       unsigned int sampleRate = std::get<unsigned int>(recorder->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
 
-      buffer = hw::SignalBuffer(sampleCount * channelCount, channelCount, 1, sampleRate, 0, 0, hw::SignalType::SIGNAL_TYPE_RAW_REAL);
+      buffer = hw::SignalBuffer(sampleCount * channelCount, channelCount, 1, sampleRate, 0, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
    }
 
    void write()
@@ -335,7 +335,7 @@ struct NfcDecoderStatus
    unsigned int sampleRate = 0;
 
    // signal master clock
-   unsigned int signalClock = 0;
+   unsigned int signalClock = -1;
 
    // reference time for all decoded frames
    unsigned int streamTime = 0;

@@ -135,6 +135,23 @@ directSampling=0
 enabled=true
 ```
 
+
+Configuration parameters for the HydraSDR receiver, the best performance is obtained by tuning in 2rd harmonic
+at 27.12Mhz.
+
+```
+[device.radio.hydrasdr]
+centerFreq=27120000
+sampleRate=10000000
+gainMode=1
+gainValue=2
+mixerAgc=0
+tunerAgc=0
+biasTee=0
+directSampling=0
+enabled=true
+```
+
 Configuration parameters for the RTL-SDR receiver, the best performance is obtained by tuning to the 2nd harmonic
 at 27.12Mhz. Decoding with this device is quite limited due to its low sampling frequency and 8-bit resolution,
 it will not offer the necessary quality, is supported only as a reference to experiment with it.
@@ -192,16 +209,25 @@ All default values are fixed and can be enough for most of the cases.
 I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices, but surely it
 works with others.
 
-- AirSpy Mini or R2: Better results, tuning the third harmonic at 40.68Mhz, with a sampling frequency of 10 Mbps, 
+- HydraSDR: New SDR receiver with very good results, tuning the second harmonic at 27.12Mhz, with a sampling frequency of 10 Mbps,
+  with these parameters it is possible to capture the communication up to 424 Kbps. This is the recommended device
+  to use with this tool. Many thanks to Benjamin Vernoux for his support with this new receiver, see [HydraSDR](https://github.com/hydrasdr).
+
+- AirSpy Mini or R2: Very good results, tuning the third harmonic at 40.68Mhz, with a sampling frequency of 10 Mbps, 
   with these parameters it is possible to capture the communication up to 424 Kbps. This is the recommended device 
-  to use with this tool.
+  to use with this tool, see [AirSpy](https://github.com/airspy).
 
 - RTL SDR: It works by tuning the second harmonic at 27.12Mhz, due to the limitation in the maximum sampling frequency 
   of 3Mbps and its 8 bits of resolution only allows you to capture the commands up to 106Kbps and some responses in 
   very clean signals with good antenna. This device is supported only as a reference to experiment with it, I not 
   recommend using it if you want to obtain good results.
 
-Receivers tested:
+- RTL SDR BLOG V4: This device is capable if tunning directly at 13.56Mhz, but keeps limitations of legacy RTLSDR in the maximum 
+  sampling frequency of 3Mbps and its 8 bits of resolution only allows you to capture the commands up to 106Kbps and some responses in
+  very clean signals with good antenna. This device is supported only as a reference to experiment with it, I not
+  recommend using it if you want to obtain good results.
+
+Receivers tested, from left to right:
 
 ![Devices](doc/img/nfc-lab-devices1.png "Devices")
 
@@ -213,6 +239,10 @@ AirSpy with custom antenna and ARC122U reader:
 
 ![Devices](doc/img/nfc-lab-devices3.png "Devices")
 
+HydraSDR with custom antenna made from RC522 reader PCB:
+
+![Devices](doc/img/nfc-lab-devices8.png "Devices")
+
 ### Driver Setup for RTL-SDR
 
 You can found instructions under https://www.rtl-sdr.com/rtl-sdr-quick-start-guide/
@@ -220,19 +250,30 @@ You can found instructions under https://www.rtl-sdr.com/rtl-sdr-quick-start-gui
 ### Upconverters & Bias-tee
 
 To avoid tuning harmonics it is possible to use an up-converter and thus tune directly to the carrier 
-frequency of 13.56Mhz. Currently, biasTee is only supported for AirSpy in combination with SpyVerter thanks to [Benjamin DELPY](https://github.com/gentilkiwi). 
+frequency of 13.56Mhz. Currently, biasTee is supported for AirSpy and HydraSDR in combination with SpyVerter thanks to [Benjamin DELPY](https://github.com/gentilkiwi). 
 
 The configuration required is:
 
 ```
-[device.airspy]
+[device.radio.airspy]
+centerFreq=133560000
+sampleRate=10000000
 gainMode=0
-gainValue=4
+gainValue=3
 tunerAgc=false
 mixerAgc=false
 biasTee=1
+```
+
+```
+[device.radio.hydrasdr]
 centerFreq=133560000
 sampleRate=10000000
+gainMode=0
+gainValue=3
+tunerAgc=false
+mixerAgc=false
+biasTee=1
 ```
 ### Direct Sampling mode
 
@@ -523,9 +564,12 @@ This project is published under the terms of the GPLv3 license, however there ar
 licenses, please check if you are interested in this work.
 
 - AirSpy SDR driver at `src/nfc-lib/lib-ext/airspy` see https://github.com/airspy/airspyone_host
+- HydraSDR driver at `src/nfc-lib/lib-ext/hydrasdr` see https://github.com/hydrasdr/rfone_host
+- MiriSDR driver at `src/nfc-lib/lib-ext/mirisdr` see https://github.com/f4exb/libmirisdr-4
 - RTL SDR driver at `src/nfc-lib/lib-ext/rtlsdr` see https://osmocom.org/projects/rtl-sdr
-- nlohmann json at `src/nfc-lib/lib-ext/nlohmann` see https://github.com/nlohmann/json
 - mufft library at `src/nfc-lib/lib-ext/mufft` see https://github.com/Themaister/muFFT
+- nlohmann json at `src/nfc-lib/lib-ext/nlohmann` see https://github.com/nlohmann/json
+- microtar at `src/nfc-lib/lib-ext/microtar` see https://github.com/rxi/microtar
 - QCustomPlot at `src/nfc-app/app-qt/src/main/cpp/3party/customplot` see https://www.qcustomplot.com/
 - QDarkStyleSheet at `src/nfc-app/app-qt/src/main/assets/theme` see https://github.com/ColinDuquesnoy/QDarkStyleSheet
 - Crapto1 at `src/nfc-lib/lib-ext/crapto1`

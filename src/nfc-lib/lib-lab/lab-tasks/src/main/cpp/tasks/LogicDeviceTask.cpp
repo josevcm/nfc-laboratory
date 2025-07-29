@@ -93,25 +93,40 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
       {
          log->debug("command [{}]", {command->code});
 
-         if (command->code == Start)
+         switch (command->code)
          {
-            startDevice(command.value());
-         }
-         else if (command->code == Stop)
-         {
-            stopDevice(command.value());
-         }
-         else if (command->code == Query)
-         {
-            queryDevice(command.value());
-         }
-         else if (command->code == Configure)
-         {
-            configDevice(command.value());
-         }
-         else if (command->code == Clear)
-         {
-            clearDevice(command.value());
+            case Start:
+               startDevice(command.value());
+               break;
+
+            case Stop:
+               stopDevice(command.value());
+               break;
+
+            case Pause:
+               pauseDevice(command.value());
+               break;
+
+            case Resume:
+               resumeDevice(command.value());
+               break;
+
+            case Query:
+               queryDevice(command.value());
+               break;
+
+            case Configure:
+               configDevice(command.value());
+               break;
+
+            case Clear:
+               clearDevice(command.value());
+               break;
+
+            default:
+               log->warn("unknown command {}", {command->code});
+               command->reject(UnknownCommand);
+               return true;
          }
       }
 
@@ -128,10 +143,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
             }
             else if (taskThroughput.average() > 0)
             {
-               log->info("average throughput {.2} Msps", {taskThroughput.average() / 1E6});
-
-               // reset throughput meter
-               taskThroughput.begin();
+               log->info("average throughput {.2} Msps, {} pending buffers", {taskThroughput.average() / 1E6, signalQueue.size()});
             }
 
             // store last search time
@@ -226,7 +238,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
       // default parameters for DSLogic
       device->set(hw::LogicDevice::PARAM_OPERATION_MODE, hw::DSLogicDevice::OP_STREAM);
-      device->set(hw::LogicDevice::PARAM_LIMIT_SAMPLES, static_cast<unsigned int>(-1));
+      device->set(hw::LogicDevice::PARAM_LIMIT_SAMPLES, static_cast<unsigned long long>(-1));
 
       // setup sample rate
       if (config.contains("sampleRate"))
@@ -293,6 +305,54 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
          // set receiver in flush buffers status
          updateDeviceStatus(Flush);
+      }
+   }
+
+   void pauseDevice(const rt::Event &command)
+   {
+      if (!logicReceiverEnabled)
+      {
+         log->warn("device is disabled");
+         command.reject(TaskDisabled);
+         return;
+      }
+
+      if (device)
+      {
+         log->info("pause streaming for device {}", {std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_NAME))});
+
+         // pause underline receiver
+         device->pause();
+
+         // resolve command
+         command.resolve();
+
+         // set receiver in flush buffers status
+         updateDeviceStatus(Paused);
+      }
+   }
+
+   void resumeDevice(const rt::Event &command)
+   {
+      if (!logicReceiverEnabled)
+      {
+         log->warn("device is disabled");
+         command.reject(TaskDisabled);
+         return;
+      }
+
+      if (device)
+      {
+         log->info("resume streaming for device {}", {std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_NAME))});
+
+         // resume underline receiver
+         device->resume();
+
+         // resolve command
+         command.resolve();
+
+         // set receiver in flush buffers status
+         updateDeviceStatus(Streaming);
       }
    }
 
@@ -373,7 +433,6 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
          data["model"] = std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_MODEL));
          data["version"] = std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_VERSION));
          data["serial"] = std::get<std::string>(device->get(hw::LogicDevice::PARAM_DEVICE_SERIAL));
-         data["status"] = logicReceiverEnabled ? (device->isStreaming() ? "streaming" : "idle") : "disabled";
 
          // device parameters
          data["sampleRate"] = std::get<unsigned int>(device->get(hw::LogicDevice::PARAM_SAMPLE_RATE));
@@ -382,6 +441,17 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
          // device statistics
          data["samplesRead"] = std::get<unsigned long long>(device->get(hw::LogicDevice::PARAM_SAMPLES_READ));
          data["samplesLost"] = std::get<unsigned long long>(device->get(hw::LogicDevice::PARAM_SAMPLES_LOST));
+
+         if (!logicReceiverEnabled)
+            data["status"] = "disabled";
+         else if (device->isPaused())
+            data["status"] = "paused";
+         else if (device->isStreaming())
+            data["status"] = "streaming";
+         else if (status == Flush)
+            data["status"] = "flush";
+         else
+            data["status"] = "idle";
       }
       else
       {
@@ -397,14 +467,16 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
       {
          const hw::SignalBuffer &buffer = entry.value();
 
-         // send value buffer
-         signalStream->next(buffer);
-
          // update receiver throughput
          taskThroughput.update(buffer.elements());
+
+         // send value buffer
+         signalStream->next(buffer);
       }
       else if (logicReceiverStatus == Flush)
       {
+         log->info("flush receiver buffers");
+
          // send null buffer for EOF
          signalStream->next({});
 
@@ -414,7 +486,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
    }
 };
 
-LogicDeviceTask::LogicDeviceTask() : Worker("LogicDeviceTask")
+LogicDeviceTask::LogicDeviceTask() : Worker("LogicDevice")
 {
 }
 

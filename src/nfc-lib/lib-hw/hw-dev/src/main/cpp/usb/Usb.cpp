@@ -110,7 +110,7 @@ struct Usb::Impl
       close();
 
       // enumerate usb devices
-      if ((result = (int) libusb_get_device_list(*ctx, &devs)) < 0)
+      if ((result = static_cast<int>(libusb_get_device_list(*ctx, &devs))) < 0)
       {
          log->error("error getting USB device list: {}", {lastError()});
          return false;
@@ -142,7 +142,7 @@ struct Usb::Impl
             continue;
          }
 
-         speed = (libusb_speed) result;
+         speed = static_cast<libusb_speed>(result);
 
          if ((result = libusb_open(dev, &hdl)) != LIBUSB_SUCCESS)
          {
@@ -166,9 +166,9 @@ struct Usb::Impl
          pthread_setschedparam(pthread_self(), SCHED_RR, &param);
 #endif
 
-         std::lock_guard<std::mutex> lock(threadMutex);
+         std::lock_guard lock(threadMutex);
 
-         struct timeval timeout = {1, 0};
+         timeval timeout = {1, 0};
 
          log->info("libusb event handling thread running");
 
@@ -209,7 +209,7 @@ struct Usb::Impl
          shutdown = true;
 
          // wait for thread to finish
-         std::lock_guard<std::mutex> lock(threadMutex);
+         std::lock_guard lock(threadMutex);
 
          // closing libusb device
          libusb_close(hdl);
@@ -356,7 +356,7 @@ struct Usb::Impl
       return false;
    }
 
-   int setOption(enum libusb_option option, int value)
+   int setOption(libusb_option option, int value)
    {
       if ((result = libusb_set_option(*ctx, option, value)) < 0)
       {
