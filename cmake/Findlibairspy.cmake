@@ -11,6 +11,8 @@ else (LIBAIRSPY_LIBRARY AND LIBAIRSPY_INCLUDE)
                 /usr/local/include
                 /opt/local/include
                 ${CMAKE_SOURCE_DIR}/dll/airspy/include
+            PATH_SUFFIXES
+                libairspy
     )
 
     find_library(LIBAIRSPY_LIBRARY
