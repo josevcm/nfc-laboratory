@@ -10,8 +10,9 @@ else (LIBHYDRASDR_LIBRARY AND LIBHYDRASDR_INCLUDE)
                 /usr/include
                 /usr/local/include
                 /opt/local/include
+                ${CMAKE_SOURCE_DIR}/dll/hydrasdr/include
             PATH_SUFFIXES
-                libairspy
+                libhydrasdr
     )
 
     find_library(LIBHYDRASDR_LIBRARY
@@ -24,6 +25,7 @@ else (LIBHYDRASDR_LIBRARY AND LIBHYDRASDR_INCLUDE)
                 /usr/local/lib
                 /opt/local/lib
                 /usr/lib
+                ${CMAKE_SOURCE_DIR}/dll/hydrasdr/x86_64/lib
     )
 
     if (LIBHYDRASDR_INCLUDE AND LIBHYDRASDR_LIBRARY)
