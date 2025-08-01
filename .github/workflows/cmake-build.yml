@@ -42,7 +42,8 @@ jobs:
       - name: 'Install dependencies'
         run: |
           sudo apt update
-          sudo apt install -y devscripts build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
+          sudo apt install -y devscripts build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
+          sudo apt install -y --ignore-missing libairspy-dev libhydrasdr-dev librtlsdr-dev
 
       - name: 'Build project'
         run: |
@@ -135,6 +136,7 @@ jobs:
           Copy-Item -Force ${{ steps.strings-windows.outputs.build-dir }}/src/nfc-app/app-qt/nfc-lab.exe ${{ steps.strings-windows.outputs.package-data-dir }}
           Copy-Item -Force ${{ steps.strings-windows.outputs.mingw-dir }}/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/airspy/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
+          Copy-Item -Force ${{ github.workspace }}/dll/hydrasdr/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/openssl/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/rtlsdr/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/usb/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
