@@ -6,6 +6,7 @@ on:
       - '*' # any tag
     branches:
       - master
+  workflow_dispatch:
 
 jobs:
 
