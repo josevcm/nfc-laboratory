@@ -44,7 +44,9 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y devscripts build-essential debhelper-compat cmake qt6-base-dev libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev
-          sudo apt install -y --ignore-missing libairspy-dev libhydrasdr-dev librtlsdr-dev
+          for pkg in libairspy-dev libhydrasdr-dev librtlsdr-dev; do
+            sudo apt install -y $pkg || true
+          done
 
       - name: 'Build project'
         run: |
