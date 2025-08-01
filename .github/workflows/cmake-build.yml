@@ -5,6 +5,7 @@ on:
     tags:
       - '*' # any tag
     branches:
+      - develop
       - master
   workflow_dispatch:
 
