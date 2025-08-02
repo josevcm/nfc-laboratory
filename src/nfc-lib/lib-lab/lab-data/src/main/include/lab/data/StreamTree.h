@@ -39,13 +39,14 @@ class StreamTree
 
       struct Bucket
       {
-         double t_min, t_max;
-         double y_min, y_max;
+         int64_t t_min, t_max;
+         float y_min, y_max;
+         float y_avg;
       };
 
       explicit StreamTree(std::vector<double> resolutions); // default: 5ms
 
-      void insert(double t, double y);
+      void append(double t, double y);
 
       std::vector<Bucket> query(double t_start, double t_end, double pixelWidth) const;
 

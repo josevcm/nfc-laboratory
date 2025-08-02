@@ -41,7 +41,7 @@ struct StreamTree::Impl
       }
    }
 
-   void insert(double t, double y)
+   void insert(int64_t t, float y)
    {
       for (int level = 0; level < resolutions.size(); ++level)
       {
@@ -49,28 +49,42 @@ struct StreamTree::Impl
       }
    }
 
-   void aggregate(int level, double t, double y)
+   void aggregate(int level, int64_t t, float y)
    {
-      int64_t index = timeToBucket(level, t);
-
-      if (index < 0)
+      if (level < 0 || level >= resolutions.size())
          return;
 
       std::map<int64_t, Bucket> &buckets = levels[level];
 
-      if (auto it = buckets.find(index); it != buckets.end())
+      if (auto it = buckets.lower_bound(t); it != buckets.begin())
       {
-         if (it->second.y_min > y)
-            it->second.y_min = y;
-         else if (it->second.y_max < y)
-            it->second.y_max = y;
-      }
-      else
-      {
-         double resolution = resolutions[level];
+         // move iterator to the previous bucket
+         --it;
 
-         buckets[index] = {static_cast<double>(index) * resolution, static_cast<double>(index + 1) * resolution, y, y};
+         // detect deviation from average
+         float dev = std::abs(y - it->second.y_avg);
+
+         // if the deviation is small enough, update the existing bucket
+         if (dev <= 0.01f)
+         {
+            // update time range
+            it->second.t_max = t;
+
+            // exponential average
+            it->second.y_avg = it->second.y_avg * 0.9f + y * 0.1f;
+
+            // update min/max y values for the bucket
+            if (it->second.y_min > y)
+               it->second.y_min = y;
+            else if (it->second.y_max < y)
+               it->second.y_max = y;
+
+            return;
+         }
       }
+
+      // generate new bucket
+      buckets[t] = {t, t, y, y, y};
    }
 
    std::vector<Bucket> query(double t_start, double t_end, double pixelWidth) const
@@ -135,7 +149,7 @@ StreamTree::StreamTree(std::vector<double> resolutions) : impl(std::make_shared<
 {
 }
 
-void StreamTree::insert(double t, double y)
+void StreamTree::append(double t, double y)
 {
    impl->insert(t, y);
 }
