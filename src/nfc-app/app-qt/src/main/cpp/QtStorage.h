@@ -1,8 +1,8 @@
 /*
 
-  This file is part of NFC-LABORATORY.
+This file is part of NFC-LABORATORY.
 
-  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+  Copyright (C) 2025 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,16 +19,22 @@
 
 */
 
-#ifndef APP_QTCONTROL_H
-#define APP_QTCONTROL_H
+#ifndef APP_QTSTORAGE_H
+#define APP_QTSTORAGE_H
 
 #include <QObject>
 #include <QSettings>
 #include <QSharedPointer>
 
-class QtStorage;
+namespace hw {
+class SignalBuffer;
+}
 
-class QtControl : public QObject
+namespace lab {
+class RawFrame;
+}
+
+class QtStorage : public QObject
 {
       Q_OBJECT
 
@@ -36,13 +42,23 @@ class QtControl : public QObject
 
    public:
 
-      explicit QtControl(QtStorage *storage);
+      explicit QtStorage();
 
-      void handleEvent(QEvent *event);
+   public slots:
+
+      void append(const lab::RawFrame &frame);
+
+      void append(const hw::SignalBuffer &buffer);
+
+      void clear();
+
+      long frames() const;
+
+      long samples() const;
 
    private:
 
       QSharedPointer<Impl> impl;
 };
 
-#endif //APP_QTCONTROL_H
+#endif //QTSTORAGE_H

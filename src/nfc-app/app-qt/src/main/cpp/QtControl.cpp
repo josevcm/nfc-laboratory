@@ -58,13 +58,13 @@
 
 #include "QtApplication.h"
 
-#include "QtCache.h"
 #include "QtControl.h"
+#include "QtStorage.h"
 
 struct QtControl::Impl
 {
    // data cache
-   QtCache *cache;
+   QtStorage *storage;
 
    // configuration
    QSettings settings;
@@ -85,24 +85,20 @@ struct QtControl::Impl
    rt::Subject<rt::Event> *radioDeviceCommandStream = nullptr;
    rt::Subject<rt::Event> *fourierCommandStream = nullptr;
    rt::Subject<rt::Event> *recorderCommandStream = nullptr;
-   rt::Subject<rt::Event> *storageCommandStream = nullptr;
 
    // frame data subjects
    rt::Subject<lab::RawFrame> *logicDecoderFrameStream = nullptr;
    rt::Subject<lab::RawFrame> *radioDecoderFrameStream = nullptr;
-   rt::Subject<lab::RawFrame> *storageFrameStream = nullptr;
 
    // signal data subjects
    rt::Subject<hw::SignalBuffer> *logicSignalStream = nullptr;
    rt::Subject<hw::SignalBuffer> *radioSignalStream = nullptr;
    rt::Subject<hw::SignalBuffer> *adaptiveSignalStream = nullptr;
-   rt::Subject<hw::SignalBuffer> *storageSignalStream = nullptr;
 
    // status subscriptions
    rt::Subject<rt::Event>::Subscription logicDecoderStatusSubscription;
    rt::Subject<rt::Event>::Subscription radioDecoderStatusSubscription;
    rt::Subject<rt::Event>::Subscription recorderStatusSubscription;
-   rt::Subject<rt::Event>::Subscription storageStatusSubscription;
    rt::Subject<rt::Event>::Subscription logicDeviceStatusSubscription;
    rt::Subject<rt::Event>::Subscription radioDeviceStatusSubscription;
    rt::Subject<rt::Event>::Subscription fourierStatusSubscription;
@@ -110,13 +106,11 @@ struct QtControl::Impl
    // frame stream subscriptions
    rt::Subject<lab::RawFrame>::Subscription logicDecoderFrameSubscription;
    rt::Subject<lab::RawFrame>::Subscription radioDecoderFrameSubscription;
-   rt::Subject<lab::RawFrame>::Subscription storageFrameSubscription;
 
    // signal stream subscriptions
    rt::Subject<hw::SignalBuffer>::Subscription logicSignalSubscription;
    rt::Subject<hw::SignalBuffer>::Subscription radioSignalSubscription;
    rt::Subject<hw::SignalBuffer>::Subscription adaptiveSignalSubscription;
-   rt::Subject<hw::SignalBuffer>::Subscription storageSignalSubscription;
 
    // storage status
    QString storagePath;
@@ -199,7 +193,7 @@ struct QtControl::Impl
       }
    };
 
-   explicit Impl(QtCache *cache) : cache(cache)
+   explicit Impl(QtStorage *storage) : storage(storage)
    {
       // create status subjects
       logicDecoderStatusStream = rt::Subject<rt::Event>::name("logic.decoder.status");
@@ -216,19 +210,16 @@ struct QtControl::Impl
       radioDecoderCommandStream = rt::Subject<rt::Event>::name("radio.decoder.command");
       radioDeviceCommandStream = rt::Subject<rt::Event>::name("radio.receiver.command");
       recorderCommandStream = rt::Subject<rt::Event>::name("recorder.command");
-      storageCommandStream = rt::Subject<rt::Event>::name("storage.command");
       fourierCommandStream = rt::Subject<rt::Event>::name("fourier.command");
 
       // create frame subject
       logicDecoderFrameStream = rt::Subject<lab::RawFrame>::name("logic.decoder.frame");
       radioDecoderFrameStream = rt::Subject<lab::RawFrame>::name("radio.decoder.frame");
-      storageFrameStream = rt::Subject<lab::RawFrame>::name("storage.frame");
 
       // create signal subject
       logicSignalStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
       radioSignalStream = rt::Subject<hw::SignalBuffer>::name("radio.signal.raw");
       adaptiveSignalStream = rt::Subject<hw::SignalBuffer>::name("adaptive.signal");
-      storageSignalStream = rt::Subject<hw::SignalBuffer>::name("storage.signal");
    }
 
    /*
@@ -265,31 +256,19 @@ struct QtControl::Impl
          recorderStatusChange(params);
       });
 
-      storageStatusSubscription = storageStatusStream->subscribe([this](const rt::Event &params) {
-         storageStatusChange(params);
-      });
-
       fourierStatusSubscription = fourierStatusStream->subscribe([this](const rt::Event &params) {
          fourierStatusChange(params);
       });
 
-      storageFrameSubscription = storageFrameStream->subscribe([this](const lab::RawFrame &frame) {
-         radioDecoderFrameEvent(frame);
+      logicSignalSubscription = logicSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+         signalStorageEvent(buffer);
       });
 
-      // logicSignalSubscription = logicSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-      //    signalCacheEvent(buffer);
-      // });
-
-      // radioSignalSubscription = radioSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-      //    signalCacheEvent(buffer);
-      // });
+      radioSignalSubscription = radioSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+         signalStorageEvent(buffer);
+      });
 
       adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-         signalBufferEvent(buffer);
-      });
-
-      storageSignalSubscription = storageSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
          signalBufferEvent(buffer);
       });
 
@@ -405,27 +384,19 @@ struct QtControl::Impl
       {
          storagePath = event->getString("storagePath");
 
-         // clear storage queue
-         taskStorageClear([=] {
+         // start recorder and...
+         taskRecorderWrite({{"storagePath", storagePath}}, [=] {
 
-            // start recorder and...
-            taskRecorderWrite({{"storagePath", storagePath}}, [=] {
-
-               // ...start logic and radio devices
-               startDecoders();
-            });
+            // ...start logic and radio devices
+            startDecoders();
          });
       }
       else
       {
          storagePath = QString();
 
-         // clear storage queue
-         taskStorageClear([=] {
-
-            // ...start logic and radio devices
-            startDecoders();
-         });
+         // ...start logic and radio devices
+         startDecoders();
       }
    }
 
@@ -721,12 +692,6 @@ struct QtControl::Impl
 
       if (path.extension() == ".trz")
       {
-         // clear storage queue
-         taskStorageClear([=] {
-            // start XML file read
-            taskStorageRead(command);
-         });
-
          return;
       }
 
@@ -742,39 +707,35 @@ struct QtControl::Impl
 
          const unsigned int channelCount = std::get<unsigned int>(file.get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
 
-         // clear storage queue
-         taskStorageClear([=] {
-
-            // if contains 4 channels... trigger logic decoder start
-            if (channelCount >= 3)
+         // if contains 4 channels... trigger logic decoder start
+         if (channelCount >= 3)
+         {
+            if (logicDecoderEnabled)
             {
-               if (logicDecoderEnabled)
-               {
-                  taskLogicDecoderStart([=] {
-                     taskRecorderRead(command);
-                  });
-               }
-               else
-               {
+               taskLogicDecoderStart([=] {
                   taskRecorderRead(command);
-               }
+               });
             }
-
-            // if contains 1 or 2 channels... trigger radio decoder start
-            else if (channelCount <= 2)
+            else
             {
-               if (radioDecoderEnabled)
-               {
-                  taskRadioDecoderStart([=] {
-                     taskRecorderRead(command);
-                  });
-               }
-               else
-               {
-                  taskRecorderRead(command);
-               }
+               taskRecorderRead(command);
             }
-         });
+         }
+
+         // if contains 1 or 2 channels... trigger radio decoder start
+         else if (channelCount <= 2)
+         {
+            if (radioDecoderEnabled)
+            {
+               taskRadioDecoderStart([=] {
+                  taskRecorderRead(command);
+               });
+            }
+            else
+            {
+               taskRecorderRead(command);
+            }
+         }
       }
    }
 
@@ -795,7 +756,6 @@ struct QtControl::Impl
 
       if (fileName.endsWith(".trz"))
       {
-         taskStorageWrite(command);
       }
    }
 
@@ -819,9 +779,6 @@ struct QtControl::Impl
       //       taskRadioDecoderClear();
       //    });
       // }
-
-      // clear storage
-      taskStorageClear();
    }
 
    /*
@@ -1279,29 +1236,14 @@ struct QtControl::Impl
    void storageInitialize() const
    {
       QJsonObject config {{"tempPath", QtApplication::tempPath().absolutePath()}};
-
-      taskStorageConfig(config);
-   }
-
-   /*
-    * process storage status event
-    */
-   void storageStatusChange(const rt::Event &event) const
-   {
-      if (const auto data = event.get<std::string>("data"))
-      {
-         QJsonObject status = QJsonDocument::fromJson(QByteArray::fromStdString(data.value())).object();
-
-         QtApplication::post(StorageStatusEvent::create(status));
-      }
    }
 
    /*
     * process new received buffer
     */
-   void signalCacheEvent(const hw::SignalBuffer &buffer)
+   void signalStorageEvent(const hw::SignalBuffer &buffer)
    {
-      cache->append(buffer);
+      storage->append(buffer);
    }
 
    /*
@@ -1605,55 +1547,9 @@ struct QtControl::Impl
 
       recorderCommandStream->next({lab::SignalStorageTask::Stop, onComplete, onReject});
    }
-
-   /*
-    * config storage task
-    */
-   void taskStorageConfig(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
-   {
-      const QJsonDocument doc(data);
-
-      qInfo() << "configure storage task";
-
-      storageCommandStream->next({lab::TraceStorageTask::Config, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
-   }
-
-   /*
-    * start storage task to read frames from file
-    */
-   void taskStorageRead(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
-   {
-      const QJsonDocument doc(data);
-
-      qInfo() << "start storage task to read file:" << doc.toJson();
-
-      storageCommandStream->next({lab::TraceStorageTask::Read, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
-   }
-
-   /*
-    * start storage task for write frames to file
-    */
-   void taskStorageWrite(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
-   {
-      const QJsonDocument doc(data);
-
-      qInfo() << "start storage task to write file:" << doc.toJson();
-
-      storageCommandStream->next({lab::TraceStorageTask::Write, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
-   }
-
-   /*
-    * clear storage task frames from internal buffer
-    */
-   void taskStorageClear(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
-   {
-      qInfo() << "clear storage task";
-
-      storageCommandStream->next({lab::TraceStorageTask::Clear, onComplete, onReject});
-   }
 };
 
-QtControl::QtControl(QtCache *cache) : impl(new Impl(cache))
+QtControl::QtControl(QtStorage *storage) : impl(new Impl(storage))
 {
 }
 

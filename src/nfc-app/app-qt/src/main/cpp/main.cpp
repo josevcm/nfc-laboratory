@@ -135,7 +135,7 @@ int startApp(int argc, char *argv[])
    executor.submit(lab::LogicDeviceTask::construct()); // startup logic receiver
    executor.submit(lab::RadioDecoderTask::construct()); // startup radio decoder
    executor.submit(lab::RadioDeviceTask::construct()); // startup signal receiver
-   executor.submit(lab::TraceStorageTask::construct()); // startup frame writer
+   // executor.submit(lab::TraceStorageTask::construct()); // startup frame writer
    executor.submit(lab::SignalStorageTask::construct()); // startup signal reader
    executor.submit(lab::SignalResamplingTask::construct()); // startup signal resampling
 
