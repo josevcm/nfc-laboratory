@@ -32,8 +32,6 @@
 #include <hw/SignalBuffer.h>
 #include <hw/RecordDevice.h>
 
-#include <lab/data/StreamTree.h>
-
 #include <lab/tasks/SignalStorageTask.h>
 
 #include "AbstractTask.h"
@@ -68,12 +66,9 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
    std::vector<int> radioBufferKeys;
 
    // base filename
-   StreamTree stream;
-
-   // base filename
    std::string storagePath;
 
-   Impl() : AbstractTask("worker.SignalStorage", "recorder"), status(Idle), stream({0.000001})
+   Impl() : AbstractTask("worker.SignalStorage", "recorder"), status(Idle)
    {
       // access to signal subject stream
       radioSignalIqStream = rt::Subject<hw::SignalBuffer>::name("radio.signal.iq");
@@ -87,8 +82,8 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       //      });
 
       radioSignalRawSubscription = radioSignalRawStream->subscribe([this](const hw::SignalBuffer &buffer) {
-         // if (status == Writing)
-         radioSignalQueue.add(buffer);
+         if (status == Writing)
+            radioSignalQueue.add(buffer);
       });
 
       logicSignalRawSubscription = logicSignalRawStream->subscribe([this](const hw::SignalBuffer &buffer) {
@@ -147,33 +142,12 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       {
          signalWrite();
       }
-
-      signalStorage();
-
-      // else
-      // {
-      //    wait(50);
-      // }
+      else
+      {
+         wait(50);
+      }
 
       return true;
-   }
-
-   void signalStorage()
-   {
-      if (const auto buffer = radioSignalQueue.get(10))
-      {
-         if (!buffer.has_value())
-            return;
-
-         float *data = buffer->data();
-
-         for (unsigned int i = 0; i < buffer->limit(); i += buffer->stride())
-         {
-            stream.append(buffer->offset() + i, data[i]);
-         }
-
-         stream.logInfo();
-      }
    }
 
    void readStorage(const rt::Event &command)
