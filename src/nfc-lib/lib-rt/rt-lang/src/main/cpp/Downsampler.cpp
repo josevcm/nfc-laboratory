@@ -21,17 +21,17 @@ This file is part of NFC-LABORATORY.
 
 #include <rt/Logger.h>
 
-#include <lab/data/StreamTree.h>
+#include <rt/Downsampler.h>
 
-namespace lab {
+namespace rt {
 
-struct StreamTree::Impl
+struct Downsampler::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("data.StreamTree");
+   Logger *log = Logger::getLogger("rt.Downsampler");
 
    std::vector<double> resolutions;
 
-   std::vector<std::map<int64_t, Bucket>> levels;
+   std::vector<std::map<unsigned long long, Bucket>> levels;
 
    Impl(std::vector<double> resolutions) : resolutions(resolutions)
    {
@@ -41,65 +41,64 @@ struct StreamTree::Impl
       }
    }
 
-   void insert(int64_t t, float y)
+   void append(unsigned long long time, float value)
    {
       for (int level = 0; level < resolutions.size(); ++level)
       {
-         aggregate(level, t, y);
+         aggregate(level, time, value);
       }
    }
 
-   void aggregate(int level, int64_t t, float y)
+   void aggregate(int level, unsigned long long time, float value)
    {
       if (level < 0 || level >= resolutions.size())
          return;
 
-      std::map<int64_t, Bucket> &buckets = levels[level];
+      std::map<unsigned long long, Bucket> &buckets = levels[level];
 
-      if (auto it = buckets.lower_bound(t); it != buckets.begin())
+      if (auto it = buckets.lower_bound(time); it != buckets.begin())
       {
          // move iterator to the previous bucket
          --it;
 
          // detect deviation from average
-         float dev = std::abs(y - it->second.y_avg);
+         float dev = std::abs(value - it->second.y_avg);
 
          // if the deviation is small enough, update the existing bucket
-         if (dev <= 0.01f)
+         if (dev <= 0.05f)
          {
             // update time range
-            it->second.t_max = t;
-
-            // exponential average
-            it->second.y_avg = it->second.y_avg * 0.9f + y * 0.1f;
+            if (it->second.t_max < time)
+               it->second.t_max = time;
 
             // update min/max y values for the bucket
-            if (it->second.y_min > y)
-               it->second.y_min = y;
-            else if (it->second.y_max < y)
-               it->second.y_max = y;
+            if (it->second.y_min > value)
+               it->second.y_min = value;
+            else if (it->second.y_max < value)
+               it->second.y_max = value;
+
+            // update average (using exponential average)
+            it->second.y_avg = it->second.y_avg * 0.9f + value * 0.1f;
 
             return;
          }
       }
 
       // generate new bucket
-      buckets[t] = {t, t, y, y, y};
+      buckets[time] = {time, time, value, value, value};
    }
 
-   std::vector<Bucket> query(double t_start, double t_end, double pixelWidth) const
+   std::vector<Bucket> query(const unsigned long long timeStart, const unsigned long long timeEnd, const double resolution) const
    {
       if (levels.empty())
          return {};
-
-      double visibleRes = (t_end - t_start) / pixelWidth;
 
       // search for the appropriate resolution level
       int levelIdx = 0;
 
       for (int i = 0; i < resolutions.size(); ++i)
       {
-         if (resolutions[i] >= visibleRes)
+         if (resolutions[i] >= resolution)
          {
             levelIdx = i;
             break;
@@ -108,29 +107,26 @@ struct StreamTree::Impl
          levelIdx = i;
       }
 
-      const std::map<int64_t, Bucket> &mapLevel = levels[levelIdx];
-      const int64_t startBucket = timeToBucket(levelIdx, t_start);
-      const int64_t endBucket = timeToBucket(levelIdx, t_end);
+      const std::map<unsigned long long, Bucket> &buckets = levels[levelIdx];
+
+      auto it = buckets.lower_bound(timeStart);
+      const auto itEnd = buckets.upper_bound(timeEnd);
+
+      // move to previous bucket if it exists
+      if (it != buckets.begin())
+         --it;
 
       std::vector<Bucket> result;
 
-      for (int64_t b = startBucket; b <= endBucket; ++b)
+      for (; it != itEnd; ++it)
       {
-         if (auto it = mapLevel.find(b); it != mapLevel.end())
-         {
-            result.push_back(it->second);
-         }
+         result.push_back(it->second);
       }
 
       return result;
    }
 
-   int64_t timeToBucket(int level, double t) const
-   {
-      return static_cast<int64_t>(std::floor(t / resolutions[level]));
-   }
-
-   void logInfo()
+   void logInfo() const
    {
       size_t bytes = 0;
       size_t buckets = 0;
@@ -138,28 +134,33 @@ struct StreamTree::Impl
       for (const auto &level: levels)
       {
          buckets += level.size();
-         bytes += (sizeof(uint64_t) + sizeof(Bucket)) * level.size();
+         bytes += (sizeof(unsigned long long) + sizeof(Bucket)) * level.size();
       }
 
       log->info("StreamTree: {} levels, {} buckets, {} bytes", {levels.size(), buckets, bytes});
    }
 };
 
-StreamTree::StreamTree(std::vector<double> resolutions) : impl(std::make_shared<Impl>(resolutions))
+Downsampler::Downsampler(std::vector<double> resolutions) : impl(std::make_shared<Impl>(resolutions))
 {
 }
 
-void StreamTree::append(double t, double y)
+void Downsampler::append(unsigned long long time, float value)
 {
-   impl->insert(t, y);
+   impl->append(time, value);
 }
 
-std::vector<StreamTree::Bucket> StreamTree::query(double t_start, double t_end, double pixelWidth) const
+float Downsampler::query(unsigned long long time, double resolution) const
 {
-   return impl->query(t_start, t_end, pixelWidth);
+   return 0;
 }
 
-void StreamTree::logInfo() const
+std::vector<Downsampler::Bucket> Downsampler::query(unsigned long long timeStart, unsigned long long timeEnd, double resolution) const
+{
+   return impl->query(timeStart, timeEnd, resolution);
+}
+
+void Downsampler::logInfo() const
 {
    impl->logInfo();
 }

@@ -29,10 +29,10 @@ enum SignalType
    SIGNAL_TYPE_RADIO_IQ = 1, // 2 float components per sample (I / Q value)
    SIGNAL_TYPE_RADIO_SAMPLES = 2, // 1 float component per sample (magnitude value)
    SIGNAL_TYPE_RADIO_SIGNAL = 3, // 2 float components per sample (value / offset)
-   SIGNAL_TYPE_LOGIC_SAMPLES = 11, // N float component per sample (1 / 0 value)
-   SIGNAL_TYPE_LOGIC_SIGNAL = 12, // 2 float components per sample (value / offset)
+   SIGNAL_TYPE_LOGIC_SAMPLES = 12, // N float component per sample (1 / 0 value)
+   SIGNAL_TYPE_LOGIC_SIGNAL = 13, // 2 float components per sample (value / offset)
    SIGNAL_TYPE_FFT_BIN = 20, // 2 float components per sample (magnitude / phase)
-   SIGNAL_TYPE_CLK_SIGNAL = 21 // 2 float components per sample (clock / offset)
+   SIGNAL_TYPE_CLK_SIGNAL = 21, // 2 float components per sample (clock / offset)
 };
 
 enum SampleType

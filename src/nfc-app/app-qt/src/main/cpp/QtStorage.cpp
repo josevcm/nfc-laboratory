@@ -25,7 +25,6 @@ This file is part of NFC-LABORATORY.
 #include <QPointer>
 
 #include <lab/data/RawFrame.h>
-#include <lab/data/StreamTree.h>
 
 #include <hw/SignalType.h>
 #include <hw/SignalBuffer.h>
@@ -55,10 +54,7 @@ struct QtStorage::Impl
    // cache for signal buffers is in disk
    QMap<QString, QFile *> signal;
 
-   // cache for stream tree
-   lab::StreamTree streamTree;
-
-   explicit Impl(QObject *parent) : writer(new QThread(parent)), streamTree({0.000001 /*, 0.000010, 0.000100, 0.001000, 0.010000, 0.100000*/})
+   explicit Impl(QObject *parent) : writer(new QThread(parent))
    {
       // switch cache to writer thread
       parent->moveToThread(writer);

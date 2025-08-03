@@ -174,10 +174,15 @@ struct RadioWidget::Impl
 
          case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
          {
+            // const double endTime = std::fma(sampleStep, buffer[buffer.limit() - 1], startTime);
+
+            // signalData->removeAfter(endTime);
+            signalData->removeAfter(startTime);
+
             for (int i = 0; i < buffer.limit(); i += 2)
             {
                double value = buffer[i + 0] * 2;
-               double time = std::fma(sampleStep, buffer[i + 1], startTime); // range = sampleStep * buffer[i + 1] + startTime
+               double time = std::fma(sampleStep, buffer[i + 1], startTime); // time = sampleStep * buffer[i + 1] + startTime
 
                signalData->add({time, value});
             }

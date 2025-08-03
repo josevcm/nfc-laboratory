@@ -19,8 +19,8 @@ This file is part of NFC-LABORATORY.
 
 */
 
-#ifndef DATA_STREAMTREE_H
-#define DATA_STREAMTREE_H
+#ifndef RT_DOWNSAMPLER_H
+#define RT_DOWNSAMPLER_H
 
 #include <map>
 #include <limits>
@@ -28,10 +28,9 @@ This file is part of NFC-LABORATORY.
 #include <memory>
 #include <vector>
 
-#endif //DATA_STREAMTREE_H
+namespace rt {
 
-namespace lab {
-class StreamTree
+class Downsampler
 {
    struct Impl;
 
@@ -39,16 +38,17 @@ class StreamTree
 
       struct Bucket
       {
-         int64_t t_min, t_max;
-         float y_min, y_max;
-         float y_avg;
+         unsigned long long t_min, t_max;
+         float y_min, y_max, y_avg;
       };
 
-      explicit StreamTree(std::vector<double> resolutions); // default: 5ms
+      explicit Downsampler(std::vector<double> resolutions); // default: 5ms
 
-      void append(double t, double y);
+      void append(unsigned long long time, float value);
 
-      std::vector<Bucket> query(double t_start, double t_end, double pixelWidth) const;
+      float query(unsigned long long time, double resolution) const;
+
+      std::vector<Bucket> query(unsigned long long timeStart, unsigned long long timeEnd, double resolution) const;
 
       void logInfo() const;
 
@@ -58,3 +58,5 @@ class StreamTree
 };
 
 }
+
+#endif //RT_DOWNSAMPLER_H

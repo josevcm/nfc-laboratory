@@ -22,6 +22,7 @@
 #include <mutex>
 
 #include <rt/BlockingQueue.h>
+#include <rt/Downsampler.h>
 #include <rt/Throughput.h>
 
 #include <hw/SignalType.h>
@@ -40,19 +41,13 @@ namespace lab {
 
 struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
 {
-   // signal buffer frame stream subject
+   // signal subjects
    rt::Subject<hw::SignalBuffer> *logicSignalStream = nullptr;
-
-   // signal buffer frame stream subject
    rt::Subject<hw::SignalBuffer> *radioSignalStream = nullptr;
-
-   // signal buffer frame stream subject
    rt::Subject<hw::SignalBuffer> *adaptiveSignalStream = nullptr;
 
-   // signal stream subscription
+   // signal stream subscriptions
    rt::Subject<hw::SignalBuffer>::Subscription logicSignalSubscription;
-
-   // signal stream subscription
    rt::Subject<hw::SignalBuffer>::Subscription radioSignalSubscription;
 
    // signal stream queue buffer
@@ -61,13 +56,16 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
    // throughput meter
    rt::Throughput taskThroughput;
 
+   // base filename
+   rt::Downsampler radioDownsampler;
+
    // stream lock
    std::mutex signalMutex;
 
    // last status sent
    std::chrono::time_point<std::chrono::steady_clock> lastStatus;
 
-   explicit Impl() : AbstractTask("worker.SignalResampling", "adaptive")
+   explicit Impl() : AbstractTask("worker.SignalResampling", "adaptive"), radioDownsampler({0.000001}), lastStatus(std::chrono::steady_clock::now())
    {
       // access to radio signal subject stream
       logicSignalStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
@@ -118,7 +116,8 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       {
          if (buffer.has_value())
          {
-            process(buffer.value());
+            downsampling(buffer.value());
+            // process(buffer.value());
          }
       }
 
@@ -133,6 +132,57 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
       }
 
       return true;
+   }
+
+   void downsampling(const hw::SignalBuffer &buffer)
+   {
+      const float *data = buffer.data();
+
+      // propagate EOF
+      if (!buffer.isValid())
+      {
+         adaptiveSignalStream->next({});
+         return;
+      }
+
+      switch (buffer.type())
+      {
+         // adaptive resample for raw real signal
+         case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
+         {
+            // append raw samples to downsampler
+            for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
+               radioDownsampler.append(buffer.offset() + i, data[i]);
+
+            // trigger downsampler query and send resampled signal
+            queryRadioSignal(0, UINT64_MAX);
+
+            break;
+         }
+
+         // adaptive resample for stream logic signal
+         case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
+         {
+            break;
+         }
+
+         default:
+            break;
+      }
+
+      radioDownsampler.logInfo();
+   }
+
+   void queryRadioSignal(const unsigned long long start, const unsigned long long end)
+   {
+      auto buckets = radioDownsampler.query(start, end, 0.000010);
+
+      // hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, buffer.id());
+
+      for (int i = 0; i < buckets.size(); i++)
+      {
+         log->info("bucket {}: t_min = {}, t_max = {}, y_min = {}, y_max = {}, y_avg = {}", {i, buckets[i].t_min, buckets[i].t_max, buckets[i].y_min, buckets[i].y_max, buckets[i].y_avg});
+      }
    }
 
    void process(const hw::SignalBuffer &buffer)
