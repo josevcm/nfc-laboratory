@@ -31,7 +31,7 @@ struct Downsampler::Impl
 
    std::vector<double> resolutions;
 
-   std::vector<std::map<unsigned long long, Bucket>> levels;
+   std::vector<std::map<double, Bucket>> levels;
 
    Impl(std::vector<double> resolutions) : resolutions(resolutions)
    {
@@ -41,7 +41,7 @@ struct Downsampler::Impl
       }
    }
 
-   void append(unsigned long long time, float value)
+   void append(double time, double value)
    {
       for (int level = 0; level < resolutions.size(); ++level)
       {
@@ -49,46 +49,44 @@ struct Downsampler::Impl
       }
    }
 
-   void aggregate(int level, unsigned long long time, float value)
+   void aggregate(int level, double time, double value)
    {
       if (level < 0 || level >= resolutions.size())
          return;
 
-      std::map<unsigned long long, Bucket> &buckets = levels[level];
+      std::map<double, Bucket> &buckets = levels[level];
+
+      const auto y = static_cast<float>(value);
 
       if (auto it = buckets.lower_bound(time); it != buckets.begin())
       {
          // move iterator to the previous bucket
          --it;
 
-         // detect deviation from average
-         float dev = std::abs(value - it->second.y_avg);
-
          // if the deviation is small enough, update the existing bucket
-         if (dev <= 0.05f)
+         if (float dev = std::abs(y - it->second.y_avg); dev < 0.005f)
          {
             // update time range
-            if (it->second.t_max < time)
-               it->second.t_max = time;
-
-            // update min/max y values for the bucket
-            if (it->second.y_min > value)
-               it->second.y_min = value;
-            else if (it->second.y_max < value)
-               it->second.y_max = value;
+            it->second.t_max = time;
 
             // update average (using exponential average)
-            it->second.y_avg = it->second.y_avg * 0.9f + value * 0.1f;
+            it->second.y_avg = it->second.y_avg * 0.75f + y * 0.25f;
+
+            // update min/max y values for the bucket
+            if (it->second.y_min > y)
+               it->second.y_min = y;
+            else if (it->second.y_max < y)
+               it->second.y_max = y;
 
             return;
          }
       }
 
       // generate new bucket
-      buckets[time] = {time, time, value, value, value};
+      buckets[time] = {time, time, y, y, y};
    }
 
-   std::vector<Bucket> query(const unsigned long long timeStart, const unsigned long long timeEnd, const double resolution) const
+   std::vector<Bucket> query(const double start, const double end, const double resolution) const
    {
       if (levels.empty())
          return {};
@@ -107,10 +105,10 @@ struct Downsampler::Impl
          levelIdx = i;
       }
 
-      const std::map<unsigned long long, Bucket> &buckets = levels[levelIdx];
+      const std::map<double, Bucket> &buckets = levels[levelIdx];
 
-      auto it = buckets.lower_bound(timeStart);
-      const auto itEnd = buckets.upper_bound(timeEnd);
+      auto it = buckets.lower_bound(start);
+      const auto itEnd = buckets.upper_bound(end);
 
       // move to previous bucket if it exists
       if (it != buckets.begin())
@@ -145,19 +143,19 @@ Downsampler::Downsampler(std::vector<double> resolutions) : impl(std::make_share
 {
 }
 
-void Downsampler::append(unsigned long long time, float value)
+void Downsampler::append(double time, double value)
 {
    impl->append(time, value);
 }
 
-float Downsampler::query(unsigned long long time, double resolution) const
+float Downsampler::query(double time, double resolution) const
 {
    return 0;
 }
 
-std::vector<Downsampler::Bucket> Downsampler::query(unsigned long long timeStart, unsigned long long timeEnd, double resolution) const
+std::vector<Downsampler::Bucket> Downsampler::query(double start, double end, double resolution) const
 {
-   return impl->query(timeStart, timeEnd, resolution);
+   return impl->query(start, end, resolution);
 }
 
 void Downsampler::logInfo() const

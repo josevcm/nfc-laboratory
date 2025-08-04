@@ -65,6 +65,8 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
    // last status sent
    std::chrono::time_point<std::chrono::steady_clock> lastStatus;
 
+   unsigned int count = 0;
+
    explicit Impl() : AbstractTask("worker.SignalResampling", "adaptive"), radioDownsampler({0.000001}), lastStatus(std::chrono::steady_clock::now())
    {
       // access to radio signal subject stream
@@ -83,7 +85,8 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
       // subscribe to radio signal events
       radioSignalSubscription = radioSignalStream->subscribe([=](const hw::SignalBuffer &buffer) {
-         signalQueue.add(buffer);
+         if (count++ < 5)
+            signalQueue.add(buffer);
       });
    }
 
@@ -106,7 +109,12 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
        */
       if (auto command = commandQueue.get())
       {
-         log->debug("adaptive command [{}]", {command->code});
+         switch (command->code)
+         {
+            case Query:
+               queryStream(command.value());
+               break;
+         }
       }
 
       /*
@@ -116,7 +124,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       {
          if (buffer.has_value())
          {
-            downsampling(buffer.value());
+            stream(buffer.value());
             // process(buffer.value());
          }
       }
@@ -134,7 +142,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       return true;
    }
 
-   void downsampling(const hw::SignalBuffer &buffer)
+   void stream(const hw::SignalBuffer &buffer)
    {
       const float *data = buffer.data();
 
@@ -150,12 +158,19 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          // adaptive resample for raw real signal
          case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
          {
+            const double sampleStep = 1.0 / static_cast<double>(buffer.sampleRate());
+            const double startTime = static_cast<double>(buffer.offset()) * sampleStep;
+
             // append raw samples to downsampler
-            for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
-               radioDownsampler.append(buffer.offset() + i, data[i]);
+            for (unsigned int i = 0; i < buffer.elements(); ++i)
+            {
+               const double time = std::fma(sampleStep, i, startTime); // time = sampleStep * i + startTime
+
+               radioDownsampler.append(time, data[i]);
+            }
 
             // trigger downsampler query and send resampled signal
-            queryRadioSignal(0, UINT64_MAX);
+            queryRadioSignal(0, INFINITY);
 
             break;
          }
@@ -169,20 +184,80 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          default:
             break;
       }
-
-      radioDownsampler.logInfo();
    }
 
-   void queryRadioSignal(const unsigned long long start, const unsigned long long end)
+   void queryStream(const rt::Event &command)
    {
+      int error = MissingParameters;
+
+      while (auto data = command.get<std::string>("data"))
+      {
+         auto config = json::parse(data.value());
+
+         log->info("query stream command: {}", {config.dump()});
+
+         if (!config.contains("start"))
+         {
+            log->error("missing start time parameter!");
+            error = MissingParameters;
+            break;
+         }
+
+         if (!config.contains("end"))
+         {
+            log->error("missing end time parameter!");
+            error = MissingParameters;
+            break;
+         }
+
+         auto start = static_cast<float>(config["start"]);
+         auto end = static_cast<float>(config["end"]);
+
+         queryRadioSignal(start, end);
+
+         command.resolve();
+
+         return;
+      }
+
+      command.reject(error);
+   }
+
+   void queryRadioSignal(const double start, const double end) const
+   {
+      unsigned int querySampleCount = 1000;
+
+      hw::SignalBuffer buffer(querySampleCount, 1, 1, 1, 0LL, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, 0);
+
       auto buckets = radioDownsampler.query(start, end, 0.000010);
 
-      // hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, buffer.id());
-
-      for (int i = 0; i < buckets.size(); i++)
+      if (auto it = buckets.begin(); it != buckets.end())
       {
-         log->info("bucket {}: t_min = {}, t_max = {}, y_min = {}, y_max = {}, y_avg = {}", {i, buckets[i].t_min, buckets[i].t_max, buckets[i].y_min, buckets[i].y_max, buckets[i].y_avg});
+         // limit start between start and start of first bucket
+         const double queryTimeStart = std::max(start, buckets.front().t_min);
+         const double queryTimeEnd = std::min(end, buckets.back().t_max);
+         const double queryTimeSpan = std::abs(queryTimeEnd - queryTimeStart);
+
+         // calculate query sample count based on time span
+         const double querySampleRate = querySampleCount / queryTimeSpan;
+         const double querySampleStep = 1.0 / querySampleRate;
+         const double querySampleOffset = queryTimeStart * querySampleRate;
+
+         buffer = hw::SignalBuffer(querySampleCount, 1, 1, static_cast<unsigned int>(querySampleRate), static_cast<unsigned long long>(querySampleOffset), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, 0);
+
+         for (int i = 0; i < buffer.elements() && it != buckets.end(); i++)
+         {
+            if (const double time = std::fma(querySampleStep, i, queryTimeStart); it->t_max < time)
+               ++it;
+
+            buffer.put(it->y_avg);
+         }
       }
+
+      buffer.flip();
+
+      adaptiveSignalStream->next(buffer);
+
    }
 
    void process(const hw::SignalBuffer &buffer)

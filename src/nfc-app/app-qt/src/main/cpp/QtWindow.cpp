@@ -689,7 +689,7 @@ struct QtWindow::Impl
    {
       if (event->buffer().isValid())
       {
-         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL)
+         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL || event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES)
          {
             ui->logicView->append(event->buffer());
 
@@ -700,7 +700,7 @@ struct QtWindow::Impl
             if (ui->logicView->dataUpperRange() > receivedTimeTo || receivedTimeTo == 0.0)
                receivedTimeTo = ui->logicView->dataUpperRange();
          }
-         else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL)
+         else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL || event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES)
          {
             ui->radioView->append(event->buffer());
 
@@ -710,6 +710,8 @@ struct QtWindow::Impl
 
             if (ui->radioView->dataUpperRange() > receivedTimeTo || receivedTimeTo == 0.0)
                receivedTimeTo = ui->logicView->dataUpperRange();
+
+            qInfo() << "Received radio signal from" << receivedTimeFrom << "to" << receivedTimeTo;
          }
       }
       else

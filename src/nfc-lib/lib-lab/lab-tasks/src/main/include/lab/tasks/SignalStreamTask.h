@@ -28,6 +28,20 @@ namespace lab {
 
 class SignalStreamTask : public rt::Worker
 {
+   public:
+
+      enum Command
+      {
+         Query
+      };
+
+      enum Error
+      {
+         NoError = 0,
+         MissingParameters = -1,
+         UnknownCommand = -9
+      };
+
    private:
 
       struct Impl;

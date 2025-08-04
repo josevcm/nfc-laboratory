@@ -38,17 +38,17 @@ class Downsampler
 
       struct Bucket
       {
-         unsigned long long t_min, t_max;
+         double t_min, t_max;
          float y_min, y_max, y_avg;
       };
 
       explicit Downsampler(std::vector<double> resolutions); // default: 5ms
 
-      void append(unsigned long long time, float value);
+      void append(double time, double value);
 
-      float query(unsigned long long time, double resolution) const;
+      float query(double time, double resolution) const;
 
-      std::vector<Bucket> query(unsigned long long timeStart, unsigned long long timeEnd, double resolution) const;
+      std::vector<Bucket> query(double timeStart, double timeEnd, double resolution) const;
 
       void logInfo() const;
 
