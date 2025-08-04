@@ -37,8 +37,8 @@
 #include <lab/tasks/LogicDeviceTask.h>
 #include <lab/tasks/RadioDecoderTask.h>
 #include <lab/tasks/RadioDeviceTask.h>
-#include <lab/tasks/SignalResamplingTask.h>
 #include <lab/tasks/SignalStorageTask.h>
+#include <lab/tasks/SignalStreamTask.h>
 #include <lab/tasks/TraceStorageTask.h>
 
 #include <styles/IconStyle.h>
@@ -137,7 +137,7 @@ int startApp(int argc, char *argv[])
    executor.submit(lab::RadioDeviceTask::construct()); // startup signal receiver
    // executor.submit(lab::TraceStorageTask::construct()); // startup frame writer
    executor.submit(lab::SignalStorageTask::construct()); // startup signal reader
-   executor.submit(lab::SignalResamplingTask::construct()); // startup signal resampling
+   executor.submit(lab::SignalStreamTask::construct()); // startup signal resampling
 
    // initialize application
    QtApplication app(argc, argv);
