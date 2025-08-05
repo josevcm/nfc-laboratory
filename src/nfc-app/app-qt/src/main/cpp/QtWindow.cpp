@@ -2359,6 +2359,8 @@ struct QtWindow::Impl
 
    void radioRangeChanged(double from, double to) const
    {
+      qInfo() << "radio range changed:" << from << "->" << to;
+
       QSignalBlocker signalScrollBlocker(ui->signalScroll);
       QSignalBlocker logicViewBlocker(ui->logicView);
 
@@ -2377,6 +2379,11 @@ struct QtWindow::Impl
 
          // sync logic view
          ui->logicView->setViewRange(from, to);
+
+         // query decoder for stream data
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::QueryStream, {
+                                                        {"timeStart", from}, {"timeEnd", to}
+                                                     }));
       }
       else
       {

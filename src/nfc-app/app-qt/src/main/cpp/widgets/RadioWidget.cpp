@@ -86,6 +86,7 @@ struct RadioWidget::Impl
       radioGraph->setSelectable(QCP::stDataRange);
       radioGraph->setSelectionDecorator(nullptr);
       radioGraph->setStyle({Theme::defaultSignalPen, Theme::defaultRadioNFCPen, Theme::defaultRadioNFCBrush, Theme::defaultTextPen, Theme::defaultLabelFont, "NFC"});
+      radioGraph->setScatterStyle(QCPScatterStyle::ssCross);
 
       // initialize legend
       plot->legend->setIconSize(60, 20);

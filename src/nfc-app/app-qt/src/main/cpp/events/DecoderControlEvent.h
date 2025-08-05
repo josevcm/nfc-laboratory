@@ -42,6 +42,7 @@ class DecoderControlEvent : public QEvent
          Change,
          ReadFile,
          WriteFile,
+         QueryStream,
          LogicDeviceConfig,
          LogicDecoderConfig,
          RadioDeviceConfig,

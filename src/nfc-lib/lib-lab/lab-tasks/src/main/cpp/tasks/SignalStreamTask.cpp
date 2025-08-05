@@ -44,7 +44,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
    // signal subjects
    rt::Subject<hw::SignalBuffer> *logicSignalStream = nullptr;
    rt::Subject<hw::SignalBuffer> *radioSignalStream = nullptr;
-   rt::Subject<hw::SignalBuffer> *adaptiveSignalStream = nullptr;
+   rt::Subject<hw::SignalBuffer> *signalStream = nullptr;
 
    // signal stream subscriptions
    rt::Subject<hw::SignalBuffer>::Subscription logicSignalSubscription;
@@ -67,7 +67,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
    unsigned int count = 0;
 
-   explicit Impl() : AbstractTask("worker.SignalResampling", "adaptive"), radioDownsampler({0.000001}), lastStatus(std::chrono::steady_clock::now())
+   explicit Impl() : AbstractTask("worker.SignalStream", "stream"), radioDownsampler({0.000001}), lastStatus(std::chrono::steady_clock::now())
    {
       // access to radio signal subject stream
       logicSignalStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
@@ -76,7 +76,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       radioSignalStream = rt::Subject<hw::SignalBuffer>::name("radio.signal.raw");
 
       // access to signal subject stream
-      adaptiveSignalStream = rt::Subject<hw::SignalBuffer>::name("adaptive.signal");
+      signalStream = rt::Subject<hw::SignalBuffer>::name("stream.signal");
 
       // subscribe to logic signal events
       logicSignalSubscription = logicSignalStream->subscribe([=](const hw::SignalBuffer &buffer) {
@@ -85,8 +85,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
       // subscribe to radio signal events
       radioSignalSubscription = radioSignalStream->subscribe([=](const hw::SignalBuffer &buffer) {
-         if (count++ < 5)
-            signalQueue.add(buffer);
+         signalQueue.add(buffer);
       });
    }
 
@@ -149,7 +148,10 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       // propagate EOF
       if (!buffer.isValid())
       {
-         adaptiveSignalStream->next({});
+         queryRadioSignal(0, INFINITY);
+
+         signalStream->next({});
+
          return;
       }
 
@@ -168,9 +170,6 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
                radioDownsampler.append(time, data[i]);
             }
-
-            // trigger downsampler query and send resampled signal
-            queryRadioSignal(0, INFINITY);
 
             break;
          }
@@ -210,8 +209,8 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
             break;
          }
 
-         auto start = static_cast<float>(config["start"]);
-         auto end = static_cast<float>(config["end"]);
+         const auto start = static_cast<float>(config["start"]);
+         const auto end = static_cast<float>(config["end"]);
 
          queryRadioSignal(start, end);
 
@@ -225,7 +224,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
    void queryRadioSignal(const double start, const double end) const
    {
-      unsigned int querySampleCount = 1000;
+      unsigned int querySampleCount = 1024;
 
       hw::SignalBuffer buffer(querySampleCount, 1, 1, 1, 0LL, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, 0);
 
@@ -247,17 +246,17 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
          for (int i = 0; i < buffer.elements() && it != buckets.end(); i++)
          {
-            if (const double time = std::fma(querySampleStep, i, queryTimeStart); it->t_max < time)
-               ++it;
+            const double time = std::fma(querySampleStep, i, queryTimeStart);
 
-            buffer.put(it->y_avg);
+            while (!(it->t_min <= time && it->t_max >= time)) ++it;
+
+            buffer.put(it->y_min);
          }
       }
 
       buffer.flip();
 
-      adaptiveSignalStream->next(buffer);
-
+      signalStream->next(buffer);
    }
 
    void process(const hw::SignalBuffer &buffer)
@@ -265,7 +264,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       // propagate EOF
       if (!buffer.isValid())
       {
-         adaptiveSignalStream->next({});
+         signalStream->next({});
          return;
       }
 
@@ -348,7 +347,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
       resampled.flip();
 
-      adaptiveSignalStream->next(resampled);
+      signalStream->next(resampled);
 
       taskThroughput.update(buffer.elements());
    }
@@ -357,7 +356,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
    {
       unsigned int ch = buffer.stride();
 
-#pragma omp parallel for default(none) shared(buffer, ch, adaptiveSignalStream, taskThroughput) schedule(static)
+#pragma omp parallel for default(none) shared(buffer, ch, signalStream, taskThroughput) schedule(static)
       for (unsigned int n = 0; n < ch; ++n)
       {
          if (n == 1)
@@ -391,7 +390,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
          resampled.flip();
 
-         adaptiveSignalStream->next(resampled);
+         signalStream->next(resampled);
       }
 
       taskThroughput.update(buffer.elements());

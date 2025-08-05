@@ -85,11 +85,11 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
    rt::Subject<hw::SignalBuffer> *storageSignalStream = nullptr;
 
    // input signal stream subject from receiver
-   rt::Subject<hw::SignalBuffer> *adaptiveSignalStream = nullptr;
+   rt::Subject<hw::SignalBuffer> *signalStream = nullptr;
 
    // input frame stream subject from decoder
-   rt::Subject<RawFrame> *logicDecoderFrameStream = nullptr;
-   rt::Subject<RawFrame> *radioDecoderFrameStream = nullptr;
+   rt::Subject<RawFrame> *logicFrameStream = nullptr;
+   rt::Subject<RawFrame> *radioFrameStream = nullptr;
 
    // frame stream subscription
    rt::Subject<RawFrame>::Subscription logicDecoderFrameSubscription;
@@ -118,24 +118,24 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       storageSignalStream = rt::Subject<hw::SignalBuffer>::name("storage.signal");
 
       // create input frame and signal subjects
-      logicDecoderFrameStream = rt::Subject<RawFrame>::name("logic.decoder.frame");
-      radioDecoderFrameStream = rt::Subject<RawFrame>::name("radio.decoder.frame");
-      adaptiveSignalStream = rt::Subject<hw::SignalBuffer>::name("adaptive.signal");
+      logicFrameStream = rt::Subject<RawFrame>::name("logic.decoder.frame");
+      radioFrameStream = rt::Subject<RawFrame>::name("radio.decoder.frame");
+      signalStream = rt::Subject<hw::SignalBuffer>::name("stream.signal");
 
       // subscribe to logic decoder
-      logicDecoderFrameSubscription = logicDecoderFrameStream->subscribe([this](const RawFrame &frame) {
+      logicDecoderFrameSubscription = logicFrameStream->subscribe([this](const RawFrame &frame) {
          if (frame.isValid())
             frameQueue.add(frame);
       });
 
       // subscribe to radio decoder
-      radioDecoderFrameSubscription = radioDecoderFrameStream->subscribe([this](const RawFrame &frame) {
+      radioDecoderFrameSubscription = radioFrameStream->subscribe([this](const RawFrame &frame) {
          if (frame.isValid())
             frameQueue.add(frame);
       });
 
       // subscribe to signal events
-      adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+      adaptiveSignalSubscription = signalStream->subscribe([this](const hw::SignalBuffer &buffer) {
          if (buffer.isValid())
          {
             switch (buffer.type())

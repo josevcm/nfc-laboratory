@@ -60,6 +60,7 @@
 
 #include "QtControl.h"
 #include "QtStorage.h"
+#include "lab/tasks/SignalStreamTask.h"
 
 struct QtControl::Impl
 {
@@ -70,30 +71,31 @@ struct QtControl::Impl
    QSettings settings;
 
    // status subjects
-   rt::Subject<rt::Event> *logicDecoderStatusStream = nullptr;
-   rt::Subject<rt::Event> *logicDeviceStatusStream = nullptr;
-   rt::Subject<rt::Event> *radioDecoderStatusStream = nullptr;
-   rt::Subject<rt::Event> *radioDeviceStatusStream = nullptr;
-   rt::Subject<rt::Event> *fourierStatusStream = nullptr;
-   rt::Subject<rt::Event> *recorderStatusStream = nullptr;
-   rt::Subject<rt::Event> *storageStatusStream = nullptr;
+   rt::Subject<rt::Event> *logicDecoderStatus = nullptr;
+   rt::Subject<rt::Event> *logicDeviceStatus = nullptr;
+   rt::Subject<rt::Event> *radioDecoderStatus = nullptr;
+   rt::Subject<rt::Event> *radioDeviceStatus = nullptr;
+   rt::Subject<rt::Event> *fourierStatus = nullptr;
+   rt::Subject<rt::Event> *recorderStatus = nullptr;
+   rt::Subject<rt::Event> *storageStatus = nullptr;
 
    // command subjects
-   rt::Subject<rt::Event> *logicDecoderCommandStream = nullptr;
-   rt::Subject<rt::Event> *logicDeviceCommandStream = nullptr;
-   rt::Subject<rt::Event> *radioDecoderCommandStream = nullptr;
-   rt::Subject<rt::Event> *radioDeviceCommandStream = nullptr;
-   rt::Subject<rt::Event> *fourierCommandStream = nullptr;
-   rt::Subject<rt::Event> *recorderCommandStream = nullptr;
+   rt::Subject<rt::Event> *logicDecoderCommand = nullptr;
+   rt::Subject<rt::Event> *logicDeviceCommand = nullptr;
+   rt::Subject<rt::Event> *radioDecoderCommand = nullptr;
+   rt::Subject<rt::Event> *radioDeviceCommand = nullptr;
+   rt::Subject<rt::Event> *fourierCommand = nullptr;
+   rt::Subject<rt::Event> *recorderCommand = nullptr;
+   rt::Subject<rt::Event> *streamCommand = nullptr;
 
    // frame data subjects
-   rt::Subject<lab::RawFrame> *logicDecoderFrameStream = nullptr;
-   rt::Subject<lab::RawFrame> *radioDecoderFrameStream = nullptr;
+   rt::Subject<lab::RawFrame> *logicDecoderFrame = nullptr;
+   rt::Subject<lab::RawFrame> *radioDecoderFrame = nullptr;
 
    // signal data subjects
-   rt::Subject<hw::SignalBuffer> *logicSignalStream = nullptr;
-   rt::Subject<hw::SignalBuffer> *radioSignalStream = nullptr;
-   rt::Subject<hw::SignalBuffer> *adaptiveSignalStream = nullptr;
+   rt::Subject<hw::SignalBuffer> *logicSignal = nullptr;
+   rt::Subject<hw::SignalBuffer> *radioSignal = nullptr;
+   rt::Subject<hw::SignalBuffer> *streamSignal = nullptr;
 
    // status subscriptions
    rt::Subject<rt::Event>::Subscription logicDecoderStatusSubscription;
@@ -196,30 +198,31 @@ struct QtControl::Impl
    explicit Impl(QtStorage *storage) : storage(storage)
    {
       // create status subjects
-      logicDecoderStatusStream = rt::Subject<rt::Event>::name("logic.decoder.status");
-      logicDeviceStatusStream = rt::Subject<rt::Event>::name("logic.receiver.status");
-      radioDecoderStatusStream = rt::Subject<rt::Event>::name("radio.decoder.status");
-      radioDeviceStatusStream = rt::Subject<rt::Event>::name("radio.receiver.status");
-      fourierStatusStream = rt::Subject<rt::Event>::name("fourier.status");
-      recorderStatusStream = rt::Subject<rt::Event>::name("recorder.status");
-      storageStatusStream = rt::Subject<rt::Event>::name("storage.status");
+      logicDecoderStatus = rt::Subject<rt::Event>::name("logic.decoder.status");
+      logicDeviceStatus = rt::Subject<rt::Event>::name("logic.receiver.status");
+      radioDecoderStatus = rt::Subject<rt::Event>::name("radio.decoder.status");
+      radioDeviceStatus = rt::Subject<rt::Event>::name("radio.receiver.status");
+      fourierStatus = rt::Subject<rt::Event>::name("fourier.status");
+      recorderStatus = rt::Subject<rt::Event>::name("recorder.status");
+      storageStatus = rt::Subject<rt::Event>::name("storage.status");
 
       // create decoder control subject
-      logicDecoderCommandStream = rt::Subject<rt::Event>::name("logic.decoder.command");
-      logicDeviceCommandStream = rt::Subject<rt::Event>::name("logic.receiver.command");
-      radioDecoderCommandStream = rt::Subject<rt::Event>::name("radio.decoder.command");
-      radioDeviceCommandStream = rt::Subject<rt::Event>::name("radio.receiver.command");
-      recorderCommandStream = rt::Subject<rt::Event>::name("recorder.command");
-      fourierCommandStream = rt::Subject<rt::Event>::name("fourier.command");
+      logicDecoderCommand = rt::Subject<rt::Event>::name("logic.decoder.command");
+      logicDeviceCommand = rt::Subject<rt::Event>::name("logic.receiver.command");
+      radioDecoderCommand = rt::Subject<rt::Event>::name("radio.decoder.command");
+      radioDeviceCommand = rt::Subject<rt::Event>::name("radio.receiver.command");
+      recorderCommand = rt::Subject<rt::Event>::name("recorder.command");
+      fourierCommand = rt::Subject<rt::Event>::name("fourier.command");
+      streamCommand = rt::Subject<rt::Event>::name("stream.command");
 
       // create frame subject
-      logicDecoderFrameStream = rt::Subject<lab::RawFrame>::name("logic.decoder.frame");
-      radioDecoderFrameStream = rt::Subject<lab::RawFrame>::name("radio.decoder.frame");
+      logicDecoderFrame = rt::Subject<lab::RawFrame>::name("logic.decoder.frame");
+      radioDecoderFrame = rt::Subject<lab::RawFrame>::name("radio.decoder.frame");
 
       // create signal subject
-      logicSignalStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
-      radioSignalStream = rt::Subject<hw::SignalBuffer>::name("radio.signal.raw");
-      adaptiveSignalStream = rt::Subject<hw::SignalBuffer>::name("adaptive.signal");
+      logicSignal = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
+      radioSignal = rt::Subject<hw::SignalBuffer>::name("radio.signal.raw");
+      streamSignal = rt::Subject<hw::SignalBuffer>::name("stream.signal");
    }
 
    /*
@@ -228,47 +231,47 @@ struct QtControl::Impl
    void systemStartupEvent(SystemStartupEvent *event)
    {
       // subscribe to status events
-      logicDeviceStatusSubscription = logicDeviceStatusStream->subscribe([this](const rt::Event &params) {
+      logicDeviceStatusSubscription = logicDeviceStatus->subscribe([this](const rt::Event &params) {
          logicDeviceStatusChange(params);
       });
 
-      logicDecoderStatusSubscription = logicDecoderStatusStream->subscribe([this](const rt::Event &params) {
+      logicDecoderStatusSubscription = logicDecoderStatus->subscribe([this](const rt::Event &params) {
          logicDecoderStatusChange(params);
       });
 
-      logicDecoderFrameSubscription = logicDecoderFrameStream->subscribe([this](const lab::RawFrame &frame) {
+      logicDecoderFrameSubscription = logicDecoderFrame->subscribe([this](const lab::RawFrame &frame) {
          logicDecoderFrameEvent(frame);
       });
 
-      radioDeviceStatusSubscription = radioDeviceStatusStream->subscribe([this](const rt::Event &params) {
+      radioDeviceStatusSubscription = radioDeviceStatus->subscribe([this](const rt::Event &params) {
          radioDeviceStatusChange(params);
       });
 
-      radioDecoderStatusSubscription = radioDecoderStatusStream->subscribe([this](const rt::Event &params) {
+      radioDecoderStatusSubscription = radioDecoderStatus->subscribe([this](const rt::Event &params) {
          radioDecoderStatusChange(params);
       });
 
-      radioDecoderFrameSubscription = radioDecoderFrameStream->subscribe([this](const lab::RawFrame &frame) {
+      radioDecoderFrameSubscription = radioDecoderFrame->subscribe([this](const lab::RawFrame &frame) {
          radioDecoderFrameEvent(frame);
       });
 
-      recorderStatusSubscription = recorderStatusStream->subscribe([this](const rt::Event &params) {
+      recorderStatusSubscription = recorderStatus->subscribe([this](const rt::Event &params) {
          recorderStatusChange(params);
       });
 
-      fourierStatusSubscription = fourierStatusStream->subscribe([this](const rt::Event &params) {
+      fourierStatusSubscription = fourierStatus->subscribe([this](const rt::Event &params) {
          fourierStatusChange(params);
       });
 
-      logicSignalSubscription = logicSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+      logicSignalSubscription = logicSignal->subscribe([this](const hw::SignalBuffer &buffer) {
          signalStorageEvent(buffer);
       });
 
-      radioSignalSubscription = radioSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+      radioSignalSubscription = radioSignal->subscribe([this](const hw::SignalBuffer &buffer) {
          signalStorageEvent(buffer);
       });
 
-      adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
+      adaptiveSignalSubscription = streamSignal->subscribe([this](const hw::SignalBuffer &buffer) {
          signalBufferEvent(buffer);
       });
 
@@ -342,6 +345,11 @@ struct QtControl::Impl
          case DecoderControlEvent::WriteFile:
          {
             doWriteFile(event);
+            break;
+         }
+         case DecoderControlEvent::QueryStream:
+         {
+            doQueryStream(event);
             break;
          }
          case DecoderControlEvent::LogicDeviceConfig:
@@ -757,6 +765,22 @@ struct QtControl::Impl
       if (fileName.endsWith(".trz"))
       {
       }
+   }
+
+   /*
+   * write frames to file
+   */
+   void doQueryStream(DecoderControlEvent *event) const
+   {
+      double timeStart = event->getDouble("timeStart", 0);
+      double timeEnd = event->getDouble("timeEnd", 0);
+
+      QJsonObject command {
+         {"start", timeStart},
+         {"end", timeEnd}
+      };
+
+      taskStreamQuery(command);
    }
 
    /*
@@ -1261,7 +1285,7 @@ struct QtControl::Impl
    {
       qInfo() << "start logic decoder task";
 
-      logicDecoderCommandStream->next({lab::LogicDecoderTask::Start, onComplete, onReject});
+      logicDecoderCommand->next({lab::LogicDecoderTask::Start, onComplete, onReject});
    }
 
    /*
@@ -1271,7 +1295,7 @@ struct QtControl::Impl
    {
       qInfo() << "stop logic decoder task";
 
-      logicDecoderCommandStream->next({lab::LogicDecoderTask::Stop, onComplete, onReject});
+      logicDecoderCommand->next({lab::LogicDecoderTask::Stop, onComplete, onReject});
    }
 
    /*
@@ -1281,7 +1305,7 @@ struct QtControl::Impl
    {
       qInfo() << "query logic decoder task";
 
-      logicDecoderCommandStream->next({lab::LogicDecoderTask::Query, onComplete, onReject});
+      logicDecoderCommand->next({lab::LogicDecoderTask::Query, onComplete, onReject});
    }
 
    /*
@@ -1293,7 +1317,7 @@ struct QtControl::Impl
 
       qInfo() << "configure logic decoder task";
 
-      logicDecoderCommandStream->next({lab::LogicDecoderTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+      logicDecoderCommand->next({lab::LogicDecoderTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -1303,7 +1327,7 @@ struct QtControl::Impl
    {
       qInfo() << "clear logic decoder task";
 
-      logicDecoderCommandStream->next({lab::LogicDecoderTask::Clear, onComplete, onReject});
+      logicDecoderCommand->next({lab::LogicDecoderTask::Clear, onComplete, onReject});
    }
 
    /*
@@ -1313,7 +1337,7 @@ struct QtControl::Impl
    {
       qInfo() << "start radio decoder task";
 
-      radioDecoderCommandStream->next({lab::RadioDecoderTask::Start, onComplete, onReject});
+      radioDecoderCommand->next({lab::RadioDecoderTask::Start, onComplete, onReject});
    }
 
    /*
@@ -1323,7 +1347,7 @@ struct QtControl::Impl
    {
       qInfo() << "stop radio decoder task";
 
-      radioDecoderCommandStream->next({lab::RadioDecoderTask::Stop, onComplete, onReject});
+      radioDecoderCommand->next({lab::RadioDecoderTask::Stop, onComplete, onReject});
    }
 
    /*
@@ -1333,7 +1357,7 @@ struct QtControl::Impl
    {
       qInfo() << "query radio decoder task";
 
-      radioDecoderCommandStream->next({lab::RadioDecoderTask::Query, onComplete, onReject});
+      radioDecoderCommand->next({lab::RadioDecoderTask::Query, onComplete, onReject});
    }
 
    /*
@@ -1345,7 +1369,7 @@ struct QtControl::Impl
 
       qInfo() << "configure radio decoder task";
 
-      radioDecoderCommandStream->next({lab::RadioDecoderTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+      radioDecoderCommand->next({lab::RadioDecoderTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -1355,7 +1379,7 @@ struct QtControl::Impl
    {
       qInfo() << "clear radio decoder task";
 
-      radioDecoderCommandStream->next({lab::RadioDecoderTask::Clear, onComplete, onReject});
+      radioDecoderCommand->next({lab::RadioDecoderTask::Clear, onComplete, onReject});
    }
 
    /*
@@ -1365,7 +1389,7 @@ struct QtControl::Impl
    {
       qInfo() << "start logic device task";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Start, onComplete, onReject});
+      logicDeviceCommand->next({lab::LogicDeviceTask::Start, onComplete, onReject});
    }
 
    /*
@@ -1375,7 +1399,7 @@ struct QtControl::Impl
    {
       qInfo() << "stop logic device task";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Stop, onComplete, onReject});
+      logicDeviceCommand->next({lab::LogicDeviceTask::Stop, onComplete, onReject});
    }
 
    /*
@@ -1385,7 +1409,7 @@ struct QtControl::Impl
    {
       qInfo() << "pause logic device task";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Pause, onComplete, onReject});
+      logicDeviceCommand->next({lab::LogicDeviceTask::Pause, onComplete, onReject});
    }
 
    /*
@@ -1395,7 +1419,7 @@ struct QtControl::Impl
    {
       qInfo() << "resume logic device task";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Resume, onComplete, onReject});
+      logicDeviceCommand->next({lab::LogicDeviceTask::Resume, onComplete, onReject});
    }
 
    /*
@@ -1405,7 +1429,7 @@ struct QtControl::Impl
    {
       qInfo() << "query logic device task";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Query, onComplete, onReject});
+      logicDeviceCommand->next({lab::LogicDeviceTask::Query, onComplete, onReject});
    }
 
    /*
@@ -1417,7 +1441,7 @@ struct QtControl::Impl
 
       qInfo() << "configure logic device task ";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+      logicDeviceCommand->next({lab::LogicDeviceTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -1427,7 +1451,7 @@ struct QtControl::Impl
    {
       qInfo() << "clear logic device task";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Clear, onComplete, onReject});
+      logicDeviceCommand->next({lab::LogicDeviceTask::Clear, onComplete, onReject});
    }
 
    /*
@@ -1437,7 +1461,7 @@ struct QtControl::Impl
    {
       qInfo() << "start radio device task";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Start, onComplete, onReject});
+      radioDeviceCommand->next({lab::RadioDeviceTask::Start, onComplete, onReject});
    }
 
    /*
@@ -1447,7 +1471,7 @@ struct QtControl::Impl
    {
       qInfo() << "stop radio device task";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Stop, onComplete, onReject});
+      radioDeviceCommand->next({lab::RadioDeviceTask::Stop, onComplete, onReject});
    }
 
    /*
@@ -1457,7 +1481,7 @@ struct QtControl::Impl
    {
       qInfo() << "pause radio device task";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Pause, onComplete, onReject});
+      radioDeviceCommand->next({lab::RadioDeviceTask::Pause, onComplete, onReject});
    }
 
    /*
@@ -1467,7 +1491,7 @@ struct QtControl::Impl
    {
       qInfo() << "resume radio device task";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Resume, onComplete, onReject});
+      radioDeviceCommand->next({lab::RadioDeviceTask::Resume, onComplete, onReject});
    }
 
    /*
@@ -1477,7 +1501,7 @@ struct QtControl::Impl
    {
       qInfo() << "query radio device task";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Query, onComplete, onReject});
+      radioDeviceCommand->next({lab::RadioDeviceTask::Query, onComplete, onReject});
    }
 
    /*
@@ -1489,7 +1513,7 @@ struct QtControl::Impl
 
       qInfo() << "configure radio device task ";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+      radioDeviceCommand->next({lab::RadioDeviceTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -1499,7 +1523,7 @@ struct QtControl::Impl
    {
       qInfo() << "clear radio device task";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Clear, onComplete, onReject});
+      radioDeviceCommand->next({lab::RadioDeviceTask::Clear, onComplete, onReject});
    }
 
    /*
@@ -1511,7 +1535,7 @@ struct QtControl::Impl
 
       qInfo() << "configure fourier task ";
 
-      fourierCommandStream->next({lab::FourierProcessTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+      fourierCommand->next({lab::FourierProcessTask::Configure, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -1523,7 +1547,7 @@ struct QtControl::Impl
 
       qInfo() << "start recorder task to read file:" << doc.toJson();
 
-      recorderCommandStream->next({lab::SignalStorageTask::Read, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+      recorderCommand->next({lab::SignalStorageTask::Read, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -1535,7 +1559,7 @@ struct QtControl::Impl
 
       qInfo() << "start recorder task to write file:" << doc.toJson();
 
-      recorderCommandStream->next({lab::SignalStorageTask::Write, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+      recorderCommand->next({lab::SignalStorageTask::Write, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
 
    /*
@@ -1545,8 +1569,21 @@ struct QtControl::Impl
    {
       qInfo() << "stop recorder task";
 
-      recorderCommandStream->next({lab::SignalStorageTask::Stop, onComplete, onReject});
+      recorderCommand->next({lab::SignalStorageTask::Stop, onComplete, onReject});
    }
+
+   /*
+   * query signal stream
+   */
+   void taskStreamQuery(const QJsonObject &data, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   {
+      const QJsonDocument doc(data);
+
+      qInfo() << "query stream:" << doc.toJson();
+
+      streamCommand->next({lab::SignalStreamTask::Query, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
+   }
+
 };
 
 QtControl::QtControl(QtStorage *storage) : impl(new Impl(storage))

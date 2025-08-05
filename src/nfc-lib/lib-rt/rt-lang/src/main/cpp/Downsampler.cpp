@@ -25,13 +25,19 @@ This file is part of NFC-LABORATORY.
 
 namespace rt {
 
+struct Entry
+{
+   double t_max;
+   float y_min, y_max, y_avg;
+};
+
 struct Downsampler::Impl
 {
    Logger *log = Logger::getLogger("rt.Downsampler");
 
    std::vector<double> resolutions;
 
-   std::vector<std::map<double, Bucket>> levels;
+   std::vector<std::map<double, Entry>> levels;
 
    Impl(std::vector<double> resolutions) : resolutions(resolutions)
    {
@@ -54,7 +60,7 @@ struct Downsampler::Impl
       if (level < 0 || level >= resolutions.size())
          return;
 
-      std::map<double, Bucket> &buckets = levels[level];
+      std::map<double, Entry> &buckets = levels[level];
 
       const auto y = static_cast<float>(value);
 
@@ -64,7 +70,7 @@ struct Downsampler::Impl
          --it;
 
          // if the deviation is small enough, update the existing bucket
-         if (float dev = std::abs(y - it->second.y_avg); dev < 0.005f)
+         if (float dev = std::abs(y - it->second.y_avg); dev < 0.001f)
          {
             // update time range
             it->second.t_max = time;
@@ -83,7 +89,7 @@ struct Downsampler::Impl
       }
 
       // generate new bucket
-      buckets[time] = {time, time, y, y, y};
+      buckets[time] = {time, y, y, y};
    }
 
    std::vector<Bucket> query(const double start, const double end, const double resolution) const
@@ -105,7 +111,7 @@ struct Downsampler::Impl
          levelIdx = i;
       }
 
-      const std::map<double, Bucket> &buckets = levels[levelIdx];
+      const std::map<double, Entry> &buckets = levels[levelIdx];
 
       auto it = buckets.lower_bound(start);
       const auto itEnd = buckets.upper_bound(end);
@@ -116,9 +122,11 @@ struct Downsampler::Impl
 
       std::vector<Bucket> result;
 
-      for (; it != itEnd; ++it)
+      for (double last = start; it != itEnd; ++it)
       {
-         result.push_back(it->second);
+         result.push_back({last, it->second.t_max, it->second.y_min, it->second.y_max, it->second.y_avg});
+
+         last = it->second.t_max;
       }
 
       return result;
