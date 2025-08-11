@@ -517,7 +517,7 @@ serves as an example to test demodulation.
 Install dependencies (ubuntu)
 
 ```
-sudo apt install cmake g++ g++-11 qt6-base-dev libqt6svg6 libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev libmirisdr-dev libhdf5-dev
+sudo apt install cmake g++ g++-11 qt6-base-dev libqt6svg6 libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev libmirisdr-dev libhdf5-dev libblosc-dev
 ```
 
 Clone the repository
