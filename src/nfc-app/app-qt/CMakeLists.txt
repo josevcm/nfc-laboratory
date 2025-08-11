@@ -25,7 +25,6 @@ set(SOURCES
         ${PRIVATE_SOURCE_DIR}/main.rc
         ${PRIVATE_SOURCE_DIR}/QtApplication.cpp
         ${PRIVATE_SOURCE_DIR}/QtControl.cpp
-        ${PRIVATE_SOURCE_DIR}/QtStorage.cpp
         ${PRIVATE_SOURCE_DIR}/QtWindow.cpp
         ${PRIVATE_SOURCE_DIR}/events/ConsoleLogEvent.cpp
         ${PRIVATE_SOURCE_DIR}/events/DecoderControlEvent.cpp
