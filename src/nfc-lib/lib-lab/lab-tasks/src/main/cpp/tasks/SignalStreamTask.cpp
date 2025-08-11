@@ -111,7 +111,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          switch (command->code)
          {
             case Query:
-               queryStream(command.value());
+               // queryStream(command.value());
                break;
          }
       }
