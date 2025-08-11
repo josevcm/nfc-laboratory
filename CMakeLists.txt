@@ -128,19 +128,6 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
-# find dependency xtensor OPTIONAL
-#-------------------------------------------------------------------------------
-find_package(libxtensor)
-
-if(LIBXTENSOR_FOUND)
-  message(STATUS "libxtensor: found and using dynamic link mode")
-  message(STATUS "  include: " ${LIBXTENSOR_INCLUDE})
-  include_directories(${LIBXTENSOR_INCLUDE})
-else ()
-  message(STATUS "libxtensor not found, using local bundle")
-endif()
-
-#-------------------------------------------------------------------------------
 # configure files
 #-------------------------------------------------------------------------------
 
