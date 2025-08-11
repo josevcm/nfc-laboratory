@@ -1,4 +1,5 @@
 add_subdirectory(airspy)
+add_subdirectory(blosc)
 add_subdirectory(hydrasdr)
 add_subdirectory(ed25519)
 add_subdirectory(nlohmann)
