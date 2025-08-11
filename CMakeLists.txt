@@ -68,7 +68,7 @@ if(LIBAIRSPY_FOUND)
   message(STATUS "  library: " ${LIBAIRSPY_LIBRARY})
   include_directories(${LIBAIRSPY_INCLUDE})
 else ()
-  message(STATUS  "libairspy: not found, using local bundle in static mode")
+  message(STATUS "libairspy: not found, using local bundle in static mode")
 endif()
 
 #-------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ if(LIBBLOSC_FOUND)
   message(STATUS "  library: " ${LIBBLOSC_LIBRARY})
   include_directories(${LIBBLOSC_INCLUDE})
 else ()
-  message(STATUS  "libblosc: not found, using local bundle in static mode")
+  message(STATUS "libblosc: not found, using local bundle in static mode")
 endif()
 
 #-------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ if(LIBHYDRASDR_FOUND)
   message(STATUS "  library: " ${LIBHYDRASDR_LIBRARY})
   include_directories(${LIBHYDRASDR_INCLUDE})
 else ()
-  message(STATUS  "libhydrasdr: not found, using local bundle in static mode")
+  message(STATUS "libhydrasdr: not found, using local bundle in static mode")
 endif()
 
 #-------------------------------------------------------------------------------
@@ -110,7 +110,7 @@ if(LIBRTLSDR_FOUND)
   message(STATUS "  library: " ${LIBRTLSDR_LIBRARY})
   include_directories(${LIBRTLSDR_INCLUDE})
 else ()
-  message(STATUS  "librtlsdr not found, using local bundle in static mode")
+  message(STATUS "librtlsdr not found, using local bundle in static mode")
 endif()
 
 #-------------------------------------------------------------------------------
@@ -124,21 +124,21 @@ if(LIBMIRISDR_FOUND)
   message(STATUS "  library: " ${LIBMIRISDR_LIBRARY})
   include_directories(${LIBMIRISDR_INCLUDE})
 else ()
-  message(STATUS  "libmirisdr not found, using local bundle in static mode")
+  message(STATUS "libmirisdr not found, using local bundle in static mode")
 endif()
 
 #-------------------------------------------------------------------------------
-# find dependency hdf5 OPTIONAL
+# find dependency xtensor OPTIONAL
 #-------------------------------------------------------------------------------
-find_package(libhdf5)
+find_package(libxtensor)
 
-if(LIBHDF5_FOUND)
-  message(STATUS "libhdf5: found and using dynamic link mode")
-  message(STATUS "  include: " ${LIBHDF5_INCLUDE})
-  message(STATUS "  library: " ${LIBHDF5_LIBRARY})
-  include_directories(${LIBHDF5_INCLUDE})
+if(LIBXTENSOR_FOUND)
+  message(STATUS "libxtensor: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBXTENSOR_INCLUDE})
+  message(STATUS "  library: " ${LIBXTENSOR_LIBRARY})
+  include_directories(${LIBXTENSOR_INCLUDE})
 else ()
-  message(STATUS  "libhdf5 not found, using local bundle in static mode")
+  message(STATUS "libxtensor not found, using local bundle in static mode")
 endif()
 
 #-------------------------------------------------------------------------------
