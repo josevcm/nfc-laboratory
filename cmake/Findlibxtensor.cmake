@@ -16,7 +16,7 @@ else (LIBXTENSOR_LIBRARY AND LIBXTENSOR_INCLUDE)
 
     find_library(LIBXTENSOR_LIBRARY
             NAMES
-                blosc
+                xtensor
             PATHS
                 /usr/local/lib64
                 /opt/local/lib64
