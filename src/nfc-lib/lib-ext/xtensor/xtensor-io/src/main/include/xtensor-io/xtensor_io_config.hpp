@@ -14,8 +14,8 @@
 #define XTENSOR_IO_VERSION_MINOR 12
 #define XTENSOR_IO_VERSION_PATCH 7
 
-#pragma cling add_library_path("/home/user/github/xtensor-io/your_install_prefix/lib64")
-#pragma cling add_library_path("/home/user/github/xtensor-io/your_install_prefix/lib32")
-#pragma cling add_library_path("/home/user/github/xtensor-io/your_install_prefix/lib")
+#pragma cling add_library_path("/usr/lib64")
+#pragma cling add_library_path("/usr/lib32")
+#pragma cling add_library_path("//usr/lib")
 
 #endif
