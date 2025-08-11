@@ -1,6 +1,6 @@
 set(CMAKE_C_STANDARD 11)
 
-set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
+set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
 add_library(nlohmann INTERFACE)
 
