@@ -6,4 +6,4 @@ add_library(zarray INTERFACE)
 
 target_include_directories(zarray INTERFACE ${PUBLIC_SOURCE_DIR})
 
-target_link_libraries(zarray INTERFACE xtensor)
+target_link_libraries(zarray INTERFACE xtensor nlohmann)
