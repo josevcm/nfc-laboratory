@@ -137,7 +137,7 @@ if(LIBXTENSOR_FOUND)
   message(STATUS "  include: " ${LIBXTENSOR_INCLUDE})
   include_directories(${LIBXTENSOR_INCLUDE})
 else ()
-  message(STATUS "libxtensor not found, using local bundle in static mode")
+  message(STATUS "libxtensor not found, using local bundle")
 endif()
 
 #-------------------------------------------------------------------------------
