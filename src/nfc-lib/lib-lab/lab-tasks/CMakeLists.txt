@@ -4,14 +4,14 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 set(PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
 add_library(lab-tasks STATIC
-        src/main/cpp/tasks/FourierProcessTask.cpp
-        src/main/cpp/tasks/LogicDecoderTask.cpp
-        src/main/cpp/tasks/LogicDeviceTask.cpp
-        src/main/cpp/tasks/RadioDecoderTask.cpp
-        src/main/cpp/tasks/RadioDeviceTask.cpp
-        src/main/cpp/tasks/SignalStorageTask.cpp
-        src/main/cpp/tasks/SignalStreamTask.cpp
-        src/main/cpp/tasks/TraceStorageTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/FourierProcessTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/LogicDecoderTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/LogicDeviceTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/RadioDecoderTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/RadioDeviceTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/SignalStorageTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/SignalStreamTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/TraceStorageTask.cpp
         )
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
