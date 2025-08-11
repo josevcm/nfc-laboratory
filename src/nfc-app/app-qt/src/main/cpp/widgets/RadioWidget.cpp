@@ -86,6 +86,7 @@ struct RadioWidget::Impl
       radioGraph->setSelectable(QCP::stDataRange);
       radioGraph->setSelectionDecorator(nullptr);
       radioGraph->setStyle({Theme::defaultSignalPen, Theme::defaultRadioNFCPen, Theme::defaultRadioNFCBrush, Theme::defaultTextPen, Theme::defaultLabelFont, "NFC"});
+      radioGraph->setScatterStyle(QCPScatterStyle::ssCross);
 
       // initialize legend
       plot->legend->setIconSize(60, 20);
@@ -161,6 +162,8 @@ struct RadioWidget::Impl
       {
          case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
          {
+            signalData->removeAfter(startTime);
+
             for (int i = 0; i < buffer.elements(); i++)
             {
                double value = buffer[i] * 2;
@@ -174,10 +177,12 @@ struct RadioWidget::Impl
 
          case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
          {
+            signalData->removeAfter(startTime);
+
             for (int i = 0; i < buffer.limit(); i += 2)
             {
                double value = buffer[i + 0] * 2;
-               double time = std::fma(sampleStep, buffer[i + 1], startTime); // range = sampleStep * buffer[i + 1] + startTime
+               double time = std::fma(sampleStep, buffer[i + 1], startTime); // time = sampleStep * buffer[i + 1] + startTime
 
                signalData->add({time, value});
             }

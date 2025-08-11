@@ -61,8 +61,8 @@
 
 #include "QtApplication.h"
 
-#include "QtCache.h"
 #include "QtConfig.h"
+#include "QtStorage.h"
 #include "QtWindow.h"
 
 #define DEFAULT_WINDOW_WIDTH 1024
@@ -71,7 +71,7 @@
 struct QtWindow::Impl
 {
    // data cache
-   QtCache *cache;
+   QtStorage *storage;
 
    // application window
    QtWindow *window;
@@ -220,18 +220,18 @@ struct QtWindow::Impl
    QMetaObject::Connection refreshTimerTimeoutConnection;
    QMetaObject::Connection acquireTimerTimeoutConnection;
 
-   explicit Impl(QtCache *cache, QtWindow *window) : cache(cache),
-                                                     window(window),
-                                                     ui(new Ui_QtWindow()),
-                                                     allowedDevices(".*"),
-                                                     allowedFeatures(".*"),
-                                                     acquireLimit(new QComboBox()),
-                                                     streamModel(new StreamModel()),
-                                                     parserModel(new ParserModel()),
-                                                     streamFilter(new StreamFilter()),
-                                                     inspectDialog(new InspectDialog(window)),
-                                                     refreshTimer(new QTimer()),
-                                                     acquireTimer(new QTimer())
+   explicit Impl(QtStorage *storage, QtWindow *window) : storage(storage),
+                                                         window(window),
+                                                         ui(new Ui_QtWindow()),
+                                                         allowedDevices(".*"),
+                                                         allowedFeatures(".*"),
+                                                         acquireLimit(new QComboBox()),
+                                                         streamModel(new StreamModel()),
+                                                         parserModel(new ParserModel()),
+                                                         streamFilter(new StreamFilter()),
+                                                         inspectDialog(new InspectDialog(window)),
+                                                         refreshTimer(new QTimer()),
+                                                         acquireTimer(new QTimer())
    {
       // fft signal subject stream
       frequencyStream = rt::Subject<hw::SignalBuffer>::name("signal.fft");
@@ -689,7 +689,7 @@ struct QtWindow::Impl
    {
       if (event->buffer().isValid())
       {
-         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL)
+         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL || event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES)
          {
             ui->logicView->append(event->buffer());
 
@@ -700,7 +700,7 @@ struct QtWindow::Impl
             if (ui->logicView->dataUpperRange() > receivedTimeTo || receivedTimeTo == 0.0)
                receivedTimeTo = ui->logicView->dataUpperRange();
          }
-         else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL)
+         else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL || event->buffer().type() == hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES)
          {
             ui->radioView->append(event->buffer());
 
@@ -710,6 +710,8 @@ struct QtWindow::Impl
 
             if (ui->radioView->dataUpperRange() > receivedTimeTo || receivedTimeTo == 0.0)
                receivedTimeTo = ui->logicView->dataUpperRange();
+
+            qInfo() << "Received radio signal from" << receivedTimeFrom << "to" << receivedTimeTo;
          }
       }
       else
@@ -2357,6 +2359,8 @@ struct QtWindow::Impl
 
    void radioRangeChanged(double from, double to) const
    {
+      qInfo() << "radio range changed:" << from << "->" << to;
+
       QSignalBlocker signalScrollBlocker(ui->signalScroll);
       QSignalBlocker logicViewBlocker(ui->logicView);
 
@@ -2375,6 +2379,11 @@ struct QtWindow::Impl
 
          // sync logic view
          ui->logicView->setViewRange(from, to);
+
+         // query decoder for stream data
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::QueryStream, {
+                                                        {"timeStart", from}, {"timeEnd", to}
+                                                     }));
       }
       else
       {
@@ -2510,7 +2519,7 @@ struct QtWindow::Impl
    }
 };
 
-QtWindow::QtWindow(QtCache *cache) : impl(new Impl(cache, this))
+QtWindow::QtWindow(QtStorage *storage) : impl(new Impl(storage, this))
 {
    // configure window properties
    setAttribute(Qt::WA_OpaquePaintEvent, true);

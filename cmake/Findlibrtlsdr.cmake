@@ -11,8 +11,6 @@ else (LIBRTLSDR_LIBRARY AND LIBRTLSDR_INCLUDE)
                 /usr/local/include
                 /opt/local/include
                 ${CMAKE_SOURCE_DIR}/dll/rtlsdr/include
-            PATH_SUFFIXES
-                librtlsdr
     )
 
     find_library(LIBRTLSDR_LIBRARY

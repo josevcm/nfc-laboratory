@@ -26,7 +26,7 @@
 #include <QSettings>
 #include <QSharedPointer>
 
-class QtCache;
+class QtStorage;
 
 class QtWindow : public QMainWindow
 {
@@ -36,7 +36,7 @@ class QtWindow : public QMainWindow
 
    public:
 
-      explicit QtWindow(QtCache *cache);
+      explicit QtWindow(QtStorage *storage);
 
       void handleEvent(QEvent *event);
 

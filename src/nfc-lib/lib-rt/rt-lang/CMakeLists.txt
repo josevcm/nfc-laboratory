@@ -4,6 +4,7 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 set(PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
 add_library(rt-lang STATIC
+        src/main/cpp/Downsampler.cpp
         src/main/cpp/Executor.cpp
         src/main/cpp/FileSystem.cpp
         src/main/cpp/Format.cpp

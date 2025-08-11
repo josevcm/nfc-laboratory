@@ -28,8 +28,8 @@
 #include <QSplashScreen>
 #include <QStandardPaths>
 
-#include "QtCache.h"
 #include "QtControl.h"
+#include "QtStorage.h"
 #include "QtWindow.h"
 
 #include "features/Caps.h"
@@ -51,10 +51,10 @@ struct QtApplication::Impl
    QSettings settings;
 
    // decoder control
-   QPointer<QtCache> cache;
+   QPointer<QtControl> control;
 
    // decoder control
-   QPointer<QtControl> control;
+   QPointer<QtStorage> storage;
 
    // interface control
    QPointer<QtWindow> window;
@@ -76,13 +76,13 @@ struct QtApplication::Impl
       showSplash(settings.value("settings/splashScreen", "2500").toInt());
 
       // create cache interface
-      cache = new QtCache();
+      storage = new QtStorage();
 
       // create decoder control interface
-      control = new QtControl(cache);
+      control = new QtControl(storage);
 
       // create user interface window
-      window = new QtWindow(cache);
+      window = new QtWindow(storage);
 
       // connect shutdown signal
       applicationShutdownConnection = connect(app, &QtApplication::aboutToQuit, app, &QtApplication::shutdown);

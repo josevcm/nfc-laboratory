@@ -23,8 +23,8 @@ set(SOURCES
         src/main/cpp/main.cpp
         src/main/cpp/main.rc
         src/main/cpp/QtApplication.cpp
-        src/main/cpp/QtCache.cpp
         src/main/cpp/QtControl.cpp
+        src/main/cpp/QtStorage.cpp
         src/main/cpp/QtWindow.cpp
         src/main/cpp/events/ConsoleLogEvent.cpp
         src/main/cpp/events/DecoderControlEvent.cpp
@@ -60,6 +60,7 @@ set(SOURCES
         src/main/cpp/model/StreamFilter.cpp
         src/main/cpp/model/StreamModel.cpp
         src/main/cpp/model/ParserModel.cpp
+        src/main/cpp/parser/Parser.cpp
         src/main/cpp/parser/ParserNfc.cpp
         src/main/cpp/parser/ParserNfcA.cpp
         src/main/cpp/parser/ParserNfcB.cpp
@@ -89,8 +90,6 @@ set(SOURCES
         src/main/assets/theme/light/icons/icons.qrc
         src/main/assets/theme/light/style/style.qrc
         src/main/assets/app/app.qrc
-        src/main/cpp/parser/Parser.cpp
-        src/main/cpp/parser/Parser.h
 )
 
 # Build for WIN32 / UNIX-LINUX
@@ -98,11 +97,11 @@ if (WIN32)
 
     set(PLATFORM_LIBS mingw32 psapi dwmapi)
 
-    if(ENABLE_CONSOLE_OUTPUT)
+    if (ENABLE_CONSOLE_OUTPUT)
         message(STATUS "Enable debug output to console.")
         add_executable(nfc-lab ${SOURCES})
         add_compile_definitions(ENABLE_CONSOLE_LOGGING)
-    else()
+    else ()
         add_executable(nfc-lab WIN32 ${SOURCES})
     endif ()
 
@@ -124,11 +123,11 @@ target_link_libraries(nfc-lab
         hw-logic
         hw-radio
         rt-lang
-        ed25519
         Qt6::Core
         Qt6::Widgets
         Qt6::Network
-        Qt6::PrintSupport)
+        Qt6::PrintSupport
+)
 
 # Install targets
 if (UNIX)

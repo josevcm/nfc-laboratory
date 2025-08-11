@@ -131,8 +131,9 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       }
 
       /*
-       * now process device reading
+       * now process signal storage read/write
        */
+
       if (status == Reading)
       {
          signalRead();
