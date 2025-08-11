@@ -123,8 +123,8 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       {
          if (buffer.has_value())
          {
-            stream(buffer.value());
-            // process(buffer.value());
+            // stream(buffer.value());
+            process(buffer.value());
          }
       }
 

@@ -21,4 +21,4 @@ endif ()
 target_include_directories(lab-tasks PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(lab-tasks PRIVATE ${PRIVATE_SOURCE_DIR})
 
-target_link_libraries(lab-tasks lab-logic lab-radio rt-lang hw-radio hw-logic nlohmann microtar z)
+target_link_libraries(lab-tasks lab-logic lab-radio rt-lang hw-radio hw-logic nlohmann microtar xtensor z)

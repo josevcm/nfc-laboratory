@@ -6,7 +6,6 @@ add_subdirectory(microtar)
 add_subdirectory(mufft)
 add_subdirectory(rtlsdr)
 add_subdirectory(mirisdr)
-add_subdirectory(xtl)
 add_subdirectory(xtensor)
 
 

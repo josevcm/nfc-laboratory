@@ -1,11 +1,6 @@
-set(CMAKE_CXX_STANDARD 17)
+add_subdirectory(xtl)
+add_subdirectory(xtensor)
+add_subdirectory(xtensor-io)
 
-set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
-
-add_library(xtensor INTERFACE)
-
-target_include_directories(xtensor INTERFACE ${PUBLIC_SOURCE_DIR})
-
-target_link_libraries(xtensor xtl)
 
 
