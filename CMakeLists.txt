@@ -72,6 +72,22 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
+# find dependency libblosc OPTIONAL
+#-------------------------------------------------------------------------------
+find_package(libblosc)
+
+if(LIBBLOSC_FOUND)
+  message(STATUS "blosc: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBOSC_INCLUDE})
+  message(STATUS "  library: " ${LIBOSC_LIBRARY})
+  include_directories(${LIBOSC_INCLUDE})
+else ()
+  message(STATUS  "libblosc: not found, using local bundle in static mode")
+endif()
+
+include_directories(${LIBUSB_INCLUDE})
+
+#-------------------------------------------------------------------------------
 # find dependency hydrasdr OPTIONAL
 #-------------------------------------------------------------------------------
 find_package(libhydrasdr)
