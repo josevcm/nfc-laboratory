@@ -1,5 +1,6 @@
 /***************************************************************************
-* Copyright (c) 2016, Wolf Vollprecht, Sylvain Corlay and Johan Mabille    *
+* Copyright (c) Wolf Vollprecht, Sylvain Corlay and Johan Mabille          *
+* Copyright (c) QuantStack                                                 *
 *                                                                          *
 * Distributed under the terms of the BSD 3-Clause License.                 *
 *                                                                          *
@@ -48,13 +49,7 @@ namespace xt
     template <class T = unsigned char>
     xarray<T> load_image(std::string filename)
     {
-        auto close_file  =  [](OIIO::ImageInput * file)
-                            {
-                                file->close();
-                                OIIO::ImageInput::destroy(file);
-                            };
-
-        std::unique_ptr<OIIO::ImageInput, decltype(close_file)> in(OIIO::ImageInput::open(filename), close_file);
+        auto in(OIIO::ImageInput::open(filename));
         if (!in)
         {
             throw std::runtime_error("load_image(): Error reading image '" + filename + "'.");
@@ -67,7 +62,9 @@ namespace xt
                                             static_cast<std::size_t>(spec.width),
                                             static_cast<std::size_t>(spec.nchannels)});
 
-        in->read_image(OIIO::BaseTypeFromC<T>::value, image.raw_data());
+        in->read_image(OIIO::BaseTypeFromC<T>::value, image.data());
+
+        in->close(); 
 
         return image;
     }
@@ -124,13 +121,7 @@ namespace xt
         XTENSOR_PRECONDITION(shape.size() == 2 || shape.size() == 3,
             "dump_image(): data must have 2 or 3 dimensions (channels must be last).");
 
-        auto close_file  =  [](OIIO::ImageOutput * file)
-                            {
-                                file->close();
-                                OIIO::ImageOutput::destroy(file);
-                            };
-
-        std::unique_ptr<OIIO::ImageOutput, decltype(close_file)> out(OIIO::ImageOutput::create(filename), close_file);
+        auto out(OIIO::ImageOutput::create(filename)); 
         if (!out)
         {
             throw std::runtime_error("dump_image(): Error opening file '" + filename + "' to write image.");
@@ -157,19 +148,20 @@ namespace xt
 
             if(mM[0] != mM[1])
             {
-                using real_t = real_promote_type_t<value_type>;
+                using real_t = xtl::real_promote_type_t<value_type>;
                 auto && normalized = eval((real_t(1.0) / (mM[1] - mM[0])) * (ex - mM[0]));
-                out->write_image(OIIO::BaseTypeFromC<real_t>::value, normalized.raw_data());
+                out->write_image(OIIO::BaseTypeFromC<real_t>::value, normalized.data());
             }
             else
             {
-                out->write_image(OIIO::BaseTypeFromC<value_type>::value, ex.raw_data());
+                out->write_image(OIIO::BaseTypeFromC<value_type>::value, ex.data());
             }
         }
         else
         {
-            out->write_image(OIIO::BaseTypeFromC<value_type>::value, ex.raw_data());
+            out->write_image(OIIO::BaseTypeFromC<value_type>::value, ex.data());
         }
+        out->close();
     }
 }
 
