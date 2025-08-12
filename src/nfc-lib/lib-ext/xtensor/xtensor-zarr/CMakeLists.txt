@@ -4,6 +4,9 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 set(PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
 add_library(xtensor-zarr STATIC
+        ${PRIVATE_SOURCE_DIR}/xtensor-zarr-blosc.cpp
+        ${PRIVATE_SOURCE_DIR}/xtensor-zarr-gzip.cpp
+        ${PRIVATE_SOURCE_DIR}/xtensor-zarr-zlib.cpp
         ${PRIVATE_SOURCE_DIR}/xtensor-zarr.cpp
 )
 
