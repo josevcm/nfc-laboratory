@@ -7,6 +7,8 @@ add_library(xtensor-zarr STATIC
         ${PRIVATE_SOURCE_DIR}/xtensor-zarr.cpp
 )
 
+target_compile_definitions(xtensor-zarr PUBLIC XTENSOR_ZARR_STATIC_LIB)
+
 target_include_directories(xtensor-zarr PUBLIC ${PUBLIC_INCLUDE_DIR})
 
 target_link_libraries(xtensor-zarr xtensor-io zarray blosc)
