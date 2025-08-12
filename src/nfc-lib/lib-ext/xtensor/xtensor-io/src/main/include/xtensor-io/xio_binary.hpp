@@ -94,7 +94,7 @@ namespace xt
         std::ofstream stream(filename, std::ofstream::binary);
         if (!stream.is_open())
         {
-            std::runtime_error("IO Error: failed to open file");
+            throw std::runtime_error("IO Error: failed to open file");
         }
         auto s = xostream_wrapper(stream);
         detail::dump_bin(s, e, as_big_endian);
@@ -153,7 +153,7 @@ namespace xt
         std::ifstream stream(filename, std::ifstream::binary);
         if (!stream.is_open())
         {
-            std::runtime_error(std::string("load_bin: failed to open file ") + filename);
+            throw std::runtime_error(std::string("load_bin: failed to open file ") + filename);
         }
         auto s = xistream_wrapper(stream);
         return load_bin<T, L>(s, as_big_endian);
