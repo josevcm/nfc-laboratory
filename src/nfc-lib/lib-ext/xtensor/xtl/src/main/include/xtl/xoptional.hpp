@@ -78,8 +78,8 @@ namespace xtl
 
         template <class T,
           std::enable_if_t<
-            std::conjunction<
-              std::negation<std::is_same<xoptional<CT, CB>, std::decay_t<T>>>,
+            conjunction<
+              negation<std::is_same<xoptional<CT, CB>, std::decay_t<T>>>,
               std::is_constructible<CT, T&&>,
               std::is_convertible<T&&, CT>
             >::value,
@@ -92,10 +92,10 @@ namespace xtl
 
         template <class T,
           std::enable_if_t<
-            std::conjunction<
-              std::negation<std::is_same<xoptional<CT, CB>, std::decay_t<T>>>,
+            conjunction<
+              negation<std::is_same<xoptional<CT, CB>, std::decay_t<T>>>,
               std::is_constructible<CT, T&&>,
-              std::negation<std::is_convertible<T&&, CT>>
+              negation<std::is_convertible<T&&, CT>>
             >::value,
             bool
           > = false>
@@ -106,15 +106,15 @@ namespace xtl
 
         template <class CTO, class CBO,
           std::enable_if_t<
-            std::conjunction<
-              std::negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
+            conjunction<
+              negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
               std::is_constructible<CT, std::add_lvalue_reference_t<std::add_const_t<CTO>>>,
               std::is_constructible<CB, std::add_lvalue_reference_t<std::add_const_t<CBO>>>,
-              std::conjunction<
+              conjunction<
                 std::is_convertible<std::add_lvalue_reference_t<std::add_const_t<CTO>>, CT>,
                 std::is_convertible<std::add_lvalue_reference_t<std::add_const_t<CBO>>, CB>
               >,
-              std::negation<detail::converts_from_xoptional<CT, CTO, CBO>>
+              negation<detail::converts_from_xoptional<CT, CTO, CBO>>
             >::value,
             bool
           > = true>
@@ -125,15 +125,15 @@ namespace xtl
 
         template <class CTO, class CBO,
           std::enable_if_t<
-            std::conjunction<
-              std::negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
+            conjunction<
+              negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
               std::is_constructible<CT, std::add_lvalue_reference_t<std::add_const_t<CTO>>>,
               std::is_constructible<CB, std::add_lvalue_reference_t<std::add_const_t<CBO>>>,
-              std::disjunction<
-                std::negation<std::is_convertible<std::add_lvalue_reference_t<std::add_const_t<CTO>>, CT>>,
-                std::negation<std::is_convertible<std::add_lvalue_reference_t<std::add_const_t<CBO>>, CB>>
+              disjunction<
+                negation<std::is_convertible<std::add_lvalue_reference_t<std::add_const_t<CTO>>, CT>>,
+                negation<std::is_convertible<std::add_lvalue_reference_t<std::add_const_t<CBO>>, CB>>
               >,
-              std::negation<detail::converts_from_xoptional<CT, CTO, CBO>>
+              negation<detail::converts_from_xoptional<CT, CTO, CBO>>
             >::value,
             bool
           > = false>
@@ -144,15 +144,15 @@ namespace xtl
 
         template <class CTO, class CBO,
           std::enable_if_t<
-            std::conjunction<
-              std::negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
+            conjunction<
+              negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
               std::is_constructible<CT, std::conditional_t<std::is_reference<CT>::value, const std::decay_t<CTO>&, std::decay_t<CTO>&&>>,
               std::is_constructible<CB, std::conditional_t<std::is_reference<CB>::value, const std::decay_t<CBO>&, std::decay_t<CBO>&&>>,
-              std::conjunction<
+              conjunction<
                 std::is_convertible<std::conditional_t<std::is_reference<CT>::value, const std::decay_t<CTO>&, std::decay_t<CTO>&&>, CT>,
                 std::is_convertible<std::conditional_t<std::is_reference<CB>::value, const std::decay_t<CBO>&, std::decay_t<CBO>&&>, CB>
               >,
-              std::negation<detail::converts_from_xoptional<CT, CTO, CBO>>
+              negation<detail::converts_from_xoptional<CT, CTO, CBO>>
             >::value,
             bool
           > = true>
@@ -163,15 +163,15 @@ namespace xtl
 
         template <class CTO, class CBO,
           std::enable_if_t<
-            std::conjunction<
-              std::negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
+            conjunction<
+              negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
               std::is_constructible<CT, std::conditional_t<std::is_reference<CT>::value, const std::decay_t<CTO>&, std::decay_t<CTO>&&>>,
               std::is_constructible<CB, std::conditional_t<std::is_reference<CB>::value, const std::decay_t<CBO>&, std::decay_t<CBO>&&>>,
-              std::disjunction<
-                std::negation<std::is_convertible<std::conditional_t<std::is_reference<CT>::value, const std::decay_t<CTO>&, std::decay_t<CTO>&&>, CT>>,
-                std::negation<std::is_convertible<std::conditional_t<std::is_reference<CB>::value, const std::decay_t<CBO>&, std::decay_t<CBO>&&>, CB>>
+              disjunction<
+                negation<std::is_convertible<std::conditional_t<std::is_reference<CT>::value, const std::decay_t<CTO>&, std::decay_t<CTO>&&>, CT>>,
+                negation<std::is_convertible<std::conditional_t<std::is_reference<CB>::value, const std::decay_t<CBO>&, std::decay_t<CBO>&&>, CB>>
               >,
-              std::negation<detail::converts_from_xoptional<CT, CTO, CBO>>
+              negation<detail::converts_from_xoptional<CT, CTO, CBO>>
             >::value,
             bool
           > = false>
@@ -188,8 +188,8 @@ namespace xtl
         // Assignment
         template <class T>
         std::enable_if_t<
-          std::conjunction<
-            std::negation<std::is_same<xoptional<CT, CB>, std::decay_t<T>>>,
+          conjunction<
+            negation<std::is_same<xoptional<CT, CB>, std::decay_t<T>>>,
             std::is_assignable<std::add_lvalue_reference_t<CT>, T>
           >::value,
          xoptional&>
@@ -201,11 +201,11 @@ namespace xtl
         }
 
         template <class CTO, class CBO>
-        std::enable_if_t<std::conjunction<
-          std::negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
+        std::enable_if_t<conjunction<
+          negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
           std::is_assignable<std::add_lvalue_reference_t<CT>, CTO>,
-          std::negation<detail::converts_from_xoptional<CT, CTO, CBO>>,
-          std::negation<detail::assigns_from_xoptional<CT, CTO, CBO>>
+          negation<detail::converts_from_xoptional<CT, CTO, CBO>>,
+          negation<detail::assigns_from_xoptional<CT, CTO, CBO>>
         >::value,
         xoptional&>
         inline operator=(const xoptional<CTO, CBO>& rhs)
@@ -216,11 +216,11 @@ namespace xtl
         }
 
         template <class CTO, class CBO>
-        std::enable_if_t<std::conjunction<
-          std::negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
+        std::enable_if_t<conjunction<
+          negation<std::is_same<xoptional<CT, CB>, xoptional<CTO, CBO>>>,
           std::is_assignable<std::add_lvalue_reference_t<CT>, CTO>,
-          std::negation<detail::converts_from_xoptional<CT, CTO, CBO>>,
-          std::negation<detail::assigns_from_xoptional<CT, CTO, CBO>>
+          negation<detail::converts_from_xoptional<CT, CTO, CBO>>,
+          negation<detail::assigns_from_xoptional<CT, CTO, CBO>>
         >::value,
         xoptional&>
         inline operator=(xoptional<CTO, CBO>&& rhs)

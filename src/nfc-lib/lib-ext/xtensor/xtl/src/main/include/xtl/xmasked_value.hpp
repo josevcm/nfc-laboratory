@@ -219,13 +219,13 @@ namespace xtl
         return lhs.equal(rhs);
     }
 
-    template <class T1, class T2, class B2, XTL_REQUIRES(std::negation<is_xmasked_value<T1>>)>
+    template <class T1, class T2, class B2, XTL_REQUIRES(negation<is_xmasked_value<T1>>)>
     inline bool operator==(const T1& lhs, const xmasked_value<T2, B2>& rhs) noexcept
     {
         return rhs.equal(lhs);
     }
 
-    template <class T1, class B1, class T2, XTL_REQUIRES(std::negation<is_xmasked_value<T2>>)>
+    template <class T1, class B1, class T2, XTL_REQUIRES(negation<is_xmasked_value<T2>>)>
     inline bool operator==(const xmasked_value<T1, B1>& lhs, const T2& rhs) noexcept
     {
         return lhs.equal(rhs);
@@ -237,13 +237,13 @@ namespace xtl
         return !lhs.equal(rhs);
     }
 
-    template <class T1, class T2, class B2, XTL_REQUIRES(std::negation<is_xmasked_value<T1>>)>
+    template <class T1, class T2, class B2, XTL_REQUIRES(negation<is_xmasked_value<T1>>)>
     inline bool operator!=(const T1& lhs, const xmasked_value<T2, B2>& rhs) noexcept
     {
         return !rhs.equal(lhs);
     }
 
-    template <class T1, class B1, class T2, XTL_REQUIRES(std::negation<is_xmasked_value<T2>>)>
+    template <class T1, class B1, class T2, XTL_REQUIRES(negation<is_xmasked_value<T2>>)>
     inline bool operator!=(const xmasked_value<T1, B1>& lhs, const T2& rhs) noexcept
     {
         return !lhs.equal(rhs);
@@ -308,7 +308,7 @@ namespace xtl
         return e1.visible() && e2.visible() ? masked_value(e1.value() OP e2.value()) : masked<value_type>();  \
     }                                                                                                         \
                                                                                                               \
-    template <class T1, class B1, class T2, XTL_REQUIRES(std::negation<is_xmasked_value<T2>>)>                     \
+    template <class T1, class B1, class T2, XTL_REQUIRES(negation<is_xmasked_value<T2>>)>                     \
     inline auto operator OP(const xmasked_value<T1, B1>& e1, const T2& e2) noexcept                           \
         -> xmasked_value<promote_type_t<std::decay_t<T1>, std::decay_t<T2>>>                                  \
     {                                                                                                         \
@@ -316,7 +316,7 @@ namespace xtl
         return e1.visible() ? masked_value(e1.value() OP e2) : masked<value_type>();                          \
     }                                                                                                         \
                                                                                                               \
-    template <class T1, class T2, class B2, XTL_REQUIRES(std::negation<is_xmasked_value<T1>>)>                     \
+    template <class T1, class T2, class B2, XTL_REQUIRES(negation<is_xmasked_value<T1>>)>                     \
     inline auto operator OP(const T1& e1, const xmasked_value<T2, B2>& e2) noexcept                           \
         -> xmasked_value<promote_type_t<std::decay_t<T1>, std::decay_t<T2>>>                                  \
     {                                                                                                         \
@@ -334,14 +334,14 @@ namespace xtl
             masked<decltype(e1.value() OP e2.value())>();                                                  \
     }                                                                                                      \
                                                                                                            \
-    template <class T1, class B1, class T2, XTL_REQUIRES(std::negation<is_xmasked_value<T2>>)>                  \
+    template <class T1, class B1, class T2, XTL_REQUIRES(negation<is_xmasked_value<T2>>)>                  \
     inline auto operator OP(const xmasked_value<T1, B1>& e1, const T2& e2) noexcept                        \
         -> xmasked_value<decltype(e1.value() OP e2)>                                                       \
     {                                                                                                      \
         return e1.visible() ? masked_value(e1.value() OP e2) : masked<decltype(e1.value() OP e2)>();       \
     }                                                                                                      \
                                                                                                            \
-    template <class T1, class T2, class B2, XTL_REQUIRES(std::negation<is_xmasked_value<T1>>)>                  \
+    template <class T1, class T2, class B2, XTL_REQUIRES(negation<is_xmasked_value<T1>>)>                  \
     inline auto operator OP(const T1& e1, const xmasked_value<T2, B2>& e2) noexcept                        \
         -> xmasked_value<decltype(e1 OP e2.value())>                                                       \
     {                                                                                                      \

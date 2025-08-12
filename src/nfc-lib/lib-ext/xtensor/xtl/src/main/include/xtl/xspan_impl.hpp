@@ -16,7 +16,6 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0122r7.pdf
 
 #include <array>
 #include <cstddef>
-#include <exception>
 #include <type_traits>
 
 #ifndef TCB_SPAN_NO_EXCEPTIONS

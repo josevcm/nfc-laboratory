@@ -19,6 +19,19 @@
 
 namespace xtl
 {
+    // TODO move to a xutils if we have one
+
+    // gcc 4.9 is affected by C++14 defect CGW 1558
+    // see http://open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#1558
+    template <class... T>
+    struct make_void
+    {
+        using type = void;
+    };
+
+    template <class... T>
+    using void_t = typename make_void<T...>::type;
+
     namespace mpl
     {
         /*************
@@ -567,6 +580,28 @@ namespace xtl
 
         template <class L>
         using unique_t = typename unique<L>::type;
+
+        /*************
+         * static_if *
+         *************/
+
+        template <class TF, class FF>
+        decltype(auto) static_if(std::true_type, const TF& tf, const FF&)
+        {
+            return tf(identity());
+        }
+
+        template <class TF, class FF>
+        decltype(auto) static_if(std::false_type, const TF&, const FF& ff)
+        {
+            return ff(identity());
+        }
+
+        template <bool cond, class TF, class FF>
+        decltype(auto) static_if(const TF& tf, const FF& ff)
+        {
+            return static_if(std::integral_constant<bool, cond>(), tf, ff);
+        }
 
         /***********
          * switch_ *

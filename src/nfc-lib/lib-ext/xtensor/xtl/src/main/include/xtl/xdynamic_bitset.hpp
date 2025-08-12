@@ -13,10 +13,6 @@
 #include <climits>
 #include <type_traits>
 #include <vector>
-#include <initializer_list>
-#include <iterator>
-#include <memory>
-#include <algorithm>
 
 #include "xclosure.hpp"
 #include "xspan.hpp"

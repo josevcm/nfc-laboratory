@@ -49,11 +49,7 @@ namespace xtl
     inline std::string executable_path()
     {
         std::string path;
-#if defined(UNICODE)
-    wchar_t buffer[1024];
-#else
-    char buffer[1024];
-#endif
+        char buffer[1024];
         std::memset(buffer, '\0', sizeof(buffer));
 #if defined(__linux__)
         if (readlink("/proc/self/exe", buffer, sizeof(buffer)) != -1)
@@ -65,21 +61,14 @@ namespace xtl
             // failed to determine run path
         }
 #elif defined (_WIN32)
-    #if defined(UNICODE)
-        if (GetModuleFileNameW(nullptr, buffer, sizeof(buffer)) != 0)
-        {
-            // Convert wchar_t to std::string
-            std::wstring wideString(buffer);
-            std::string narrowString(wideString.begin(), wideString.end());
-            path = narrowString;
-        }
-    #else
-        if (GetModuleFileNameA(nullptr, buffer, sizeof(buffer)) != 0)
+        if (GetModuleFileName(nullptr, buffer, sizeof(buffer)) != 0)
         {
             path = buffer;
         }
-    #endif
-        // failed to determine run path
+        else
+        {
+            // failed to determine run path
+        }
 #elif defined (__APPLE__)
         std::uint32_t size = sizeof(buffer);
         if(_NSGetExecutablePath(buffer, &size) == 0)

@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <string>
+#include "xtl/xvariant.hpp"
 #include "nlohmann/json.hpp"
 
 namespace xtl
@@ -78,6 +79,19 @@ namespace xtl
     void from_json(const ::nlohmann::json& j, xbasic_fixed_string<CT, N, ST, EP, TR>& str)
     {
         str = j.get<std::string>();
+    }
+}
+
+// overloading in the mpark namespace because `xtl::variant` is just a typedef on `mpark::variant`
+namespace mpark
+{
+    template <class... Ts>
+    void to_json(nlohmann::json& j, const xtl::variant<Ts...>& data) {
+        xtl::visit
+        (
+            [&j] (const auto & arg) { j = arg; },
+            data
+        );
     }
 }
 
