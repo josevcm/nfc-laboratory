@@ -124,15 +124,14 @@ namespace xt
         static zarray build(store_type& store, const std::string& compressor, char chunk_memory_layout, std::vector<std::size_t>& shape, std::vector<std::size_t>& chunk_shape, const std::string& path, char separator, const nlohmann::json& attrs, char endianness, nlohmann::json& config, std::size_t chunk_pool_size, const nlohmann::json& fill_value_json, std::size_t zarr_version)
         {
             auto fun = instance().m_builders.find(compressor);
+
             if (fun != instance().m_builders.end())
             {
                 zarray z = (fun->second)(store, chunk_memory_layout, shape, chunk_shape, path, separator, attrs, endianness, config, chunk_pool_size, fill_value_json, zarr_version);
                 return z;
             }
-            else
-            {
-                XTENSOR_THROW(std::runtime_error, "Unkown compressor type: " + compressor);
-            }
+
+            XTENSOR_THROW(std::runtime_error, "Unkown compressor type: " + compressor);
         }
 
     private:
