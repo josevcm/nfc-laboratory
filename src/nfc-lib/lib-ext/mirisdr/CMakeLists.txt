@@ -1,11 +1,15 @@
 set(CMAKE_C_STANDARD 99)
 
-set(PUBLIC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/c)
+set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/c)
+set(PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
-add_library(mirisdr STATIC src/main/c/libmirisdr.c)
+add_library(mirisdr STATIC
+        ${PRIVATE_SOURCE_DIR}/libmirisdr.c
+)
+
 #add_library(getopt STATIC src/main/c/getopt/getopt.c)
 
-target_include_directories(mirisdr PUBLIC ${PUBLIC_SOURCE_DIR})
+target_include_directories(mirisdr PUBLIC ${PUBLIC_INCLUDE_DIR})
 
 target_compile_options(mirisdr PRIVATE -Dmirisdr_STATIC)
 target_compile_options(mirisdr PRIVATE -DSOVERSION="${MAJOR_VERSION}")
