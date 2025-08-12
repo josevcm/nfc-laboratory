@@ -11,11 +11,11 @@
 #define XTENSOR_IO_CONFIG_HPP
 
 #define XTENSOR_IO_VERSION_MAJOR 0
-#define XTENSOR_IO_VERSION_MINOR 12
-#define XTENSOR_IO_VERSION_PATCH 7
+#define XTENSOR_IO_VERSION_MINOR 13
+#define XTENSOR_IO_VERSION_PATCH 0
 
 #pragma cling add_library_path("/usr/lib64")
 #pragma cling add_library_path("/usr/lib32")
-#pragma cling add_library_path("//usr/lib")
+#pragma cling add_library_path("/usr/lib")
 
 #endif

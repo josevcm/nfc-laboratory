@@ -52,7 +52,7 @@ namespace xt
         auto in(OIIO::ImageInput::open(filename));
         if (!in)
         {
-            throw std::runtime_error("load_image(): Error reading image '" + filename + "'.");
+            throw std::runtime_error("load_image(): Error reading image '" + filename + "': " + OIIO::geterror());
         }
 
         const OIIO::ImageSpec& spec = in->spec();
@@ -124,7 +124,7 @@ namespace xt
         auto out(OIIO::ImageOutput::create(filename)); 
         if (!out)
         {
-            throw std::runtime_error("dump_image(): Error opening file '" + filename + "' to write image.");
+            throw std::runtime_error("dump_image(): Error opening file '" + filename + "' to write image: " + OIIO::geterror());
         }
 
         OIIO::ImageSpec spec = options.spec;

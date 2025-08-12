@@ -536,7 +536,7 @@ namespace xt
     template <class... Idxs>
     inline auto xfile_array_container<E, IOH>::operator()(Idxs... idxs) -> reference
     {
-        return reference(m_storage(idxs...), m_dirty);
+        return reference(m_storage(idxs...), m_dirty, m_invalidate);
     }
 
     template <class E, class IOH>
@@ -621,7 +621,7 @@ namespace xt
     template <class E, class IOH>
     inline auto xfile_array_container<E, IOH>::data_element(size_type i) -> reference
     {
-        return reference(m_storage.data_element(i), m_dirty);
+        return reference(m_storage.data_element(i), m_dirty, m_invalidate);
     }
 
     template <class E, class IOH>

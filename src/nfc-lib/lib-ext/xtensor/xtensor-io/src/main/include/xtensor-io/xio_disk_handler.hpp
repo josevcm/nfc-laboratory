@@ -62,7 +62,7 @@ namespace xt
                     {
                         if (!fs::is_directory(directory))
                         {
-                            XTENSOR_THROW(std::runtime_error, "Path is not a directory: " + std::string(directory));
+                            XTENSOR_THROW(std::runtime_error, "Path is not a directory: " + std::string(directory.string()));
                         }
                     }
                     else
