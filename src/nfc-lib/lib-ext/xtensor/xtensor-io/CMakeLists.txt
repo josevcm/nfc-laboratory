@@ -6,6 +6,6 @@ add_library(xtensor-io INTERFACE)
 
 target_include_directories(xtensor-io INTERFACE ${PUBLIC_SOURCE_DIR})
 
-target_link_libraries(xtensor-io INTERFACE xtensor)
+target_link_libraries(xtensor-io INTERFACE xtensor filesystem)
 
 

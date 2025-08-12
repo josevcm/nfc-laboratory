@@ -678,7 +678,7 @@ namespace xt
         {
             ++count;
         }
-        return tmp_dir / std::to_string(count);
+        return (tmp_dir / std::to_string(count)).string();
     }
 
     template <class EC, class IP>
