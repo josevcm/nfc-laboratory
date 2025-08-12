@@ -13,6 +13,7 @@ add_library(mufft STATIC
 
 # Add conditional compilation for x86 architecture specific libraries
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|AMD64|X86|x86|i386|i686")
+
     add_library(mufft-avx STATIC ${PRIVATE_SOURCE_DIR}/x86/kernel.avx.c)
     add_library(mufft-sse STATIC ${PRIVATE_SOURCE_DIR}/x86/kernel.sse.c)
     add_library(mufft-sse3 STATIC ${PRIVATE_SOURCE_DIR}/x86/kernel.sse3.c)
@@ -27,6 +28,7 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|AMD64|X86|x86|i386|i686")
     target_include_directories(mufft-avx PUBLIC ${PUBLIC_INCLUDE_DIR})
 
     target_link_libraries(mufft PRIVATE mufft-sse mufft-sse3 mufft-avx m)
+
 endif ()
 
 target_include_directories(mufft PUBLIC ${PUBLIC_INCLUDE_DIR})
