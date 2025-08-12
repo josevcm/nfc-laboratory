@@ -6,6 +6,6 @@ add_library(xtensor-zarr INTERFACE)
 
 target_include_directories(xtensor-zarr INTERFACE ${PUBLIC_SOURCE_DIR})
 
-target_link_libraries(xtensor-zarr INTERFACE xtensor-io zarray)
+target_link_libraries(xtensor-zarr INTERFACE xtensor-io zarray blosc)
 
 
