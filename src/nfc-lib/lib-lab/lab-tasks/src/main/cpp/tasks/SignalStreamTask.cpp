@@ -21,6 +21,12 @@
 
 #include <mutex>
 
+#include <xtensor/xio.hpp>
+
+#include <xtensor-zarr/xzarr_array.hpp>
+#include <xtensor-zarr/xzarr_hierarchy.hpp>
+#include <xtensor-zarr/xzarr_file_system_store.hpp>
+
 #include <rt/BlockingQueue.h>
 #include <rt/Downsampler.h>
 #include <rt/Throughput.h>
@@ -59,6 +65,14 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
    // base filename
    rt::Downsampler radioDownsampler;
 
+   // file system store
+   xt::xzarr_file_system_store systemStore;
+
+   // create zarr hierarchy
+   xt::xzarr_hierarchy<xt::xzarr_file_system_store> zarrHierarchy;
+
+   xt::zarray signalArray;
+
    // stream lock
    std::mutex signalMutex;
 
@@ -67,7 +81,10 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
    unsigned int count = 0;
 
-   explicit Impl() : AbstractTask("worker.SignalStream", "stream"), radioDownsampler({0.000001}), lastStatus(std::chrono::steady_clock::now())
+   explicit Impl() : AbstractTask("worker.SignalStream", "stream"),
+                     radioDownsampler({0.000001}), lastStatus(std::chrono::steady_clock::now()),
+                     systemStore("signal.zr3"),
+                     zarrHierarchy(systemStore, "3")
    {
       // access to radio signal subject stream
       logicSignalStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
@@ -87,6 +104,19 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       radioSignalSubscription = radioSignalStream->subscribe([=](const hw::SignalBuffer &buffer) {
          signalQueue.add(buffer);
       });
+
+      zarrHierarchy.create_hierarchy();
+
+      std::vector<size_t> shape = {0};
+      std::vector<size_t> chunk = {1000000};
+
+      xt::xzarr_create_array_options<xt::xio_binary_config> options;
+      options.chunk_memory_layout = 'C';
+      options.chunk_separator = '/';
+      options.chunk_pool_size = 10;
+      options.fill_value = 0;
+
+      signalArray = zarrHierarchy.create_array("/radio/signal/raw", shape, chunk, "<f4", options);
    }
 
    ~Impl() override = default;
@@ -124,7 +154,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          if (buffer.has_value())
          {
             // stream(buffer.value());
-            process(buffer.value());
+            // process(buffer.value());
          }
       }
 
@@ -144,6 +174,55 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
    void stream(const hw::SignalBuffer &buffer)
    {
       const float *data = buffer.data();
+
+      // propagate EOF
+      if (!buffer.isValid())
+      {
+         queryRadioSignal(0, INFINITY);
+
+         signalStream->next({});
+
+         return;
+      }
+
+      switch (buffer.type())
+      {
+         // adaptive resample for raw real signal
+         case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
+         {
+            const double sampleStep = 1.0 / static_cast<double>(buffer.sampleRate());
+            const double startTime = static_cast<double>(buffer.offset()) * sampleStep;
+
+            // append raw samples to downsampler
+            for (unsigned int i = 0; i < buffer.elements(); ++i)
+            {
+               const double time = std::fma(sampleStep, i, startTime); // time = sampleStep * i + startTime
+
+               radioDownsampler.append(time, data[i]);
+            }
+
+            break;
+         }
+
+         // adaptive resample for stream logic signal
+         case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
+         {
+            break;
+         }
+
+         default:
+            break;
+      }
+   }
+
+   void stream2(const hw::SignalBuffer &buffer)
+   {
+      const float *data = buffer.data();
+
+      xt::xzarr_file_system_store store("test.zr3");
+      auto root = xt::create_zarr_hierarchy(store);
+
+      // xt::xio_blosc_config();
 
       // propagate EOF
       if (!buffer.isValid())
