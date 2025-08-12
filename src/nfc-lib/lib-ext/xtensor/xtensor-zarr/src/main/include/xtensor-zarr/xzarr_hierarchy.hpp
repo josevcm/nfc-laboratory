@@ -17,7 +17,7 @@
 #include "xzarr_group.hpp"
 #include "xzarr_common.hpp"
 #include "xzarr_file_system_store.hpp"
-#include "xzarr_gdal_store.hpp"
+// #include "xzarr_gdal_store.hpp"
 #include "xtensor_zarr_config.hpp"
 #include "xtensor-io/xio_gzip.hpp"
 #include "xtensor-io/xio_zlib.hpp"
@@ -227,10 +227,10 @@ namespace xt
      * precompiled types *
      *********************/
 
-    extern template void xzarr_register_compressor<xzarr_gdal_store, xio_gzip_config>();
-    extern template void xzarr_register_compressor<xzarr_gdal_store, xio_zlib_config>();
-    extern template void xzarr_register_compressor<xzarr_gdal_store, xio_blosc_config>();
-    extern template class xchunked_array_factory<xzarr_gdal_store>;
+    // extern template void xzarr_register_compressor<xzarr_gdal_store, xio_gzip_config>();
+    // extern template void xzarr_register_compressor<xzarr_gdal_store, xio_zlib_config>();
+    // extern template void xzarr_register_compressor<xzarr_gdal_store, xio_blosc_config>();
+    // extern template class xchunked_array_factory<xzarr_gdal_store>;
 
     extern template void xzarr_register_compressor<xzarr_file_system_store, xio_gzip_config>();
     extern template void xzarr_register_compressor<xzarr_file_system_store, xio_zlib_config>();
