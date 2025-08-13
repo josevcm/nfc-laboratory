@@ -65,8 +65,8 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
    // base filename
    rt::Downsampler radioDownsampler;
 
-   // file system store
-   xt::xzarr_file_system_store systemStore;
+   // zarr hierarchy store
+   xt::xzarr_file_system_store zarrFileStore;
 
    // create zarr hierarchy
    xt::xzarr_hierarchy<xt::xzarr_file_system_store> zarrHierarchy;
@@ -82,9 +82,10 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
    unsigned int count = 0;
 
    explicit Impl() : AbstractTask("worker.SignalStream", "stream"),
-                     radioDownsampler({0.000001}), lastStatus(std::chrono::steady_clock::now()),
-                     systemStore("signal.zr3"),
-                     zarrHierarchy(systemStore, "3")
+                     radioDownsampler({0.000001}),
+                     zarrFileStore("signal.zr3"),
+                     zarrHierarchy(zarrFileStore),
+                     lastStatus(std::chrono::steady_clock::now())
    {
       // access to radio signal subject stream
       logicSignalStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
@@ -105,18 +106,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          signalQueue.add(buffer);
       });
 
-      zarrHierarchy.create_hierarchy();
-
-      std::vector<size_t> shape = {0};
-      std::vector<size_t> chunk = {1000000};
-
-      xt::xzarr_create_array_options<xt::xio_binary_config> options;
-      options.chunk_memory_layout = 'C';
-      options.chunk_separator = '/';
-      options.chunk_pool_size = 10;
-      options.fill_value = 0;
-
-      signalArray = zarrHierarchy.create_array("/radio/signal/raw", shape, chunk, "<f4", options);
+      createHierarchy();
    }
 
    ~Impl() override = default;
@@ -169,6 +159,25 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       }
 
       return true;
+   }
+
+   void createHierarchy()
+   {
+      // create zarr hierarchy
+      zarrHierarchy.create_hierarchy();
+
+      // create radio signal array
+      std::vector<size_t> shape = {0, 2};
+      std::vector<size_t> chunk = {1000000, 2};
+
+      // array options
+      xt::xzarr_create_array_options options;
+      options.chunk_memory_layout = 'C';
+      options.chunk_separator = '/';
+      options.chunk_pool_size = 10;
+      options.fill_value = 0;
+
+      signalArray = zarrHierarchy.create_array("lod/level0", shape, chunk, "<f4", options);
    }
 
    void stream(const hw::SignalBuffer &buffer)
