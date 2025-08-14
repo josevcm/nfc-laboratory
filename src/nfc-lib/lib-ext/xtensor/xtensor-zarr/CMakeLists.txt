@@ -10,6 +10,8 @@ add_library(xtensor-zarr STATIC
         ${PRIVATE_SOURCE_DIR}/xtensor-zarr.cpp
 )
 
+set_target_properties(xtensor-zarr PROPERTIES COMPILE_FLAGS "-O3 -fno-math-errno -falign-functions=32 -falign-loops=32 -march=native -fopenmp")
+
 target_compile_definitions(xtensor-zarr PUBLIC XTENSOR_ZARR_STATIC_LIB)
 
 target_include_directories(xtensor-zarr PUBLIC ${PUBLIC_INCLUDE_DIR})
