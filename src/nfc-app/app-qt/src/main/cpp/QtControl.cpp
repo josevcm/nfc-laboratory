@@ -1545,7 +1545,7 @@ struct QtControl::Impl
    {
       const QJsonDocument doc(data);
 
-      qInfo() << "start recorder task to read file:" << doc.toJson();
+      qInfo().noquote() << "start recorder task to read file:" << doc.toJson();
 
       recorderCommand->next({lab::SignalStorageTask::Read, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1557,7 +1557,7 @@ struct QtControl::Impl
    {
       const QJsonDocument doc(data);
 
-      qInfo() << "start recorder task to write file:" << doc.toJson();
+      qInfo().noquote() << "start recorder task to write file:" << doc.toJson();
 
       recorderCommand->next({lab::SignalStorageTask::Write, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
@@ -1579,7 +1579,7 @@ struct QtControl::Impl
    {
       const QJsonDocument doc(data);
 
-      qInfo() << "query stream:" << doc.toJson();
+      qInfo().noquote() << "query stream:" << doc.toJson();
 
       streamCommand->next({lab::SignalStreamTask::Query, onComplete, onReject, {{"data", doc.toJson().toStdString()}}});
    }
