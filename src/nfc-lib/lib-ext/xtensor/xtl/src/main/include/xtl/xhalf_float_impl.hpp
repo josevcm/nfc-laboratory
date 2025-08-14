@@ -3996,14 +3996,31 @@ namespace half_float {
 	/// \throw std::range_error if `FE_INEXACT` is selected and set
 	inline void fethrowexcept(int excepts, const char *msg = "") {
 		excepts &= detail::errflags();
-		if(excepts & (FE_INVALID|FE_DIVBYZERO))
+#if HALF_ERRHANDLING_THROWS
+	#ifdef HALF_ERRHANDLING_THROW_INVALID
+		if(excepts & FE_INVALID)
 			throw std::domain_error(msg);
+	#endif
+	#ifdef HALF_ERRHANDLING_THROW_DIVBYZERO
+		if(excepts & FE_DIVBYZERO)
+			throw std::domain_error(msg);
+	#endif
+	#ifdef HALF_ERRHANDLING_THROW_OVERFLOW
 		if(excepts & FE_OVERFLOW)
 			throw std::overflow_error(msg);
+	#endif
+	#ifdef HALF_ERRHANDLING_THROW_UNDERFLOW
 		if(excepts & FE_UNDERFLOW)
 			throw std::underflow_error(msg);
+	#endif
+	#ifdef HALF_ERRHANDLING_THROW_INEXACT
 		if(excepts & FE_INEXACT)
 			throw std::range_error(msg);
+	#endif
+#else
+		std::fprintf(stderr, "%s\n", msg);
+		std::terminate();
+#endif
 	}
 	/// \}
 }
@@ -4016,3 +4033,4 @@ namespace half_float {
 	#pragma warning(pop)
 	#undef HALF_POP_WARNINGS
 #endif
+

@@ -36,17 +36,17 @@ namespace xtl
     struct is_fundamental : std::is_fundamental<T>
     {
     };
-    
+
     template <class T>
     struct is_signed : std::is_signed<T>
     {
     };
-    
+
     template <class T>
     struct is_floating_point : std::is_floating_point<T>
     {
     };
-    
+
     template <class T>
     struct is_integral : std::is_integral<T>
     {
@@ -86,12 +86,6 @@ namespace xtl
     struct promote_type<T0, T1>
     {
         using type = decltype(std::declval<std::decay_t<T0>>() + std::declval<std::decay_t<T1>>());
-    };
-
-    template <class T0, class... REST>
-    struct promote_type<T0, REST...>
-    {
-        using type = decltype(std::declval<std::decay_t<T0>>() + std::declval<typename promote_type<REST...>::type>());
     };
 
     template <>
@@ -136,10 +130,16 @@ namespace xtl
         using type = std::complex<typename promote_type<T1, T2>::type>;
     };
 
-    template <class... REST>
-    struct promote_type<bool, REST...>
+    template <class T, class... REST>
+    struct promote_type<T, REST...>
     {
-        using type = typename promote_type<bool, typename promote_type<REST...>::type>::type;
+        using type = typename promote_type<T, typename promote_type<REST...>::type>::type;
+    };
+
+    template <class T0, class T1, class... REST>
+    struct promote_type<std::complex<T0>, std::complex<T1>, REST...>
+    {
+        using type = std::complex<typename promote_type<T0, T1, REST...>::type>;
     };
 
     /**
@@ -298,80 +298,21 @@ namespace xtl
     template <class T, class U>
     using apply_cv_t = typename apply_cv<T, U>::type;
 
-    /****************************************************************
-     * C++17 logical operators (disjunction, conjunction, negation) *
-     ****************************************************************/
-
-    /********************
-     * disjunction - or *
-     ********************/
-
-    template <class...>
-    struct disjunction;
-
-    template <>
-    struct disjunction<> : std::false_type
-    {
-    };
-
-    template <class Arg>
-    struct disjunction<Arg> : Arg
-    {
-    };
-
-    template <class Arg1, class Arg2, class... Args>
-    struct disjunction<Arg1, Arg2, Args...> : std::conditional_t<Arg1::value, Arg1, disjunction<Arg2, Args...>>
-    {
-    };
-
-    /*********************
-     * conjunction - and *
-     *********************/
-
-    template <class...>
-    struct conjunction;
-
-    template <>
-    struct conjunction<> : std::true_type
-    {
-    };
-
-    template <class Arg1>
-    struct conjunction<Arg1> : Arg1
-    {
-    };
-
-    template <class Arg1, class Arg2, class... Args>
-    struct conjunction<Arg1, Arg2, Args...> : std::conditional_t<Arg1::value, conjunction<Arg2, Args...>, Arg1>
-    {
-    };
-
-    /******************
-     * negation - not *
-     ******************/
-
-    template <class Arg>
-    struct negation : std::integral_constant<bool, !Arg::value>
-    {
-    };
-
     /************
      * concepts *
      ************/
 
-#if !defined(__GNUC__) || (defined(__GNUC__) && (__GNUC__ >= 5))
+    template <class... C>
+    constexpr bool xtl_requires = std::conjunction<C...>::value;
 
     template <class... C>
-    constexpr bool xtl_requires = conjunction<C...>::value;
+    constexpr bool either = std::disjunction<C...>::value;
 
     template <class... C>
-    constexpr bool either = disjunction<C...>::value;
+    constexpr bool disallow = std::negation<std::conjunction<C...>>::value;
 
     template <class... C>
-    constexpr bool disallow = xtl::negation<xtl::conjunction<C...>>::value;
-
-    template <class... C>
-    constexpr bool disallow_one = xtl::negation<xtl::disjunction<C...>>::value;
+    constexpr bool disallow_one = std::negation<std::disjunction<C...>>::value;
 
     template <class... C>
     using check_requires = std::enable_if_t<xtl_requires<C...>, int>;
@@ -385,21 +326,6 @@ namespace xtl
     template <class... C>
     using check_disallow_one = std::enable_if_t<disallow_one<C...>, int>;
 
-#else
-
-    template <class... C>
-    using check_requires = std::enable_if_t<conjunction<C...>::value, int>;
-
-    template <class... C>
-    using check_either = std::enable_if_t<disjunction<C...>::value, int>;
-
-    template <class... C>
-    using check_disallow = std::enable_if_t<xtl::negation<xtl::conjunction<C...>>::value, int>;
-
-    template <class... C>
-    using check_disallow_one = std::enable_if_t<xtl::negation<xtl::disjunction<C...>>::value, int>;
-
-#endif
 
 #define XTL_REQUIRES_IMPL(...) xtl::check_requires<__VA_ARGS__>
 #define XTL_REQUIRES(...) XTL_REQUIRES_IMPL(__VA_ARGS__) = 0
@@ -422,7 +348,7 @@ namespace xtl
      **************/
 
     template <class... Args>
-    struct all_scalar : conjunction<xtl::is_scalar<Args>...>
+    struct all_scalar : std::conjunction<std::is_scalar<Args>...>
     {
     };
 

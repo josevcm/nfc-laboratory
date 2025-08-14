@@ -9,5 +9,7 @@ add_subdirectory(mufft)
 add_subdirectory(rtlsdr)
 add_subdirectory(mirisdr)
 add_subdirectory(xtensor)
+add_subdirectory(z5)
+
 
 

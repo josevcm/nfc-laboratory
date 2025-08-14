@@ -11,12 +11,15 @@
 #define XTL_BASIC_FIXED_STRING_HPP
 
 #include <cstddef>
+#include <exception>
 #include <functional>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <cassert>
+#include <algorithm>
+#include <type_traits>
 
 #ifdef __CLING__
 #include <nlohmann/json.hpp>

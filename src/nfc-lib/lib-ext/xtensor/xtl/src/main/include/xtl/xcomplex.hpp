@@ -87,7 +87,7 @@ namespace xtl
      ******************/
 
     template <class T>
-    using is_gen_complex = disjunction<is_complex<std::decay_t<T>>, is_xcomplex<std::decay_t<T>>>;
+    using is_gen_complex = std::disjunction<is_complex<std::decay_t<T>>, is_xcomplex<std::decay_t<T>>>;
 
     /****************************
      * enable / disable complex *
@@ -165,8 +165,8 @@ namespace xtl
 
         template <class OCTR,
             std::enable_if_t<
-                conjunction<
-                    negation<is_gen_complex<OCTR>>,
+                std::conjunction<
+                    std::negation<is_gen_complex<OCTR>>,
                     std::is_constructible<CTR, OCTR&&>,
                     std::is_convertible<OCTR&&, CTR>
                 >::value,
@@ -179,10 +179,10 @@ namespace xtl
 
         template <class OCTR,
             std::enable_if_t<
-                conjunction<
-                    negation<is_gen_complex<OCTR>>,
+                std::conjunction<
+                    std::negation<is_gen_complex<OCTR>>,
                     std::is_constructible<CTR, OCTR&&>,
-                    negation<std::is_convertible<OCTR&&, CTR>>
+                    std::negation<std::is_convertible<OCTR&&, CTR>>
             >::value,
             bool
         > = true>

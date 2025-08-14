@@ -35,7 +35,7 @@ namespace xtl
         };
 
         template <class CT, class CTO, class CBO>
-        using converts_from_xoptional = disjunction<
+        using converts_from_xoptional = std::disjunction<
             std::is_constructible<CT, const xoptional<CTO, CBO>&>,
             std::is_constructible<CT, xoptional<CTO, CBO>&>,
             std::is_constructible<CT, const xoptional<CTO, CBO>&&>,
@@ -47,7 +47,7 @@ namespace xtl
         >;
 
         template <class CT, class CTO, class CBO>
-        using assigns_from_xoptional = disjunction<
+        using assigns_from_xoptional = std::disjunction<
             std::is_assignable<std::add_lvalue_reference_t<CT>, const xoptional<CTO, CBO>&>,
             std::is_assignable<std::add_lvalue_reference_t<CT>, xoptional<CTO, CBO>&>,
             std::is_assignable<std::add_lvalue_reference_t<CT>, const xoptional<CTO, CBO>&&>,
@@ -120,7 +120,7 @@ namespace xtl
     using disable_xoptional = std::enable_if_t<!is_xoptional<E>::value, R>;
 
     template <class... Args>
-    struct at_least_one_xoptional : disjunction<is_xoptional<Args>...>
+    struct at_least_one_xoptional : std::disjunction<is_xoptional<Args>...>
     {
     };
 
@@ -133,7 +133,7 @@ namespace xtl
     using common_optional_t = typename common_optional<Args...>::type;
 
     template <class E>
-    struct is_not_xoptional_nor_xmasked_value : negation<disjunction<is_xoptional<E>, is_xmasked_value<E>>>
+    struct is_not_xoptional_nor_xmasked_value : std::negation<std::disjunction<is_xoptional<E>, is_xmasked_value<E>>>
     {
     };
 }
