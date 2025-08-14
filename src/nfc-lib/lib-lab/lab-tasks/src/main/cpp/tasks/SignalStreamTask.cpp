@@ -21,11 +21,16 @@
 
 #include <mutex>
 
-#include <xtensor/xio.hpp>
+#include <z5/factory.hxx>
+#include <z5/compression/zlib_compressor.hxx>
+#include <z5/multiarray/xtensor_access.hxx>
 
-#include <xtensor-zarr/xzarr_array.hpp>
-#include <xtensor-zarr/xzarr_hierarchy.hpp>
-#include <xtensor-zarr/xzarr_file_system_store.hpp>
+#include <xtensor/containers/xarray.hpp>
+#include <xtensor/containers/xadapt.hpp>
+
+// #include <z5/filesystem/handle.hxx>
+// #include <z5/multiarray/xtensor_access.hxx>
+// #include <z5/attributes.hxx>
 
 #include <rt/BlockingQueue.h>
 #include <rt/Downsampler.h>
@@ -65,27 +70,23 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
    // base filename
    rt::Downsampler radioDownsampler;
 
-   // zarr hierarchy store
-   xt::xzarr_file_system_store zarrFileStore;
-
-   // create zarr hierarchy
-   xt::xzarr_hierarchy<xt::xzarr_file_system_store> zarrHierarchy;
-
-   xt::zarray signalArray;
-
    // stream lock
    std::mutex signalMutex;
 
    // last status sent
    std::chrono::time_point<std::chrono::steady_clock> lastStatus;
 
+   // zarr file handle
+   z5::filesystem::handle::File fileHandle;
+
+   std::unique_ptr<z5::Dataset> dataset;
+
    unsigned int count = 0;
 
    explicit Impl() : AbstractTask("worker.SignalStream", "stream"),
                      radioDownsampler({0.000001}),
-                     zarrFileStore("signal.zr3"),
-                     zarrHierarchy(zarrFileStore),
-                     lastStatus(std::chrono::steady_clock::now())
+                     lastStatus(std::chrono::steady_clock::now()),
+                     fileHandle("data.zr")
    {
       // access to radio signal subject stream
       logicSignalStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
@@ -106,7 +107,14 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          signalQueue.add(buffer);
       });
 
-      createHierarchy();
+      z5::createFile(fileHandle, true);
+
+      // shape size = 15 minutes of samples at 10 MHz, split in chunks of 100 ms
+      z5::types::ShapeType shape = {15 * 60 * 10000000LL, 2};
+      z5::types::ShapeType chunk = {1000000, 2};
+
+      // dataset = z5::createDataset(fileHandle, "data", "float32", shape, {1000000, 2}, "blosc");
+      dataset = z5::createDataset(fileHandle, "data", "float32", shape, {1000000, 2});
    }
 
    ~Impl() override = default;
@@ -144,7 +152,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          if (buffer.has_value())
          {
             // stream(buffer.value());
-            // process(buffer.value());
+            process(buffer.value());
          }
       }
 
@@ -161,191 +169,171 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       return true;
    }
 
-   void createHierarchy()
+   void createStream()
    {
-      // create zarr hierarchy
-      zarrHierarchy.create_hierarchy();
-
-      // create radio signal array
-      std::vector<size_t> shape = {0, 2};
-      std::vector<size_t> chunk = {1000000, 2};
-
-      // array options
-      xt::xzarr_create_array_options options;
-      options.chunk_memory_layout = 'C';
-      options.chunk_separator = '/';
-      options.chunk_pool_size = 10;
-      options.fill_value = 0;
-
-      signalArray = zarrHierarchy.create_array("lod/level0", shape, chunk, "<f4", options);
    }
 
-   void stream(const hw::SignalBuffer &buffer)
-   {
-      const float *data = buffer.data();
+   // void stream(const hw::SignalBuffer &buffer)
+   // {
+   //    const float *data = buffer.data();
+   //
+   //    // propagate EOF
+   //    if (!buffer.isValid())
+   //    {
+   //       queryRadioSignal(0, INFINITY);
+   //
+   //       signalStream->next({});
+   //
+   //       return;
+   //    }
+   //
+   //    switch (buffer.type())
+   //    {
+   //       // adaptive resample for raw real signal
+   //       case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
+   //       {
+   //          const double sampleStep = 1.0 / static_cast<double>(buffer.sampleRate());
+   //          const double startTime = static_cast<double>(buffer.offset()) * sampleStep;
+   //
+   //          // append raw samples to downsampler
+   //          for (unsigned int i = 0; i < buffer.elements(); ++i)
+   //          {
+   //             const double time = std::fma(sampleStep, i, startTime); // time = sampleStep * i + startTime
+   //
+   //             radioDownsampler.append(time, data[i]);
+   //          }
+   //
+   //          break;
+   //       }
+   //
+   //       // adaptive resample for stream logic signal
+   //       case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
+   //       {
+   //          break;
+   //       }
+   //
+   //       default:
+   //          break;
+   //    }
+   // }
 
-      // propagate EOF
-      if (!buffer.isValid())
-      {
-         queryRadioSignal(0, INFINITY);
+   // void stream2(const hw::SignalBuffer &buffer)
+   // {
+   //    const float *data = buffer.data();
+   //
+   //    // propagate EOF
+   //    if (!buffer.isValid())
+   //    {
+   //       queryRadioSignal(0, INFINITY);
+   //
+   //       signalStream->next({});
+   //
+   //       return;
+   //    }
+   //
+   //    switch (buffer.type())
+   //    {
+   //       // adaptive resample for raw real signal
+   //       case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
+   //       {
+   //          const double sampleStep = 1.0 / static_cast<double>(buffer.sampleRate());
+   //          const double startTime = static_cast<double>(buffer.offset()) * sampleStep;
+   //
+   //          // append raw samples to downsampler
+   //          for (unsigned int i = 0; i < buffer.elements(); ++i)
+   //          {
+   //             const double time = std::fma(sampleStep, i, startTime); // time = sampleStep * i + startTime
+   //
+   //             radioDownsampler.append(time, data[i]);
+   //          }
+   //
+   //          break;
+   //       }
+   //
+   //       // adaptive resample for stream logic signal
+   //       case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
+   //       {
+   //          break;
+   //       }
+   //
+   //       default:
+   //          break;
+   //    }
+   // }
 
-         signalStream->next({});
+   // void queryStream(const rt::Event &command)
+   // {
+   //    int error = MissingParameters;
+   //
+   //    while (auto data = command.get<std::string>("data"))
+   //    {
+   //       auto config = json::parse(data.value());
+   //
+   //       log->info("query stream command: {}", {config.dump()});
+   //
+   //       if (!config.contains("start"))
+   //       {
+   //          log->error("missing start time parameter!");
+   //          error = MissingParameters;
+   //          break;
+   //       }
+   //
+   //       if (!config.contains("end"))
+   //       {
+   //          log->error("missing end time parameter!");
+   //          error = MissingParameters;
+   //          break;
+   //       }
+   //
+   //       const auto start = static_cast<float>(config["start"]);
+   //       const auto end = static_cast<float>(config["end"]);
+   //
+   //       queryRadioSignal(start, end);
+   //
+   //       command.resolve();
+   //
+   //       return;
+   //    }
+   //
+   //    command.reject(error);
+   // }
 
-         return;
-      }
-
-      switch (buffer.type())
-      {
-         // adaptive resample for raw real signal
-         case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
-         {
-            const double sampleStep = 1.0 / static_cast<double>(buffer.sampleRate());
-            const double startTime = static_cast<double>(buffer.offset()) * sampleStep;
-
-            // append raw samples to downsampler
-            for (unsigned int i = 0; i < buffer.elements(); ++i)
-            {
-               const double time = std::fma(sampleStep, i, startTime); // time = sampleStep * i + startTime
-
-               radioDownsampler.append(time, data[i]);
-            }
-
-            break;
-         }
-
-         // adaptive resample for stream logic signal
-         case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
-         {
-            break;
-         }
-
-         default:
-            break;
-      }
-   }
-
-   void stream2(const hw::SignalBuffer &buffer)
-   {
-      const float *data = buffer.data();
-
-      xt::xzarr_file_system_store store("test.zr3");
-      auto root = xt::create_zarr_hierarchy(store);
-
-      // xt::xio_blosc_config();
-
-      // propagate EOF
-      if (!buffer.isValid())
-      {
-         queryRadioSignal(0, INFINITY);
-
-         signalStream->next({});
-
-         return;
-      }
-
-      switch (buffer.type())
-      {
-         // adaptive resample for raw real signal
-         case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
-         {
-            const double sampleStep = 1.0 / static_cast<double>(buffer.sampleRate());
-            const double startTime = static_cast<double>(buffer.offset()) * sampleStep;
-
-            // append raw samples to downsampler
-            for (unsigned int i = 0; i < buffer.elements(); ++i)
-            {
-               const double time = std::fma(sampleStep, i, startTime); // time = sampleStep * i + startTime
-
-               radioDownsampler.append(time, data[i]);
-            }
-
-            break;
-         }
-
-         // adaptive resample for stream logic signal
-         case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
-         {
-            break;
-         }
-
-         default:
-            break;
-      }
-   }
-
-   void queryStream(const rt::Event &command)
-   {
-      int error = MissingParameters;
-
-      while (auto data = command.get<std::string>("data"))
-      {
-         auto config = json::parse(data.value());
-
-         log->info("query stream command: {}", {config.dump()});
-
-         if (!config.contains("start"))
-         {
-            log->error("missing start time parameter!");
-            error = MissingParameters;
-            break;
-         }
-
-         if (!config.contains("end"))
-         {
-            log->error("missing end time parameter!");
-            error = MissingParameters;
-            break;
-         }
-
-         const auto start = static_cast<float>(config["start"]);
-         const auto end = static_cast<float>(config["end"]);
-
-         queryRadioSignal(start, end);
-
-         command.resolve();
-
-         return;
-      }
-
-      command.reject(error);
-   }
-
-   void queryRadioSignal(const double start, const double end) const
-   {
-      unsigned int querySampleCount = 1024;
-
-      hw::SignalBuffer buffer(querySampleCount, 1, 1, 1, 0LL, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, 0);
-
-      auto buckets = radioDownsampler.query(start, end, 0.000010);
-
-      if (auto it = buckets.begin(); it != buckets.end())
-      {
-         // limit start between start and start of first bucket
-         const double queryTimeStart = std::max(start, buckets.front().t_min);
-         const double queryTimeEnd = std::min(end, buckets.back().t_max);
-         const double queryTimeSpan = std::abs(queryTimeEnd - queryTimeStart);
-
-         // calculate query sample count based on time span
-         const double querySampleRate = querySampleCount / queryTimeSpan;
-         const double querySampleStep = 1.0 / querySampleRate;
-         const double querySampleOffset = queryTimeStart * querySampleRate;
-
-         buffer = hw::SignalBuffer(querySampleCount, 1, 1, static_cast<unsigned int>(querySampleRate), static_cast<unsigned long long>(querySampleOffset), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, 0);
-
-         for (int i = 0; i < buffer.elements() && it != buckets.end(); i++)
-         {
-            const double time = std::fma(querySampleStep, i, queryTimeStart);
-
-            while (!(it->t_min <= time && it->t_max >= time)) ++it;
-
-            buffer.put(it->y_min);
-         }
-      }
-
-      buffer.flip();
-
-      signalStream->next(buffer);
-   }
+   // void queryRadioSignal(const double start, const double end) const
+   // {
+   //    unsigned int querySampleCount = 1024;
+   //
+   //    hw::SignalBuffer buffer(querySampleCount, 1, 1, 1, 0LL, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, 0);
+   //
+   //    auto buckets = radioDownsampler.query(start, end, 0.000010);
+   //
+   //    if (auto it = buckets.begin(); it != buckets.end())
+   //    {
+   //       // limit start between start and start of first bucket
+   //       const double queryTimeStart = std::max(start, buckets.front().t_min);
+   //       const double queryTimeEnd = std::min(end, buckets.back().t_max);
+   //       const double queryTimeSpan = std::abs(queryTimeEnd - queryTimeStart);
+   //
+   //       // calculate query sample count based on time span
+   //       const double querySampleRate = querySampleCount / queryTimeSpan;
+   //       const double querySampleStep = 1.0 / querySampleRate;
+   //       const double querySampleOffset = queryTimeStart * querySampleRate;
+   //
+   //       buffer = hw::SignalBuffer(querySampleCount, 1, 1, static_cast<unsigned int>(querySampleRate), static_cast<unsigned long long>(querySampleOffset), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, 0);
+   //
+   //       for (int i = 0; i < buffer.elements() && it != buckets.end(); i++)
+   //       {
+   //          const double time = std::fma(querySampleStep, i, queryTimeStart);
+   //
+   //          while (!(it->t_min <= time && it->t_max >= time)) ++it;
+   //
+   //          buffer.put(it->y_min);
+   //       }
+   //    }
+   //
+   //    buffer.flip();
+   //
+   //    signalStream->next(buffer);
+   // }
 
    void process(const hw::SignalBuffer &buffer)
    {
@@ -361,7 +349,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          // adaptive resample for raw real signal
          case hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES:
          {
-            processRadioSignal(buffer);
+            processRadioSignal3(buffer);
             break;
          }
 
@@ -374,6 +362,94 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
          default:
             break;
+      }
+   }
+
+   // void processRadioSignal2(const hw::SignalBuffer &buffer)
+   // {
+   //    std::vector<std::size_t> shape = {buffer.elements()};
+   //
+   //    // create array from buffer data
+   //    xt::xarray<float> signal = xt::adapt(buffer.data(), buffer.elements(), xt::no_ownership(), shape);
+   //
+   //    // create buffer for average calculation
+   //    xt::xarray<float> temp = xt::view(signal, xt::range(0, WINDOW));
+   //
+   //    // result array with resampled data
+   //    xt::xarray<float> target = {};
+   //
+   //    for (size_t i = WINDOW; i < signal.size(); ++i)
+   //    {
+   //       double value = signal(i);
+   //       double average = xt::mean(temp)();
+   //
+   //       // store new sample if it deviates more than THRESHOLD
+   //       if (double deviation = std::abs(value - average) / std::abs(average); deviation > 0.05)
+   //          target = xt::concatenate(xt::xtuple(target, xt::xarray<double>({value})));
+   //
+   //       // shift average temp buffer
+   //       temp = xt::concatenate(xt::xtuple(xt::view(temp, xt::range(1, WINDOW)), xt::xarray<double>({value})));
+   //    }
+   // }
+
+   void processRadioSignal3(const hw::SignalBuffer &buffer)
+   {
+      const int MEAN_WINDOW = 100;
+
+      hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, buffer.id());
+
+      // always store first sample
+      resampled.put(buffer[0]).put(0.0);
+
+      // accumulator for average
+      float accumulator = buffer[0];
+
+      // process samples
+      for (int i = 1, items = 1; i < buffer.elements(); ++i)
+      {
+         float value = buffer[i];
+         double average = accumulator / static_cast<double>(items);
+
+         // store new sample if it deviates more than THRESHOLD
+         if (double deviation = std::abs(value - average) / std::abs(average); deviation > 0.025)
+            resampled.put(value).put(static_cast<float>(i));
+
+         // update accumulator
+         accumulator += value;
+
+         // remove old sample if we have enough items
+         if (items == MEAN_WINDOW)
+            accumulator -= buffer[i - MEAN_WINDOW];
+         else
+            ++items;
+      }
+
+      // always store last sample
+      resampled.put(buffer[buffer.elements() - 1]).put(buffer.elements() - 1);
+
+      resampled.flip();
+
+      signalStream->next(resampled);
+
+      taskThroughput.update(buffer.elements());
+
+      try
+      {
+         // create shape for xtensor array
+         xt::xarray<float>::shape_type shape = {resampled.elements(), 2};
+
+         // create array from buffer data
+         xt::xarray<float> signal = xt::adapt(resampled.data(), resampled.elements(), xt::no_ownership(), shape);
+
+         // offset to write data to zarr dataset
+         z5::types::ShapeType offset = {resampled.offset(), 2};
+
+         // write data to zarr dataset
+         z5::multiarray::writeSubarray<float>(dataset, signal, offset.begin());
+      }
+      catch (std::exception e)
+      {
+         std::cerr << e.what() << std::endl << std::flush;
       }
    }
 
