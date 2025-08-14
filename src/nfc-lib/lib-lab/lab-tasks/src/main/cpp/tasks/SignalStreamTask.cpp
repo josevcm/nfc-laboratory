@@ -110,11 +110,11 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       z5::createFile(fileHandle, true);
 
       // shape size = 15 minutes of samples at 10 MHz, split in chunks of 100 ms
-      z5::types::ShapeType shape = {15 * 60 * 10000000LL, 2};
-      z5::types::ShapeType chunk = {1000000, 2};
+      z5::types::ShapeType shape = {15 * 60 * 10000000LL};
+      z5::types::ShapeType chunk = {1000000};
+      std::string compressor = "raw"; // "blosc";
 
-      // dataset = z5::createDataset(fileHandle, "data", "float32", shape, {1000000, 2}, "blosc");
-      dataset = z5::createDataset(fileHandle, "data", "float32", shape, {1000000, 2});
+      dataset = z5::createDataset(fileHandle, "data", "float32", shape, chunk, compressor);
    }
 
    ~Impl() override = default;
@@ -436,13 +436,13 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       try
       {
          // create shape for xtensor array
-         xt::xarray<float>::shape_type shape = {resampled.elements(), 2};
+         xt::xarray<float>::shape_type shape = {buffer.elements()};
 
          // create array from buffer data
-         xt::xarray<float> signal = xt::adapt(resampled.data(), resampled.elements(), xt::no_ownership(), shape);
+         xt::xarray<float> signal = xt::adapt(buffer.data(), buffer.elements(), xt::no_ownership(), shape);
 
          // offset to write data to zarr dataset
-         z5::types::ShapeType offset = {resampled.offset(), 2};
+         z5::types::ShapeType offset = {buffer.offset()};
 
          // write data to zarr dataset
          z5::multiarray::writeSubarray<float>(dataset, signal, offset.begin());
