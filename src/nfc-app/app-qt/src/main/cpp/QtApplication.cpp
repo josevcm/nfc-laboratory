@@ -267,7 +267,7 @@ QFile QtApplication::dataFile(const QString &fileName)
    if (!dataPath.exists())
       dataPath.mkpath(".");
 
-   return {dataPath.absoluteFilePath(fileName)};
+   return QFile(dataPath.absoluteFilePath(fileName));
 }
 
 QFile QtApplication::tempFile(const QString &fileName)
