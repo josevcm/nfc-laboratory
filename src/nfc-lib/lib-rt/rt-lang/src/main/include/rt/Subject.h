@@ -22,8 +22,8 @@
 #ifndef RT_SUBJECT_H
 #define RT_SUBJECT_H
 
+#include <algorithm>
 #include <functional>
-#include <list>
 #include <map>
 #include <mutex>
 #include <utility>
