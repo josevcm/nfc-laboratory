@@ -277,7 +277,7 @@ QFile QtApplication::tempFile(const QString &fileName)
    if (!tempPath.exists())
       tempPath.mkpath(".");
 
-   return {tempPath.absoluteFilePath(fileName)};
+   return QFile(tempPath.absoluteFilePath(fileName));
 }
 
 void QtApplication::customEvent(QEvent *event)
