@@ -816,15 +816,15 @@ static const dsl_vga vga_defaults[] = {
 // supported devices
 static const dsl_profile dsl_profiles[] = {
    {
-      0x2A0E,
-      0x0020,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic PLus",
-      nullptr,
-      "DSLogicPlus.fw",
-      "DSLogicPlus.bin",
-      "DSLogicPlus.bin",
+      .vid = 0x2A0E,
+      .pid = 0x0020,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic PLus",
+      .model_version = nullptr,
+      .firmware = "DSLogicPlus.fw",
+      .fpga_bit33 = "DSLogicPlus.bin",
+      .fpga_bit50 = "DSLogicPlus.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF, // feature_caps
@@ -855,15 +855,15 @@ static const dsl_profile dsl_profiles[] = {
       }
    },
    {
-      0x2A0E,
-      0x0021,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic Basic",
-      nullptr,
-      "DSLogicBasic.fw",
-      "DSLogicBasic.bin",
-      "DSLogicBasic.bin",
+      .vid = 0x2A0E,
+      .pid = 0x0021,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic Basic",
+      .model_version = nullptr,
+      .firmware = "DSLogicBasic.fw",
+      .fpga_bit33 = "DSLogicBasic.bin",
+      .fpga_bit50 = "DSLogicBasic.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH, // feature_caps
@@ -894,15 +894,15 @@ static const dsl_profile dsl_profiles[] = {
       }
    },
    {
-      0x2A0E,
-      0x0029,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic U2Basic",
-      nullptr,
-      "DSLogicU2Basic.fw",
-      "DSLogicU2Basic.bin",
-      "DSLogicU2Basic.bin",
+      .vid = 0x2A0E,
+      .pid = 0x0029,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic U2Basic",
+      .model_version = nullptr,
+      .firmware = "DSLogicU2Basic.fw",
+      .fpga_bit33 = "DSLogicU2Basic.bin",
+      .fpga_bit50 = "DSLogicU2Basic.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF, // feature_caps
@@ -931,15 +931,15 @@ static const dsl_profile dsl_profiles[] = {
       }
    },
    {
-      0x2A0E,
-      0x002A,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic U3Pro16",
-      nullptr,
-      "DSLogicU3Pro16.fw",
-      "DSLogicU3Pro16.bin",
-      "DSLogicU3Pro16.bin",
+      .vid = 0x2A0E,
+      .pid = 0x002A,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic U3Pro16",
+      .model_version = nullptr,
+      .firmware = "DSLogicU3Pro16.fw",
+      .fpga_bit33 = "DSLogicU3Pro16.bin",
+      .fpga_bit50 = "DSLogicU3Pro16.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360, // feature_caps
@@ -969,15 +969,15 @@ static const dsl_profile dsl_profiles[] = {
       },
    },
    {
-      0x2A0E,
-      0x002A,
-      LIBUSB_SPEED_SUPER,
-      "DreamSourceLab",
-      "DSLogic U3Pro16",
-      nullptr,
-      "DSLogicU3Pro16.fw",
-      "DSLogicU3Pro16.bin",
-      "DSLogicU3Pro16.bin",
+      .vid = 0x2A0E,
+      .pid = 0x002A,
+      .usb_speed = LIBUSB_SPEED_SUPER,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic U3Pro16",
+      .model_version = nullptr,
+      .firmware = "DSLogicU3Pro16.fw",
+      .fpga_bit33 = "DSLogicU3Pro16.bin",
+      .fpga_bit50 = "DSLogicU3Pro16.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360, // feature_caps
@@ -1007,15 +1007,15 @@ static const dsl_profile dsl_profiles[] = {
       },
    },
    {
-      0x2A0E,
-      0x002C,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic U3Pro32",
-      nullptr,
-      "DSLogicU3Pro32.fw",
-      "DSLogicU3Pro32.bin",
-      "DSLogicU3Pro32.bin",
+      .vid = 0x2A0E,
+      .pid = 0x002C,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic U3Pro32",
+      .model_version = nullptr,
+      .firmware = "DSLogicU3Pro32.fw",
+      .fpga_bit33 = "DSLogicU3Pro32.bin",
+      .fpga_bit50 = "DSLogicU3Pro32.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_LA_CH32, // feature_caps
@@ -1047,15 +1047,15 @@ static const dsl_profile dsl_profiles[] = {
       },
    },
    {
-      0x2A0E,
-      0x002C,
-      LIBUSB_SPEED_SUPER,
-      "DreamSourceLab",
-      "DSLogic U3Pro32",
-      nullptr,
-      "DSLogicU3Pro32.fw",
-      "DSLogicU3Pro32.bin",
-      "DSLogicU3Pro32.bin",
+      .vid = 0x2A0E,
+      .pid = 0x002C,
+      .usb_speed = LIBUSB_SPEED_SUPER,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic U3Pro32",
+      .model_version = nullptr,
+      .firmware = "DSLogicU3Pro32.fw",
+      .fpga_bit33 = "DSLogicU3Pro32.bin",
+      .fpga_bit50 = "DSLogicU3Pro32.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_LA_CH32, // feature_caps
@@ -1087,15 +1087,15 @@ static const dsl_profile dsl_profiles[] = {
       },
    },
    {
-      0x2A0E,
-      0x002D,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic U2Pro16",
-      nullptr,
-      "DSLogicU2Pro16.fw",
-      "DSLogicU2Pro16.bin",
-      "DSLogicU2Pro16.bin",
+      .vid = 0x2A0E,
+      .pid = 0x002D,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic U2Pro16",
+      .model_version = nullptr,
+      .firmware = "DSLogicU2Pro16.fw",
+      .fpga_bit33 = "DSLogicU2Pro16.bin",
+      .fpga_bit50 = "DSLogicU2Pro16.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_SECURITY, // feature_caps
@@ -1164,15 +1164,15 @@ static const dsl_profile dsl_profiles[] = {
       },
    },
    {
-      0x2A0E,
-      0x0031,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic U2Basic",
-      nullptr,
-      "DSLogicU2Basic.fw",
-      "DSLogicU2Basic-pgl12.bin",
-      "DSLogicU2Basic-pgl12.bin",
+      .vid = 0x2A0E,
+      .pid = 0x0031,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic U2Basic",
+      .model_version = nullptr,
+      .firmware = "DSLogicU2Basic.fw",
+      .fpga_bit33 = "DSLogicU2Basic-pgl12.bin",
+      .fpga_bit50 = "DSLogicU2Basic-pgl12.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
@@ -1201,15 +1201,15 @@ static const dsl_profile dsl_profiles[] = {
       }
    },
    {
-      0x2A0E,
-      0x0034,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic PLus",
-      nullptr,
-      "DSLogicPlus-pgl12-2.fw",
-      "DSLogicPlus-pgl12-2.bin",
-      "DSLogicPlus-pgl12-2.bin",
+      .vid = 0x2A0E,
+      .pid = 0x0034,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic PLus",
+      .model_version = nullptr,
+      .firmware = "DSLogicPlus-pgl12-2.fw",
+      .fpga_bit33 = "DSLogicPlus-pgl12-2.bin",
+      .fpga_bit50 = "DSLogicPlus-pgl12-2.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
@@ -1240,15 +1240,15 @@ static const dsl_profile dsl_profiles[] = {
       }
    },
    {
-      0x2A0E,
-      0x0035,
-      LIBUSB_SPEED_HIGH,
-      "DreamSourceLab",
-      "DSLogic U2Basic",
-      nullptr,
-      "DSLogicU2Basic-pgl12-2.fw",
-      "DSLogicU2Basic-pgl12-2.bin",
-      "DSLogicU2Basic-pgl12-2.bin",
+      .vid = 0x2A0E,
+      .pid = 0x0035,
+      .usb_speed = LIBUSB_SPEED_HIGH,
+      .vendor = "DreamSourceLab",
+      .model = "DSLogic U2Basic",
+      .model_version = nullptr,
+      .firmware = "DSLogicU2Basic-pgl12-2.fw",
+      .fpga_bit33 = "DSLogicU2Basic-pgl12-2.bin",
+      .fpga_bit50 = "DSLogicU2Basic-pgl12-2.bin",
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
