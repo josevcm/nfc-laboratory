@@ -1531,9 +1531,9 @@ struct DSLogicDevice::Impl
       settings.div_h = (div >> 16) + ((pre - 1) << 8);
 
       // capture counters
-      settings.cnt_l = (captureSamples >> 4) & 0x0000ffff;
+      settings.cnt_l = (captureSamples >> 4) & 0x0000ffff; // hardware minimum unit is 16 logic samples
       settings.cnt_h = (captureSamples >> 20);
-      settings.dso_cnt_l = captureSamples & 0x0000ffff;
+      settings.dso_cnt_l = captureSamples & 0x0000ffff; // // hardware minimum unit is 1 analog sample
       settings.dso_cnt_h = captureSamples >> 16;
 
       // trigger position, must be align to minimum parallel bits
