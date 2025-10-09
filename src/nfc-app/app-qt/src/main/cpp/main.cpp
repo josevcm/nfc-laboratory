@@ -28,6 +28,7 @@
 #include <QSslSocket>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QCommandLineParser>
 
 #include <rt/Logger.h>
 #include <rt/Executor.h>
@@ -81,6 +82,12 @@ int startApp(int argc, char* argv[])
 {
     rt::Logger* log = rt::Logger::getLogger("app:main", rt::Logger::INFO_LEVEL);
 
+    // initialize application metadata early
+    QtApplication::setApplicationName(NFC_LAB_APPLICATION_NAME);
+    QtApplication::setApplicationVersion(NFC_LAB_VERSION_STRING);
+    QtApplication::setOrganizationName(NFC_LAB_COMPANY_NAME);
+    QtApplication::setOrganizationDomain(NFC_LAB_DOMAIN_NAME);
+
     log->info("***********************************************************************");
     log->info("NFC-LAB {}", {NFC_LAB_VERSION_STRING});
     log->info("***********************************************************************");
@@ -104,12 +111,6 @@ int startApp(int argc, char* argv[])
     // override icons styles
     QtApplication::setStyle(new IconStyle());
 
-    // configure application
-    QtApplication::setApplicationName(NFC_LAB_APPLICATION_NAME);
-    QtApplication::setApplicationVersion(NFC_LAB_VERSION_STRING);
-    QtApplication::setOrganizationName(NFC_LAB_COMPANY_NAME);
-    QtApplication::setOrganizationDomain(NFC_LAB_DOMAIN_NAME);
-
     // configure settings location and format
     QSettings::setDefaultFormat(QSettings::IniFormat);
     //   QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
@@ -129,6 +130,42 @@ int startApp(int argc, char* argv[])
 
     settings.endGroup();
 
+    // initialize application early for command line parsing
+    QtApplication app(argc, argv);
+
+    // setup command line parser (after QtApplication is created)
+    QCommandLineParser parser;
+    parser.setApplicationDescription("NFC Laboratory - NFC Protocol Analyzer");
+    parser.addHelpOption();
+    parser.addVersionOption();
+
+    // add custom options (can be extended later)
+    QCommandLineOption logLevelOption(QStringList() << "l" << "log-level",
+        "Set log level: DEBUG, INFO, WARN, ERROR (default: INFO)", "level");
+    parser.addOption(logLevelOption);
+
+    QCommandLineOption jsonFramesOption(QStringList() << "j" << "json-frames",
+        "Output decoded NFC frames as JSON to stdout (one frame per line)");
+    parser.addOption(jsonFramesOption);
+
+    // process command line arguments
+    parser.process(app);
+
+    // handle log level option
+    if (parser.isSet(logLevelOption))
+    {
+        QString level = parser.value(logLevelOption);
+        rt::Logger::setRootLevel(level.toStdString());
+        log->info("Log level set to: {}", {level.toStdString()});
+    }
+
+    // handle json frames option (BEFORE creating RadioDecoderTask!)
+    if (parser.isSet(jsonFramesOption))
+    {
+        lab::RadioDecoderTask::setPrintFramesEnabled(true);
+        log->info("JSON frame output enabled");
+    }
+
     // create executor service
     rt::Executor executor(128, 10);
 
@@ -140,9 +177,6 @@ int startApp(int argc, char* argv[])
     executor.submit(lab::TraceStorageTask::construct()); // startup frame writer
     executor.submit(lab::SignalStorageTask::construct()); // startup signal reader
     executor.submit(lab::SignalResamplingTask::construct()); // startup signal resampling
-
-    // initialize application
-    QtApplication app(argc, argv);
 
     // start application
     return QtApplication::exec();
