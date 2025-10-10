@@ -2,7 +2,7 @@
 """
 NFC Frame Monitor - py_nfclab CLI
 
-Displays NFC frames in human-readable format with transaction pairing.
+Displays NFC frames in human-readable format.
 Supports both live streams (stdin) and TRZ files.
 
 Usage:
@@ -12,17 +12,18 @@ Usage:
     # Analyze TRZ file
     python3 -m py_nfclab trace.trz
 
-    # Without transaction pairing
-    ./nfc-lab -j | python3 -m py_nfclab --no-pairing
-    python3 -m py_nfclab trace.trz --no-pairing
+    # Show only Poll/Listen frames (hide carrier events)
+    ./nfc-lab -j | python3 -m py_nfclab --no-carrier
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
+from typing import Iterator
 
-from . import NFCFrame, NFCTransaction, read_frames
-from .transactions import StreamProcessor
+from . import NFCFrame, TRZReader
+from .protocol import detect_command
 
 
 # ANSI Color codes
@@ -36,7 +37,6 @@ class Colors:
     CYAN = "\033[96m"
     BOLD = "\033[1m"
     GRAY = "\033[90m"
-    DARK_GRAY = "\033[2m"
 
 
 TECH_COLORS = {
@@ -44,7 +44,7 @@ TECH_COLORS = {
     "NfcB": Colors.BLUE,
     "NfcF": Colors.MAGENTA,
     "NfcV": Colors.CYAN,
-    "ISO7816": Colors.YELLOW,
+    "Iso7816": Colors.YELLOW,
 }
 
 TYPE_COLORS = {
@@ -55,136 +55,131 @@ TYPE_COLORS = {
 }
 
 
-def format_frame(frame: NFCFrame, indent: str = "") -> str:
+def format_frame(frame: NFCFrame) -> str:
     """Format a single frame for display"""
-    hex_data = " ".join(
-        frame.data_hex[i : i + 2] for i in range(0, len(frame.data_hex), 2)
-    )
+    # Format hex data with spaces
+    hex_data = " ".join(f"{b:02X}" for b in frame.data)
+
     tech_color = TECH_COLORS.get(frame.tech, Colors.RESET)
-    type_color = TYPE_COLORS.get(frame.frame_type, Colors.RESET)
+    type_color = TYPE_COLORS.get(frame.type, Colors.RESET)
 
-    output = f"{indent}[{Colors.BOLD}{frame.timestamp:>12.6f}{Colors.RESET}] "
-    output += f"{tech_color}{frame.tech:>8}{Colors.RESET} "
-    output += f"{frame.rate or 0:>6} " if frame.rate else "       "
-    output += f"{type_color}{frame.frame_type:>10}{Colors.RESET} | "
-    output += (
-        f"{Colors.CYAN}{frame.event or '':>14}{Colors.RESET} | "
-        if frame.event
-        else " " * 17 + "| "
-    )
-    output += f"{frame.length:3} bytes | {hex_data}"
+    # Detect protocol command
+    command = detect_command(frame)
 
-    if frame.flags:
-        output += f" {Colors.MAGENTA}[{', '.join(frame.flags)}]{Colors.RESET}"
+    output = f"[{Colors.BOLD}{frame.timestamp:>12.6f}{Colors.RESET}] "
+    output += f"{tech_color}{frame.tech:>12}{Colors.RESET} "
+    output += f"{frame.rate:>6} " if frame.rate else "       "
+    output += f"{type_color}{frame.type:>10}{Colors.RESET} | "
+
+    # Show command if detected
+    if command:
+        output += f"{Colors.CYAN}{command:>14}{Colors.RESET} | "
+    else:
+        output += " " * 17 + "| "
+
+    output += f"{frame.length:3} bytes | {hex_data or '(no data)'}"
+
     if frame.errors:
         output += f" {Colors.RED}[{', '.join(frame.errors)}]{Colors.RESET}"
 
     return output
 
 
-def format_transaction(transaction: NFCTransaction) -> str:
-    """Format a transaction (Poll + Listen pair) for display"""
-    lines = [format_frame(transaction.poll)]
+def read_live_stream(stream) -> Iterator[NFCFrame]:
+    """
+    Read frames from live JSON stream (one frame per line).
 
-    if transaction.listen:
-        lines.append(format_frame(transaction.listen, "└─ "))
-        duration_ms = transaction.duration * 1000 if transaction.duration else 0
-        summary = f"  {Colors.DARK_GRAY}└─ {transaction.command or 'Unknown'}, {duration_ms:.3f}ms"
-        if transaction.has_error():
-            summary += f" {Colors.RED}[ERROR]{Colors.RESET}"
-        lines.append(summary + Colors.RESET)
-    else:
-        lines.append(f"  {Colors.DARK_GRAY}└─ [No response]{Colors.RESET}")
+    This handles the extended JSON format from ./nfc-lab -j
+    """
+    for line in stream:
+        line = line.strip()
 
-    return "\n".join(lines)
+        # Skip comments and empty lines
+        if not line or line.startswith("#"):
+            continue
+
+        try:
+            data = json.loads(line)
+
+            # Convert extended live format to TRZ format
+            # Live format has both camelCase and snake_case, we normalize to TRZ camelCase
+            trz_data = {
+                "sampleStart": data.get("sample_start", 0),
+                "sampleEnd": data.get("sample_end", 0),
+                "sampleRate": data.get("sample_rate", 3200000),
+                "timeStart": data.get("time_start", data.get("timestamp", 0.0)),
+                "timeEnd": data.get("time_end", data.get("timestamp", 0.0)),
+                "dateTime": data.get("date_time", 0.0),
+                "techType": data.get("tech_type", 0),
+                "frameType": data.get("frame_type", 0),
+                "framePhase": data.get(
+                    "frame_phase", 0x0101
+                ),  # Default to NfcCarrierPhase
+                "frameRate": data.get("rate", data.get("frame_rate", 0)),
+                "frameFlags": data.get("frame_flags", 0),
+            }
+
+            # Add frame data if present
+            if "data" in data and data["data"]:
+                # Live format has hex without separators
+                hex_str = data["data"]
+                # Add colons every 2 chars for TRZ format
+                trz_data["frameData"] = ":".join(
+                    hex_str[i : i + 2] for i in range(0, len(hex_str), 2)
+                )
+
+            yield NFCFrame.from_trz_dict(trz_data)
+
+        except (json.JSONDecodeError, KeyError) as e:
+            # Skip invalid lines silently (nfc-lab may output non-JSON status messages)
+            continue
 
 
-def process_stream(stream, pair_transactions: bool = True):
-    """Process frames from stdin (live mode)"""
-    processor = StreamProcessor()
-    frame_count = [0]
-    transaction_count = [0]
+def process_frames(frames: Iterator[NFCFrame], show_carrier: bool = True) -> int:
+    """Process and display frames"""
+    count = 0
 
-    def on_frame(frame):
-        frame_count[0] += 1
-        if not pair_transactions:
-            print(format_frame(frame))
-            sys.stdout.flush()
+    for frame in frames:
+        # Filter carrier events if requested
+        if not show_carrier and frame.is_carrier():
+            continue
 
-    def on_transaction(transaction):
-        transaction_count[0] += 1
-        print(format_transaction(transaction))
-        print()
+        print(format_frame(frame))
         sys.stdout.flush()
+        count += 1
 
-    processor.add_frame_handler(on_frame)
-    if pair_transactions:
-        processor.add_transaction_handler(on_transaction)
-
-    try:
-        for line in stream:
-            processor.process_json_line(line)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        processor.finalize()
-
-    return frame_count[0], transaction_count[0]
-
-
-def process_file(file_path: Path, pair_transactions: bool = True):
-    """Process frames from TRZ file (file mode)"""
-    processor = StreamProcessor()
-    frame_count = [0]
-    transaction_count = [0]
-
-    def on_frame(frame):
-        frame_count[0] += 1
-        if not pair_transactions:
-            print(format_frame(frame))
-
-    def on_transaction(transaction):
-        transaction_count[0] += 1
-        print(format_transaction(transaction))
-        print()
-
-    processor.add_frame_handler(on_frame)
-    if pair_transactions:
-        processor.add_transaction_handler(on_transaction)
-
-    for frame in read_frames(file_path):
-        processor.process_frame(frame)
-
-    processor.finalize()
-
-    return frame_count[0], transaction_count[0]
+    return count
 
 
 def main():
-    parser = argparse.ArgumentParser(description="NFC Frame Monitor")
-    parser.add_argument(
-        "file", nargs="?", help="TRZ file to analyze (omit for live mode)"
+    parser = argparse.ArgumentParser(
+        description="NFC Frame Monitor",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--no-pairing", action="store_true", help="Disable transaction pairing"
+        "file", nargs="?", help="TRZ file to analyze (omit for live stdin mode)"
+    )
+    parser.add_argument(
+        "--no-carrier",
+        action="store_true",
+        help="Hide carrier on/off events",
     )
     args = parser.parse_args()
 
-    pair_transactions = not args.no_pairing
+    show_carrier = not args.no_carrier
 
     # Print header
     print(f"{Colors.CYAN}{Colors.BOLD}NFC Frame Monitor{Colors.RESET}")
     if args.file:
-        print(f"{Colors.CYAN}Analyzing: {args.file}{Colors.RESET}")
+        print(f"{Colors.CYAN}File: {args.file}{Colors.RESET}")
     else:
-        print(f"{Colors.CYAN}Live mode (Press Ctrl+C to stop){Colors.RESET}")
-    if pair_transactions:
-        print(f"{Colors.CYAN}Transaction pairing enabled{Colors.RESET}")
-    print("=" * 100)
+        print(f"{Colors.CYAN}Live mode - reading from stdin{Colors.RESET}")
+        print(f"{Colors.GRAY}(Press Ctrl+C to stop){Colors.RESET}")
+    print("=" * 80)
 
     try:
         if args.file:
-            # File mode
+            # File mode - read TRZ
             file_path = Path(args.file)
             if not file_path.exists():
                 print(
@@ -192,24 +187,25 @@ def main():
                     file=sys.stderr,
                 )
                 sys.exit(1)
-            frame_count, transaction_count = process_file(file_path, pair_transactions)
+
+            reader = TRZReader(file_path)
+            frame_count = process_frames(reader.read_frames(), show_carrier)
         else:
-            # Live mode
-            frame_count, transaction_count = process_stream(
-                sys.stdin, pair_transactions
-            )
+            # Live mode - read from stdin
+            frame_count = process_frames(read_live_stream(sys.stdin), show_carrier)
 
         # Print statistics
-        print(f"\n{'=' * 100}")
-        print(
-            f"{Colors.YELLOW}{'Analysis complete' if args.file else 'Monitoring stopped'}{Colors.RESET}"
-        )
-        print(f"Total frames: {frame_count}")
-        if pair_transactions:
-            print(f"Total transactions: {transaction_count}")
+        print(f"\n{'=' * 80}")
+        print(f"{Colors.YELLOW}Total frames displayed: {frame_count}{Colors.RESET}")
 
+    except KeyboardInterrupt:
+        print(f"\n{Colors.YELLOW}Stopped by user{Colors.RESET}")
+        sys.exit(0)
     except Exception as e:
         print(f"{Colors.RED}Error: {e}{Colors.RESET}", file=sys.stderr)
+        import traceback
+
+        traceback.print_exc()
         sys.exit(1)
 
 

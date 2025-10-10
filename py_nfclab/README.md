@@ -1,82 +1,140 @@
-# py_nfclab - NFC Laboratory Python Library
+# NFC Laboratory - Python Library (py_nfclab)
 
-Python library for parsing and analyzing NFC frame data from nfc-lab.
+Python library for NFC trace analysis - read TRZ files, detect protocols, analyze frames.
 
-## Architecture
+## Features
 
+- Read TRZ files (complete format support)
+- Read live JSON streams (`./nfc-lab -j`)
+- Protocol command detection (93 commands)
+- JSON export
+- CLI tool with color output
+
+## Usage
+
+No installation required - just use it directly from the repository:
+
+```bash
+# From nfc-laboratory directory
+python3 -m py_nfclab trace.trz
+
+# Or with Python import
+cd /path/to/nfc-laboratory
+python3
+>>> from py_nfclab import read_trz
+>>> frames = read_trz("trace.trz")
 ```
-py_nfclab/
-├── models.py            # NFCFrame, NFCTransaction, Enums
-├── protocol.py          # Protocol parser and event detection
-├── transactions.py      # Transaction builder (Poll+Listen pairing)
-└── readers.py           # TRZ archives and live JSON streams
-```
-
-## Core Classes
-
-- **NFCFrame**: Single NFC frame with timing, data, tech type, and protocol event
-- **NFCTransaction**: Poll/Listen pair with duration and command detection
-- **ProtocolParser**: Detects protocol events (REQA, READ, etc.)
-- **TransactionBuilder**: Pairs Poll frames with Listen responses
-- **StreamProcessor**: Pipeline for frame parsing and transaction building
 
 ## Quick Start
 
-### Read frames from TRZ or live stream
+### Python API
 
 ```python
-from py_nfclab import read_frames
+from py_nfclab import read_trz, detect_command, write_json
 
-# TRZ file
-for frame in read_frames("trace.trz"):
-    print(f"{frame.timestamp:.6f} {frame.tech} {frame.frame_type}: {frame.data_hex}")
+# Read TRZ file
+frames = read_trz("trace.trz")
 
-# Live stream
-import sys
-for frame in read_frames(sys.stdin):
-    print(f"{frame.event}: {frame.data_hex}")
+# Analyze frames
+for frame in frames:
+    if frame.is_poll():
+        cmd = detect_command(frame)
+        print(f"{frame.timestamp:.6f}s {frame.tech:10} {cmd or 'Unknown':15} {frame.data.hex()}")
+
+# Export to JSON
+write_json(frames, "output.json")
 ```
 
-### Parse protocol events and build transactions
+### CLI Tool
+
+```bash
+# Analyze TRZ file
+python3 -m py_nfclab trace.trz
+
+# Live monitoring
+./nfc-lab -j | python3 -m py_nfclab
+
+# Hide carrier events
+python3 -m py_nfclab trace.trz --no-carrier
+```
+
+## API Reference
+
+### Reading
 
 ```python
-from py_nfclab import read_frames, ProtocolParser, TransactionBuilder
+from py_nfclab import read_trz, TRZReader
 
-parser = ProtocolParser()
-builder = TransactionBuilder()
+# Simple read
+frames = read_trz("trace.trz")
 
-for frame in read_frames("trace.trz"):
-    parser.parse(frame)
-    transaction = builder.add_frame(frame)
-
-    if transaction and transaction.is_complete():
-        print(f"{transaction.poll.event} -> {transaction.listen.event}")
-        print(f"  Duration: {transaction.duration*1000:.3f}ms")
+# Iterator (memory efficient)
+reader = TRZReader("trace.trz")
+for frame in reader.read_frames():
+    print(frame)
 ```
 
-### Stream processing with handlers
+### Frame Properties
 
 ```python
-from py_nfclab.transactions import StreamProcessor
+frame.timestamp    # Time in seconds (float)
+frame.tech         # "NfcA", "NfcB", "NfcF", "NfcV"
+frame.type         # "Poll", "Listen", "CarrierOn", "CarrierOff"
+frame.phase        # "NfcSelectionPhase", "NfcApplicationPhase"
+frame.data         # Frame payload (bytes)
+frame.length       # Data length in bytes
+frame.rate         # Bitrate in bps
+frame.errors       # ["CRC", "PARITY", "SYNC", "TRUNCATED"]
 
-processor = StreamProcessor()
-
-processor.add_frame_handler(lambda f: print(f"Frame: {f.event}"))
-processor.add_transaction_handler(lambda t: print(f"Transaction: {t.duration*1000:.2f}ms"))
-
-import sys
-for line in sys.stdin:
-    processor.process_json_line(line)
-processor.finalize()
+# Methods
+frame.is_poll()    # Poll/Request frame
+frame.is_listen()  # Listen/Response frame
+frame.is_carrier() # Carrier on/off event
 ```
 
-## Supported Protocols
+### Protocol Detection
 
-- **NFC-A** (ISO 14443-3A): REQA, WUPA, SEL, RATS, HLTA, MIFARE, Ultralight
-- **NFC-B** (ISO 14443-3B): REQB, ATTRIB, HLTB
-- **NFC-F** (FeliCa): REQC, ATQC
-- **NFC-V** (ISO 15693): Inventory, Read/Write commands, NXP extensions
-- **ISO-DEP**: I-Block, R-Block, S-Block across NFC-A/B
-- **ISO7816**: T=1 protocol blocks, PPS
+```python
+from py_nfclab import detect_command
 
-Event detection is context-aware (uses previous poll to interpret response) and based on the C++ StreamModel.cpp implementation.
+cmd = detect_command(frame)  # "WUPA", "REQB", "Inventory", etc.
+```
+
+Supports 93 commands across NFC-A/B/F/V, ISO-DEP, and ISO7816.
+
+### Export
+
+```python
+from py_nfclab import write_json, write_jsonl
+
+# TRZ-compatible JSON
+write_json(frames, "output.json")
+
+# JSON Lines (one frame per line)
+write_jsonl(frames, "output.jsonl")
+```
+
+## TRZ File Format
+
+TRZ is a tar.gz archive containing `frame.json` with frame metadata.
+
+### Frame Fields
+
+Each frame in `frame.json` contains 11 fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sampleStart/End` | int | Sample indices |
+| `sampleRate` | int | Sample rate in Hz (e.g., 3200000) |
+| `timeStart/End` | float | Time in seconds (relative) |
+| `dateTime` | float | Absolute Unix timestamp |
+| `techType` | int | Tech: 0x0101=NfcA, 0x0102=NfcB, 0x0103=NfcF, 0x0104=NfcV |
+| `frameType` | int | Type: 0x0100=CarrierOff, 0x0101=CarrierOn, 0x0102=Poll, 0x0103=Listen |
+| `framePhase` | int | Phase: 0x0102=SelectionPhase, 0x0103=ApplicationPhase |
+| `frameRate` | int | Bitrate in bps |
+| `frameFlags` | int | Errors: 0x20=CRC, 0x10=Parity, 0x08=Truncated, 0x40=Sync |
+| `frameData` | string | Hex payload: `"AA:BB:CC"` (optional for carrier events) |
+
+## License
+
+Same as nfc-laboratory main project.
