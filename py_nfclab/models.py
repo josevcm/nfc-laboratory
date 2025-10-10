@@ -1,14 +1,13 @@
 """
-Data models for NFC frames and transactions.
+NFC Frame Data Models
 
-This module defines the core data structures used throughout the library.
-Based on the C++ implementation in RawFrame.h and StreamModel.cpp.
+Complete implementation of NFC frame data structures matching the TRZ file format.
+Based on C++ RawFrame implementation in TraceStorageTask.cpp and RawFrame.h.
 """
 
-import json
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class TechType(IntEnum):
@@ -71,181 +70,209 @@ class FrameFlags(IntEnum):
 @dataclass
 class NFCFrame:
     """
-    Represents a single NFC frame.
+    Complete NFC frame representation matching TRZ format specification.
 
-    This is the core data structure that holds all information about a frame,
-    separated from its interpretation. Based on lab::RawFrame from the C++ code.
+    All fields from TRZ frame.json are preserved.
     """
 
-    # Timing information
-    timestamp: float
-    time_start: Optional[float] = None
-    time_end: Optional[float] = None
-    delta: Optional[float] = None
+    # Sample-level timing (from TRZ)
+    sample_start: int
+    sample_end: int
+    sample_rate: int
+
+    # Time information
+    time_start: float
+    time_end: float
+    date_time: float  # Absolute Unix timestamp
 
     # Frame classification
-    tech: str = "UNKNOWN"  # String representation (e.g., "NfcA", "NfcV")
-    tech_type: Optional[TechType] = None  # Enum value
-    frame_type: str = "UNKNOWN"  # String representation (e.g., "Poll", "Listen")
-    frame_type_enum: Optional[FrameType] = None  # Enum value
-    phase: Optional[FramePhase] = None
+    tech_type: int
+    frame_type: int
+    frame_phase: int
+
+    # Frame properties
+    frame_rate: int  # Bitrate in bps
+    frame_flags: int  # Bitmask
 
     # Frame data
-    data: bytes = field(default_factory=bytes)
-    data_hex: str = ""
-    length: int = 0
+    frame_data: bytes = field(default_factory=bytes)
 
-    # Protocol information
-    rate: Optional[int] = None
-    flags: List[str] = field(default_factory=list)
-    flags_enum: int = 0
-    errors: List[str] = field(default_factory=list)
+    # Computed/derived fields
+    _errors: Optional[List[str]] = field(default=None, repr=False)
+    _tech_name: Optional[str] = field(default=None, repr=False)
+    _type_name: Optional[str] = field(default=None, repr=False)
+    _phase_name: Optional[str] = field(default=None, repr=False)
 
-    # Interpretation (filled by protocol parser)
-    event: Optional[str] = None
-    parsed_data: Optional[dict] = None
+    def __post_init__(self):
+        """Compute derived fields after initialization"""
+        if self._errors is None:
+            self._errors = self._decode_errors()
+        if self._tech_name is None:
+            self._tech_name = self._decode_tech()
+        if self._type_name is None:
+            self._type_name = self._decode_type()
+        if self._phase_name is None:
+            self._phase_name = self._decode_phase()
 
-    # Original JSON for reference
-    raw_json: Optional[dict] = None
+    # Properties for convenient access
+    @property
+    def timestamp(self) -> float:
+        """Primary timestamp (time_start)"""
+        return self.time_start
 
-    @classmethod
-    def from_json(cls, json_str: str) -> "NFCFrame":
-        """Create NFCFrame from JSON string (as output by nfc-lab --json-frames)"""
-        data = json.loads(json_str)
-        return cls.from_dict(data)
+    @property
+    def duration(self) -> float:
+        """Frame duration in seconds"""
+        return self.time_end - self.time_start
 
-    @classmethod
-    def from_dict(cls, data: dict) -> "NFCFrame":
-        """Create NFCFrame from dictionary (works for both live and TRZ format)"""
-        hex_data = data.get("data", "")
-        errors_list = list(data.get("errors", []))
+    @property
+    def data(self) -> bytes:
+        """Frame data payload"""
+        return self.frame_data
 
+    @property
+    def length(self) -> int:
+        """Frame data length in bytes"""
+        return len(self.frame_data)
+
+    @property
+    def errors(self) -> List[str]:
+        """Decoded error flags"""
+        return self._errors if self._errors is not None else []
+
+    @property
+    def tech(self) -> str:
+        """Technology name (e.g., 'NfcA')"""
+        return self._tech_name if self._tech_name is not None else "Unknown"
+
+    @property
+    def type(self) -> str:
+        """Frame type name (e.g., 'Poll')"""
+        return self._type_name if self._type_name is not None else "Unknown"
+
+    @property
+    def phase(self) -> str:
+        """Frame phase name (e.g., 'SelectionPhase')"""
+        return self._phase_name if self._phase_name is not None else "Unknown"
+
+    @property
+    def rate(self) -> int:
+        """Bitrate in bps"""
+        return self.frame_rate
+
+    def _decode_errors(self) -> List[str]:
+        """Decode frame_flags bitmask to error list"""
+        errors = []
+        if self.frame_flags & FrameFlags.CrcError:
+            errors.append("CRC")
+        if self.frame_flags & FrameFlags.ParityError:
+            errors.append("PARITY")
+        if self.frame_flags & FrameFlags.SyncError:
+            errors.append("SYNC")
+        if self.frame_flags & FrameFlags.Truncated:
+            errors.append("TRUNCATED")
+        return errors
+
+    def _decode_tech(self) -> str:
+        """Decode tech_type to name"""
         try:
-            data_bytes = bytes.fromhex(hex_data) if hex_data else bytes()
+            return TechType(self.tech_type).name
         except ValueError:
-            data_bytes = bytes()
-            errors_list.append("invalid-hex")
+            return f"Unknown(0x{self.tech_type:04x})"
 
-        tech_str = data.get("tech", "UNKNOWN")
-        tech_enum = (
-            getattr(TechType, tech_str, None) if hasattr(TechType, tech_str) else None
-        )
+    def _decode_type(self) -> str:
+        """Decode frame_type to name"""
+        try:
+            enum_val = FrameType(self.frame_type)
+            # Simplify common names
+            type_map = {
+                FrameType.NfcPollFrame: "Poll",
+                FrameType.NfcListenFrame: "Listen",
+                FrameType.NfcCarrierOn: "CarrierOn",
+                FrameType.NfcCarrierOff: "CarrierOff",
+            }
+            return type_map.get(enum_val, enum_val.name)
+        except ValueError:
+            return f"Unknown(0x{self.frame_type:04x})"
 
-        # Map frame type string to enum
-        frame_type_str = data.get("type", "UNKNOWN")
-        frame_type_map = {
-            "Poll": FrameType.NfcPollFrame,
-            "Listen": FrameType.NfcListenFrame,
-            "CarrierOn": FrameType.NfcCarrierOn,
-            "CarrierOff": FrameType.NfcCarrierOff,
-        }
-        frame_type_enum = frame_type_map.get(frame_type_str)
-
-        # Parse flags array to bitfield
-        flags_list = data.get("flags", [])
-        flag_map = {
-            "crc-error": FrameFlags.CrcError,
-            "parity-error": FrameFlags.ParityError,
-            "sync-error": FrameFlags.SyncError,
-            "truncated": FrameFlags.Truncated,
-            "encrypted": FrameFlags.Encrypted,
-            "short-frame": FrameFlags.ShortFrame,
-        }
-        flags_bits = sum(flag_map.get(f, 0) for f in flags_list)
-
-        return cls(
-            timestamp=data.get("timestamp", 0),
-            time_start=data.get("time_start"),
-            time_end=data.get("time_end"),
-            tech=tech_str,
-            tech_type=tech_enum,
-            frame_type=frame_type_str,
-            frame_type_enum=frame_type_enum,
-            data=data_bytes,
-            data_hex=hex_data,
-            length=data.get("length", len(data_bytes)),
-            rate=data.get("rate"),
-            flags=flags_list,
-            flags_enum=flags_bits,
-            errors=errors_list,
-            raw_json=data,
-        )
+    def _decode_phase(self) -> str:
+        """Decode frame_phase to name"""
+        try:
+            return FramePhase(self.frame_phase).name
+        except ValueError:
+            return f"Unknown(0x{self.frame_phase:04x})"
 
     def has_flag(self, flag: FrameFlags) -> bool:
-        """Check if frame has a specific flag set"""
-        return bool(self.flags_enum & flag)
+        """Check if specific flag is set"""
+        return bool(self.frame_flags & flag)
 
     def is_poll(self) -> bool:
         """Check if this is a poll/request frame"""
-        return self.frame_type in ["Poll", "Request"] or self.frame_type_enum in [
-            FrameType.NfcPollFrame,
-            FrameType.IsoRequestFrame,
-        ]
+        return self.frame_type in [FrameType.NfcPollFrame, FrameType.IsoRequestFrame]
 
     def is_listen(self) -> bool:
         """Check if this is a listen/response frame"""
-        return self.frame_type in ["Listen", "Response"] or self.frame_type_enum in [
-            FrameType.NfcListenFrame,
-            FrameType.IsoResponseFrame,
-        ]
+        return self.frame_type in [FrameType.NfcListenFrame, FrameType.IsoResponseFrame]
+
+    def is_carrier(self) -> bool:
+        """Check if this is a carrier on/off event"""
+        return self.frame_type in [FrameType.NfcCarrierOn, FrameType.NfcCarrierOff]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Export to TRZ-compatible dictionary"""
+        result: Dict[str, Any] = {
+            "sampleStart": self.sample_start,
+            "sampleEnd": self.sample_end,
+            "sampleRate": self.sample_rate,
+            "timeStart": self.time_start,
+            "timeEnd": self.time_end,
+            "dateTime": self.date_time,
+            "techType": self.tech_type,
+            "frameType": self.frame_type,
+            "framePhase": self.frame_phase,
+            "frameRate": self.frame_rate,
+            "frameFlags": self.frame_flags,
+        }
+
+        # Add frame data if present
+        if self.frame_data:
+            # Format as colon-separated hex
+            result["frameData"] = ":".join(f"{b:02X}" for b in self.frame_data)
+
+        return result
+
+    @classmethod
+    def from_trz_dict(cls, data: dict) -> "NFCFrame":
+        """
+        Create NFCFrame from TRZ frame.json dictionary.
+
+        Expects all mandatory TRZ fields to be present.
+        """
+        # Parse frame data (format: "AA:BB:CC" or "52")
+        frame_data_str = data.get("frameData", "")
+        if frame_data_str:
+            hex_data = frame_data_str.replace(":", "")
+            frame_data = bytes.fromhex(hex_data)
+        else:
+            frame_data = bytes()
+
+        return cls(
+            sample_start=data["sampleStart"],
+            sample_end=data["sampleEnd"],
+            sample_rate=data["sampleRate"],
+            time_start=data["timeStart"],
+            time_end=data["timeEnd"],
+            date_time=data["dateTime"],
+            tech_type=data["techType"],
+            frame_type=data["frameType"],
+            frame_phase=data["framePhase"],
+            frame_rate=data["frameRate"],
+            frame_flags=data["frameFlags"],
+            frame_data=frame_data,
+        )
 
     def __repr__(self) -> str:
         return (
-            f"NFCFrame(timestamp={self.timestamp:.6f}, tech={self.tech}, "
-            f"type={self.frame_type}, event={self.event}, length={self.length})"
-        )
-
-
-@dataclass
-class NFCTransaction:
-    """
-    Represents a transaction: a Poll frame paired with its Listen response.
-
-    This enables higher-level protocol analysis by grouping related frames together.
-    """
-
-    poll: NFCFrame
-    listen: Optional[NFCFrame] = None
-
-    # Transaction timing
-    start_time: float = 0
-    end_time: Optional[float] = None
-    duration: Optional[float] = None
-
-    # Transaction interpretation
-    command: Optional[str] = None
-    response_status: Optional[str] = None
-    parsed_transaction: Optional[dict] = None
-
-    def __post_init__(self):
-        self.start_time = self.poll.timestamp
-        self.command = self.poll.event
-        if self.listen:
-            self.end_time = self.listen.timestamp
-            self.duration = self.end_time - self.start_time
-
-    def is_complete(self) -> bool:
-        """Check if transaction has both poll and listen frames"""
-        return self.listen is not None
-
-    def has_error(self) -> bool:
-        """Check if either frame in the transaction has errors"""
-        error_flags = (
-            FrameFlags.CrcError,
-            FrameFlags.ParityError,
-            FrameFlags.SyncError,
-        )
-        if self.poll.errors or any(self.poll.has_flag(f) for f in error_flags):
-            return True
-        if self.listen and (
-            self.listen.errors or any(self.listen.has_flag(f) for f in error_flags)
-        ):
-            return True
-        return False
-
-    def __repr__(self) -> str:
-        status = "complete" if self.is_complete() else "incomplete"
-        return (
-            f"NFCTransaction(time={self.start_time:.6f}, command={self.command}, "
-            f"status={status}, has_response={self.listen is not None})"
+            f"NFCFrame(time={self.time_start:.6f}s, tech={self.tech}, "
+            f"type={self.type}, phase={self.phase}, data={len(self.frame_data)}B)"
         )

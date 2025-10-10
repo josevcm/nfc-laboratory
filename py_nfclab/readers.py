@@ -1,178 +1,100 @@
 """
-Simplified file readers for NFC-lab output formats.
+TRZ File Reader
 
-Only supports two sources:
-- TRZ files (tar.gz archives with frame.json)
-- Live JSON streams (from stdin or nfc-lab --json-frames)
-
-Both now use the same unified JSON format.
+Simple and efficient reader for TRZ trace files.
+Complete implementation matching TRZ format specification.
 """
 
 import json
 import tarfile
 from pathlib import Path
-from typing import Iterator, Optional, TextIO, Union
+from typing import Iterator, List, Union
 
-from .models import FrameFlags, FrameType, NFCFrame, TechType
+from .models import NFCFrame
 
 
 class TRZReader:
     """
     Reader for TRZ (trace archive) files.
 
-    TRZ files are tar.gz archives containing a frame.json file.
+    TRZ files are tar.gz archives containing frame.json with complete frame metadata.
     """
 
     def __init__(self, file_path: Union[str, Path]):
+        """
+        Initialize TRZ reader.
+
+        Args:
+            file_path: Path to .trz file
+        """
         self.file_path = Path(file_path)
         if not self.file_path.exists():
             raise FileNotFoundError(f"TRZ file not found: {file_path}")
+        if not self.file_path.suffix == ".trz":
+            raise ValueError(f"File must have .trz extension: {file_path}")
 
     def read_frames(self) -> Iterator[NFCFrame]:
-        """Read frames from TRZ file."""
+        """
+        Read all frames from TRZ file.
+
+        Yields:
+            NFCFrame objects with complete TRZ metadata
+
+        Raises:
+            ValueError: If TRZ format is invalid
+        """
         with tarfile.open(self.file_path, "r:gz") as tar:
-            json_member = tar.getmember("frame.json")
-            json_file = tar.extractfile(json_member)
-            if not json_file:
-                return
-
-            metadata = json.load(json_file)
-            frames_data = metadata.get("frames", [])
-
-            for frame_data in frames_data:
-                # Convert old TRZ format to unified format
-                yield self._normalize_trz_frame(frame_data)
-
-    def _normalize_trz_frame(self, frame_data: dict) -> NFCFrame:
-        """
-        Normalize old TRZ format to match new live format.
-
-        Old TRZ uses: frameData, techType, frameType, frameFlags
-        New format uses: data, tech, type, flags
-        """
-        # Convert frameData "26:01:00" -> "260100"
-        frame_data_str = frame_data.get("frameData", "")
-        hex_data = frame_data_str.replace(":", "")
-
-        # Convert techType int -> tech string
-        tech_type_int = frame_data.get("techType", 0)
-        try:
-            tech_str = TechType(tech_type_int).name
-        except ValueError:
-            tech_str = "UNKNOWN"
-
-        # Convert frameType int -> type string
-        frame_type_int = frame_data.get("frameType", 0)
-        try:
-            frame_enum = FrameType(frame_type_int)
-            type_map = {
-                FrameType.NfcPollFrame: "Poll",
-                FrameType.NfcListenFrame: "Listen",
-                FrameType.NfcCarrierOn: "CarrierOn",
-                FrameType.NfcCarrierOff: "CarrierOff",
-            }
-            frame_type_str = type_map.get(frame_enum, frame_enum.name)
-        except ValueError:
-            frame_type_str = "UNKNOWN"
-
-        # Convert frameFlags int -> flags array
-        frame_flags_int = frame_data.get("frameFlags", 0)
-        flags_list = []
-
-        flag_map = {
-            FrameFlags.CrcError: "crc-error",
-            FrameFlags.ParityError: "parity-error",
-            FrameFlags.SyncError: "sync-error",
-            FrameFlags.Truncated: "truncated",
-            FrameFlags.Encrypted: "encrypted",
-            FrameFlags.ShortFrame: "short-frame",
-        }
-
-        for flag_bit, flag_name in flag_map.items():
-            if frame_flags_int & flag_bit:
-                flags_list.append(flag_name)
-
-        # Add request/response flags
-        if frame_type_int == FrameType.NfcPollFrame:
-            flags_list.append("request")
-        elif frame_type_int == FrameType.NfcListenFrame:
-            flags_list.append("response")
-
-        # Build normalized dict matching new format
-        normalized = {
-            "timestamp": frame_data.get("timeStart", 0),
-            "tech": tech_str,
-            "type": frame_type_str,
-            "length": len(bytes.fromhex(hex_data)) if hex_data else 0,
-            "data": hex_data,
-            "time_start": frame_data.get("timeStart"),
-            "time_end": frame_data.get("timeEnd"),
-            "flags": flags_list,
-        }
-
-        if frame_data.get("frameRate"):
-            normalized["rate"] = frame_data["frameRate"]
-
-        return NFCFrame.from_dict(normalized)
-
-
-class LiveStreamReader:
-    """
-    Reader for live JSON streams (e.g., from stdin or nfc-lab --json-frames).
-
-    Reads JSON objects line-by-line with the unified format.
-    """
-
-    def __init__(self, stream: Optional[TextIO] = None):
-        import sys
-
-        self.stream = stream or sys.stdin
-
-    def read_frames(self) -> Iterator[NFCFrame]:
-        """Read frames from stream line-by-line."""
-        for line in self.stream:
-            line = line.strip()
-
-            # Skip empty lines and comments
-            if not line or line.startswith("#"):
-                continue
-
+            # Extract frame.json
             try:
-                yield NFCFrame.from_json(line)
-            except json.JSONDecodeError:
-                continue
+                member = tar.getmember("frame.json")
+            except KeyError:
+                raise ValueError("TRZ file does not contain frame.json")
+
+            json_file = tar.extractfile(member)
+            if not json_file:
+                raise ValueError("Failed to extract frame.json")
+
+            # Parse JSON
+            data = json.load(json_file)
+
+            if not isinstance(data, dict) or "frames" not in data:
+                raise ValueError("Invalid frame.json format: missing 'frames' array")
+
+            # Yield all frames
+            for frame_data in data["frames"]:
+                try:
+                    yield NFCFrame.from_trz_dict(frame_data)
+                except (KeyError, ValueError) as e:
+                    raise ValueError(f"Invalid frame format: {e}")
+
+    def read_all(self) -> List[NFCFrame]:
+        """
+        Read all frames into a list.
+
+        Returns:
+            List of NFCFrame objects
+        """
+        return list(self.read_frames())
+
+    def __iter__(self) -> Iterator[NFCFrame]:
+        """Allow iteration over reader"""
+        return self.read_frames()
 
 
-def read_frames(source: Union[str, Path, TextIO]) -> Iterator[NFCFrame]:
+def read_trz(file_path: Union[str, Path]) -> List[NFCFrame]:
     """
-    Read frames from any source.
+    Convenience function to read all frames from TRZ file.
 
     Args:
-        source:
-            - Path to .trz file (string or Path)
-            - TextIO stream (stdin, file handle, etc.)
+        file_path: Path to .trz file
 
-    Yields:
-        NFCFrame objects
+    Returns:
+        List of NFCFrame objects
 
-    Examples:
-        # From TRZ file
-        for frame in read_frames("trace.trz"):
-            print(frame)
-
-        # From stdin (live)
-        import sys
-        for frame in read_frames(sys.stdin):
+    Example:
+        frames = read_trz("trace.trz")
+        for frame in frames:
             print(frame)
     """
-    reader: Union[TRZReader, LiveStreamReader]
-    if isinstance(source, (str, Path)):
-        source_path = Path(source)
-        if not source_path.suffix == ".trz":
-            raise ValueError(f"Only .trz files supported, got: {source_path.suffix}")
-
-        reader = TRZReader(source_path)
-    else:
-        reader = LiveStreamReader(source)
-
-    yield from reader.read_frames()
+    reader = TRZReader(file_path)
+    return reader.read_all()

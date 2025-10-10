@@ -1,30 +1,52 @@
 """
 NFC Laboratory Python Library
 
-A library for parsing and analyzing NFC frame data from nfc-lab.
-Provides clean separation between data capture and interpretation.
+Complete Python library for reading and analyzing NFC trace files from nfc-lab.
+Fully compatible with TRZ file format specification.
 
-Simplified to support only two sources:
-- TRZ files (archived traces)
-- Live JSON streams (from nfc-lab --json-frames)
+Example usage:
+    from py_nfclab import read_trz, write_json
+
+    # Read TRZ file
+    frames = read_trz("trace.trz")
+
+    # Analyze frames
+    for frame in frames:
+        if frame.is_poll() and frame.tech == "NfcA":
+            print(f"{frame.datetime_str}: {frame.data.hex()}")
+
+    # Export to JSON
+    write_json(frames, "output.json")
 """
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"
 
-from .models import FrameFlags, FrameType, NFCFrame, NFCTransaction, TechType
-from .protocol import ProtocolParser
-from .readers import LiveStreamReader, TRZReader, read_frames
-from .transactions import TransactionBuilder
+# Core data models
+from .models import FrameFlags, FramePhase, FrameType, NFCFrame, TechType
+
+# Protocol detection
+from .protocol import detect_command
+
+# Readers
+from .readers import TRZReader, read_trz
+
+# Writers
+from .writers import frames_to_json, write_json, write_jsonl
 
 __all__ = [
+    # Models
     "NFCFrame",
-    "NFCTransaction",
     "TechType",
     "FrameType",
+    "FramePhase",
     "FrameFlags",
-    "ProtocolParser",
-    "TransactionBuilder",
+    # Readers
     "TRZReader",
-    "LiveStreamReader",
-    "read_frames",
+    "read_trz",
+    # Writers
+    "write_json",
+    "write_jsonl",
+    "frames_to_json",
+    # Protocol
+    "detect_command",
 ]
