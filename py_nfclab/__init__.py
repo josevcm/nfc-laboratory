@@ -25,7 +25,15 @@ __version__ = "1.0.0"
 from .models import FrameFlags, FramePhase, FrameType, NFCFrame, TechType
 
 # Protocol detection
-from .protocol import detect_command
+from .protocol import (
+    NFC_V_COMMANDS,
+    NFC_V_ERROR_CODES,
+    NfcVFlags,
+    NfcVFrame,
+    detect_command,
+    parse_nfcv_flags,
+    parse_nfcv_frame,
+)
 
 # Readers
 from .readers import TRZReader, read_trz
@@ -49,4 +57,10 @@ __all__ = [
     "frames_to_json",
     # Protocol
     "detect_command",
+    "parse_nfcv_flags",
+    "parse_nfcv_frame",
+    "NfcVFlags",
+    "NfcVFrame",
+    "NFC_V_COMMANDS",
+    "NFC_V_ERROR_CODES",
 ]

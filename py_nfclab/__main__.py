@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Iterator
 
 from . import NFCFrame, TRZReader
-from .protocol import detect_command
+from .protocol import detect_command, parse_nfcv_frame
 
 
 # ANSI Color codes
@@ -57,27 +57,56 @@ TYPE_COLORS = {
 
 def format_frame(frame: NFCFrame) -> str:
     """Format a single frame for display"""
-    # Format hex data with spaces
-    hex_data = " ".join(f"{b:02X}" for b in frame.data)
-
     tech_color = TECH_COLORS.get(frame.tech, Colors.RESET)
     type_color = TYPE_COLORS.get(frame.type, Colors.RESET)
 
     # Detect protocol command
     command = detect_command(frame)
 
+    # Build output with consistent column widths
     output = f"[{Colors.BOLD}{frame.timestamp:>12.6f}{Colors.RESET}] "
     output += f"{tech_color}{frame.tech:>12}{Colors.RESET} "
-    output += f"{frame.rate:>6} " if frame.rate else "       "
+
+    # Rate column: 6 characters wide, always present
+    rate_str = f"{frame.rate}" if frame.rate else ""
+    output += f"{rate_str:>6} "
+
     output += f"{type_color}{frame.type:>10}{Colors.RESET} | "
 
-    # Show command if detected
-    if command:
-        output += f"{Colors.CYAN}{command:>14}{Colors.RESET} | "
-    else:
-        output += " " * 17 + "| "
+    # Command column: 16 characters wide, always present
+    command_str = f"{Colors.CYAN}{command}{Colors.RESET}" if command else ""
+    # Calculate padding for colored string
+    visible_len = len(command) if command else 0
+    padding = 16 - visible_len
+    output += command_str + " " * padding + " | "
 
-    output += f"{frame.length:3} bytes | {hex_data or '(no data)'}"
+    # Special formatting for NFC-V frames
+    if frame.tech == "NfcV" and frame.data:
+        parsed = parse_nfcv_frame(frame)
+        if parsed:
+            parts = []
+            parts.append(f"Flags:0x{parsed.flags:02X}")
+            if parsed.uid:
+                uid_be = parsed.uid_be.hex().upper()
+                parts.append(f"UID:{uid_be}")
+            if parsed.params:
+                parts.append(f"Payload:{parsed.params.hex().upper()}")
+            if parsed.error_code is not None:
+                parts.append(f"{Colors.RED}ERR:0x{parsed.error_code:02X}{Colors.RESET}")
+            if parsed.crc:
+                parts.append(f"CRC:{parsed.crc.hex().upper()}")
+
+            hex_data = " ".join(f"{b:02X}" for b in frame.data)
+            parts.append(f"RAW:{hex_data}")
+
+            output += " | ".join(parts)
+        else:
+            hex_data = " ".join(f"{b:02X}" for b in frame.data)
+            output += f"{frame.length:3} bytes | {hex_data}"
+    else:
+        # Standard formatting for other protocols
+        hex_data = " ".join(f"{b:02X}" for b in frame.data)
+        output += f"{frame.length:3} bytes | {hex_data or '(no data)'}"
 
     if frame.errors:
         output += f" {Colors.RED}[{', '.join(frame.errors)}]{Colors.RESET}"
@@ -130,7 +159,7 @@ def read_live_stream(stream) -> Iterator[NFCFrame]:
 
             yield NFCFrame.from_trz_dict(trz_data)
 
-        except (json.JSONDecodeError, KeyError) as e:
+        except (json.JSONDecodeError, KeyError):
             # Skip invalid lines silently (nfc-lab may output non-JSON status messages)
             continue
 
