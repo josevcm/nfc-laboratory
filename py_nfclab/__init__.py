@@ -22,45 +22,56 @@ Example usage:
 __version__ = "1.0.0"
 
 # Core data models
-from .models import FrameFlags, FramePhase, FrameType, NFCFrame, TechType
+from .models import NFCFrame
 
 # Protocol detection
 from .protocol import (
-    NFC_V_COMMANDS,
-    NFC_V_ERROR_CODES,
-    NfcVFlags,
-    NfcVFrame,
-    detect_command,
-    parse_nfcv_flags,
-    parse_nfcv_frame,
+    NfcARequest,
+    NfcAResponse,
+    NfcBRequest,
+    NfcBResponse,
+    NfcFRequest,
+    NfcFResponse,
+    NfcVRequest,
+    NfcVResponse,
+    parse_nfca_request,
+    parse_nfca_response,
+    parse_nfcb_request,
+    parse_nfcb_response,
+    parse_nfcf_request,
+    parse_nfcf_response,
+    parse_nfcv_request,
+    parse_nfcv_response,
 )
 
 # Readers
-from .readers import TRZReader, read_trz
+from .readers import read_trz
 
 # Writers
-from .writers import frames_to_json, write_json, write_jsonl
+from .writers import write_json, write_jsonl
 
 __all__ = [
-    # Models
+    # Core models
     "NFCFrame",
-    "TechType",
-    "FrameType",
-    "FramePhase",
-    "FrameFlags",
-    # Readers
-    "TRZReader",
+    # High-level I/O
     "read_trz",
-    # Writers
     "write_json",
     "write_jsonl",
-    "frames_to_json",
-    # Protocol
-    "detect_command",
-    "parse_nfcv_flags",
-    "parse_nfcv_frame",
-    "NfcVFlags",
-    "NfcVFrame",
-    "NFC_V_COMMANDS",
-    "NFC_V_ERROR_CODES",
+    # Protocol parsing
+    "NfcARequest",
+    "NfcAResponse",
+    "parse_nfca_request",
+    "parse_nfca_response",
+    "NfcBRequest",
+    "NfcBResponse",
+    "parse_nfcb_request",
+    "parse_nfcb_response",
+    "NfcFRequest",
+    "NfcFResponse",
+    "parse_nfcf_request",
+    "parse_nfcf_response",
+    "NfcVRequest",
+    "NfcVResponse",
+    "parse_nfcv_request",
+    "parse_nfcv_response",
 ]
