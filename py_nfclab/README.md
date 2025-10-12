@@ -7,8 +7,9 @@ Python library for NFC trace analysis - read TRZ files, detect protocols, analyz
 - Read TRZ files (complete format support)
 - Read live JSON streams (`./nfc-lab -j`)
 - Protocol command detection (93 commands)
+- Protocol-specific frame parsers (NFC-A/B/F/V)
 - JSON export
-- CLI tool with color output
+- CLI tool with color output and structured frame display
 
 ## Usage
 
@@ -101,6 +102,28 @@ cmd = detect_command(frame)  # "WUPA", "REQB", "Inventory", etc.
 ```
 
 Supports 93 commands across NFC-A/B/F/V, ISO-DEP, and ISO7816.
+
+### Protocol Frame Parsing
+
+```python
+from py_nfclab import (
+    parse_nfca_request, parse_nfca_response,
+    parse_nfcb_request, parse_nfcb_response,
+    parse_nfcf_request, parse_nfcf_response,
+    parse_nfcv_request, parse_nfcv_response
+)
+
+# Parse NFC-A frames
+if frame.tech == "NfcA" and frame.is_poll():
+    req = parse_nfca_request(frame)
+    print(f"Cmd:{req.cmd:02X} Params:{req.params.hex()} CRC:{req.crc.hex()}")
+
+# Parse NFC-V with context
+resp = parse_nfcv_response(frame, request_cmd=0x01)  # Inventory
+print(f"UID: {resp.uid_be.hex()}")  # Automatic UID extraction
+```
+
+Parsers extract structured data (cmd, params, payload, crc) for all major NFC protocols.
 
 ### Export
 

@@ -22,8 +22,19 @@ import sys
 from pathlib import Path
 from typing import Iterator
 
-from . import NFCFrame, TRZReader
-from .protocol import detect_command, parse_nfcv_frame
+from . import (
+    NFCFrame,
+    parse_nfca_request,
+    parse_nfca_response,
+    parse_nfcb_request,
+    parse_nfcb_response,
+    parse_nfcf_request,
+    parse_nfcf_response,
+    parse_nfcv_request,
+    parse_nfcv_response,
+)
+from .protocol import detect_command
+from .readers import TRZReader
 
 
 # ANSI Color codes
@@ -80,33 +91,147 @@ def format_frame(frame: NFCFrame) -> str:
     padding = 16 - visible_len
     output += command_str + " " * padding + " | "
 
-    # Special formatting for NFC-V frames
-    if frame.tech == "NfcV" and frame.data:
-        parsed = parse_nfcv_frame(frame)
-        if parsed:
-            parts = []
-            parts.append(f"Flags:0x{parsed.flags:02X}")
-            if parsed.uid:
-                uid_be = parsed.uid_be.hex().upper()
-                parts.append(f"UID:{uid_be}")
-            if parsed.params:
-                parts.append(f"Payload:{parsed.params.hex().upper()}")
-            if parsed.error_code is not None:
-                parts.append(f"{Colors.RED}ERR:0x{parsed.error_code:02X}{Colors.RESET}")
-            if parsed.crc:
-                parts.append(f"CRC:{parsed.crc.hex().upper()}")
+    # Data formatting - unified for all protocols
+    hex_data = " ".join(f"{b:02X}" for b in frame.data) if frame.data else "(no data)"
 
-            hex_data = " ".join(f"{b:02X}" for b in frame.data)
-            parts.append(f"RAW:{hex_data}")
-
-            output += " | ".join(parts)
+    # Special formatting for NFC-A frames
+    if frame.tech == "NfcA" and frame.data:
+        if frame.is_poll():
+            parsed_req = parse_nfca_request(frame)
+            if parsed_req:
+                # Request: Cmd | [Params] | [CRC]
+                output += f"{frame.length:3}B | "
+                output += f"Cmd:{parsed_req.cmd:02X} "
+                if parsed_req.params:
+                    output += f"Params:{parsed_req.params.hex().upper()} "
+                if parsed_req.crc:
+                    output += f"CRC:{parsed_req.crc.hex().upper()}"
+            else:
+                output += f"{frame.length:3}B | {hex_data}"
         else:
-            hex_data = " ".join(f"{b:02X}" for b in frame.data)
-            output += f"{frame.length:3} bytes | {hex_data}"
+            parsed_resp = parse_nfca_response(frame)
+            if parsed_resp:
+                # Response: [Payload] | [CRC]
+                output += f"{frame.length:3}B | "
+                if parsed_resp.payload is not None:
+                    payload_hex = parsed_resp.payload.hex().upper()
+                    if len(payload_hex) > 32:
+                        output += f"Payload[{len(parsed_resp.payload)}B]:{payload_hex[:32]}... "
+                    else:
+                        output += f"Payload:{payload_hex} "
+                if parsed_resp.crc:
+                    output += f"CRC:{parsed_resp.crc.hex().upper()}"
+            else:
+                output += f"{frame.length:3}B | {hex_data}"
+
+    # Special formatting for NFC-B frames
+    elif frame.tech == "NfcB" and frame.data:
+        if frame.is_poll():
+            parsed_req = parse_nfcb_request(frame)
+            if parsed_req:
+                # Request: Cmd | [Params] | [CRC]
+                output += f"{frame.length:3}B | "
+                output += f"Cmd:{parsed_req.cmd:02X} "
+                if parsed_req.params:
+                    output += f"Params:{parsed_req.params.hex().upper()} "
+                if parsed_req.crc:
+                    output += f"CRC:{parsed_req.crc.hex().upper()}"
+            else:
+                output += f"{frame.length:3}B | {hex_data}"
+        else:
+            parsed_resp = parse_nfcb_response(frame)
+            if parsed_resp:
+                # Response: [Payload] | [CRC]
+                output += f"{frame.length:3}B | "
+                if parsed_resp.payload is not None:
+                    payload_hex = parsed_resp.payload.hex().upper()
+                    if len(payload_hex) > 32:
+                        output += f"Payload[{len(parsed_resp.payload)}B]:{payload_hex[:32]}... "
+                    else:
+                        output += f"Payload:{payload_hex} "
+                if parsed_resp.crc:
+                    output += f"CRC:{parsed_resp.crc.hex().upper()}"
+            else:
+                output += f"{frame.length:3}B | {hex_data}"
+
+    # Special formatting for NFC-F frames
+    elif frame.tech == "NfcF" and frame.data:
+        if frame.is_poll():
+            parsed_req = parse_nfcf_request(frame)
+            if parsed_req:
+                # Request: L | Cmd | [Body]
+                output += f"{frame.length:3}B | "
+                if len(frame.data) > 0:
+                    output += f"L:{frame.data[0]:02X} "
+                output += f"Cmd:{parsed_req.cmd:02X} "
+                if parsed_req.body:
+                    body_hex = parsed_req.body.hex().upper()
+                    if len(body_hex) > 32:
+                        output += f"Body[{len(parsed_req.body)}B]:{body_hex[:32]}... "
+                    else:
+                        output += f"Body:{body_hex}"
+            else:
+                output += f"{frame.length:3}B | {hex_data}"
+        else:
+            parsed_resp = parse_nfcf_response(frame)
+            if parsed_resp:
+                # Response: L | Cmd | [Body]
+                output += f"{frame.length:3}B | "
+                if len(frame.data) > 0:
+                    output += f"L:{frame.data[0]:02X} "
+                output += f"Cmd:{parsed_resp.cmd:02X} "
+                if parsed_resp.body:
+                    body_hex = parsed_resp.body.hex().upper()
+                    if len(body_hex) > 32:
+                        output += f"Body[{len(parsed_resp.body)}B]:{body_hex[:32]}... "
+                    else:
+                        output += f"Body:{body_hex}"
+            else:
+                output += f"{frame.length:3}B | {hex_data}"
+
+    # Special formatting for NFC-V frames
+    elif frame.tech == "NfcV" and frame.data:
+        if frame.is_poll():
+            parsed_req = parse_nfcv_request(frame)
+            if parsed_req:
+                # Request: Flags | Cmd | [UID] | [Params] | CRC
+                output += f"{frame.length:3}B | "
+                output += f"Flag:{parsed_req.flags:02X} "
+                output += f"Cmd:{parsed_req.cmd:02X} "
+                if parsed_req.uid:
+                    uid_be = parsed_req.uid_be
+                    if uid_be:
+                        output += f"UID:{uid_be.hex().upper()} "
+                if parsed_req.params:
+                    output += f"Params:{parsed_req.params.hex().upper()} "
+                if parsed_req.crc:
+                    output += f"CRC:{parsed_req.crc.hex().upper()}"
+            else:
+                output += f"{frame.length:3}B | {hex_data}"
+        else:
+            parsed_resp = parse_nfcv_response(frame)
+            if parsed_resp:
+                # Response: Flags | [ERR/Payload] | CRC
+                output += f"{frame.length:3}B | "
+                output += f"Flag:{parsed_resp.flags:02X} "
+                if parsed_resp.error_code is not None:
+                    output += (
+                        f"{Colors.RED}ERR:{parsed_resp.error_code:02X}{Colors.RESET} "
+                    )
+                elif parsed_resp.payload is not None:
+                    # Show length for long payloads
+                    payload_hex = parsed_resp.payload.hex().upper()
+                    if len(payload_hex) > 32:
+                        output += f"Payload[{len(parsed_resp.payload)}B]:{payload_hex[:32]}... "
+                    else:
+                        output += f"Payload:{payload_hex} "
+                if parsed_resp.crc:
+                    output += f"CRC:{parsed_resp.crc.hex().upper()}"
+            else:
+                output += f"{frame.length:3}B | {hex_data}"
     else:
         # Standard formatting for other protocols
-        hex_data = " ".join(f"{b:02X}" for b in frame.data)
-        output += f"{frame.length:3} bytes | {hex_data or '(no data)'}"
+        output += f"{frame.length:3}B | {hex_data}"
 
     if frame.errors:
         output += f" {Colors.RED}[{', '.join(frame.errors)}]{Colors.RESET}"
