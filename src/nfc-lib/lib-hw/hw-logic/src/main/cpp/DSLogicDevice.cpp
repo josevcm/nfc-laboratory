@@ -1973,7 +1973,7 @@ struct DSLogicDevice::Impl
       /*
        * if have incomplete buffer, fill it with new received data
        */
-      if (buffer)
+      if (buffer.isValid())
       {
          unsigned int filled = (currentBytes % (size >> 3)) << 3; // filled samples
 
@@ -2042,7 +2042,7 @@ struct DSLogicDevice::Impl
       unsigned int row = (pos & 0x07) << 3;
 
       // transpose data from transfer buffer to interleaved buffer
-      for (; buffer.available() && source < limit;)
+      for (; buffer.remaining() && source < limit;)
       {
          // reserve full buffer for interleaved data
          float *target = !filled ? buffer.pull(ch << 6) : buffer.pull(0) - filled; // 64 * channels

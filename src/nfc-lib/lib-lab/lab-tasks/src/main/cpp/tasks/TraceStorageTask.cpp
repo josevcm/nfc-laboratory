@@ -659,7 +659,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             continue;
 
          // catch first buffer
-         if (!header)
+         if (!header.isValid())
          {
             header = buffer;
 
@@ -898,7 +898,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             continue;
 
          // catch first buffer
-         if (!header)
+         if (!header.isValid())
          {
             header = buffer;
 

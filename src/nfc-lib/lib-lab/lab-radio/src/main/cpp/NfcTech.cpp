@@ -27,14 +27,14 @@ namespace lab {
 
 bool NfcDecoderStatus::nextSample(hw::SignalBuffer &buffer)
 {
-   if (buffer.available() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES)
+   if (buffer.remaining() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES)
       return false;
 
    // update signal clock and pulse filter
    ++signalClock;
    ++pulseFilter;
 
-   buffer.get(signalValue);
+   buffer.get(&signalValue);
 
    float signalDiff = std::abs(signalValue - signalEnvelope) / signalEnvelope;
 
