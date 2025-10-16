@@ -371,7 +371,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
          case 2:
          {
-            hw::SignalBuffer buffer(65536 * channelCount, 2, 1, sampleRate, sampleOffset >> 1, 0, hw::SignalType::SIGNAL_TYPE_RADIO_IQ);
+            hw::SignalBuffer buffer(65536 * channelCount, 2, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_RADIO_IQ);
 
             if (radioStorage->read(buffer) > 0)
             {
