@@ -85,7 +85,7 @@ int startApp(int argc, char* argv[])
     log->info("NFC-LAB {}", {NFC_LAB_VERSION_STRING});
     log->info("***********************************************************************");
 
-    log->info("Qt Version: {}", {QT_VERSION_STR});
+    log->info("QtVersion: {}", {QT_VERSION_STR});
 
     if (argc > 1)
     {
