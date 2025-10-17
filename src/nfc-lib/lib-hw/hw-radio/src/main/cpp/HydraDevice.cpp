@@ -43,7 +43,7 @@ int process_transfer(hydrasdr_transfer *transfer);
 
 struct HydraDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw.HydraDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw:HydraDevice");
 
    std::string deviceName;
    std::string deviceSerial;

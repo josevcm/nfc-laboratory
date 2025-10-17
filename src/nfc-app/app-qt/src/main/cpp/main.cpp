@@ -79,7 +79,7 @@ void messageOutput(QtMsgType type, const QMessageLogContext& context, const QStr
 
 int startApp(int argc, char* argv[])
 {
-    rt::Logger* log = rt::Logger::getLogger("app.main", rt::Logger::INFO_LEVEL);
+    rt::Logger* log = rt::Logger::getLogger("app:main", rt::Logger::INFO_LEVEL);
 
     log->info("***********************************************************************");
     log->info("NFC-LAB {}", {NFC_LAB_VERSION_STRING});
@@ -187,7 +187,7 @@ int main(int argc, char* argv[])
 #endif
 
     // create QT logger
-    qlog = rt::Logger::getLogger("app.qt");
+    qlog = rt::Logger::getLogger("app:qt");
 
     // set logging handler for QT components
     qInstallMessageHandler(messageOutput);

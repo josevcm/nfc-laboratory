@@ -194,7 +194,7 @@ std::mutex Logger::mutex;
 std::map<std::string, int> Logger::levels;
 
 // logger implementation
-Logger::Logger(std::string name, int level) : level(level), name(std::move(name))
+Logger::Logger(std::string name, const int level) : level(level), name(std::move(name))
 {
 }
 
@@ -279,11 +279,14 @@ Logger *Logger::getLogger(const std::string &name, int level)
       auto logger = std::shared_ptr<Logger>(new Logger(name, level));
 
       // check if logger has a specific level
-      for (const auto &[expr, l]: levels)
+      if (!levels.empty())
       {
-         if (std::regex regex(expr); std::regex_match(name, regex))
+         for (const auto &[expr, l]: levels)
          {
-            logger->level = l;
+            if (std::regex regex(expr); std::regex_match(name, regex))
+            {
+               logger->level = l;
+            }
          }
       }
 
