@@ -97,8 +97,8 @@ class Logger
 
       std::string name;
 
-      static std::mutex mutex;
-      static std::map<std::string, int> levels;
+      static std::mutex& getMutex();
+      static std::map<std::string, int>& getLevels();
 };
 
 }

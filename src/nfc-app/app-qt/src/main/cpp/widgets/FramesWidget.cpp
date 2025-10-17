@@ -112,8 +112,14 @@ struct FramesWidget::Impl
          toggleProtocol(key);
       });
 
-      // update scale
+      // update scale (deferred to avoid calling scaleFilter during construction)
       widget->setDataScale(0, static_cast<double>(channels.size()) + 1);
+      // setViewScale will be called after construction completes
+   }
+
+   void initialize()
+   {
+      // set view scale after construction is complete
       widget->setViewScale(0, static_cast<double>(channels.size()) + 1);
    }
 
@@ -580,8 +586,10 @@ struct FramesWidget::Impl
    }
 };
 
-FramesWidget::FramesWidget(QWidget *parent) : AbstractPlotWidget(parent), impl(new Impl(this))
+FramesWidget::FramesWidget(QWidget *parent) : AbstractPlotWidget(parent), impl(QSharedPointer<Impl>(new Impl(this)))
 {
+   // Complete initialization after impl is fully assigned
+   impl->initialize();
 }
 
 void FramesWidget::setModel(StreamModel *model)

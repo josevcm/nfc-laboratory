@@ -23,6 +23,7 @@
 
 #include <QTimer>
 #include <QSemaphore>
+#include <QMutex>
 
 #include <hw/SignalType.h>
 #include <hw/SignalBuffer.h>
@@ -79,6 +80,7 @@ struct FrequencyWidget::Impl
    QPointer<QTimer> refreshTimer;
 
    QSemaphore nextFrame;
+   QMutex dataMutex;
 
    explicit Impl(FrequencyWidget *parent) : widget(parent),
                                             plot(widget->plot()),
@@ -248,9 +250,11 @@ struct FrequencyWidget::Impl
             base.append({upperFreq, minimumScale});
 
             // update signal frequency data
+            dataMutex.lock();
             baseGraphData->set(base, true);
             binsGraphData->set(bins, true);
             peakGraphData->set(peak, true);
+            dataMutex.unlock();
 
             nextFrame.release();
 
@@ -278,18 +282,22 @@ struct FrequencyWidget::Impl
       binsGraph->setVisible(true);
       peakGraph->setVisible(true);
 
+      dataMutex.lock();
       plot->replot();
+      dataMutex.unlock();
 
       nextFrame.release();
    }
 
-   void stop() const
+   void stop()
    {
       // hide bins and keep only signal peaks
       binsGraph->setVisible(false);
       peakGraph->setVisible(true);
 
+      dataMutex.lock();
       plot->replot();
+      dataMutex.unlock();
    }
 
    void clear()
@@ -301,12 +309,14 @@ struct FrequencyWidget::Impl
       for (double &v: signalPeaksBuffer)
          v = INT_MIN;
 
+      dataMutex.lock();
       for (int i = 0; i < plot->graphCount(); i++)
       {
          plot->graph(i)->data()->clear();
       }
 
       plot->replot();
+      dataMutex.unlock();
    }
 
    void refresh()
@@ -314,7 +324,9 @@ struct FrequencyWidget::Impl
       if (!nextFrame.tryAcquire())
          return;
 
+      dataMutex.lock();
       plot->replot();
+      dataMutex.unlock();
    }
 
    QCPRange selectByUser() const
