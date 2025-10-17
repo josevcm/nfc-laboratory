@@ -378,7 +378,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
                hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
 
                float *src = buffer.data();
-               float *dst = result.pull(buffer.elements());
+               float *dst = result.push(buffer.elements());
 
                // compute real signal value
 #if defined(__SSE2__) && defined(USE_SSE2)

@@ -552,7 +552,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
          hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES, buffer.id());
 
          float *src = buffer.data();
-         float *dst = result.pull(buffer.elements());
+         float *dst = result.push(buffer.elements());
          float avrg = 0;
          float powr = 0;
 

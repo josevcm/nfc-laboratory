@@ -44,7 +44,7 @@ namespace hw {
 
 struct DSLogicDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw.DSLogicDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw:DSLogicDevice");
 
    // device parameters
    std::string deviceName;
@@ -2045,7 +2045,7 @@ struct DSLogicDevice::Impl
       for (; buffer.remaining() && source < limit;)
       {
          // reserve full buffer for interleaved data
-         float *target = !filled ? buffer.pull(ch << 6) : buffer.pull(0) - filled; // 64 * channels
+         float *target = !filled ? buffer.push(ch << 6) : buffer.push(0) - filled; // 64 * channels
 
          // transpose full block of SAMPLES[64][validChannels]
          for (unsigned int c = col; c < ch; ++c)
