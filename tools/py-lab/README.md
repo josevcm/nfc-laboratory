@@ -1,4 +1,4 @@
-# NFC Laboratory - Python Library (py_nfclab)
+# NFC Laboratory - Python Library (py_nfclab) - Steffen W
 
 Python library for NFC trace analysis - read TRZ files, detect protocols, analyze frames.
 
