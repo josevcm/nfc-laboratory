@@ -1,60 +1,60 @@
 {
   "frames": [
     {
-      "dateTime": 0.0063325,
+      "dateTime": 0.0063324,
       "frameData": "26",
       "frameFlags": 1,
       "framePhase": 258,
       "frameRate": 105938,
       "frameType": 258,
-      "sampleEnd": 64129,
+      "sampleEnd": 64128,
       "sampleRate": 10000000,
-      "sampleStart": 63325,
+      "sampleStart": 63324,
       "techType": 257,
-      "timeEnd": 0.0064129,
-      "timeStart": 0.0063325
+      "timeEnd": 0.0064128,
+      "timeStart": 0.0063324
     },
     {
-      "dateTime": 0.0128438,
+      "dateTime": 0.0128437,
       "frameData": "05:00:08:39:73",
       "frameFlags": 0,
       "framePhase": 258,
       "frameRate": 105938,
       "frameType": 258,
-      "sampleEnd": 135243,
+      "sampleEnd": 135242,
       "sampleRate": 10000000,
-      "sampleStart": 128438,
+      "sampleStart": 128437,
       "techType": 258,
-      "timeEnd": 0.0135243,
-      "timeStart": 0.0128438
+      "timeEnd": 0.0135242,
+      "timeStart": 0.0128437
     },
     {
-      "dateTime": 0.0150432,
+      "dateTime": 0.0150431,
       "frameData": "06:00:97:5B",
       "frameFlags": 0,
       "framePhase": 259,
       "frameRate": 105938,
       "frameType": 258,
-      "sampleEnd": 157048,
+      "sampleEnd": 157047,
       "sampleRate": 10000000,
-      "sampleStart": 150432,
+      "sampleStart": 150431,
       "techType": 258,
-      "timeEnd": 0.0157048,
-      "timeStart": 0.0150432
+      "timeEnd": 0.0157047,
+      "timeStart": 0.0150431
     },
     {
-      "dateTime": 0.0262387,
+      "dateTime": 0.0262386,
       "frameData": "06:00:97:5B",
       "frameFlags": 0,
       "framePhase": 259,
       "frameRate": 105938,
       "frameType": 258,
-      "sampleEnd": 269002,
+      "sampleEnd": 269001,
       "sampleRate": 10000000,
-      "sampleStart": 262387,
+      "sampleStart": 262386,
       "techType": 258,
-      "timeEnd": 0.0269002,
-      "timeStart": 0.0262387
+      "timeEnd": 0.0269001,
+      "timeStart": 0.0262386
     }
   ]
 }
