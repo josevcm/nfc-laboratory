@@ -8,37 +8,7 @@ set(ICON_FILE_PATH "../assets/app/rc/nfc-lab.ico")
 set(APP_TARGET_DIR "@HomeDir@/.${PROGRAM_NAME}")
 
 if(NOT DEFINED BUILD_PROJECT_VERSION)
-  # Try to get version from git tags
-  find_package(Git QUIET)
-  if(GIT_FOUND)
-    execute_process(
-      COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      OUTPUT_VARIABLE GIT_TAG
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      ERROR_QUIET
-    )
-    if(GIT_TAG)
-      # Remove 'v' prefix if present (e.g., v3.3.1 -> 3.3.1)
-      string(REGEX REPLACE "^v" "" GIT_VERSION "${GIT_TAG}")
-      # Validate that it matches semantic versioning (major.minor.patch)
-      if(GIT_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+")
-        set(BUILD_PROJECT_VERSION "${GIT_VERSION}")
-      else()
-        # Tag exists but doesn't match version format, use fallback with dev marker
-        set(BUILD_PROJECT_VERSION "3.3.1.999")
-        message(STATUS "No valid version tag found, using development version: ${BUILD_PROJECT_VERSION}")
-      endif()
-    else()
-      # No tag found, use development version
-      set(BUILD_PROJECT_VERSION "3.3.1.999")
-      message(STATUS "No version tag found, using development version: ${BUILD_PROJECT_VERSION}")
-    endif()
-  else()
-    # Fallback if git is not found
-    set(BUILD_PROJECT_VERSION "3.3.1.999")
-    message(STATUS "Git not found, using development version: ${BUILD_PROJECT_VERSION}")
-  endif()
+  set(BUILD_PROJECT_VERSION "0.0.0")
 endif()
 
 project(nfc-lab VERSION "${BUILD_PROJECT_VERSION}" LANGUAGES C CXX)
