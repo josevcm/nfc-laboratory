@@ -188,13 +188,15 @@ struct Appender
 std::unique_ptr<Appender> appender;
 
 // global mutex for logger instances (using construct-on-first-use to avoid static initialization order fiasco)
-std::mutex& Logger::getMutex() {
+std::mutex &Logger::getMutex()
+{
    static std::mutex instance;
    return instance;
 }
 
 // global levels map (using construct-on-first-use to avoid static initialization order fiasco)
-std::map<std::string, int>& Logger::getLevels() {
+std::map<std::string, int> &Logger::getLevels()
+{
    static std::map<std::string, int> instance;
    return instance;
 }
