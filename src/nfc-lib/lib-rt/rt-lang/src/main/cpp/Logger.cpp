@@ -187,11 +187,17 @@ struct Appender
 // global appender instance
 std::unique_ptr<Appender> appender;
 
-// global mutex for logger instances
-std::mutex Logger::mutex;
+// global mutex for logger instances (using construct-on-first-use to avoid static initialization order fiasco)
+std::mutex& Logger::getMutex() {
+   static std::mutex instance;
+   return instance;
+}
 
-// global levels map
-std::map<std::string, int> Logger::levels;
+// global levels map (using construct-on-first-use to avoid static initialization order fiasco)
+std::map<std::string, int>& Logger::getLevels() {
+   static std::map<std::string, int> instance;
+   return instance;
+}
 
 // logger implementation
 Logger::Logger(std::string name, const int level) : level(level), name(std::move(name))
@@ -271,7 +277,7 @@ void Logger::setLevel(const std::string &level)
 
 Logger *Logger::getLogger(const std::string &name, int level)
 {
-   std::lock_guard lock(mutex);
+   std::lock_guard lock(getMutex());
 
    // insert logger if not found in instances
    if (loggers().find(name) == loggers().end())
@@ -279,9 +285,9 @@ Logger *Logger::getLogger(const std::string &name, int level)
       auto logger = std::shared_ptr<Logger>(new Logger(name, level));
 
       // check if logger has a specific level
-      if (!levels.empty())
+      if (!getLevels().empty())
       {
-         for (const auto &[expr, l]: levels)
+         for (const auto &[expr, l]: getLevels())
          {
             if (std::regex regex(expr); std::regex_match(name, regex))
             {
@@ -321,7 +327,7 @@ void Logger::setRootLevel(const std::string &level)
 
 void Logger::setLoggerLevel(const std::string &expr, int level)
 {
-   std::lock_guard lock(mutex);
+   std::lock_guard lock(getMutex());
 
    // create regex from name
    const std::regex match(expr);
@@ -336,7 +342,7 @@ void Logger::setLoggerLevel(const std::string &expr, int level)
    }
 
    // add or update level for future loggers
-   levels[expr] = level;
+   getLevels()[expr] = level;
 }
 
 void Logger::setLoggerLevel(const std::string &name, const std::string &level)

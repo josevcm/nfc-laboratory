@@ -271,7 +271,7 @@ struct StreamModel::Impl
          frame.frameType() == lab::FrameType::IsoRstHigh)
          return {};
 
-      return frame.frameRate();
+      return QVariant::fromValue(frame.frameRate());
    }
 
    QVariant frameTech(const lab::RawFrame &frame) const
@@ -315,6 +315,9 @@ struct StreamModel::Impl
 
          case lab::FrameType::IsoRstHigh:
             return {"RST-High"};
+
+         default:
+            break;
       }
 
       switch (frame.techType())
@@ -333,6 +336,9 @@ struct StreamModel::Impl
 
          case lab::FrameTech::Iso7816Tech:
             return eventIso7816(frame, prev);
+
+         default:
+            break;
       }
 
       return {};
@@ -428,7 +434,8 @@ struct StreamModel::Impl
          if ((command & 0xF0) == 0xD0 && frame.limit() == 5)
             return "PPS";
 
-         if (!(result = eventIsoDep(frame)).isEmpty())
+         result = eventIsoDep(frame);
+         if (!result.isEmpty())
             return result;
 
          if (NfcACmd.contains(command))
@@ -450,7 +457,8 @@ struct StreamModel::Impl
          if (command == 0xE0 && frame[0] == (frame.limit() - 2))
             return "ATS";
 
-         if (!(result = eventIsoDep(frame)).isEmpty())
+         result = eventIsoDep(frame);
+         if (!result.isEmpty())
             return result;
 
          if (NfcAResp.contains(command))
@@ -468,7 +476,8 @@ struct StreamModel::Impl
       {
          int command = frame[0];
 
-         if (!(result = eventIsoDep(frame)).isEmpty())
+         result = eventIsoDep(frame);
+         if (!result.isEmpty())
             return result;
 
          if (NfcBCmd.contains(command))
@@ -478,7 +487,8 @@ struct StreamModel::Impl
       {
          int command = frame[0];
 
-         if (!(result = eventIsoDep(frame)).isEmpty())
+         result = eventIsoDep(frame);
+         if (!result.isEmpty())
             return result;
 
          if (NfcBResp.contains(command))
@@ -707,6 +717,9 @@ QVariant StreamModel::headerData(int section, Qt::Orientation orientation, int r
 
       case Qt::UserRole:
          return impl->dataType(section);
+
+      default:
+         break;
    }
 
    return {};

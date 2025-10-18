@@ -89,6 +89,9 @@ struct AbstractPlotWidget::Impl
       plot->setNoAntialiasingOnDrag(true);
       plot->setMultiSelectModifier(Qt::ShiftModifier);
 
+      // Fix memory leak: ensure buffer device pixel ratio is set correctly
+      plot->setBufferDevicePixelRatio(1.0);
+
       // set plot selection mode
       plot->setSelectionTolerance(10); // set tolerance for data selection
       plot->setSelectionRect(new SelectionRect(plot));
