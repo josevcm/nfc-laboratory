@@ -202,7 +202,7 @@ struct IsoProtocolStatus
 
 struct Iso7816::Impl : IsoTech
 {
-   rt::Logger *log = rt::Logger::getLogger("decoder.Iso7816");
+   rt::Logger *log = rt::Logger::getLogger("decoder:Iso7816");
 
    // global signal status
    IsoDecoderStatus *decoder;

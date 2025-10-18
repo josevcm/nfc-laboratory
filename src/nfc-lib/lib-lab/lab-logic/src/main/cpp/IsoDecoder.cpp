@@ -29,7 +29,7 @@ namespace lab {
 
 struct IsoDecoder::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("decoder.IsoDecoder");
+   rt::Logger *log = rt::Logger::getLogger("decoder:IsoDecoder");
 
    static constexpr int ENABLED_ISO7816 = 1 << 0;
 
@@ -167,7 +167,7 @@ std::list<RawFrame> IsoDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
    std::list<RawFrame> frames;
 
    // only process valid sample buffer
-   if (samples)
+   if (samples.isValid())
    {
       // re-configure decoder parameters on sample rate changes
       if (decoder.sampleRate != samples.sampleRate())

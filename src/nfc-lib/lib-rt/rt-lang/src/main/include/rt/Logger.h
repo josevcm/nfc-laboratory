@@ -31,11 +31,7 @@ namespace rt {
 
 class Logger
 {
-   private:
-
-      Logger(std::string name, int level);
-
-      Logger(const Logger &other);
+   Logger(std::string name, int level);
 
    public:
 
@@ -85,7 +81,11 @@ class Logger
 
       static void setRootLevel(int level);
 
-      static void setRootLevel(const std::string &name);
+      static void setRootLevel(const std::string &level);
+
+      static void setLoggerLevel(const std::string &expr, int level);
+
+      static void setLoggerLevel(const std::string &expr, const std::string &level);
 
       static Logger *getLogger(const std::string &name, int level = WARN_LEVEL);
 
@@ -96,6 +96,9 @@ class Logger
       int level;
 
       std::string name;
+
+      static std::mutex& getMutex();
+      static std::map<std::string, int>& getLevels();
 };
 
 }

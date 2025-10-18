@@ -114,7 +114,7 @@ bool RawFrame::operator>(const RawFrame &other) const
 
 RawFrame::operator bool() const
 {
-   return Buffer::operator bool();
+   return isValid();
 }
 
 unsigned int RawFrame::techType() const

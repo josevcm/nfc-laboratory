@@ -22,8 +22,8 @@
 #ifndef RT_SUBJECT_H
 #define RT_SUBJECT_H
 
+#include <algorithm>
 #include <functional>
-#include <list>
 #include <map>
 #include <mutex>
 #include <utility>
@@ -129,6 +129,7 @@ class Subject
 
          // append observer to list
          auto &observer = observers.emplace_back(observers.size() + 1, next, error, close);
+         int observerIndex = observer.index;
          log->debug("created subscription {} ({}) on subject {}", {observer.index, static_cast<void *>(&observer), id});
 
          // emit retained values
@@ -142,13 +143,15 @@ class Subject
 
          // returns finisher to remove observer when destroyed
          return {
-            [this, &observer] {
+            [this, observerIndex] {
 
                std::lock_guard lock(access);
 
-               log->debug("removed subscription {} ({}) from subject {}", {observer.index, static_cast<void *>(&observer), id});
+               log->debug("removed subscription {} from subject {}", {observerIndex, id});
 
-               auto it = std::find(observers.begin(), observers.end(), observer);
+               auto it = std::find_if(observers.begin(), observers.end(), [observerIndex](const Observer &obs) {
+                  return obs.index == observerIndex;
+               });
 
                if (it != observers.end())
                   observers.erase(it);

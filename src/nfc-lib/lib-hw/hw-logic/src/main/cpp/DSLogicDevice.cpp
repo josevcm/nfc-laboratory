@@ -44,7 +44,7 @@ namespace hw {
 
 struct DSLogicDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw.DSLogicDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw:DSLogicDevice");
 
    // device parameters
    std::string deviceName;
@@ -154,7 +154,25 @@ struct DSLogicDevice::Impl
 
    const static float dsl_samples[256][8];
 
-   explicit Impl(const std::string &name) : deviceName(name)
+   explicit Impl(const std::string &name) : deviceName(name),
+      operationMode(0),
+      channelMode(0),
+      testMode(0),
+      totalChannels(0),
+      validChannels(0),
+      clockType(false),
+      clockEdge(false),
+      rleCompress(false),
+      rleSupport(false),
+      stream(false),
+      filter(0),
+      sampleratesMinIndex(0),
+      sampleratesMaxIndex(0),
+      triggerChannel(0),
+      triggerHRate(0),
+      triggerHPos(0),
+      triggerHoldoff(0),
+      triggerMargin(0)
    {
       log->debug("created DSLogicDevice [{}]", {deviceName});
    }
@@ -290,6 +308,9 @@ struct DSLogicDevice::Impl
                   break;
                case TH_5V0:
                   firmware = profile->fpga_bit50;
+                  break;
+               default:
+                  log->warn("unexpected threshold level: {}", {thLevel});
                   break;
             }
 
@@ -972,7 +993,7 @@ struct DSLogicDevice::Impl
                   if (operationMode == OP_INTEST)
                   {
                      samplerate = stream ? channel_modes[channelMode].max_samplerate / 10 : DSL_MHZ(100);
-                     limitSamples = stream ? samplerate * 3 : profile->dev_caps.hw_depth / validChannels;
+                     limitSamples = stream ? static_cast<unsigned long long>(samplerate) * 3 : profile->dev_caps.hw_depth / validChannels;
                   }
                }
 
@@ -1531,9 +1552,9 @@ struct DSLogicDevice::Impl
       settings.div_h = (div >> 16) + ((pre - 1) << 8);
 
       // capture counters
-      settings.cnt_l = (captureSamples >> 4) & 0x0000ffff;
+      settings.cnt_l = (captureSamples >> 4) & 0x0000ffff; // hardware minimum unit is 16 logic samples
       settings.cnt_h = (captureSamples >> 20);
-      settings.dso_cnt_l = captureSamples & 0x0000ffff;
+      settings.dso_cnt_l = captureSamples & 0x0000ffff; // // hardware minimum unit is 1 analog sample
       settings.dso_cnt_h = captureSamples >> 16;
 
       // trigger position, must be align to minimum parallel bits
@@ -1674,11 +1695,7 @@ struct DSLogicDevice::Impl
       }
 
       // send bulk data setting
-      if ((transferred = usb.syncTransfer(Usb::Out, 2, &settings, sizeof(dsl_setting), 1000)) < 0)
-      {
-         log->error("failed to send bulk data setting of arm FPGA");
-         return false;
-      }
+      transferred = usb.syncTransfer(Usb::Out, 2, &settings, sizeof(dsl_setting), 1000);
 
       if (transferred < 0)
       {
@@ -1695,11 +1712,7 @@ struct DSLogicDevice::Impl
       // setting_ext32
       if (profile->dev_caps.feature_caps & CAPS_FEATURE_LA_CH32)
       {
-         if ((transferred = usb.syncTransfer(Usb::Out, 2, &settingsExt32, sizeof(dsl_setting_ext32), 1000)) < 0)
-         {
-            log->error("failed to send bulk data setting of arm FPGA(setting_ext32)");
-            return false;
-         }
+         transferred = usb.syncTransfer(Usb::Out, 2, &settingsExt32, sizeof(dsl_setting_ext32), 1000);
 
          if (transferred < 0)
          {
@@ -1973,7 +1986,7 @@ struct DSLogicDevice::Impl
       /*
        * if have incomplete buffer, fill it with new received data
        */
-      if (buffer)
+      if (buffer.isValid())
       {
          unsigned int filled = (currentBytes % (size >> 3)) << 3; // filled samples
 
@@ -2042,10 +2055,10 @@ struct DSLogicDevice::Impl
       unsigned int row = (pos & 0x07) << 3;
 
       // transpose data from transfer buffer to interleaved buffer
-      for (; buffer.available() && source < limit;)
+      for (; buffer.remaining() && source < limit;)
       {
          // reserve full buffer for interleaved data
-         float *target = !filled ? buffer.pull(ch << 6) : buffer.pull(0) - filled; // 64 * channels
+         float *target = !filled ? buffer.push(ch << 6) : buffer.push(0) - filled; // 64 * channels
 
          // transpose full block of SAMPLES[64][validChannels]
          for (unsigned int c = col; c < ch; ++c)
@@ -2176,6 +2189,7 @@ struct DSLogicDevice::Impl
 
       for (int i = msc; i >= lsc; i--)
       {
+         if (i >= NUM_TRIGGER_PROBES) continue;
          mask = (mask << 1) + ((trigger.trigger0[stage][i] == 'X') | (trigger.trigger0[stage][i] == 'C'));
       }
 
@@ -2188,6 +2202,7 @@ struct DSLogicDevice::Impl
 
       for (int i = msc; i >= lsc; i--)
       {
+         if (i >= NUM_TRIGGER_PROBES) continue;
          mask = (mask << 1) + ((trigger.trigger1[stage][i] == 'X') | (trigger.trigger1[stage][i] == 'C'));
       }
 
@@ -2200,6 +2215,7 @@ struct DSLogicDevice::Impl
 
       for (int i = msc; i >= lsc; i--)
       {
+         if (i >= NUM_TRIGGER_PROBES) continue;
          value = (value << 1) + ((trigger.trigger0[stage][i] == '1') | (trigger.trigger0[stage][i] == 'R'));
       }
 
@@ -2212,6 +2228,7 @@ struct DSLogicDevice::Impl
 
       for (int i = msc; i >= lsc; i--)
       {
+         if (i >= NUM_TRIGGER_PROBES) continue;
          value = (value << 1) + ((trigger.trigger1[stage][i] == '1') | (trigger.trigger1[stage][i] == 'R'));
       }
 
@@ -2224,6 +2241,7 @@ struct DSLogicDevice::Impl
 
       for (int i = msc; i >= lsc; i--)
       {
+         if (i >= NUM_TRIGGER_PROBES) continue;
          edge = (edge << 1) + ((trigger.trigger0[stage][i] == 'R') | (trigger.trigger0[stage][i] == 'F') | (trigger.trigger0[stage][i] == 'C'));
       }
 
@@ -2236,6 +2254,7 @@ struct DSLogicDevice::Impl
 
       for (int i = msc; i >= lsc; i--)
       {
+         if (i >= NUM_TRIGGER_PROBES) continue;
          edge = (edge << 1) + ((trigger.trigger1[stage][i] == 'R') | (trigger.trigger1[stage][i] == 'F') | (trigger.trigger1[stage][i] == 'C'));
       }
 

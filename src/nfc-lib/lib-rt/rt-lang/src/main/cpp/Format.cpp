@@ -28,7 +28,7 @@ const char *ws = " \t\n\r\f\v";
 
 std::string rt::Format::format(const std::string &fmt, const std::vector<Variant> &parameters)
 {
-   std::regex token(R"(\{(['-+]?\.?[0-9]*)?([xX])?\})");
+   std::regex token(R"(\{(['-+]?\.?[0-9]*)?([xXt])?\})");
 
    std::string content = fmt;
 
@@ -195,8 +195,48 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
          // get duration milliseconds
          int milliseconds = (int)std::chrono::duration_cast<std::chrono::milliseconds>(*value).count() % 1000;
 
+         // get duration microseconds
+         int microseconds = (int)std::chrono::duration_cast<std::chrono::microseconds>(*value).count() % 1000000;
+
+         if (mode.empty())
+         {
+            sprintf(buffer, "%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+         }
+         else if (mode == "t")
+         {
+            if (hours > 0)
+               sprintf(buffer, "%02d:", hours);
+
+            if (hours > 0 || minutes > 0)
+               sprintf(buffer, "%02d:", minutes);
+
+            if (hours > 0 || minutes > 0 || seconds > 0)
+               sprintf(buffer, "%02d.", seconds);
+
+            if (milliseconds > 0)
+               sprintf(buffer, "%03d", milliseconds);
+            else
+               sprintf(buffer, "%06d", microseconds);
+         }
+         else
+         {
+            sprintf(buffer, "%lld ns", value->count());
+         }
+
          // format as HH:MM:SS.mmm
-         sprintf(buffer, "%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+         if (hours > 0)
+            sprintf(buffer, "%02d:", hours);
+
+         if (minutes > 0)
+            sprintf(buffer, "%02d:", minutes);
+
+         if (seconds > 0)
+            sprintf(buffer, "%02d.", seconds);
+
+         if (milliseconds > 0)
+            sprintf(buffer, "%03d", milliseconds);
+         else
+            sprintf(buffer, "%06d", microseconds);
       }
 
       content.replace(match.position(), match.length(), buffer);

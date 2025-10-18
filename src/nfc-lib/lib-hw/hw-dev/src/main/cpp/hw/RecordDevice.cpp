@@ -101,7 +101,7 @@ struct FILEHeader
 
 struct RecordDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw.RecordDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw:RecordDevice");
 
    std::string name {};
    std::string serial {};
@@ -285,10 +285,10 @@ struct RecordDevice::Impl
 
       float vector[BUFFER_SIZE];
 
-      while (buffer.available() && file)
+      while (buffer.remaining() && file)
       {
          // read one block of samples up to BUFFER_SIZE
-         file.read(reinterpret_cast<char *>(block), (buffer.available() < BUFFER_SIZE ? buffer.available() : BUFFER_SIZE) * sizeof(T));
+         file.read(reinterpret_cast<char *>(block), (buffer.remaining() < BUFFER_SIZE ? buffer.remaining() : BUFFER_SIZE) * sizeof(T));
 
          // number of samples readed
          const int samples = file.gcount() / sizeof(T);

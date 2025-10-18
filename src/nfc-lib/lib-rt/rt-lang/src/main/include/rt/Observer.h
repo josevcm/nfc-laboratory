@@ -22,8 +22,7 @@
 #ifndef RT_OBSERVER_H
 #define RT_OBSERVER_H
 
-#include <functional>
-#include <utility>
+#include <string>
 
 namespace rt {
 

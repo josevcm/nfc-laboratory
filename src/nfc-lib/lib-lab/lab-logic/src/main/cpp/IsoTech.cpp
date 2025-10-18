@@ -25,12 +25,12 @@
 
 namespace lab {
 
-// rt::Logger *log = rt::Logger::getLogger("decoder.IsoDecoderStatus");
+// rt::Logger *log = rt::Logger::getLogger("decoder:IsoDecoderStatus");
 
 // process next sample from signal buffer
 bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)
 {
-   if (buffer.available() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES)
+   if (buffer.remaining() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES)
       return false;
 
    // number of channels

@@ -371,14 +371,14 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
          case 2:
          {
-            hw::SignalBuffer buffer(65536 * channelCount, 2, 1, sampleRate, sampleOffset >> 1, 0, hw::SignalType::SIGNAL_TYPE_RADIO_IQ);
+            hw::SignalBuffer buffer(65536 * channelCount, 2, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_RADIO_IQ);
 
             if (radioStorage->read(buffer) > 0)
             {
                hw::SignalBuffer result(buffer.elements(), 1, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
 
                float *src = buffer.data();
-               float *dst = result.pull(buffer.elements());
+               float *dst = result.push(buffer.elements());
 
                // compute real signal value
 #if defined(__SSE2__) && defined(USE_SSE2)

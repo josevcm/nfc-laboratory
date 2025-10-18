@@ -306,7 +306,7 @@ ProtocolFrame *ParserNfcB::parseResponseINIT(const lab::RawFrame &frame)
 
 ProtocolFrame *ParserNfcB::parseRequestREAD(const lab::RawFrame &frame)
 {
-   if (frame[0] != 0x08 || frame.available() != 4)
+   if (frame[0] != 0x08 || frame.remaining() != 4)
       return nullptr;
 
    lastCommand = frame[0];
@@ -334,7 +334,7 @@ ProtocolFrame *ParserNfcB::parseResponseREAD(const lab::RawFrame &frame)
 
 ProtocolFrame *ParserNfcB::parseRequestWRITE(const lab::RawFrame &frame)
 {
-   if (frame[0] != 0x09 || frame.available() != 8)
+   if (frame[0] != 0x09 || frame.remaining() != 8)
       return nullptr;
 
    lastCommand = frame[0];
@@ -362,7 +362,7 @@ ProtocolFrame *ParserNfcB::parseResponseWRITE(const lab::RawFrame &frame)
 
 ProtocolFrame *ParserNfcB::parseRequestGETUID(const lab::RawFrame &frame)
 {
-   if (frame[0] != 0x0B || frame.available() != 3)
+   if (frame[0] != 0x0B || frame.remaining() != 3)
       return nullptr;
 
    lastCommand = frame[0];
@@ -389,7 +389,7 @@ ProtocolFrame *ParserNfcB::parseResponseGETUID(const lab::RawFrame &frame)
 
 ProtocolFrame *ParserNfcB::parseRequestSELECT(const lab::RawFrame &frame)
 {
-   if (frame[0] != 0x0E || frame.available() != 4)
+   if (frame[0] != 0x0E || frame.remaining() != 4)
       return nullptr;
 
    lastCommand = frame[0];

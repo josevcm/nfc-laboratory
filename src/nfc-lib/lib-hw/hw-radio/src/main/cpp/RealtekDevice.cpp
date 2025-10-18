@@ -55,7 +55,7 @@ namespace hw {
 
 struct RealtekDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw.RealtekDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw:RealtekDevice");
 
    std::string deviceName;
    std::string deviceVendor;
@@ -638,7 +638,7 @@ struct RealtekDevice::Impl
 
          SignalBuffer buffer = SignalBuffer(BUFFER_SAMPLES * 2, 2, 1, sampleRate, samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_IQ);
 
-         while (buffer.available() > READER_SAMPLES && (rtlsdr_read_sync(rtlsdrHandle, data, sizeof(data), &length) == 0))
+         while (buffer.remaining() > READER_SAMPLES && (rtlsdr_read_sync(rtlsdrHandle, data, sizeof(data), &length) == 0))
          {
             int dropped = sizeof(data) - length;
 

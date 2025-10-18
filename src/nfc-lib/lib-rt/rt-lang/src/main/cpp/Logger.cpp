@@ -22,19 +22,20 @@
 #include <sys/time.h>
 #include <pthread.h>
 
-#include <map>
-#include <atomic>
-#include <memory>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iomanip>
-#include <cmath>
-#include <thread>
-#include <chrono>
-#include <cstring>
-#include <utility>
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <map>
+#include <memory>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <utility>
 
 #include <rt/Logger.h>
 #include <rt/Format.h>
@@ -43,14 +44,14 @@
 namespace rt {
 
 const char *tags[] = {
-      "", // 0
-      "ERROR", // 1
-      "WARN", // 2
-      "INFO", // 3
-      "DEBUG", // 4
-      "TRACE", // 5
-      "", // 6
-      "" // 7
+   "", // 0
+   "ERROR", // 1
+   "WARN", // 2
+   "INFO", // 3
+   "DEBUG", // 4
+   "TRACE", // 5
+   "", // 6
+   "" // 7
 };
 
 int getLevelIndex(std::string name)
@@ -83,13 +84,13 @@ struct Log
    std::chrono::time_point<std::chrono::system_clock> time;
 
    Log(int level, std::string logger, std::string format, std::vector<Variant> params) :
-         level(level),
-         tag(tags[level]),
-         logger(std::move(logger)),
-         format(std::move(format)),
-         params(std::move(params)),
-         thread(std::this_thread::get_id()),
-         time(std::chrono::system_clock::now())
+      level(level),
+      tag(tags[level]),
+      logger(std::move(logger)),
+      format(std::move(format)),
+      params(std::move(params)),
+      thread(std::this_thread::get_id()),
+      time(std::chrono::system_clock::now())
    {
    }
 };
@@ -184,10 +185,22 @@ struct Appender
 };
 
 // global appender instance
-std::shared_ptr<Appender> appender;
+std::unique_ptr<Appender> appender;
+
+// global mutex for logger instances (using construct-on-first-use to avoid static initialization order fiasco)
+std::mutex& Logger::getMutex() {
+   static std::mutex instance;
+   return instance;
+}
+
+// global levels map (using construct-on-first-use to avoid static initialization order fiasco)
+std::map<std::string, int>& Logger::getLevels() {
+   static std::map<std::string, int> instance;
+   return instance;
+}
 
 // logger implementation
-Logger::Logger(std::string name, int level) : level(level), name(std::move(name))
+Logger::Logger(std::string name, const int level) : level(level), name(std::move(name))
 {
 }
 
@@ -264,13 +277,27 @@ void Logger::setLevel(const std::string &level)
 
 Logger *Logger::getLogger(const std::string &name, int level)
 {
-   static std::mutex mutex;
-
-   std::lock_guard lock(mutex);
+   std::lock_guard lock(getMutex());
 
    // insert logger if not found in instances
    if (loggers().find(name) == loggers().end())
-      loggers().insert(std::make_pair(name, std::shared_ptr<Logger>(new Logger(name, level))));
+   {
+      auto logger = std::shared_ptr<Logger>(new Logger(name, level));
+
+      // check if logger has a specific level
+      if (!getLevels().empty())
+      {
+         for (const auto &[expr, l]: getLevels())
+         {
+            if (std::regex regex(expr); std::regex_match(name, regex))
+            {
+               logger->level = l;
+            }
+         }
+      }
+
+      loggers().insert(std::make_pair(name, logger));
+   }
 
    // return logger instance
    return loggers()[name].get();
@@ -293,14 +320,39 @@ void Logger::setRootLevel(int level)
    appender->level = level;
 }
 
-void Logger::setRootLevel(const std::string &name)
+void Logger::setRootLevel(const std::string &level)
 {
-   appender->level = getLevelIndex(name);
+   setRootLevel(getLevelIndex(level));
+}
+
+void Logger::setLoggerLevel(const std::string &expr, int level)
+{
+   std::lock_guard lock(getMutex());
+
+   // create regex from name
+   const std::regex match(expr);
+
+   // check if any of already created logger matches and set its level
+   for (const auto &[name, logger]: loggers())
+   {
+      if (std::regex_match(name, match))
+      {
+         logger->level = level;
+      }
+   }
+
+   // add or update level for future loggers
+   getLevels()[expr] = level;
+}
+
+void Logger::setLoggerLevel(const std::string &name, const std::string &level)
+{
+   setLoggerLevel(name, getLevelIndex(level));
 }
 
 void Logger::init(std::ostream &stream, int level, bool buffered)
 {
-   appender = std::make_shared<Appender>(stream, level, buffered);
+   appender = std::make_unique<Appender>(stream, level, buffered);
 }
 
 void Logger::flush()

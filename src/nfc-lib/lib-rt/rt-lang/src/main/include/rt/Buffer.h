@@ -22,6 +22,7 @@
 #ifndef RT_BUFFER_H
 #define RT_BUFFER_H
 
+#include <cassert>
 #include <cstring>
 #include <memory>
 #include <functional>
@@ -35,28 +36,30 @@ namespace rt {
 template <class T>
 class Buffer
 {
-   std::shared_ptr<Alloc<T>> alloc;
+   protected:
 
-   struct State
-   {
-      unsigned int position; // current data position
-      unsigned int capacity; // buffer data capacity
-      unsigned int limit; // buffer data limit
-   } state;
+      std::shared_ptr<Alloc<T>> alloc;
 
-   struct Attrs
-   {
-      unsigned int type; // data type
-      unsigned int stride; // data stride, how many data has in one chunk for all channels
-      unsigned int interleave; // data interleave, how many consecutive data has per channel
-      void *context; // context payload
-   } attrs;
+      struct State
+      {
+         unsigned int position; // current data position
+         unsigned int capacity; // buffer data capacity
+         unsigned int limit; // buffer data limit
+      } state;
+
+      struct Attrs
+      {
+         unsigned int type; // data type
+         unsigned int stride; // data stride, how many data has in one chunk for all channels
+         unsigned int interleave; // data interleave, how many consecutive data has per channel
+         void *context; // context payload
+      } attrs;
 
    public:
 
       static Heap<T> heap;
 
-      Buffer() : state{0, 0, 0}, attrs{0, 0, 0, nullptr}
+      Buffer() : state {0, 0, 0}, attrs {0, 0, 0, nullptr}
       {
       }
 
@@ -64,15 +67,24 @@ class Buffer
       {
       }
 
-      explicit Buffer(T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : Buffer(capacity, type, stride, interleave, context)
+      explicit Buffer(const T *data, unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : Buffer(capacity, type, stride, interleave, context)
       {
          if (data && capacity)
-            put(data, capacity).flip();
+         {
+            put(data, capacity);
+            flip();
+         }
       }
 
-      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state{0, capacity, capacity}, attrs{type, stride, interleave, context}
+      explicit Buffer(unsigned int capacity, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : state {0, capacity, capacity}, attrs {type, stride, interleave, context}
       {
          alloc = heap.alloc(capacity, ALLOC_ALIGNMENT);
+      }
+
+      Buffer(std::initializer_list<T> data, unsigned int type = 0, unsigned int stride = 1, unsigned int interleave = 1, void *context = nullptr) : Buffer(data.size(), type, stride, interleave, context)
+      {
+         put(data);
+         flip();
       }
 
       ~Buffer() = default;
@@ -94,13 +106,13 @@ class Buffer
          if (this == &other)
             return true;
 
-         if (state.limit != other.state.limit || state.position != other.state.position)
+         if (remaining() != other.remaining())
             return false;
 
          if (alloc == other.alloc)
             return true;
 
-         return std::memcmp(alloc->data + state.position, other.alloc->data + state.position, state.limit) == 0;
+         return std::memcmp(ptr(), other.ptr(), remaining()) == 0;
       }
 
       bool operator!=(const Buffer &other) const
@@ -145,170 +157,249 @@ class Buffer
          return state.capacity;
       }
 
-      unsigned int available() const
+      unsigned int remaining() const
       {
          return state.limit - state.position;
       }
 
       unsigned int elements() const
       {
-         return alloc ? state.limit * attrs.interleave / attrs.stride : 0;
+         return state.limit * attrs.interleave / attrs.stride;
       }
 
       unsigned int stride() const
       {
-         return alloc ? attrs.stride : 0;
+         return attrs.stride;
       }
 
       unsigned int interleave() const
       {
-         return alloc ? alloc->interleave : 0;
+         assert(alloc != nullptr);
+         return alloc->interleave;
       }
 
       unsigned int size() const
       {
-         return alloc ? state.limit * sizeof(T) : 0;
+         return state.limit * sizeof(T);
       }
 
       unsigned int chunk() const
       {
-         return alloc ? attrs.stride * sizeof(T) : 0;
-      }
-
-      operator bool() const
-      {
-         return isValid();
+         return attrs.stride * sizeof(T);
       }
 
       unsigned int type() const
       {
-         return alloc && alloc->data ? attrs.type : 0;
+         return attrs.type;
       }
 
       void *context() const
       {
-         return alloc && alloc->data ? attrs.context : nullptr;
+         return attrs.context;
       }
 
       T *data() const
       {
-         return alloc && alloc->data ? alloc->data : nullptr;
+         assert(alloc != nullptr);
+         assert(alloc->data != nullptr);
+         return alloc->data;
       }
 
-      T *pull(unsigned int size)
+      T *ptr() const
       {
-         if (alloc && state.position + size <= state.capacity)
-         {
-            T *ptr = alloc->data + state.position;
-            state.position += size;
-            return ptr;
-         }
-
-         return nullptr;
+         assert(alloc != nullptr);
+         assert(alloc->data != nullptr);
+         return alloc->data + state.position;
       }
 
       Buffer &resize(unsigned int newCapacity)
       {
-         if (alloc)
-         {
-            const int count = std::min(newCapacity, state.limit);
+         assert(alloc != nullptr);
 
-            Alloc<T> newAlloc = heap.acquire(newCapacity, ALLOC_ALIGNMENT);
+         const int count = std::min(newCapacity, state.limit);
 
-            std::memcpy(newAlloc->data, alloc->data, count * sizeof(T));
+         Alloc<T> newAlloc = heap.acquire(newCapacity, ALLOC_ALIGNMENT);
 
-            heap.release(alloc);
+         std::memcpy(newAlloc->data, alloc->data, count * sizeof(T));
 
-            alloc = newAlloc;
-            state.limit = newCapacity > state.limit ? state.limit : newCapacity;
-            state.capacity = newCapacity;
-         }
+         heap.release(alloc);
+
+         alloc = newAlloc;
+         state.limit = newCapacity > state.limit ? state.limit : newCapacity;
+         state.capacity = newCapacity;
 
          return *this;
       }
 
       Buffer &clear()
       {
-         if (alloc)
-         {
-            state.limit = state.capacity;
-            state.position = 0;
-         }
+         assert(alloc != nullptr);
+
+         state.limit = state.capacity;
+         state.position = 0;
 
          return *this;
       }
 
       Buffer &flip()
       {
-         if (alloc)
-         {
-            state.limit = state.position;
-            state.position = 0;
-         }
+         assert(alloc != nullptr);
+
+         state.limit = state.position;
+         state.position = 0;
 
          return *this;
       }
 
       Buffer &rewind()
       {
-         if (alloc)
-            state.position = 0;
+         assert(alloc != nullptr);
+
+         state.position = 0;
 
          return *this;
       }
 
-      Buffer &get(T *data)
+      Buffer &room(int size)
       {
-         if (alloc && state.position < state.limit)
-            *data = alloc->data[state.position++];
+         assert(alloc != nullptr);
+         assert(state.limit + size <= state.capacity);
+
+         state.limit += size;
 
          return *this;
       }
 
-      Buffer &put(const T *data)
+      T get()
       {
-         if (alloc && state.position < state.limit)
-            alloc->data[state.position++] = *data;
+         assert(alloc != nullptr);
+         assert(state.position < state.limit);
 
-         return *this;
-      }
-
-      Buffer &get(T &value)
-      {
-         if (alloc && state.position < state.limit)
-            value = alloc->data[state.position++];
-
-         return *this;
+         return alloc->data[state.position++];
       }
 
       Buffer &put(const T &value)
       {
-         if (alloc && state.position < state.limit)
-            alloc->data[state.position++] = value;
+         assert(alloc != nullptr);
+         assert(state.position < state.limit);
+
+         alloc->data[state.position++] = value;
 
          return *this;
       }
 
-      Buffer &get(T *data, unsigned int size)
+      Buffer &put(std::initializer_list<T> data)
       {
-         if (alloc)
-         {
-            int count = std::min(size, state.limit - state.position);
-            std::memcpy(data, alloc->data + state.position, count * sizeof(T));
-            state.position += count;
-         }
+         for (auto b: data)
+            put(b);
 
          return *this;
       }
 
-      Buffer &put(const T *data, unsigned int size)
+      Buffer &get(T *data, unsigned int elements = 1)
       {
-         if (alloc)
-         {
-            int count = std::min(size, state.limit - state.position);
-            std::memcpy(alloc->data + state.position, data, count * sizeof(T));
-            state.position += count;
-         }
+         assert(alloc != nullptr);
+         assert(elements <= state.limit - state.position);
+
+         std::memcpy(data, alloc->data + state.position, elements * sizeof(T));
+
+         state.position += elements;
+
+         return *this;
+      }
+
+      Buffer &put(const T *data, unsigned int elements)
+      {
+         assert(alloc != nullptr);
+         assert(elements <= state.limit - state.position);
+
+         std::memcpy(alloc->data + state.position, data, elements * sizeof(T));
+
+         state.position += elements;
+
+         return *this;
+      }
+
+      Buffer &get(Buffer &data, unsigned int elements)
+      {
+         assert(alloc != nullptr);
+         assert(data.remaining() >= elements);
+
+         int count = std::min(elements, state.limit - state.position);
+         data.put(alloc->data + state.position, count);
+         data.flip();
+
+         state.position += count;
+
+         return *this;
+      }
+
+      Buffer &put(const Buffer &data, unsigned int elements)
+      {
+         assert(alloc != nullptr);
+         assert(elements <= state.limit - state.position);
+         assert(data.remaining() >= elements);
+
+         put(data.ptr(), elements);
+
+         return *this;
+      }
+
+      Buffer &get(Buffer &data)
+      {
+         return get(data, data.remaining());
+      }
+
+      Buffer &put(const Buffer &data)
+      {
+         return put(data, data.remaining());
+      }
+
+      T *push(unsigned int elements)
+      {
+         assert(alloc != nullptr);
+         assert(state.position + elements <= state.capacity);
+
+         state.position += elements;
+
+         return alloc->data + state.position - elements;
+      }
+
+      T *pull(unsigned int size)
+      {
+         assert(alloc != nullptr);
+         assert(state.position - size >= 0);
+
+         state.position -= size;
+
+         return alloc->data + state.position;
+      }
+
+      Buffer &set(const Buffer &data, unsigned int offset, unsigned int elements)
+      {
+         assert(alloc != nullptr);
+         assert(offset + elements <= state.capacity);
+         assert(data.remaining() >= elements);
+
+         T *src = data.ptr();
+
+         for (int i = 0; i < elements; i++)
+            alloc->data[offset + i] = src[i];
+
+         return *this;
+      }
+
+      Buffer &set(const Buffer &data, unsigned int offset)
+      {
+         return set(data, offset, data.remaining());
+      }
+
+      Buffer &trim(unsigned int size)
+      {
+         assert(alloc != nullptr);
+         assert(state.position <= state.limit - size);
+
+         state.limit = state.limit - size;
 
          return *this;
       }
@@ -316,31 +407,33 @@ class Buffer
       template <typename E>
       E reduce(E value, const std::function<E(E, T)> &handler) const
       {
-         if (alloc)
-         {
-            for (int i = state.position; i < state.limit; ++i)
-               value = handler(value, alloc->data[i]);
-         }
+         assert(alloc != nullptr);
+
+         for (int i = state.position; i < state.limit; ++i)
+            value = handler(value, alloc->data[i]);
 
          return value;
       }
 
       void stream(const std::function<void(const T *, unsigned int)> &handler) const
       {
-         if (alloc)
-         {
-            for (int i = state.position; i < state.limit; i += attrs.stride)
-               handler(alloc->data + i, attrs.stride);
-         }
+         assert(alloc != nullptr);
+
+         for (int i = state.position; i < state.limit; i += attrs.stride)
+            handler(alloc->data + i, attrs.stride);
       }
 
       T &operator[](unsigned int index)
       {
+         assert(alloc != nullptr);
+
          return alloc->data[index];
       }
 
       const T &operator[](unsigned int index) const
       {
+         assert(alloc != nullptr);
+
          return alloc->data[index];
       }
 };
