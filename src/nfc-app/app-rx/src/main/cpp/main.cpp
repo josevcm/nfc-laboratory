@@ -350,14 +350,32 @@ struct Main
 
    int run(const int argc, char *argv[])
    {
+      // Check for --help before getopt processing
+      for (int i = 1; i < argc; i++)
+      {
+         std::string arg(argv[i]);
+         if (arg == "--help" || arg == "-h")
+         {
+            printUsage(argc > 0 ? argv[0] : "nfc-rx");
+            return 0;
+         }
+      }
+
       int opt;
       int nsecs = -1;
       char *endptr = nullptr;
 
-      while ((opt = getopt(argc, argv, "vdp:t:f:s:")) != -1)
+      while ((opt = getopt(argc, argv, "hvdp:t:f:s:")) != -1)
       {
          switch (opt)
          {
+            // show help
+            case 'h':
+            {
+               printUsage(argc > 0 ? argv[0] : "nfc-rx");
+               return 0;
+            }
+
             // enable verbose mode
             case 'v':
             {
@@ -493,15 +511,68 @@ struct Main
       return 0;
    }
 
+   static void printUsage(const char *programName)
+   {
+      std::cout << "NFC Laboratory - Live SDR Receiver" << std::endl;
+      std::cout << std::endl;
+      std::cout << "Usage: " << programName << " [OPTIONS]" << std::endl;
+      std::cout << std::endl;
+      std::cout << "Description:" << std::endl;
+      std::cout << "  Live NFC signal decoder for Software Defined Radio (SDR) devices." << std::endl;
+      std::cout << "  Captures and decodes NFC signals in real-time, outputting frames as JSON." << std::endl;
+      std::cout << std::endl;
+      std::cout << "Options:" << std::endl;
+      std::cout << "  -h, --help            Show this help message and exit" << std::endl;
+      std::cout << "  -v                    Enable verbose mode (can be repeated for more detail)" << std::endl;
+      std::cout << "                          -v    = INFO level" << std::endl;
+      std::cout << "                          -vv   = DEBUG level" << std::endl;
+      std::cout << "                          -vvv  = TRACE level" << std::endl;
+      std::cout << "  -d                    Enable debug mode - write WAV file with raw signals" << std::endl;
+      std::cout << "                        (WARNING: significantly affects performance!)" << std::endl;
+      std::cout << "  -p PROTOCOLS          Enable specific protocols (comma-separated)" << std::endl;
+      std::cout << "                        Options: nfca, nfcb, nfcf, nfcv" << std::endl;
+      std::cout << "                        Default: all protocols enabled" << std::endl;
+      std::cout << "  -f FREQUENCY          Set receiver center frequency in Hz" << std::endl;
+      std::cout << "                        Default: 13.56 MHz (NFC standard)" << std::endl;
+      std::cout << "  -s SAMPLERATE         Set receiver sample rate in Hz" << std::endl;
+      std::cout << "                        Default: auto-configured by device" << std::endl;
+      std::cout << "  -t SECONDS            Stop capture after specified number of seconds" << std::endl;
+      std::cout << "                        Default: run until interrupted (Ctrl+C)" << std::endl;
+      std::cout << std::endl;
+      std::cout << "Output Format:" << std::endl;
+      std::cout << "  Decoded NFC frames are output as JSON to stdout, one per line:" << std::endl;
+      std::cout << "  {\"tech\":\"NfcA\", \"type\":\"PCD->PICC\", \"rate\":\"106\", \"data\":\"...\"}" << std::endl;
+      std::cout << std::endl;
+      std::cout << "Examples:" << std::endl;
+      std::cout << "  " << programName << std::endl;
+      std::cout << "    Start capturing with default settings (all protocols, 13.56 MHz)" << std::endl;
+      std::cout << std::endl;
+      std::cout << "  " << programName << " -v" << std::endl;
+      std::cout << "    Start capturing with verbose logging enabled" << std::endl;
+      std::cout << std::endl;
+      std::cout << "  " << programName << " -p nfca,nfcb" << std::endl;
+      std::cout << "    Capture only NFC-A and NFC-B protocols" << std::endl;
+      std::cout << std::endl;
+      std::cout << "  " << programName << " -t 60 > capture.json" << std::endl;
+      std::cout << "    Capture for 60 seconds and save output to file" << std::endl;
+      std::cout << std::endl;
+      std::cout << "  " << programName << " -f 13560000 -s 2000000" << std::endl;
+      std::cout << "    Capture with specific frequency and sample rate" << std::endl;
+      std::cout << std::endl;
+      std::cout << "Supported Hardware:" << std::endl;
+      std::cout << "  - RTL-SDR dongles" << std::endl;
+      std::cout << "  - HackRF One" << std::endl;
+      std::cout << "  - Other SDR devices compatible with SoapySDR" << std::endl;
+      std::cout << std::endl;
+      std::cout << "Note:" << std::endl;
+      std::cout << "  Press Ctrl+C to stop capturing and exit gracefully." << std::endl;
+      std::cout << "  Logging output goes to stderr, JSON data goes to stdout." << std::endl;
+      std::cout << std::endl;
+   }
+
    static void showUsage()
    {
-      fprintf(stderr, "Usage: [-v] [-d] [-p nfca,nfcb,nfcf,nfcv] [-f frequency] [-s samplerate] [-t nsecs]\n");
-      fprintf(stderr, "\tv: verbose mode, write logging information to stderr\n");
-      fprintf(stderr, "\td: debug mode, write WAV file with raw decoding signals (highly affected performance!)\n");
-      fprintf(stderr, "\tp: enable protocols, by default all are enabled\n");
-      fprintf(stderr, "\tf: receiver frequency in Hz\n");
-      fprintf(stderr, "\ts: receiver samplerate\n");
-      fprintf(stderr, "\tt: stop capture after number of seconds\n");
+      printUsage("nfc-rx");
    }
 
 } *app;
