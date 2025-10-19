@@ -19,16 +19,17 @@
 
 */
 
-#ifdef __WIN32
-
+#ifdef _WIN32
 #include <windows.h>
-
 #else
 #include <signal.h>
+#include <unistd.h>
+#include <getopt.h>
 #endif
 
-#include <unistd.h>
-
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
 #include <mutex>
 #include <condition_variable>
 #include <iostream>
@@ -57,8 +58,8 @@ struct Main
    const std::map<unsigned int, std::string> frameType {
       {lab::FrameType::NfcCarrierOff, "CarrierOff"},
       {lab::FrameType::NfcCarrierOn, "CarrierOn"},
-      {lab::FrameType::NfcPollFrame, "PCD->PICC"},
-      {lab::FrameType::NfcListenFrame, "PICC->PCD"}
+      {lab::FrameType::NfcPollFrame, "Poll"},
+      {lab::FrameType::NfcListenFrame, "Listen"}
    };
 
    // frame tech catalog
@@ -66,7 +67,7 @@ struct Main
       {lab::FrameTech::NoneTech, "None"},
       {lab::FrameTech::NfcATech, "NfcA"},
       {lab::FrameTech::NfcBTech, "NfcB"},
-      {lab::FrameTech::NfcFTech, "NfcD"},
+      {lab::FrameTech::NfcFTech, "NfcF"},
       {lab::FrameTech::NfcVTech, "NfcV"}
    };
 
@@ -152,13 +153,23 @@ struct Main
    json receiverStatus {};
    json receiverParams {};
 
+   // output mode
+   bool jsonOutputEnabled = false;
+
    Main()
    {
    }
 
-   void init()
+   void init(bool jsonOutput = false)
    {
       log->info("NFC laboratory, 2024 Jose Vicente Campos Martinez");
+
+      jsonOutputEnabled = jsonOutput;
+
+      if (jsonOutputEnabled)
+      {
+         log->info("JSON frame output enabled");
+      }
 
       // create processing tasks
       executor.submit(lab::RadioDecoderTask::construct());
@@ -203,6 +214,10 @@ struct Main
       // update decoder sample rate
       decoderParams["sampleRate"] = receiverStatus["sampleRate"];
 
+      // forward streamTime from receiver to decoder (for frame dateTime)
+      if (receiverStatus.contains("streamTime"))
+         decoderParams["streamTime"] = receiverStatus["streamTime"];
+
       // check receiver parameters
       std::string name = receiverStatus["name"];
       std::string type = name.substr(0, name.find(':'));
@@ -231,14 +246,14 @@ struct Main
       if (!receiverConfigured)
       {
          printf("receiver configuration: %s\n", config.dump().c_str());
-         receiverCommandStream->next({lab::RadioDeviceTask::Configure, [=] { receiverConfigured = true; }, nullptr, {{"data", config.dump()}}});
+         receiverCommandStream->next({lab::RadioDeviceTask::Configure, [this] { receiverConfigured = true; }, nullptr, {{"data", config.dump()}}});
       }
 
       // if receiver is configured and idle, start it
       if (receiverConfigured && receiverStatus["status"] == "idle")
       {
          log->info("start receiver streaming");
-         receiverCommandStream->next({lab::RadioDeviceTask::Start, [=] { receiverStatus["status"] = "waiting"; }});
+         receiverCommandStream->next({lab::RadioDeviceTask::Start, [this] { receiverStatus["status"] = "waiting"; }});
       }
 
       return 0;
@@ -261,6 +276,11 @@ struct Main
       if (decoderParams["sampleRate"].is_null())
          return 0;
 
+      // wait until streamTime is available before starting decoder (important for dateTime in frames)
+      // Note: streamTime must be > 0, not just non-null (0 means not yet set by device)
+      if (decoderParams["streamTime"].is_null() || decoderParams["streamTime"] == 0)
+         return 0;
+
       // detect required changes
       const json config = detectChanges(decoderStatus, decoderParams);
 
@@ -271,14 +291,14 @@ struct Main
       if (!decoderConfigured)
       {
          printf("decoder configuration: %s\n", config.dump().c_str());
-         decoderCommandStream->next({lab::RadioDecoderTask::Configure, [=] { decoderConfigured = true; }, nullptr, {{"data", config.dump()}}});
+         decoderCommandStream->next({lab::RadioDecoderTask::Configure, [this] { decoderConfigured = true; }, nullptr, {{"data", config.dump()}}});
       }
 
       // if decoder is configured and idle, start it
       if (decoderConfigured && decoderStatus["status"] == "idle")
       {
          log->info("start decoder streaming");
-         decoderCommandStream->next({lab::RadioDecoderTask::Start, [=] { decoderStatus["status"] = "waiting"; }});
+         decoderCommandStream->next({lab::RadioDecoderTask::Start, [this] { decoderStatus["status"] = "waiting"; }});
       }
 
       return 0;
@@ -290,8 +310,12 @@ struct Main
 
       for (auto &entry: set.items())
       {
+         // New field that doesn't exist in ref - include it
          if (!ref.contains(entry.key()))
+         {
+            result[entry.key()] = entry.value();
             continue;
+         }
 
          if (entry.value().is_object())
          {
@@ -308,22 +332,113 @@ struct Main
       return result;
    }
 
+   void printFrameJSON(const lab::RawFrame &frame) const
+   {
+      if (!frame.isValid())
+         return;
+
+      json frameObject;
+
+      // basic frame info
+      frameObject["timestamp"] = static_cast<int64_t>(frame.sampleStart());
+      frameObject["tech"] = frameTech.count(frame.techType()) ? frameTech.at(frame.techType()) : "UNKNOWN";
+      frameObject["type"] = frameType.count(frame.frameType()) ? frameType.at(frame.frameType()) : "UNKNOWN";
+
+      // numeric enum values (matching nfc-lab TRZ format)
+      frameObject["tech_type"] = static_cast<int64_t>(frame.techType());
+      frameObject["frame_type"] = static_cast<int64_t>(frame.frameType());
+
+      // time info (output as int if exactly 0, matching nfc-lab format)
+      if (frame.timeStart() == 0.0)
+         frameObject["time_start"] = 0;
+      else
+         frameObject["time_start"] = frame.timeStart();
+
+      if (frame.timeEnd() == 0.0)
+         frameObject["time_end"] = 0;
+      else
+         frameObject["time_end"] = frame.timeEnd();
+
+      // sample info
+      frameObject["sample_start"] = static_cast<int64_t>(frame.sampleStart());
+      frameObject["sample_end"] = static_cast<int64_t>(frame.sampleEnd());
+      frameObject["sample_rate"] = static_cast<int64_t>(frame.sampleRate());
+
+      // datetime (output as int if whole number, matching nfc-lab format)
+      double dateTime = frame.dateTime();
+      if (dateTime == std::floor(dateTime))
+         frameObject["date_time"] = static_cast<int64_t>(dateTime);
+      else
+         frameObject["date_time"] = dateTime;
+
+      // rate if available
+      if (frame.frameRate() > 0)
+         frameObject["rate"] = static_cast<int64_t>(frame.frameRate());
+
+      // data if available
+      if (!frame.isEmpty())
+      {
+         std::string hexData;
+         for (int i = 0; i < frame.limit(); i++)
+         {
+            if (i > 0) hexData += ":";
+            char hex[3];
+            snprintf(hex, sizeof(hex), "%02x", static_cast<unsigned int>(frame[i]));
+            hexData += hex;
+         }
+         frameObject["data"] = hexData;
+         frameObject["length"] = static_cast<int64_t>(frame.limit());
+      }
+
+      // flags array
+      json flagsList = json::array();
+
+      if (frame.hasFrameFlags(lab::CrcError))
+         flagsList.push_back("crc-error");
+
+      if (frame.hasFrameFlags(lab::ParityError))
+         flagsList.push_back("parity-error");
+
+      if (frame.hasFrameFlags(lab::SyncError))
+         flagsList.push_back("sync-error");
+
+      if (frame.hasFrameFlags(lab::Truncated))
+         flagsList.push_back("truncated");
+
+      if (frame.hasFrameFlags(lab::Encrypted))
+         flagsList.push_back("encrypted");
+
+      // frame direction flags
+      if (frame.frameType() == lab::NfcPollFrame || frame.frameType() == lab::IsoRequestFrame)
+         flagsList.push_back("request");
+      else if (frame.frameType() == lab::NfcListenFrame || frame.frameType() == lab::IsoResponseFrame)
+         flagsList.push_back("response");
+
+      if (!flagsList.empty())
+         frameObject["flags"] = flagsList;
+
+      // print compact JSON
+      fprintf(stdout, "%s\n", frameObject.dump().c_str());
+   }
+
    void printFrame(const lab::RawFrame &frame) const
    {
       int offset = 0;
       char buffer[16384];
 
       // add datagram time
-      offset += snprintf(buffer + offset, sizeof(buffer), "%010.3f ", frame.timeStart());
+      offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%010.3f ", frame.timeStart());
 
       // add frame type
-      offset += snprintf(buffer + offset, sizeof(buffer), "(%s) ", frameType.at(frame.frameType()).c_str());
+      const char* ft = frameType.count(frame.frameType()) ? frameType.at(frame.frameType()).c_str() : "UNKNOWN";
+      offset += snprintf(buffer + offset, sizeof(buffer) - offset, "(%s) ", ft);
 
       // data frames
       if (frame.frameType() == lab::FrameType::NfcPollFrame || frame.frameType() == lab::FrameType::NfcListenFrame)
       {
          // add tech type
-         offset += snprintf(buffer + offset, sizeof(buffer), "[%s@%.0f]: ", frameTech.at(frame.techType()).c_str(), roundf(float(frame.frameRate()) / 1000.0f));
+         const char* tech = frameTech.count(frame.techType()) ? frameTech.at(frame.techType()).c_str() : "UNKNOWN";
+         offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[%s@%.0f]: ", tech, roundf(float(frame.frameRate()) / 1000.0f));
 
          // add data as HEX string
          for (int i = 0; i < frame.size(); i++)
@@ -350,54 +465,71 @@ struct Main
 
    int run(const int argc, char *argv[])
    {
-      // Check for --help before getopt processing
-      for (int i = 1; i < argc; i++)
-      {
-         std::string arg(argv[i]);
-         if (arg == "--help" || arg == "-h")
-         {
-            printUsage(argc > 0 ? argv[0] : "nfc-rx");
-            return 0;
-         }
-      }
-
       int opt;
       int nsecs = -1;
       char *endptr = nullptr;
+      bool jsonOutput = false;
 
-      while ((opt = getopt(argc, argv, "hvdp:t:f:s:")) != -1)
+      // define long options
+      static struct option long_options[] = {
+         {"help",       no_argument,       nullptr, 'h'},
+         {"version",    no_argument,       nullptr, 'v'},
+         {"log-level",  required_argument, nullptr, 'l'},
+         {"json-frames", no_argument,      nullptr, 'j'},
+         {nullptr, 0, nullptr, 0}
+      };
+
+      int option_index = 0;
+      while ((opt = getopt_long(argc, argv, "hvjl:dp:t:f:s:", long_options, &option_index)) != -1)
       {
          switch (opt)
          {
-            // show help
             case 'h':
             {
                printUsage(argc > 0 ? argv[0] : "nfc-rx");
                return 0;
             }
 
-            // enable verbose mode
             case 'v':
             {
-               // first level, INFO
-               if (rt::Logger::getRootLevel() < rt::Logger::INFO_LEVEL)
+               printf("nfc-rx %s\n", PROJECT_VERSION);
+               return 0;
+            }
+
+            case 'l':
+            {
+               std::string level = optarg;
+               if (level == "DEBUG")
+                  rt::Logger::setRootLevel(rt::Logger::DEBUG_LEVEL);
+               else if (level == "INFO")
                   rt::Logger::setRootLevel(rt::Logger::INFO_LEVEL);
-
-                  // consecutive levels, up tu TRACE
-               else if (rt::Logger::getRootLevel() < rt::Logger::TRACE_LEVEL)
-                  rt::Logger::setRootLevel(rt::Logger::getRootLevel() + 1);
-
+               else if (level == "WARN")
+                  rt::Logger::setRootLevel(rt::Logger::WARN_LEVEL);
+               else if (level == "ERROR")
+                  rt::Logger::setRootLevel(rt::Logger::ERROR_LEVEL);
+               else if (level == "TRACE")
+                  rt::Logger::setRootLevel(rt::Logger::TRACE_LEVEL);
+               else
+               {
+                  fprintf(stderr, "Invalid log level: %s (use DEBUG, INFO, WARN, ERROR, or TRACE)\n", optarg);
+                  showUsage();
+                  return -1;
+               }
                break;
             }
 
-            // enable signal debug mode
+            case 'j':
+            {
+               jsonOutput = true;
+               break;
+            }
+
             case 'd':
             {
                decoderParams["debugEnabled"] = true;
                break;
             }
 
-            // enable protocols
             case 'p':
             {
                std::string protocols = optarg;
@@ -408,7 +540,6 @@ struct Main
                break;
             }
 
-            // set running frequency
             case 'f':
             {
                receiverParams["centerFreq"] = strtol(optarg, &endptr, 10);
@@ -423,7 +554,6 @@ struct Main
                break;
             }
 
-            // set running frequency
             case 's':
             {
                receiverParams["sampleRate"] = strtol(optarg, &endptr, 10);
@@ -438,7 +568,6 @@ struct Main
                break;
             }
 
-            // limit running time
             case 't':
             {
                nsecs = strtol(optarg, &endptr, 10);
@@ -463,9 +592,9 @@ struct Main
       const auto start = std::chrono::steady_clock::now();
 
       // initialize
-      init();
+      init(jsonOutput);
 
-      // main loot until capture finished
+      // main loop until capture finished
       while (!terminate)
       {
          std::unique_lock lock(mutex);
@@ -501,7 +630,10 @@ struct Main
          // process received frames
          while (auto frame = frameQueue.get())
          {
-            printFrame(frame.value());
+            if (jsonOutputEnabled)
+               printFrameJSON(frame.value());
+            else
+               printFrame(frame.value());
          }
 
          // flush console output
@@ -519,54 +651,60 @@ struct Main
       std::cout << std::endl;
       std::cout << "Description:" << std::endl;
       std::cout << "  Live NFC signal decoder for Software Defined Radio (SDR) devices." << std::endl;
-      std::cout << "  Captures and decodes NFC signals in real-time, outputting frames as JSON." << std::endl;
+      std::cout << "  Captures and decodes NFC signals in real-time." << std::endl;
       std::cout << std::endl;
       std::cout << "Options:" << std::endl;
       std::cout << "  -h, --help            Show this help message and exit" << std::endl;
-      std::cout << "  -v                    Enable verbose mode (can be repeated for more detail)" << std::endl;
-      std::cout << "                          -v    = INFO level" << std::endl;
-      std::cout << "                          -vv   = DEBUG level" << std::endl;
-      std::cout << "                          -vvv  = TRACE level" << std::endl;
+      std::cout << "  -v, --version         Show version information and exit" << std::endl;
+      std::cout << "  -l, --log-level LEVEL Set log level: DEBUG, INFO, WARN, ERROR, TRACE" << std::endl;
+      std::cout << "                        Default: no logging (silent)" << std::endl;
+      std::cout << "  -j, --json-frames     Output decoded NFC frames as JSON to stdout" << std::endl;
+      std::cout << "                        Default: human-readable text format" << std::endl;
       std::cout << "  -d                    Enable debug mode - write WAV file with raw signals" << std::endl;
       std::cout << "                        (WARNING: significantly affects performance!)" << std::endl;
       std::cout << "  -p PROTOCOLS          Enable specific protocols (comma-separated)" << std::endl;
       std::cout << "                        Options: nfca, nfcb, nfcf, nfcv" << std::endl;
       std::cout << "                        Default: all protocols enabled" << std::endl;
       std::cout << "  -f FREQUENCY          Set receiver center frequency in Hz" << std::endl;
-      std::cout << "                        Default: 13.56 MHz (NFC standard)" << std::endl;
+      std::cout << "                        Default: auto-configured (depends on hardware)" << std::endl;
       std::cout << "  -s SAMPLERATE         Set receiver sample rate in Hz" << std::endl;
       std::cout << "                        Default: auto-configured by device" << std::endl;
       std::cout << "  -t SECONDS            Stop capture after specified number of seconds" << std::endl;
       std::cout << "                        Default: run until interrupted (Ctrl+C)" << std::endl;
       std::cout << std::endl;
-      std::cout << "Output Format:" << std::endl;
-      std::cout << "  Decoded NFC frames are output as JSON to stdout, one per line:" << std::endl;
-      std::cout << "  {\"tech\":\"NfcA\", \"type\":\"PCD->PICC\", \"rate\":\"106\", \"data\":\"...\"}" << std::endl;
+      std::cout << "Output Formats:" << std::endl;
+      std::cout << "  Text (default):  0001234.567 (Poll) [NfcA@106]: 26 00" << std::endl;
+      std::cout << "  JSON (-j flag):  {\"timestamp\":1234.567,\"type\":\"Poll\",\"tech\":\"NfcA\",\"rate\":106,\"data\":\"26:00\"}" << std::endl;
       std::cout << std::endl;
       std::cout << "Examples:" << std::endl;
       std::cout << "  " << programName << std::endl;
-      std::cout << "    Start capturing with default settings (all protocols, 13.56 MHz)" << std::endl;
+      std::cout << "    Start capturing with default settings (text output, all protocols)" << std::endl;
       std::cout << std::endl;
-      std::cout << "  " << programName << " -v" << std::endl;
-      std::cout << "    Start capturing with verbose logging enabled" << std::endl;
+      std::cout << "  " << programName << " --json-frames > capture.json" << std::endl;
+      std::cout << "    Capture with JSON output and save to file" << std::endl;
       std::cout << std::endl;
-      std::cout << "  " << programName << " -p nfca,nfcb" << std::endl;
-      std::cout << "    Capture only NFC-A and NFC-B protocols" << std::endl;
+      std::cout << "  " << programName << " -l INFO -j" << std::endl;
+      std::cout << "    JSON output with INFO-level logging (logs go to stderr)" << std::endl;
       std::cout << std::endl;
-      std::cout << "  " << programName << " -t 60 > capture.json" << std::endl;
-      std::cout << "    Capture for 60 seconds and save output to file" << std::endl;
+      std::cout << "  " << programName << " -p nfca,nfcb -t 60" << std::endl;
+      std::cout << "    Capture only NFC-A and NFC-B for 60 seconds" << std::endl;
       std::cout << std::endl;
-      std::cout << "  " << programName << " -f 13560000 -s 2000000" << std::endl;
-      std::cout << "    Capture with specific frequency and sample rate" << std::endl;
+      std::cout << "  " << programName << " -f 40680000 -s 10000000 -j" << std::endl;
+      std::cout << "    Capture with specific frequency/sample-rate (Airspy settings)" << std::endl;
       std::cout << std::endl;
       std::cout << "Supported Hardware:" << std::endl;
       std::cout << "  - RTL-SDR dongles" << std::endl;
+      std::cout << "  - Airspy (Mini, R2, HF+)" << std::endl;
       std::cout << "  - HackRF One" << std::endl;
-      std::cout << "  - Other SDR devices compatible with SoapySDR" << std::endl;
+      std::cout << "  - Other SDR devices compatible with the driver library" << std::endl;
+      std::cout << std::endl;
+      std::cout << "Compatibility:" << std::endl;
+      std::cout << "  This tool is compatible with 'nfc-lab --json-frames' output format." << std::endl;
+      std::cout << "  Use -j/--json-frames and -l/--log-level for identical behavior." << std::endl;
       std::cout << std::endl;
       std::cout << "Note:" << std::endl;
       std::cout << "  Press Ctrl+C to stop capturing and exit gracefully." << std::endl;
-      std::cout << "  Logging output goes to stderr, JSON data goes to stdout." << std::endl;
+      std::cout << "  Logging output goes to stderr, frame data goes to stdout." << std::endl;
       std::cout << std::endl;
    }
 
@@ -577,13 +715,13 @@ struct Main
 
 } *app;
 
-#ifdef __WIN32
+#ifdef _WIN32
 
-WINBOOL intHandler(DWORD sig)
+BOOL WINAPI intHandler(DWORD sig)
 {
    fprintf(stderr, "Terminate on signal %lu\n", sig);
    app->finish();
-   return true;
+   return TRUE;
 }
 
 #else
@@ -603,8 +741,8 @@ int main(int argc, char *argv[])
    rt::Logger::setRootLevel(rt::Logger::NONE_LEVEL);
 
    // register signals handlers
-#ifdef __WIN32
-   SetConsoleCtrlHandler(intHandler, TRUE);
+#ifdef _WIN32
+   SetConsoleCtrlHandler((PHANDLER_ROUTINE)intHandler, TRUE);
 #else
    signal(SIGINT, intHandler);
    signal(SIGTERM, intHandler);

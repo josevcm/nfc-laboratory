@@ -5,6 +5,9 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 # Build for WIN32 / UNIX-LINUX
 add_executable(nfc-rx src/main/cpp/main.cpp)
 
+# Add version definition (consistent with nfc-lab)
+target_compile_definitions(nfc-rx PRIVATE PROJECT_VERSION="${PROJECT_VERSION}")
+
 target_include_directories(nfc-rx PRIVATE ${PRIVATE_SOURCE_DIR})
 target_include_directories(nfc-rx PRIVATE ${AUTOGEN_BUILD_DIR}/include)
 
