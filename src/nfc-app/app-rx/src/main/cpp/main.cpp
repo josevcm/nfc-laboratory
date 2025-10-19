@@ -19,17 +19,17 @@
 
 */
 
-#ifdef __WIN32
-
+#ifdef _WIN32
 #include <windows.h>
-
 #else
 #include <signal.h>
-#endif
-
 #include <unistd.h>
 #include <getopt.h>
+#endif
 
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
 #include <mutex>
 #include <condition_variable>
 #include <iostream>
@@ -214,6 +214,10 @@ struct Main
       // update decoder sample rate
       decoderParams["sampleRate"] = receiverStatus["sampleRate"];
 
+      // forward streamTime from receiver to decoder (for frame dateTime)
+      if (receiverStatus.contains("streamTime"))
+         decoderParams["streamTime"] = receiverStatus["streamTime"];
+
       // check receiver parameters
       std::string name = receiverStatus["name"];
       std::string type = name.substr(0, name.find(':'));
@@ -242,14 +246,14 @@ struct Main
       if (!receiverConfigured)
       {
          printf("receiver configuration: %s\n", config.dump().c_str());
-         receiverCommandStream->next({lab::RadioDeviceTask::Configure, [=] { receiverConfigured = true; }, nullptr, {{"data", config.dump()}}});
+         receiverCommandStream->next({lab::RadioDeviceTask::Configure, [this] { receiverConfigured = true; }, nullptr, {{"data", config.dump()}}});
       }
 
       // if receiver is configured and idle, start it
       if (receiverConfigured && receiverStatus["status"] == "idle")
       {
          log->info("start receiver streaming");
-         receiverCommandStream->next({lab::RadioDeviceTask::Start, [=] { receiverStatus["status"] = "waiting"; }});
+         receiverCommandStream->next({lab::RadioDeviceTask::Start, [this] { receiverStatus["status"] = "waiting"; }});
       }
 
       return 0;
@@ -272,6 +276,11 @@ struct Main
       if (decoderParams["sampleRate"].is_null())
          return 0;
 
+      // wait until streamTime is available before starting decoder (important for dateTime in frames)
+      // Note: streamTime must be > 0, not just non-null (0 means not yet set by device)
+      if (decoderParams["streamTime"].is_null() || decoderParams["streamTime"] == 0)
+         return 0;
+
       // detect required changes
       const json config = detectChanges(decoderStatus, decoderParams);
 
@@ -282,14 +291,14 @@ struct Main
       if (!decoderConfigured)
       {
          printf("decoder configuration: %s\n", config.dump().c_str());
-         decoderCommandStream->next({lab::RadioDecoderTask::Configure, [=] { decoderConfigured = true; }, nullptr, {{"data", config.dump()}}});
+         decoderCommandStream->next({lab::RadioDecoderTask::Configure, [this] { decoderConfigured = true; }, nullptr, {{"data", config.dump()}}});
       }
 
       // if decoder is configured and idle, start it
       if (decoderConfigured && decoderStatus["status"] == "idle")
       {
          log->info("start decoder streaming");
-         decoderCommandStream->next({lab::RadioDecoderTask::Start, [=] { decoderStatus["status"] = "waiting"; }});
+         decoderCommandStream->next({lab::RadioDecoderTask::Start, [this] { decoderStatus["status"] = "waiting"; }});
       }
 
       return 0;
@@ -301,8 +310,12 @@ struct Main
 
       for (auto &entry: set.items())
       {
+         // New field that doesn't exist in ref - include it
          if (!ref.contains(entry.key()))
+         {
+            result[entry.key()] = entry.value();
             continue;
+         }
 
          if (entry.value().is_object())
          {
@@ -335,18 +348,28 @@ struct Main
       frameObject["tech_type"] = static_cast<int64_t>(frame.techType());
       frameObject["frame_type"] = static_cast<int64_t>(frame.frameType());
 
-      // time info
-      frameObject["time_start"] = frame.timeStart();
-      frameObject["time_end"] = frame.timeEnd();
+      // time info (output as int if exactly 0, matching nfc-lab format)
+      if (frame.timeStart() == 0.0)
+         frameObject["time_start"] = 0;
+      else
+         frameObject["time_start"] = frame.timeStart();
+
+      if (frame.timeEnd() == 0.0)
+         frameObject["time_end"] = 0;
+      else
+         frameObject["time_end"] = frame.timeEnd();
 
       // sample info
       frameObject["sample_start"] = static_cast<int64_t>(frame.sampleStart());
       frameObject["sample_end"] = static_cast<int64_t>(frame.sampleEnd());
       frameObject["sample_rate"] = static_cast<int64_t>(frame.sampleRate());
 
-      // datetime if available
-      if (frame.dateTime() > 0)
-         frameObject["date_time"] = frame.dateTime();
+      // datetime (output as int if whole number, matching nfc-lab format)
+      double dateTime = frame.dateTime();
+      if (dateTime == std::floor(dateTime))
+         frameObject["date_time"] = static_cast<int64_t>(dateTime);
+      else
+         frameObject["date_time"] = dateTime;
 
       // rate if available
       if (frame.frameRate() > 0)
@@ -404,16 +427,18 @@ struct Main
       char buffer[16384];
 
       // add datagram time
-      offset += snprintf(buffer + offset, sizeof(buffer), "%010.3f ", frame.timeStart());
+      offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%010.3f ", frame.timeStart());
 
       // add frame type
-      offset += snprintf(buffer + offset, sizeof(buffer), "(%s) ", frameType.at(frame.frameType()).c_str());
+      const char* ft = frameType.count(frame.frameType()) ? frameType.at(frame.frameType()).c_str() : "UNKNOWN";
+      offset += snprintf(buffer + offset, sizeof(buffer) - offset, "(%s) ", ft);
 
       // data frames
       if (frame.frameType() == lab::FrameType::NfcPollFrame || frame.frameType() == lab::FrameType::NfcListenFrame)
       {
          // add tech type
-         offset += snprintf(buffer + offset, sizeof(buffer), "[%s@%.0f]: ", frameTech.at(frame.techType()).c_str(), roundf(float(frame.frameRate()) / 1000.0f));
+         const char* tech = frameTech.count(frame.techType()) ? frameTech.at(frame.techType()).c_str() : "UNKNOWN";
+         offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[%s@%.0f]: ", tech, roundf(float(frame.frameRate()) / 1000.0f));
 
          // add data as HEX string
          for (int i = 0; i < frame.size(); i++)
@@ -690,13 +715,13 @@ struct Main
 
 } *app;
 
-#ifdef __WIN32
+#ifdef _WIN32
 
-WINBOOL intHandler(DWORD sig)
+BOOL WINAPI intHandler(DWORD sig)
 {
    fprintf(stderr, "Terminate on signal %lu\n", sig);
    app->finish();
-   return true;
+   return TRUE;
 }
 
 #else
@@ -716,8 +741,8 @@ int main(int argc, char *argv[])
    rt::Logger::setRootLevel(rt::Logger::NONE_LEVEL);
 
    // register signals handlers
-#ifdef __WIN32
-   SetConsoleCtrlHandler(intHandler, TRUE);
+#ifdef _WIN32
+   SetConsoleCtrlHandler((PHANDLER_ROUTINE)intHandler, TRUE);
 #else
    signal(SIGINT, intHandler);
    signal(SIGTERM, intHandler);
