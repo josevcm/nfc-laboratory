@@ -327,7 +327,7 @@ clarity in the code and facilitating its monitoring and debugging.
 For this reason it is possible that certain parts can be improved in performance, but I have done it as a didactic 
 exercise rather than a production application.
 
-## Input / Output file formats
+## Input / Output formats
 
 The application allows you to read and write files in two different formats:
 
@@ -407,6 +407,45 @@ JSON contents are in entry named **frame.json** inside TRZ file:
   - Iso7816Tech = 0x0201
 - timeEnd: End of the frame in seconds.
 - timeStart: Start of the frame in seconds.
+
+### Live console output
+
+With -j option the application is able to export the decoded frames to JSON format in console output. Thanks to [Steffen-W](https://github.com/Steffen-W) for this feature.
+
+Each JSON frame contains this fields:
+
+| Field                | Type   | Description                                                           |
+|----------------------|--------|-----------------------------------------------------------------------|
+| `timestamp`          | int    | Frame sample time                                                     |
+| `tech`               | int    | NfcA, NfcB, NfcF, NfcV, UNKNOWN                                       |
+| `type`               | int    | CarrierOff, CarrierOn, Poll, Listen                                   |
+| `tech_type`          | int    | Tech: 0x0101=NfcA, 0x0102=NfcB, 0x0103=NfcF, 0x0104=NfcV              |
+| `frame_type`         | int    | Type: 0x0100=CarrierOff, 0x0101=CarrierOn, 0x0102=Poll, 0x0103=Listen |
+| `sample_rate`        | int    | Sample rate in Hz (e.g., 3200000)                                     |
+| `sample_start/end`   | int    | Frame sample start / end (relative)                                   |
+| `time_start/end`     | float  | Time in seconds (relative)                                            |
+| `date_time`          | float  | Absolute Unix timestamp                                               |
+| `rate`               | int    | Bitrate in bps                                                        |
+| `flags`              | int    | Errors: 0x20=CRC, 0x10=Parity, 0x08=Truncated, 0x40=Sync              |
+| `data`               | string | Hex payload: `"AA:BB:CC"` (optional for carrier events)               |
+| `length`             | int    | Number of bytes in frameData                                          |
+
+Example:
+
+```
+./nfc-lab -j
+{"dateTime":1737800643,"frameData":"","frameRate":0,"frameType":"CarrierOff","length":0,"sampleEnd":0,"sampleRate":10000000,"sampleStart":0,"techType":"UNKNOWN","timeEnd":0,"timeStart":0}
+{"dateTime":1737800643,"frameData":"","frameRate":0,"frameType":"CarrierOff","length":0,"sampleEnd":1,"sampleRate":10000000,"sampleStart":1,"techType":"UNKNOWN","timeEnd":1e-07,"timeStart":1e-07}
+{"dateTime":1737800643.0000038,"frameData":"","frameRate":0,"frameType":"CarrierOn","length":0,"sampleEnd":38,"sampleRate":10000000,"sampleStart":38,"techType":"UNKNOWN","timeEnd":3.8e-06,"timeStart":3.8e-06}
+{"dateTime":1737800643.0031676,"flags":["request"],"frameData":"e0:80:31:73","frameRate":105938,"frameType":"Poll","length":4,"sampleEnd":35216,"sampleRate":10000000,"sampleStart":31677,"techType":"NfcA","timeEnd":0.0035216,"timeStart":0.0031677}
+{"dateTime":1737800643.0036075,"flags":["response"],"frameData":"06:75:77:81:02:80:02:f0","frameRate":105938,"frameType":"Listen","length":8,"sampleEnd":42918,"sampleRate":10000000,"sampleStart":36075,"techType":"NfcA","timeEnd":0.0042918,"timeStart":0.0036075}
+{"dateTime":1737800643.0061498,"flags":["request"],"frameData":"02:90:5a:00:00:03:ab:22:e5:00:eb:6b","frameRate":105938,"frameType":"Poll","length":12,"sampleEnd":71838,"sampleRate":10000000,"sampleStart":61497,"techType":"NfcA","timeEnd":0.0071838,"timeStart":0.0061497}
+{"dateTime":1737800643.0086663,"flags":["response"],"frameData":"02:91:00:29:10","frameRate":105938,"frameType":"Listen","length":5,"sampleEnd":91003,"sampleRate":10000000,"sampleStart":86662,"techType":"NfcA","timeEnd":0.0091003,"timeStart":0.0086662}
+{"dateTime":1737800643.0235095,"flags":["request"],"frameData":"03:90:6c:00:00:01:08:00:67:ce","frameRate":105938,"frameType":"Poll","length":10,"sampleEnd":243727,"sampleRate":10000000,"sampleStart":235096,"techType":"NfcA","timeEnd":0.0243727,"timeStart":0.0235096}
+{"dateTime":1737800643.0254395,"flags":["response"],"frameData":"03:d4:17:00:00:91:00:3f:fe","frameRate":105938,"frameType":"Listen","length":9,"sampleEnd":262136,"sampleRate":10000000,"sampleStart":254396,"techType":"NfcA","timeEnd":0.0262136,"timeStart":0.0254396}
+{"dateTime":1737800643.0412457,"flags":["request"],"frameData":"02:90:bd:00:00:07:01:00:00:00:80:00:00:00:1a:83","frameRate":105938,"frameType":"Poll","length":16,"sampleEnd":426181,"sampleRate":10000000,"sampleStart":412458,"techType":"NfcA","timeEnd":0.0426181,"timeStart":0.0412458}
+{"dateTime":1737800643.0433269,"flags":["response"],"frameData":"02:04:3c:70:02:52:48:80:24:66:4d:fb:bb:a5:78:8d:00:00:45:67:10:10:20:11:00:70:29:d5:f7:1b:00:00:00:00:00:00:00:01:97:3e:07:d2:04:00:00:00:00:00:00:00:00:00:00:00:00:97:3e:00:00:00:91:af:a7:98","frameRate":105938,"frameType":"Listen","length":64,"sampleEnd":487734,"sampleRate":10000000,"sampleStart":433268,"techType":"NfcA","timeEnd":0.0487734,"timeStart":0.0433268}
+```
 
 ## Testing files
 

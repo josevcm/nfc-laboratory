@@ -282,23 +282,41 @@ struct QtApplication::Impl
          default: frameType = "UNKNOWN";
       }
 
-      // Build hex string of frame data
-      QByteArray dataArray(reinterpret_cast<const char *>(frame.ptr()), frame.limit());
-
       // Build JSON output matching TRZ structure
       QJsonObject frameObject;
 
-      frameObject["techType"] = techType;
-      frameObject["frameType"] = frameType;
-      frameObject["dateTime"] = frame.dateTime();
-      frameObject["timeStart"] = frame.timeStart();
-      frameObject["timeEnd"] = frame.timeEnd();
-      frameObject["sampleStart"] = static_cast<qint64>(frame.sampleStart());
-      frameObject["sampleEnd"] = static_cast<qint64>(frame.sampleEnd());
-      frameObject["sampleRate"] = static_cast<qint64>(frame.sampleRate());
-      frameObject["frameRate"] = static_cast<qint64>(frame.frameRate());
-      frameObject["frameData"] = QString(dataArray.toHex(':'));
-      frameObject["length"] = static_cast<qint64>(frame.limit());
+      frameObject["timestamp"] = static_cast<qint64>(frame.sampleStart());
+      frameObject["tech"] = techType;
+      frameObject["type"] = frameType;
+
+      // Add numeric enum values (matching TRZ)
+      frameObject["tech_type"] = static_cast<qint64>(frame.techType());
+      frameObject["frame_type"] = static_cast<qint64>(frame.frameType());
+
+      // Add time_start and time_end (matching TRZ)
+      frameObject["time_start"] = frame.timeStart();
+      frameObject["time_end"] = frame.timeEnd();
+
+      // Add sample info if available
+      frameObject["sample_start"] = static_cast<qint64>(frame.sampleStart());
+      frameObject["sample_end"] = static_cast<qint64>(frame.sampleEnd());
+      frameObject["sample_rate"] = static_cast<qint64>(frame.sampleRate());
+
+      // Add datetime if available
+      if (frame.dateTime() > 0)
+         frameObject["date_time"] = frame.dateTime();
+
+      // Add rate if available
+      if (frame.frameRate() > 0)
+         frameObject["rate"] = static_cast<qint64>(frame.frameRate());
+
+      // Add data if available
+      if (!frame.isEmpty())
+      {
+         QByteArray dataArray(reinterpret_cast<const char *>(frame.ptr()), frame.limit());
+         frameObject["data"] = QString(dataArray.toHex(':'));
+         frameObject["length"] = static_cast<qint64>(frame.limit());
+      }
 
       // Add flags array for easy parsing
       QJsonArray flagsList;
