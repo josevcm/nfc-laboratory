@@ -9,12 +9,12 @@ We welcome contributions of all kinds: bug fixes, features, documentation improv
 ## Table of Contents
 
 1. [What to Contribute](#what-to-contribute)
-2. [Reporting Issues](#reporting-issues)
-2. [Suggesting Enhancements](#suggesting-enhancements)
-3. [Code Style & Guidelines](#code-style--guidelines)
-5. [How to Submit a Pull Request](#how-to-submit-a-pull-request)
-8. [License & Contributor Agreement](#license--contributor-agreement)
-9. [Thank You 🙏](#thank-you-🙏)
+2. [Reporting Issues](#-reporting-issues)
+3. [Suggesting Enhancements](#-suggesting-enhancements)
+4. [Code Style & Guidelines](#-code-style--guidelines)
+5. [How to Submit a Pull Request](#-how-to-submit-a-pull-request)
+6. [License & Contributor Agreement](#license--contributor-agreement)
+7. [Thank You 🙏](#thank-you-🙏)
 
 ---
 
