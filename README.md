@@ -408,7 +408,7 @@ JSON contents are in entry named **frame.json** inside TRZ file:
 - timeEnd: End of the frame in seconds.
 - timeStart: Start of the frame in seconds.
 
-### Live console output
+## Live console output
 
 With -j option the application is able to export the decoded frames to JSON format in console output. Thanks to [Steffen-W](https://github.com/Steffen-W) for this feature.
 
@@ -433,18 +433,18 @@ Each JSON frame contains this fields:
 Example:
 
 ```
-./nfc-lab -j
-{"dateTime":1737800643,"frameData":"","frameRate":0,"frameType":"CarrierOff","length":0,"sampleEnd":0,"sampleRate":10000000,"sampleStart":0,"techType":"UNKNOWN","timeEnd":0,"timeStart":0}
-{"dateTime":1737800643,"frameData":"","frameRate":0,"frameType":"CarrierOff","length":0,"sampleEnd":1,"sampleRate":10000000,"sampleStart":1,"techType":"UNKNOWN","timeEnd":1e-07,"timeStart":1e-07}
-{"dateTime":1737800643.0000038,"frameData":"","frameRate":0,"frameType":"CarrierOn","length":0,"sampleEnd":38,"sampleRate":10000000,"sampleStart":38,"techType":"UNKNOWN","timeEnd":3.8e-06,"timeStart":3.8e-06}
-{"dateTime":1737800643.0031676,"flags":["request"],"frameData":"e0:80:31:73","frameRate":105938,"frameType":"Poll","length":4,"sampleEnd":35216,"sampleRate":10000000,"sampleStart":31677,"techType":"NfcA","timeEnd":0.0035216,"timeStart":0.0031677}
-{"dateTime":1737800643.0036075,"flags":["response"],"frameData":"06:75:77:81:02:80:02:f0","frameRate":105938,"frameType":"Listen","length":8,"sampleEnd":42918,"sampleRate":10000000,"sampleStart":36075,"techType":"NfcA","timeEnd":0.0042918,"timeStart":0.0036075}
-{"dateTime":1737800643.0061498,"flags":["request"],"frameData":"02:90:5a:00:00:03:ab:22:e5:00:eb:6b","frameRate":105938,"frameType":"Poll","length":12,"sampleEnd":71838,"sampleRate":10000000,"sampleStart":61497,"techType":"NfcA","timeEnd":0.0071838,"timeStart":0.0061497}
-{"dateTime":1737800643.0086663,"flags":["response"],"frameData":"02:91:00:29:10","frameRate":105938,"frameType":"Listen","length":5,"sampleEnd":91003,"sampleRate":10000000,"sampleStart":86662,"techType":"NfcA","timeEnd":0.0091003,"timeStart":0.0086662}
-{"dateTime":1737800643.0235095,"flags":["request"],"frameData":"03:90:6c:00:00:01:08:00:67:ce","frameRate":105938,"frameType":"Poll","length":10,"sampleEnd":243727,"sampleRate":10000000,"sampleStart":235096,"techType":"NfcA","timeEnd":0.0243727,"timeStart":0.0235096}
-{"dateTime":1737800643.0254395,"flags":["response"],"frameData":"03:d4:17:00:00:91:00:3f:fe","frameRate":105938,"frameType":"Listen","length":9,"sampleEnd":262136,"sampleRate":10000000,"sampleStart":254396,"techType":"NfcA","timeEnd":0.0262136,"timeStart":0.0254396}
-{"dateTime":1737800643.0412457,"flags":["request"],"frameData":"02:90:bd:00:00:07:01:00:00:00:80:00:00:00:1a:83","frameRate":105938,"frameType":"Poll","length":16,"sampleEnd":426181,"sampleRate":10000000,"sampleStart":412458,"techType":"NfcA","timeEnd":0.0426181,"timeStart":0.0412458}
-{"dateTime":1737800643.0433269,"flags":["response"],"frameData":"02:04:3c:70:02:52:48:80:24:66:4d:fb:bb:a5:78:8d:00:00:45:67:10:10:20:11:00:70:29:d5:f7:1b:00:00:00:00:00:00:00:01:97:3e:07:d2:04:00:00:00:00:00:00:00:00:00:00:00:00:97:3e:00:00:00:91:af:a7:98","frameRate":105938,"frameType":"Listen","length":64,"sampleEnd":487734,"sampleRate":10000000,"sampleStart":433268,"techType":"NfcA","timeEnd":0.0487734,"timeStart":0.0433268}
+$./nfc-lab -j
+{"date_time":1737800643,"frame_type":256,"sample_end":0,"sample_rate":10000000,"sample_start":0,"tech":"UNKNOWN","tech_type":256,"time_end":0,"time_start":0,"timestamp":0,"type":"CarrierOff"}
+{"date_time":1737800643,"frame_type":256,"sample_end":1,"sample_rate":10000000,"sample_start":1,"tech":"UNKNOWN","tech_type":256,"time_end":1e-07,"time_start":1e-07,"timestamp":1,"type":"CarrierOff"}
+{"date_time":1737800643.0000038,"frame_type":257,"sample_end":38,"sample_rate":10000000,"sample_start":38,"tech":"UNKNOWN","tech_type":256,"time_end":3.8e-06,"time_start":3.8e-06,"timestamp":38,"type":"CarrierOn"}
+{"data":"e0:80:31:73","date_time":1737800643.0031676,"flags":["request"],"frame_type":258,"length":4,"rate":105938,"sample_end":35216,"sample_rate":10000000,"sample_start":31677,"tech":"NfcA","tech_type":257,"time_end":0.0035216,"time_start":0.0031677,"timestamp":31677,"type":"Poll"}
+{"data":"06:75:77:81:02:80:02:f0","date_time":1737800643.0036075,"flags":["response"],"frame_type":259,"length":8,"rate":105938,"sample_end":42918,"sample_rate":10000000,"sample_start":36075,"tech":"NfcA","tech_type":257,"time_end":0.0042918,"time_start":0.0036075,"timestamp":36075,"type":"Listen"}
+{"data":"02:90:5a:00:00:03:ab:22:e5:00:eb:6b","date_time":1737800643.0061498,"flags":["request"],"frame_type":258,"length":12,"rate":105938,"sample_end":71838,"sample_rate":10000000,"sample_start":61497,"tech":"NfcA","tech_type":257,"time_end":0.0071838,"time_start":0.0061497,"timestamp":61497,"type":"Poll"}
+{"data":"02:91:00:29:10","date_time":1737800643.0086663,"flags":["response"],"frame_type":259,"length":5,"rate":105938,"sample_end":91003,"sample_rate":10000000,"sample_start":86662,"tech":"NfcA","tech_type":257,"time_end":0.0091003,"time_start":0.0086662,"timestamp":86662,"type":"Listen"}
+{"data":"03:90:6c:00:00:01:08:00:67:ce","date_time":1737800643.0235095,"flags":["request"],"frame_type":258,"length":10,"rate":105938,"sample_end":243727,"sample_rate":10000000,"sample_start":235096,"tech":"NfcA","tech_type":257,"time_end":0.0243727,"time_start":0.0235096,"timestamp":235096,"type":"Poll"}
+{"data":"03:d4:17:00:00:91:00:3f:fe","date_time":1737800643.0254395,"flags":["response"],"frame_type":259,"length":9,"rate":105938,"sample_end":262136,"sample_rate":10000000,"sample_start":254396,"tech":"NfcA","tech_type":257,"time_end":0.0262136,"time_start":0.0254396,"timestamp":254396,"type":"Listen"}
+{"data":"02:90:bd:00:00:07:01:00:00:00:80:00:00:00:1a:83","date_time":1737800643.0412457,"flags":["request"],"frame_type":258,"length":16,"rate":105938,"sample_end":426181,"sample_rate":10000000,"sample_start":412458,"tech":"NfcA","tech_type":257,"time_end":0.0426181,"time_start":0.0412458,"timestamp":412458,"type":"Poll"}
+{"data":"02:04:3c:70:02:52:48:80:24:66:4d:fb:bb:a5:78:8d:00:00:45:67:10:10:20:11:00:70:29:d5:f7:1b:00:00:00:00:00:00:00:01:97:3e:07:d2:04:00:00:00:00:00:00:00:00:00:00:00:00:97:3e:00:00:00:91:af:a7:98","date_time":1737800643.0433269,"flags":["response"],"frame_type":259,"length":64,"rate":105938,"sample_end":487734,"sample_rate":10000000,"sample_start":433268,"tech":"NfcA","tech_type":257,"time_end":0.0487734,"time_start":0.0433268,"timestamp":433268,"type":"Listen"}
 ```
 
 ### Live console output with python parsing
@@ -452,24 +452,22 @@ Example:
 Additionally, with the help of the **tools/py_nfclab** module, it is possible to parse and display the frames in a more friendly way. See [tools/py_nfclab/README.md](tools/py_nfclab/README.md) for more information about this module.
 
 ```
-user@LG:~/github/nfc-laboratory$ ./nfc-lab -j | python3 -m tools.py_nfclab
+$ ./nfc-lab -j | python3 -m tools.py_nfclab
 NFC Frame Monitor
 Live mode - reading from stdin
 (Press Ctrl+C to stop)
 ================================================================================
 [    0.000000]   NfcAnyTech        CarrierOff |                  |   0B | (no data)
 [    0.000000]   NfcAnyTech        CarrierOff |                  |   0B | (no data)
-[    0.000001]   NfcAnyTech         CarrierOn |                  |   0B | (no data)
-[    0.001081]         NfcA 105938       Poll | WUPA             |   1B | Cmd:52
-[    0.001247]         NfcA 105938     Listen | I-Block          |   2B | Payload:0400
-[    0.001912]         NfcA 105938       Poll | SELECT1          |   9B | Cmd:93 Params:704630ACC913 CRC:08FA
-[    0.002776]         NfcA 105938     Listen | I-Block          |   3B | Payload:08B6DD
-[    0.005470]         NfcA 105938       Poll | GET_VERSION      |   4B | Cmd:60 Params:08 CRC:BDF7
-[    0.006155]         NfcA 105938     Listen | I-Block          |   4B | Payload:49B5 CRC:187D
-[    0.006886]         NfcA 105938       Poll | I-Block          |   8B | Cmd:20 Params:0D25134B39 CRC:7AD1
-[    0.007666]         NfcA 105938     Listen | I-Block          |   4B | Payload:43CD CRC:B28F
-[    0.008415]         NfcA 105938       Poll | PPS              |   4B | Cmd:D1 Params:C5 CRC:A529
-[    0.008940]         NfcA 105938     Listen | I-Block          |  18B | Payload:2390AAD6061E8A32963ABDDBD8E05EDA CRC:3B5B
+[    0.000004]   NfcAnyTech         CarrierOn |                  |   0B | (no data)
+[    0.003168]         NfcA 105938       Poll | RATS             |   4B | Cmd:E0 Params:80 CRC:3173
+[    0.003608]         NfcA 105938     Listen | I-Block          |   8B | Payload:067577810280 CRC:02F0
+[    0.006150]         NfcA 105938       Poll | I-Block          |  12B | Cmd:02 Params:905A000003AB22E500 CRC:EB6B
+[    0.008666]         NfcA 105938     Listen | I-Block          |   5B | Payload:029100 CRC:2910
+[    0.023510]         NfcA 105938       Poll | I-Block          |  10B | Cmd:03 Params:906C0000010800 CRC:67CE
+[    0.025440]         NfcA 105938     Listen | I-Block          |   9B | Payload:03D41700009100 CRC:3FFE
+[    0.041246]         NfcA 105938       Poll | I-Block          |  16B | Cmd:02 Params:90BD0000070100000080000000 CRC:1A83
+[    0.043327]         NfcA 105938     Listen | I-Block          |  64B | Payload[62B]:02043C700252488024664DFBBBA5788D... CRC:A798
 ```
 
 ## Testing files
