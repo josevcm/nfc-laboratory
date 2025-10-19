@@ -313,7 +313,7 @@ struct QtApplication::Impl
       // Add data if available
       if (!frame.isEmpty())
       {
-         QByteArray dataArray(reinterpret_cast<const char *>(frame.ptr()), frame.limit());
+         const QByteArray dataArray(reinterpret_cast<const char *>(frame.ptr()), frame.limit());
          frameObject["data"] = QString(dataArray.toHex(':'));
          frameObject["length"] = static_cast<qint64>(frame.limit());
       }

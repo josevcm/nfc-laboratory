@@ -447,6 +447,31 @@ Example:
 {"dateTime":1737800643.0433269,"flags":["response"],"frameData":"02:04:3c:70:02:52:48:80:24:66:4d:fb:bb:a5:78:8d:00:00:45:67:10:10:20:11:00:70:29:d5:f7:1b:00:00:00:00:00:00:00:01:97:3e:07:d2:04:00:00:00:00:00:00:00:00:00:00:00:00:97:3e:00:00:00:91:af:a7:98","frameRate":105938,"frameType":"Listen","length":64,"sampleEnd":487734,"sampleRate":10000000,"sampleStart":433268,"techType":"NfcA","timeEnd":0.0487734,"timeStart":0.0433268}
 ```
 
+### Live console output with python parsing
+
+Additionally, with the help of the **tools/py_nfclab** module, it is possible to parse and display the frames in a more friendly way. See [tools/py_nfclab/README.md](tools/py_nfclab/README.md) for more information about this module.
+
+```
+user@LG:~/github/nfc-laboratory$ ./nfc-lab -j | python3 -m tools.py_nfclab
+NFC Frame Monitor
+Live mode - reading from stdin
+(Press Ctrl+C to stop)
+================================================================================
+[    0.000000]   NfcAnyTech        CarrierOff |                  |   0B | (no data)
+[    0.000000]   NfcAnyTech        CarrierOff |                  |   0B | (no data)
+[    0.000001]   NfcAnyTech         CarrierOn |                  |   0B | (no data)
+[    0.001081]         NfcA 105938       Poll | WUPA             |   1B | Cmd:52
+[    0.001247]         NfcA 105938     Listen | I-Block          |   2B | Payload:0400
+[    0.001912]         NfcA 105938       Poll | SELECT1          |   9B | Cmd:93 Params:704630ACC913 CRC:08FA
+[    0.002776]         NfcA 105938     Listen | I-Block          |   3B | Payload:08B6DD
+[    0.005470]         NfcA 105938       Poll | GET_VERSION      |   4B | Cmd:60 Params:08 CRC:BDF7
+[    0.006155]         NfcA 105938     Listen | I-Block          |   4B | Payload:49B5 CRC:187D
+[    0.006886]         NfcA 105938       Poll | I-Block          |   8B | Cmd:20 Params:0D25134B39 CRC:7AD1
+[    0.007666]         NfcA 105938     Listen | I-Block          |   4B | Payload:43CD CRC:B28F
+[    0.008415]         NfcA 105938       Poll | PPS              |   4B | Cmd:D1 Params:C5 CRC:A529
+[    0.008940]         NfcA 105938     Listen | I-Block          |  18B | Payload:2390AAD6061E8A32963ABDDBD8E05EDA CRC:3B5B
+```
+
 ## Testing files
 
 In the "wav" folder you can find a series of samples of different captures for the NFC-A, NFC-B, NFC-F and NFC-V 
