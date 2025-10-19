@@ -55,7 +55,7 @@ namespace hw {
 
 struct RealtekDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw/RealtekDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw.RealtekDevice");
 
    std::string deviceName;
    std::string deviceVendor;

@@ -29,7 +29,7 @@ namespace lab {
 
 struct IsoDecoder::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("decoder/IsoDecoder");
+   rt::Logger *log = rt::Logger::getLogger("decoder.IsoDecoder");
 
    static constexpr int ENABLED_ISO7816 = 1 << 0;
 

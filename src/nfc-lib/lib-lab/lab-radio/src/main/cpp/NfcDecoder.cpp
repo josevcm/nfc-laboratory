@@ -35,7 +35,7 @@ namespace lab {
 
 struct NfcDecoder::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("decoder/NfcDecoder");
+   rt::Logger *log = rt::Logger::getLogger("decoder.NfcDecoder");
 
    static constexpr int ENABLED_NFCA = 1 << 0;
    static constexpr int ENABLED_NFCB = 1 << 1;

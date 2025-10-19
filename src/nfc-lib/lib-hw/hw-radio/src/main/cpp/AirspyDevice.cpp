@@ -43,7 +43,7 @@ int process_transfer(airspy_transfer *transfer);
 
 struct AirspyDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw/AirspyDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw.AirspyDevice");
 
    std::string deviceName;
    std::string deviceSerial;

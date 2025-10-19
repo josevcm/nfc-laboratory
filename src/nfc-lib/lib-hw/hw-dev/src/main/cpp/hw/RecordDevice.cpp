@@ -101,7 +101,7 @@ struct FILEHeader
 
 struct RecordDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw/RecordDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw.RecordDevice");
 
    std::string name {};
    std::string serial {};

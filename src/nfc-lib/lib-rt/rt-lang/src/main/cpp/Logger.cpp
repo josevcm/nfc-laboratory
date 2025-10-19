@@ -289,12 +289,13 @@ Logger *Logger::getLogger(const std::string &name, int level)
       // check if logger has a specific level
       if (!getLevels().empty())
       {
-         for (const auto &[expr, l]: getLevels())
+         for (const auto &[target, l]: getLevels())
          {
-            if (std::regex regex(expr); std::regex_match(name, regex))
-            {
+            // if (std::regex regex(target); std::regex_match(name, regex))
+            //    logger->level = l;
+
+            if (name == target)
                logger->level = l;
-            }
          }
       }
 
@@ -327,29 +328,33 @@ void Logger::setRootLevel(const std::string &level)
    setRootLevel(getLevelIndex(level));
 }
 
-void Logger::setLoggerLevel(const std::string &expr, int level)
+void Logger::setLoggerLevel(const std::string &target, int level)
 {
    std::lock_guard lock(getMutex());
 
-   // create regex from name
-   const std::regex match(expr);
+   // create regex from target
+   // const std::regex match(target);
+   //
+   // // check if any of already created logger matches and set its level
+   // for (const auto &[name, logger]: loggers())
+   // {
+   //    if (std::regex_match(name, match))
+   //       logger->level = level;
+   // }
 
-   // check if any of already created logger matches and set its level
    for (const auto &[name, logger]: loggers())
    {
-      if (std::regex_match(name, match))
-      {
+      if (name == target)
          logger->level = level;
-      }
    }
 
    // add or update level for future loggers
-   getLevels()[expr] = level;
+   getLevels()[target] = level;
 }
 
-void Logger::setLoggerLevel(const std::string &name, const std::string &level)
+void Logger::setLoggerLevel(const std::string &target, const std::string &level)
 {
-   setLoggerLevel(name, getLevelIndex(level));
+   setLoggerLevel(target, getLevelIndex(level));
 }
 
 void Logger::init(std::ostream &stream, int level, bool buffered)

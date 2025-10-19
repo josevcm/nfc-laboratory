@@ -44,7 +44,7 @@ namespace hw {
 
 struct DSLogicDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw/DSLogicDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw.DSLogicDevice");
 
    // device parameters
    std::string deviceName;
