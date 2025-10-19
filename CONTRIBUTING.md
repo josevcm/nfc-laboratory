@@ -12,9 +12,9 @@ We welcome contributions of all kinds: bug fixes, features, documentation improv
 2. [Reporting Issues](#-reporting-issues)
 3. [Suggesting Enhancements](#-suggesting-enhancements)
 4. [Code Style & Guidelines](#-code-style--guidelines)
-5. [How to Submit a Pull Request](#-how-to-submit-a-pull-request)
-6. [License & Contributor Agreement](#license--contributor-agreement)
-7. [Thank You 🙏](#thank-you-🙏)
+5. [How to Submit a Pull Request](#-how-to-submit-a-pull-request-pr)
+6. [License & Contributor Agreement](#-license--contributor-agreement)
+7. [Thank You 🙏](#-️-thank-you-)
 
 ---
 
