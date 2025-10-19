@@ -82,6 +82,6 @@ By contributing, you agree that your contributions will be licensed under the sa
 You represent that your contributions are original or properly licensed for inclusion.
 If your change pulls in new third-party code or libraries, ensure their license is compatible and document it in your PR.
 
-## ❤️ Thank You
+## 🙏 Thank You
 
 Your contributions help make this project better for everyone. Thank you for your time, effort, and ideas!
