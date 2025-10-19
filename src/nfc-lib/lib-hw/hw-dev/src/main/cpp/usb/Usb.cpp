@@ -44,7 +44,7 @@ struct TransferInfo
 
 struct UsbContext
 {
-   rt::Logger *log = rt::Logger::getLogger("hw:UsbContext");
+   rt::Logger *log = rt::Logger::getLogger("hw/UsbContext");
 
    libusb_context *ctx = nullptr;
 
@@ -74,7 +74,7 @@ std::shared_ptr<UsbContext> ctx;
 
 struct Usb::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw:UsbDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw/UsbDevice");
 
    int result = 0;
    bool shutdown = false;
@@ -541,7 +541,7 @@ std::list<Usb::Descriptor> Usb::list()
 {
    std::list<Descriptor> devices;
 
-   rt::Logger *log = rt::Logger::getLogger("hw:UsbDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw/UsbDevice");
 
    libusb_device **devs;
 

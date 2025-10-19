@@ -25,7 +25,7 @@
 
 namespace hw {
 
-rt::Logger *DeviceFactory::log = rt::Logger::getLogger("hw:DeviceFactory");
+rt::Logger *DeviceFactory::log = rt::Logger::getLogger("hw/DeviceFactory");
 
 std::mutex DeviceFactory::mutex;
 

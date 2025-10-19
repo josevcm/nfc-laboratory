@@ -51,7 +51,7 @@ using json = nlohmann::json;
 
 struct Main
 {
-   rt::Logger *log = rt::Logger::getLogger("app:main");
+   rt::Logger *log = rt::Logger::getLogger("app/main");
 
    // frame type catalog
    const std::map<unsigned int, std::string> frameType {

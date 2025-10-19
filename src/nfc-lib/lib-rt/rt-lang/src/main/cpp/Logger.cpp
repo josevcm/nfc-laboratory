@@ -44,7 +44,7 @@
 namespace rt {
 
 const char *tags[] = {
-   "", // 0
+   "NONE", // 0
    "ERROR", // 1
    "WARN", // 2
    "INFO", // 3

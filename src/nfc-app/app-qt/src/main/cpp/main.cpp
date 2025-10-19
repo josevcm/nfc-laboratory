@@ -80,18 +80,17 @@ void messageOutput(QtMsgType type, const QMessageLogContext &context, const QStr
 
 int startApp(int argc, char *argv[])
 {
-   rt::Logger *log = rt::Logger::getLogger("app:main", rt::Logger::INFO_LEVEL);
+   rt::Logger *log = rt::Logger::getLogger("app/main", rt::Logger::WARN_LEVEL);
 
    // initialize application
-   QtApplication app(argc, argv);
    QtApplication::setApplicationName(NFC_LAB_APPLICATION_NAME);
    QtApplication::setApplicationVersion(NFC_LAB_VERSION_STRING);
    QtApplication::setOrganizationName(NFC_LAB_COMPANY_NAME);
    QtApplication::setOrganizationDomain(NFC_LAB_DOMAIN_NAME);
 
-   log->info("***********************************************************************");
-   log->info("NFC-LAB {}", {NFC_LAB_VERSION_STRING});
-   log->info("***********************************************************************");
+   log->warn("***********************************************************************");
+   log->warn("NFC-LAB {}", {NFC_LAB_VERSION_STRING});
+   log->warn("***********************************************************************");
 
    log->info("QtVersion: {}", {QT_VERSION_STR});
 
@@ -131,6 +130,9 @@ int startApp(int argc, char *argv[])
 
    settings.endGroup();
 
+   // initialize application
+   QtApplication app(argc, argv);
+
    // setup command line parser (after QtApplication is created)
    QCommandLineParser parser;
    parser.setApplicationDescription("NFC Laboratory - NFC Protocol Analyzer");
@@ -138,10 +140,10 @@ int startApp(int argc, char *argv[])
    parser.addVersionOption();
 
    // add custom options (can be extended later)
-   QCommandLineOption logLevelOption(QStringList() << "l" << "log-level", "Set log level: DEBUG, INFO, WARN, ERROR, NONE (default: INFO)", "level");
+   const QCommandLineOption logLevelOption(QStringList() << "l" << "log-level", "Set log level: DEBUG, INFO, WARN, ERROR, NONE (default: INFO)", "level");
    parser.addOption(logLevelOption);
 
-   QCommandLineOption jsonFramesOption(QStringList() << "j" << "json-frames", "Output decoded NFC frames as JSON to stdout (one frame per line)");
+   const QCommandLineOption jsonFramesOption(QStringList() << "j" << "json-frames", "Output decoded NFC frames as JSON to stdout (one frame per line)");
    parser.addOption(jsonFramesOption);
 
    // process command line arguments
@@ -217,7 +219,7 @@ int main(int argc, char *argv[])
 #endif
 
    // create QT logger
-   qlog = rt::Logger::getLogger("app:qt");
+   qlog = rt::Logger::getLogger("app/qt");
 
    // set logging handler for QT components
    qInstallMessageHandler(messageOutput);

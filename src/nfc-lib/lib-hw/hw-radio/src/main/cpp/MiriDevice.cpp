@@ -48,7 +48,7 @@ int process_transfer(unsigned char *buf, uint32_t len, void *ctx);
 
 struct MiriDevice::Impl
 {
-   rt::Logger *log = rt::Logger::getLogger("hw:MiriDevice");
+   rt::Logger *log = rt::Logger::getLogger("hw/MiriDevice");
 
    std::string deviceName;
    std::string deviceSerial;
