@@ -62,8 +62,6 @@ class RadioDecoderTask : public rt::Worker
    public:
 
       static Worker *construct();
-
-      static void setPrintFramesEnabled(bool enabled);
 };
 
 }

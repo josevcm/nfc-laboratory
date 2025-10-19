@@ -27,6 +27,9 @@
 #include <QThreadPool>
 #include <QSplashScreen>
 #include <QStandardPaths>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 #include "QtCache.h"
 #include "QtControl.h"
@@ -36,6 +39,7 @@
 
 #include "styles/Theme.h"
 
+#include "events/StreamFrameEvent.h"
 #include "events/SystemStartupEvent.h"
 #include "events/SystemShutdownEvent.h"
 #include "events/DecoderControlEvent.h"
@@ -62,15 +66,21 @@ struct QtApplication::Impl
    // splash screen
    QSplashScreen splash;
 
+   // console output stream
+   mutable QTextStream console;
+
    // signal connections
    QMetaObject::Connection applicationShutdownConnection;
    QMetaObject::Connection splashScreenCloseConnection;
    QMetaObject::Connection windowReloadConnection;
 
+   // print frames flag
+   bool printFramesEnabled = false;
+
    //  shutdown flag
    static bool shuttingDown;
 
-   explicit Impl(QtApplication *app) : app(app), splash(QPixmap(":/app/app-splash"), Qt::WindowStaysOnTopHint)
+   explicit Impl(QtApplication *app) : app(app), splash(QPixmap(":/app/app-splash"), Qt::WindowStaysOnTopHint), console(stdout)
    {
       // show splash screen
       showSplash(settings.value("settings/splashScreen", "2500").toInt());
@@ -216,10 +226,112 @@ struct QtApplication::Impl
       QIcon::setThemeName(theme);
    }
 
+   void setPrintFramesEnabled(bool enabled)
+   {
+      printFramesEnabled = enabled;
+   }
+
    void handleEvent(QEvent *event) const
    {
       window->handleEvent(event);
       control->handleEvent(event);
+
+      if (printFramesEnabled && event->type() == StreamFrameEvent::Type)
+      {
+         const auto *frameEvent = dynamic_cast<StreamFrameEvent *>(event);
+
+         printFrameToTerminal(frameEvent->frame());
+      }
+   }
+
+   void printFrameToTerminal(const lab::RawFrame &frame) const
+   {
+      if (!frame.isValid())
+         return;
+
+      char buffer[100];
+      auto techType = "";
+      auto frameType = "";
+      std::string hexData;
+
+      // Get tech type string
+      switch (frame.techType())
+      {
+         case lab::NfcATech: techType = "NfcA";
+            break;
+         case lab::NfcBTech: techType = "NfcB";
+            break;
+         case lab::NfcFTech: techType = "NfcF";
+            break;
+         case lab::NfcVTech: techType = "NfcV";
+            break;
+         default: techType = "UNKNOWN";
+      }
+
+      // Get frame type string
+      switch (frame.frameType())
+      {
+         case lab::NfcCarrierOff: frameType = "CarrierOff";
+            break;
+         case lab::NfcCarrierOn: frameType = "CarrierOn";
+            break;
+         case lab::NfcPollFrame: frameType = "Poll";
+            break;
+         case lab::NfcListenFrame: frameType = "Listen";
+            break;
+         default: frameType = "UNKNOWN";
+      }
+
+      // Build hex string of frame data
+      QByteArray dataArray(reinterpret_cast<const char *>(frame.ptr()), frame.limit());
+
+      // Build JSON output matching TRZ structure
+      QJsonObject frameObject;
+
+      frameObject["techType"] = techType;
+      frameObject["frameType"] = frameType;
+      frameObject["dateTime"] = frame.dateTime();
+      frameObject["timeStart"] = frame.timeStart();
+      frameObject["timeEnd"] = frame.timeEnd();
+      frameObject["sampleStart"] = static_cast<qint64>(frame.sampleStart());
+      frameObject["sampleEnd"] = static_cast<qint64>(frame.sampleEnd());
+      frameObject["sampleRate"] = static_cast<qint64>(frame.sampleRate());
+      frameObject["frameRate"] = static_cast<qint64>(frame.frameRate());
+      frameObject["frameData"] = QString(dataArray.toHex(':'));
+      frameObject["length"] = static_cast<qint64>(frame.limit());
+
+      // Add flags array for easy parsing
+      QJsonArray flagsList;
+
+      if (frame.hasFrameFlags(lab::CrcError))
+         flagsList.append("crc-error");
+
+      if (frame.hasFrameFlags(lab::ParityError))
+         flagsList.append("parity-error");
+
+      if (frame.hasFrameFlags(lab::SyncError))
+         flagsList.append("sync-error");
+
+      if (frame.hasFrameFlags(lab::Truncated))
+         flagsList.append("truncated");
+
+      if (frame.hasFrameFlags(lab::Encrypted))
+         flagsList.append("encrypted");
+
+      // Add frame type to flags (matching TRZ behavior)
+      if (frame.frameType() == lab::NfcPollFrame || frame.frameType() == lab::IsoRequestFrame)
+         flagsList.append("request");
+      else if (frame.frameType() == lab::NfcListenFrame || frame.frameType() == lab::IsoResponseFrame)
+         flagsList.append("response");
+
+      if (!flagsList.isEmpty())
+         frameObject["flags"] = flagsList;
+
+      QJsonDocument doc(frameObject);
+
+      // Print to console and flush
+      console << doc.toJson(QJsonDocument::Compact) << Qt::endl;
+      console.flush();
    }
 };
 
@@ -283,4 +395,9 @@ QFile QtApplication::tempFile(const QString &fileName)
 void QtApplication::customEvent(QEvent *event)
 {
    impl->handleEvent(event);
+}
+
+void QtApplication::setPrintFramesEnabled(bool enabled)
+{
+   impl->setPrintFramesEnabled(enabled);
 }
