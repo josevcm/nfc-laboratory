@@ -8,7 +8,7 @@ We welcome contributions of all kinds: bug fixes, features, documentation improv
 
 ## Table of Contents
 
-1. [What to Contribute](#what-to-contribute)
+1. [What to Contribute](#-what-to-contribute)
 2. [Reporting Issues](#-reporting-issues)
 3. [Suggesting Enhancements](#-suggesting-enhancements)
 4. [Code Style & Guidelines](#-code-style--guidelines)
@@ -18,7 +18,7 @@ We welcome contributions of all kinds: bug fixes, features, documentation improv
 
 ---
 
-## What to Contribute
+## ✅ What to Contribute
 
 Here are some ways you can help:
 
