@@ -105,7 +105,7 @@ struct QtWindow::Impl
    };
 
    // global parameters
-   int timeLimit = 10;
+   int timeLimit = 60;
 
    // logic device parameters
    bool logicDeviceLicensed = false;
@@ -2480,6 +2480,7 @@ struct QtWindow::Impl
       setTimeFormat(settings.value("timeFormat", false).toBool());
       setFollowEnabled(settings.value("followEnabled", true).toBool());
       setFilterEnabled(settings.value("filterEnabled", true).toBool());
+      // setAcquireLimit(settings.value("acquireLimit", 60).toInt(); // TODO
 
       settings.endGroup();
    }

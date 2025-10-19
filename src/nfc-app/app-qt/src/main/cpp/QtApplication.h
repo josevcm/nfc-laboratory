@@ -47,7 +47,7 @@ class QtApplication : public QApplication
 
       static QFile tempFile(const QString &fileName);
 
-      void handleEvent(QEvent *event) const;
+      void setPrintFramesEnabled(bool enabled);
 
    protected:
 

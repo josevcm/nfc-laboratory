@@ -50,7 +50,7 @@ enum PatternType
 
 struct NfcA::Impl : NfcTech
 {
-   rt::Logger *log = rt::Logger::getLogger("decoder:NfcA");
+   rt::Logger *log = rt::Logger::getLogger("decoder/NfcA");
 
    // global signal status
    NfcDecoderStatus *decoder;

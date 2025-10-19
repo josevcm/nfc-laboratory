@@ -434,8 +434,7 @@ struct StreamModel::Impl
          if ((command & 0xF0) == 0xD0 && frame.limit() == 5)
             return "PPS";
 
-         result = eventIsoDep(frame);
-         if (!result.isEmpty())
+         if (result = eventIsoDep(frame); !result.isEmpty())
             return result;
 
          if (NfcACmd.contains(command))
@@ -457,8 +456,7 @@ struct StreamModel::Impl
          if (command == 0xE0 && frame[0] == (frame.limit() - 2))
             return "ATS";
 
-         result = eventIsoDep(frame);
-         if (!result.isEmpty())
+         if (result = eventIsoDep(frame); !result.isEmpty())
             return result;
 
          if (NfcAResp.contains(command))
@@ -476,8 +474,7 @@ struct StreamModel::Impl
       {
          int command = frame[0];
 
-         result = eventIsoDep(frame);
-         if (!result.isEmpty())
+         if (result = eventIsoDep(frame); !result.isEmpty())
             return result;
 
          if (NfcBCmd.contains(command))
@@ -487,8 +484,7 @@ struct StreamModel::Impl
       {
          int command = frame[0];
 
-         result = eventIsoDep(frame);
-         if (!result.isEmpty())
+         if (result = eventIsoDep(frame); !result.isEmpty())
             return result;
 
          if (NfcBResp.contains(command))

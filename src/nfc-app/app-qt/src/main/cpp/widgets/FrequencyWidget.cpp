@@ -80,7 +80,7 @@ struct FrequencyWidget::Impl
    QPointer<QTimer> refreshTimer;
 
    QSemaphore nextFrame;
-   QMutex dataMutex;
+   QMutex syncMutex;
 
    explicit Impl(FrequencyWidget *parent) : widget(parent),
                                             plot(widget->plot()),
@@ -207,7 +207,7 @@ struct FrequencyWidget::Impl
             const double scale = 2.0 * 10.0;
             const double fftInv = 1.0 / double(fftSize);
 
-            #pragma omp simd
+#pragma omp simd
             for (int i = 0; i < buffer.elements(); i++)
                temp[i] = scale * log10(buffer[i] * fftInv);
 
@@ -250,11 +250,13 @@ struct FrequencyWidget::Impl
             base.append({upperFreq, minimumScale});
 
             // update signal frequency data
-            dataMutex.lock();
-            baseGraphData->set(base, true);
-            binsGraphData->set(bins, true);
-            peakGraphData->set(peak, true);
-            dataMutex.unlock();
+            {
+               QMutexLocker lock(&syncMutex);
+
+               baseGraphData->set(base, true);
+               binsGraphData->set(bins, true);
+               peakGraphData->set(peak, true);
+            }
 
             nextFrame.release();
 
@@ -278,26 +280,26 @@ struct FrequencyWidget::Impl
       for (double &v: signalPeaksBuffer)
          v = INT_MIN;
 
+      QMutexLocker lock(&syncMutex);
+
       // show signal and peak graphs
       binsGraph->setVisible(true);
       peakGraph->setVisible(true);
 
-      dataMutex.lock();
       plot->replot();
-      dataMutex.unlock();
 
       nextFrame.release();
    }
 
    void stop()
    {
+      QMutexLocker lock(&syncMutex);
+
       // hide bins and keep only signal peaks
       binsGraph->setVisible(false);
       peakGraph->setVisible(true);
 
-      dataMutex.lock();
       plot->replot();
-      dataMutex.unlock();
    }
 
    void clear()
@@ -309,14 +311,14 @@ struct FrequencyWidget::Impl
       for (double &v: signalPeaksBuffer)
          v = INT_MIN;
 
-      dataMutex.lock();
+      QMutexLocker lock(&syncMutex);
+
       for (int i = 0; i < plot->graphCount(); i++)
       {
          plot->graph(i)->data()->clear();
       }
 
       plot->replot();
-      dataMutex.unlock();
    }
 
    void refresh()
@@ -324,9 +326,9 @@ struct FrequencyWidget::Impl
       if (!nextFrame.tryAcquire())
          return;
 
-      dataMutex.lock();
+      QMutexLocker lock(&syncMutex);
+
       plot->replot();
-      dataMutex.unlock();
    }
 
    QCPRange selectByUser() const

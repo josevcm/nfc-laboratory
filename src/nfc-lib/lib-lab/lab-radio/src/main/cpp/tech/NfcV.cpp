@@ -47,7 +47,7 @@ enum PatternType
 
 struct NfcV::Impl : NfcTech
 {
-   rt::Logger *log = rt::Logger::getLogger("decoder:NfcV");
+   rt::Logger *log = rt::Logger::getLogger("decoder/NfcV");
 
    NfcDecoderStatus *decoder;
 

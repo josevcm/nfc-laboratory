@@ -25,7 +25,7 @@
 
 namespace lab {
 
-// rt::Logger *log = rt::Logger::getLogger("decoder:IsoDecoderStatus");
+// rt::Logger *log = rt::Logger::getLogger("decoder/IsoDecoderStatus");
 
 // process next sample from signal buffer
 bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)

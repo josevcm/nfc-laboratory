@@ -125,11 +125,11 @@ class Subject
 
       Subscription subscribe(NextHandler next, ErrorHandler error = nullptr, CloseHandler close = nullptr)
       {
-         std::lock_guard lock(access);
+         std::lock_guard subscribeLock(access);
 
          // append observer to list
          auto &observer = observers.emplace_back(observers.size() + 1, next, error, close);
-         int observerIndex = observer.index;
+
          log->debug("created subscription {} ({}) on subject {}", {observer.index, static_cast<void *>(&observer), id});
 
          // emit retained values
@@ -142,10 +142,13 @@ class Subject
          }
 
          // returns finisher to remove observer when destroyed
+         int observerIndex = observer.index;
+
          return {
+
             [this, observerIndex] {
 
-               std::lock_guard lock(access);
+               std::lock_guard finisherLock(access);
 
                log->debug("removed subscription {} from subject {}", {observerIndex, id});
 

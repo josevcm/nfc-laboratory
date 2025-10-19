@@ -49,183 +49,181 @@
 #include "QtConfig.h"
 #include "QtApplication.h"
 
-rt::Logger* qlog = nullptr;
+rt::Logger *qlog = nullptr;
 
-void messageOutput(QtMsgType type, const QMessageLogContext& context, const QString& msg)
+void messageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
-    QByteArray localMsg = msg.toLocal8Bit();
+   QByteArray localMsg = msg.toLocal8Bit();
 
-    if (qlog)
-    {
-        switch (type)
-        {
-        case QtDebugMsg:
+   if (qlog)
+   {
+      switch (type)
+      {
+         case QtDebugMsg:
             qlog->debug(localMsg.constData());
             break;
-        case QtInfoMsg:
+         case QtInfoMsg:
             qlog->info(localMsg.constData());
             break;
-        case QtWarningMsg:
+         case QtWarningMsg:
             qlog->warn(localMsg.constData());
             break;
-        case QtCriticalMsg:
+         case QtCriticalMsg:
             qlog->error(localMsg.constData());
             break;
-        case QtFatalMsg:
+         case QtFatalMsg:
             qlog->error(localMsg.constData());
             abort();
-        }
-    }
+      }
+   }
 }
 
-int startApp(int argc, char* argv[])
+int startApp(int argc, char *argv[])
 {
-    rt::Logger* log = rt::Logger::getLogger("app:main", rt::Logger::INFO_LEVEL);
+   rt::Logger *log = rt::Logger::getLogger("app/main", rt::Logger::WARN_LEVEL);
 
-    // initialize application metadata early
-    QtApplication::setApplicationName(NFC_LAB_APPLICATION_NAME);
-    QtApplication::setApplicationVersion(NFC_LAB_VERSION_STRING);
-    QtApplication::setOrganizationName(NFC_LAB_COMPANY_NAME);
-    QtApplication::setOrganizationDomain(NFC_LAB_DOMAIN_NAME);
+   // initialize application
+   QtApplication::setApplicationName(NFC_LAB_APPLICATION_NAME);
+   QtApplication::setApplicationVersion(NFC_LAB_VERSION_STRING);
+   QtApplication::setOrganizationName(NFC_LAB_COMPANY_NAME);
+   QtApplication::setOrganizationDomain(NFC_LAB_DOMAIN_NAME);
 
-    log->info("***********************************************************************");
-    log->info("NFC-LAB {}", {NFC_LAB_VERSION_STRING});
-    log->info("***********************************************************************");
+   log->warn("***********************************************************************");
+   log->warn("NFC-LAB {}", {NFC_LAB_VERSION_STRING});
+   log->warn("***********************************************************************");
 
-    log->info("QtVersion: {}", {QT_VERSION_STR});
+   log->info("QtVersion: {}", {QT_VERSION_STR});
 
-    if (argc > 1)
-    {
-        log->info("command line arguments:");
+   if (argc > 1)
+   {
+      log->info("command line arguments:");
 
-        for (int i = 1; i < argc; i++)
-            log->info("\t{}", {argv[i]});
-    }
+      for (int i = 1; i < argc; i++)
+         log->info("\t{}", {argv[i]});
+   }
 
-    const libusb_version* lusbv = libusb_get_version();
+   const libusb_version *lusbv = libusb_get_version();
 
-    log->info("using usb library: {}.{}.{}", {lusbv->major, lusbv->minor, lusbv->micro});
-    log->info("using ssl library: {}", {QSslSocket::sslLibraryBuildVersionString().toStdString()});
-    log->info("using locale: {}", {QLocale().name().toStdString()});
+   log->info("using usb library: {}.{}.{}", {lusbv->major, lusbv->minor, lusbv->micro});
+   log->info("using ssl library: {}", {QSslSocket::sslLibraryBuildVersionString().toStdString()});
+   log->info("using locale: {}", {QLocale().name().toStdString()});
 
-    // override icons styles
-    QtApplication::setStyle(new IconStyle());
+   // override icons styles
+   QtApplication::setStyle(new IconStyle());
 
-    // configure settings location and format
-    QSettings::setDefaultFormat(QSettings::IniFormat);
-    //   QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
+   // configure settings location and format
+   QSettings::setDefaultFormat(QSettings::IniFormat);
+   //   QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 
-    // configure loggers
-    QSettings settings;
+   // configure loggers
+   QSettings settings;
 
-    settings.beginGroup("logger");
+   settings.beginGroup("logger");
 
-    for (const auto& key : settings.childKeys())
-    {
-        if (key == "root")
-            rt::Logger::setRootLevel(settings.value(key).toString().toStdString());
-        else
-            rt::Logger::getLogger(key.toStdString())->setLevel(settings.value(key).toString().toStdString());
-    }
+   for (const auto &key: settings.childKeys())
+   {
+      if (key == "root")
+         rt::Logger::setRootLevel(settings.value(key).toString().toStdString());
+      else
+         rt::Logger::getLogger(key.toStdString())->setLevel(settings.value(key).toString().toStdString());
+   }
 
-    settings.endGroup();
+   settings.endGroup();
 
-    // initialize application early for command line parsing
-    QtApplication app(argc, argv);
+   // initialize application
+   QtApplication app(argc, argv);
 
-    // setup command line parser (after QtApplication is created)
-    QCommandLineParser parser;
-    parser.setApplicationDescription("NFC Laboratory - NFC Protocol Analyzer");
-    parser.addHelpOption();
-    parser.addVersionOption();
+   // setup command line parser (after QtApplication is created)
+   QCommandLineParser parser;
+   parser.setApplicationDescription("NFC Laboratory - NFC Protocol Analyzer");
+   parser.addHelpOption();
+   parser.addVersionOption();
 
-    // add custom options (can be extended later)
-    QCommandLineOption logLevelOption(QStringList() << "l" << "log-level",
-        "Set log level: DEBUG, INFO, WARN, ERROR (default: INFO)", "level");
-    parser.addOption(logLevelOption);
+   // add custom options (can be extended later)
+   const QCommandLineOption logLevelOption(QStringList() << "l" << "log-level", "Set log level: DEBUG, INFO, WARN, ERROR, NONE (default: INFO)", "level");
+   parser.addOption(logLevelOption);
 
-    QCommandLineOption jsonFramesOption(QStringList() << "j" << "json-frames",
-        "Output decoded NFC frames as JSON to stdout (one frame per line)");
-    parser.addOption(jsonFramesOption);
+   const QCommandLineOption jsonFramesOption(QStringList() << "j" << "json-frames", "Output decoded NFC frames as JSON to stdout (one frame per line)");
+   parser.addOption(jsonFramesOption);
 
-    // process command line arguments
-    parser.process(app);
+   // process command line arguments
+   parser.process(app);
 
-    // handle log level option
-    if (parser.isSet(logLevelOption))
-    {
-        QString level = parser.value(logLevelOption);
-        rt::Logger::setRootLevel(level.toStdString());
-        log->info("Log level set to: {}", {level.toStdString()});
-    }
+   // handle log level option
+   if (parser.isSet(logLevelOption))
+   {
+      const QString level = parser.value(logLevelOption);
+      rt::Logger::setRootLevel(level.toStdString());
+      log->info("Log level set to: {}", {level.toStdString()});
+   }
 
-    // handle json frames option (BEFORE creating RadioDecoderTask!)
-    if (parser.isSet(jsonFramesOption))
-    {
-        lab::RadioDecoderTask::setPrintFramesEnabled(true);
-        log->info("JSON frame output enabled");
-    }
+   // handle json frames option
+   if (parser.isSet(jsonFramesOption))
+   {
+      app.setPrintFramesEnabled(true);
+      log->info("JSON frame output enabled");
+   }
 
-    // create executor service
-    rt::Executor executor(128, 10);
+   // create executor service
+   rt::Executor executor(128, 10);
 
-    executor.submit(lab::FourierProcessTask::construct()); // startup fourier transform
-    executor.submit(lab::LogicDecoderTask::construct()); // startup logic decoder
-    executor.submit(lab::LogicDeviceTask::construct()); // startup logic receiver
-    executor.submit(lab::RadioDecoderTask::construct()); // startup radio decoder
-    executor.submit(lab::RadioDeviceTask::construct()); // startup signal receiver
-    executor.submit(lab::TraceStorageTask::construct()); // startup frame writer
-    executor.submit(lab::SignalStorageTask::construct()); // startup signal reader
-    executor.submit(lab::SignalResamplingTask::construct()); // startup signal resampling
+   executor.submit(lab::FourierProcessTask::construct()); // startup fourier transform
+   executor.submit(lab::LogicDecoderTask::construct()); // startup logic decoder
+   executor.submit(lab::LogicDeviceTask::construct()); // startup logic receiver
+   executor.submit(lab::RadioDecoderTask::construct()); // startup radio decoder
+   executor.submit(lab::RadioDeviceTask::construct()); // startup signal receiver
+   executor.submit(lab::TraceStorageTask::construct()); // startup frame writer
+   executor.submit(lab::SignalStorageTask::construct()); // startup signal reader
+   executor.submit(lab::SignalResamplingTask::construct()); // startup signal resampling
 
-    // start application
-    return QtApplication::exec();
+   // start application
+   return QtApplication::exec();
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-    // initialize logging system
+   // initialize logging system
 #ifdef ENABLE_CONSOLE_LOGGING
-    rt::Logger::init(std::cout);
+   rt::Logger::init(std::cout);
 #else
 
-    QDir appPath(
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/" + NFC_LAB_COMPANY_NAME + "/" +
-        NFC_LAB_APPLICATION_NAME);
+   QDir appPath(
+      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/" + NFC_LAB_COMPANY_NAME + "/" +
+      NFC_LAB_APPLICATION_NAME);
 
-    std::ofstream stream;
+   std::ofstream stream;
 
-    if (appPath.mkpath("log"))
-    {
-        QString logFile = appPath.filePath(QString("log/") + NFC_LAB_APPLICATION_NAME + ".log");
+   if (appPath.mkpath("log"))
+   {
+      QString logFile = appPath.filePath(QString("log/") + NFC_LAB_APPLICATION_NAME + ".log");
 
-        stream.open(logFile.toStdString(), std::ios::out | std::ios::app);
+      stream.open(logFile.toStdString(), std::ios::out | std::ios::app);
 
-        if (stream.is_open())
-        {
-            rt::Logger::init(stream);
-        }
-        else
-        {
-            std::cerr << "unable to open log file: " << logFile.toStdString() << std::endl;
+      if (stream.is_open())
+      {
+         rt::Logger::init(stream);
+      }
+      else
+      {
+         std::cerr << "unable to open log file: " << logFile.toStdString() << std::endl;
 
-            rt::Logger::init(std::cout);
-        }
-    }
-    else
-    {
-        std::cerr << "unable to create log path: " << appPath.absolutePath().toStdString() << std::endl;
+         rt::Logger::init(std::cout);
+      }
+   }
+   else
+   {
+      std::cerr << "unable to create log path: " << appPath.absolutePath().toStdString() << std::endl;
 
-        rt::Logger::init(std::cout);
-    }
+      rt::Logger::init(std::cout);
+   }
 #endif
 
-    // create QT logger
-    qlog = rt::Logger::getLogger("app:qt");
+   // create QT logger
+   qlog = rt::Logger::getLogger("app/qt");
 
-    // set logging handler for QT components
-    qInstallMessageHandler(messageOutput);
+   // set logging handler for QT components
+   qInstallMessageHandler(messageOutput);
 
-    // start application!
-    return startApp(argc, argv);
+   // start application!
+   return startApp(argc, argv);
 }

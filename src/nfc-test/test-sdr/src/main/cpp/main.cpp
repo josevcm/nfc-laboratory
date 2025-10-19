@@ -3,6 +3,7 @@
   This file is part of NFC-LABORATORY.
 
   Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+  Copyright (C) 2025 Steffen Wittemeier
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -229,6 +230,43 @@ int testPath(const std::string &path)
    return 0;
 }
 
+void printUsage(const char *programName)
+{
+   std::cout << "NFC SDR Decoder - Test Tool" << std::endl;
+   std::cout << std::endl;
+   std::cout << "Usage: " << programName << " [OPTIONS] <wav-file|directory>" << std::endl;
+   std::cout << std::endl;
+   std::cout << "Description:" << std::endl;
+   std::cout << "  Test the NFC SDR decoder by decoding WAV files and comparing the results" << std::endl;
+   std::cout << "  against reference JSON files. Creates reference files on first run." << std::endl;
+   std::cout << std::endl;
+   std::cout << "Options:" << std::endl;
+   std::cout << "  --help, -h    Show this help message and exit" << std::endl;
+   std::cout << std::endl;
+   std::cout << "Arguments:" << std::endl;
+   std::cout << "  <wav-file>    Path to a WAV file containing NFC signal recordings" << std::endl;
+   std::cout << "  <directory>   Path to a directory containing multiple WAV files" << std::endl;
+   std::cout << std::endl;
+   std::cout << "Test Behavior:" << std::endl;
+   std::cout << "  - For each WAV file, decodes the NFC signal into raw frames" << std::endl;
+   std::cout << "  - Compares decoded frames against corresponding JSON reference file" << std::endl;
+   std::cout << "  - If JSON reference doesn't exist, creates it (TEST UPDATED)" << std::endl;
+   std::cout << "  - If frames match reference: PASS" << std::endl;
+   std::cout << "  - If frames differ from reference: FAIL" << std::endl;
+   std::cout << std::endl;
+   std::cout << "Examples:" << std::endl;
+   std::cout << "  " << programName << " wav/test_NFC-A_106kbps_001.wav" << std::endl;
+   std::cout << "    Test a single WAV file" << std::endl;
+   std::cout << std::endl;
+   std::cout << "  " << programName << " wav/" << std::endl;
+   std::cout << "    Test all WAV files in the wav/ directory" << std::endl;
+   std::cout << std::endl;
+   std::cout << "Reference Files:" << std::endl;
+   std::cout << "  JSON reference files are stored alongside WAV files with .json extension" << std::endl;
+   std::cout << "  Example: test_NFC-A_106kbps_001.wav -> test_NFC-A_106kbps_001.json" << std::endl;
+   std::cout << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
    //   Logger::init(std::cout, false);
@@ -236,6 +274,23 @@ int main(int argc, char *argv[])
    logger->info("***********************************************************************");
    logger->info("NFC laboratory, 2024 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    logger->info("***********************************************************************");
+
+   if (argc < 2)
+   {
+      printUsage(argv[0]);
+      return 1;
+   }
+
+   // Check for help flag
+   for (int i = 1; i < argc; i++)
+   {
+      std::string arg(argv[i]);
+      if (arg == "--help" || arg == "-h")
+      {
+         printUsage(argv[0]);
+         return 0;
+      }
+   }
 
    for (int i = 1; i < argc; i++)
    {
@@ -252,6 +307,11 @@ int main(int argc, char *argv[])
          logger->info("processing file {}", {path});
 
          testFile(path);
+      }
+      else
+      {
+         logger->error("invalid path: {}", {path});
+         return 1;
       }
    }
 

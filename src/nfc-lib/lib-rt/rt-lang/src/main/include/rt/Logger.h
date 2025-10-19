@@ -71,7 +71,7 @@ class Logger
 
       bool isInfoEnabled() const;
 
-   public: // static methods
+   public: // public static methods
 
       static void init(std::ostream &stream, int level = WARN_LEVEL, bool buffered = true);
 
@@ -91,14 +91,18 @@ class Logger
 
       static std::map<std::string, std::shared_ptr<Logger>> &loggers();
 
+   private: // private static methods
+
+      static std::mutex &getMutex();
+
+      static std::map<std::string, int> &getLevels();
+
    private:
 
       int level;
 
       std::string name;
 
-      static std::mutex& getMutex();
-      static std::map<std::string, int>& getLevels();
 };
 
 }
