@@ -145,18 +145,19 @@ TRZ is a tar.gz archive containing `frame.json` with frame metadata.
 
 Each frame in `frame.json` contains 11 fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `sampleStart/End` | int | Sample indices |
-| `sampleRate` | int | Sample rate in Hz (e.g., 3200000) |
-| `timeStart/End` | float | Time in seconds (relative) |
-| `dateTime` | float | Absolute Unix timestamp |
-| `techType` | int | Tech: 0x0101=NfcA, 0x0102=NfcB, 0x0103=NfcF, 0x0104=NfcV |
-| `frameType` | int | Type: 0x0100=CarrierOff, 0x0101=CarrierOn, 0x0102=Poll, 0x0103=Listen |
-| `framePhase` | int | Phase: 0x0102=SelectionPhase, 0x0103=ApplicationPhase |
-| `frameRate` | int | Bitrate in bps |
-| `frameFlags` | int | Errors: 0x20=CRC, 0x10=Parity, 0x08=Truncated, 0x40=Sync |
-| `frameData` | string | Hex payload: `"AA:BB:CC"` (optional for carrier events) |
+| Field             | Type | Description                                                           |
+|-------------------|------|-----------------------------------------------------------------------|
+| `sampleStart/End` | int | Sample indices                                                        |
+| `sampleRate`      | int | Sample rate in Hz (e.g., 3200000)                                     |
+| `timeStart/End`   | float | Time in seconds (relative)                                            |
+| `dateTime`        | float | Absolute Unix timestamp                                               |
+| `techType`        | int | Tech: 0x0101=NfcA, 0x0102=NfcB, 0x0103=NfcF, 0x0104=NfcV              |
+| `frameType`       | int | Type: 0x0100=CarrierOff, 0x0101=CarrierOn, 0x0102=Poll, 0x0103=Listen |
+| `framePhase`      | int | Phase: 0x0102=SelectionPhase, 0x0103=ApplicationPhase                 |
+| `frameRate`       | int | Bitrate in bps                                                        |
+| `frameFlags`      | int | Errors: 0x20=CRC, 0x10=Parity, 0x08=Truncated, 0x40=Sync              |
+| `frameData`       | string | Hex payload: `"AA:BB:CC"` (optional for carrier events)               |
+| `length`          | int | Number of bytes in frameData                                          |
 
 ## License
 

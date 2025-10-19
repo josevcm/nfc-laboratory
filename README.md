@@ -327,7 +327,7 @@ clarity in the code and facilitating its monitoring and debugging.
 For this reason it is possible that certain parts can be improved in performance, but I have done it as a didactic 
 exercise rather than a production application.
 
-## Input / Output file formats
+## Input / Output formats
 
 The application allows you to read and write files in two different formats:
 
@@ -407,6 +407,68 @@ JSON contents are in entry named **frame.json** inside TRZ file:
   - Iso7816Tech = 0x0201
 - timeEnd: End of the frame in seconds.
 - timeStart: Start of the frame in seconds.
+
+## Live console output
+
+With -j option the application is able to export the decoded frames to JSON format in console output. Thanks to [Steffen-W](https://github.com/Steffen-W) for this feature.
+
+Each JSON frame contains this fields:
+
+| Field                | Type   | Description                                                           |
+|----------------------|--------|-----------------------------------------------------------------------|
+| `timestamp`          | int    | Frame sample time                                                     |
+| `tech`               | int    | NfcA, NfcB, NfcF, NfcV, UNKNOWN                                       |
+| `type`               | int    | CarrierOff, CarrierOn, Poll, Listen                                   |
+| `tech_type`          | int    | Tech: 0x0101=NfcA, 0x0102=NfcB, 0x0103=NfcF, 0x0104=NfcV              |
+| `frame_type`         | int    | Type: 0x0100=CarrierOff, 0x0101=CarrierOn, 0x0102=Poll, 0x0103=Listen |
+| `sample_rate`        | int    | Sample rate in Hz (e.g., 3200000)                                     |
+| `sample_start/end`   | int    | Frame sample start / end (relative)                                   |
+| `time_start/end`     | float  | Time in seconds (relative)                                            |
+| `date_time`          | float  | Absolute Unix timestamp                                               |
+| `rate`               | int    | Bitrate in bps                                                        |
+| `flags`              | int    | Errors: 0x20=CRC, 0x10=Parity, 0x08=Truncated, 0x40=Sync              |
+| `data`               | string | Hex payload: `"AA:BB:CC"` (optional for carrier events)               |
+| `length`             | int    | Number of bytes in frameData                                          |
+
+Example:
+
+```
+$./nfc-lab -j
+{"date_time":1737800643,"frame_type":256,"sample_end":0,"sample_rate":10000000,"sample_start":0,"tech":"UNKNOWN","tech_type":256,"time_end":0,"time_start":0,"timestamp":0,"type":"CarrierOff"}
+{"date_time":1737800643,"frame_type":256,"sample_end":1,"sample_rate":10000000,"sample_start":1,"tech":"UNKNOWN","tech_type":256,"time_end":1e-07,"time_start":1e-07,"timestamp":1,"type":"CarrierOff"}
+{"date_time":1737800643.0000038,"frame_type":257,"sample_end":38,"sample_rate":10000000,"sample_start":38,"tech":"UNKNOWN","tech_type":256,"time_end":3.8e-06,"time_start":3.8e-06,"timestamp":38,"type":"CarrierOn"}
+{"data":"e0:80:31:73","date_time":1737800643.0031676,"flags":["request"],"frame_type":258,"length":4,"rate":105938,"sample_end":35216,"sample_rate":10000000,"sample_start":31677,"tech":"NfcA","tech_type":257,"time_end":0.0035216,"time_start":0.0031677,"timestamp":31677,"type":"Poll"}
+{"data":"06:75:77:81:02:80:02:f0","date_time":1737800643.0036075,"flags":["response"],"frame_type":259,"length":8,"rate":105938,"sample_end":42918,"sample_rate":10000000,"sample_start":36075,"tech":"NfcA","tech_type":257,"time_end":0.0042918,"time_start":0.0036075,"timestamp":36075,"type":"Listen"}
+{"data":"02:90:5a:00:00:03:ab:22:e5:00:eb:6b","date_time":1737800643.0061498,"flags":["request"],"frame_type":258,"length":12,"rate":105938,"sample_end":71838,"sample_rate":10000000,"sample_start":61497,"tech":"NfcA","tech_type":257,"time_end":0.0071838,"time_start":0.0061497,"timestamp":61497,"type":"Poll"}
+{"data":"02:91:00:29:10","date_time":1737800643.0086663,"flags":["response"],"frame_type":259,"length":5,"rate":105938,"sample_end":91003,"sample_rate":10000000,"sample_start":86662,"tech":"NfcA","tech_type":257,"time_end":0.0091003,"time_start":0.0086662,"timestamp":86662,"type":"Listen"}
+{"data":"03:90:6c:00:00:01:08:00:67:ce","date_time":1737800643.0235095,"flags":["request"],"frame_type":258,"length":10,"rate":105938,"sample_end":243727,"sample_rate":10000000,"sample_start":235096,"tech":"NfcA","tech_type":257,"time_end":0.0243727,"time_start":0.0235096,"timestamp":235096,"type":"Poll"}
+{"data":"03:d4:17:00:00:91:00:3f:fe","date_time":1737800643.0254395,"flags":["response"],"frame_type":259,"length":9,"rate":105938,"sample_end":262136,"sample_rate":10000000,"sample_start":254396,"tech":"NfcA","tech_type":257,"time_end":0.0262136,"time_start":0.0254396,"timestamp":254396,"type":"Listen"}
+{"data":"02:90:bd:00:00:07:01:00:00:00:80:00:00:00:1a:83","date_time":1737800643.0412457,"flags":["request"],"frame_type":258,"length":16,"rate":105938,"sample_end":426181,"sample_rate":10000000,"sample_start":412458,"tech":"NfcA","tech_type":257,"time_end":0.0426181,"time_start":0.0412458,"timestamp":412458,"type":"Poll"}
+{"data":"02:04:3c:70:02:52:48:80:24:66:4d:fb:bb:a5:78:8d:00:00:45:67:10:10:20:11:00:70:29:d5:f7:1b:00:00:00:00:00:00:00:01:97:3e:07:d2:04:00:00:00:00:00:00:00:00:00:00:00:00:97:3e:00:00:00:91:af:a7:98","date_time":1737800643.0433269,"flags":["response"],"frame_type":259,"length":64,"rate":105938,"sample_end":487734,"sample_rate":10000000,"sample_start":433268,"tech":"NfcA","tech_type":257,"time_end":0.0487734,"time_start":0.0433268,"timestamp":433268,"type":"Listen"}
+```
+
+### Live console output with python parsing
+
+Additionally, with the help of the **tools/py_nfclab** module, it is possible to parse and display the frames in a more friendly way. See [tools/py_nfclab/README.md](tools/py_nfclab/README.md) for more information about this module.
+
+```
+$ ./nfc-lab -j | python3 -m tools.py_nfclab
+NFC Frame Monitor
+Live mode - reading from stdin
+(Press Ctrl+C to stop)
+================================================================================
+[    0.000000]   NfcAnyTech        CarrierOff |                  |   0B | (no data)
+[    0.000000]   NfcAnyTech        CarrierOff |                  |   0B | (no data)
+[    0.000004]   NfcAnyTech         CarrierOn |                  |   0B | (no data)
+[    0.003168]         NfcA 105938       Poll | RATS             |   4B | Cmd:E0 Params:80 CRC:3173
+[    0.003608]         NfcA 105938     Listen | I-Block          |   8B | Payload:067577810280 CRC:02F0
+[    0.006150]         NfcA 105938       Poll | I-Block          |  12B | Cmd:02 Params:905A000003AB22E500 CRC:EB6B
+[    0.008666]         NfcA 105938     Listen | I-Block          |   5B | Payload:029100 CRC:2910
+[    0.023510]         NfcA 105938       Poll | I-Block          |  10B | Cmd:03 Params:906C0000010800 CRC:67CE
+[    0.025440]         NfcA 105938     Listen | I-Block          |   9B | Payload:03D41700009100 CRC:3FFE
+[    0.041246]         NfcA 105938       Poll | I-Block          |  16B | Cmd:02 Params:90BD0000070100000080000000 CRC:1A83
+[    0.043327]         NfcA 105938     Listen | I-Block          |  64B | Payload[62B]:02043C700252488024664DFBBBA5788D... CRC:A798
+```
 
 ## Testing files
 
