@@ -327,7 +327,7 @@ struct QtApplication::Impl
       if (!flagsList.isEmpty())
          frameObject["flags"] = flagsList;
 
-      QJsonDocument doc(frameObject);
+      const QJsonDocument doc(frameObject);
 
       // Print to console and flush
       console << doc.toJson(QJsonDocument::Compact) << Qt::endl;
