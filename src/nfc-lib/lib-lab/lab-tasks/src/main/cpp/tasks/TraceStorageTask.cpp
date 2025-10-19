@@ -113,20 +113,20 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
       // subscribe to signal events
       adaptiveSignalSubscription = adaptiveSignalStream->subscribe([this](const hw::SignalBuffer &buffer) {
-         // if (buffer.isValid())
-         // {
-         //    switch (buffer.type())
-         //    {
-         //       case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
-         //          logicSignalQueue.add(buffer);
-         //          break;
-         //       case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
-         //          radioSignalQueue.add(buffer);
-         //          break;
-         //       default:
-         //          break;
-         //    }
-         // }
+         if (buffer.isValid())
+         {
+            switch (buffer.type())
+            {
+               case hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL:
+                  logicSignalQueue.add(buffer);
+                  break;
+               case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
+                  radioSignalQueue.add(buffer);
+                  break;
+               default:
+                  break;
+            }
+         }
       });
    }
 
