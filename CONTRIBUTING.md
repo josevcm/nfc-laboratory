@@ -16,8 +16,6 @@ We welcome contributions of all kinds: bug fixes, features, documentation improv
 6. [License & Contributor Agreement](#-license--contributor-agreement)
 7. [Thank You](#-thank-you)
 
----
-
 ## ✅ What to Contribute
 
 Here are some ways you can help:
@@ -33,8 +31,6 @@ Here are some ways you can help:
 
 If you're unsure where to start, you might look at open issues labeled “good first issue” (if used), or areas in the code where you see missing functionality or bugs.
 
----
-
 ## 🐛 Reporting Issues
 
 If you find a bug or an unexpected behavior:
@@ -47,16 +43,12 @@ If you find a bug or an unexpected behavior:
    - Sample capture file (WAV / TRZ) if possible
    - Expected vs actual behavior
 
----
-
 ## 🌱 Suggesting Enhancements
 
 When proposing a new feature or enhancement:
 - Explain **why** it would be useful.
 - Describe **how** it should work.
 - Include any relevant examples or references.
-
----
 
 ## 🧪 Code Style & Guidelines
 
@@ -69,8 +61,6 @@ To maintain consistency:
 - Avoid large monolithic commits; break your work into logical parts
 - If introducing a new module or component, add documentation and examples
 - For external libraries, keep track of licenses and attributions (e.g. AirSpy, nlohmann::json, microtar, etc.)
-
----
 
 ## 💻 How to Submit a Pull Request (PR)
 
@@ -86,15 +76,11 @@ To maintain consistency:
    - Any new tests or sample files you added
 6. Be responsive to review feedback; maintainers may ask for changes, or do modifications themselves without consulting you.
 
----
-
 ## 🧾 License & Contributor Agreement
 
 By contributing, you agree that your contributions will be licensed under the same license as the project.
 You represent that your contributions are original or properly licensed for inclusion.
 If your change pulls in new third-party code or libraries, ensure their license is compatible and document it in your PR.
-
----
 
 ## ❤️ Thank You
 
