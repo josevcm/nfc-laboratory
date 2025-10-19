@@ -492,6 +492,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             });
 
             entry["frameData"] = buffer;
+            entry["length"] = frame.size();
          }
 
          frames.push_back(entry);
