@@ -99,12 +99,12 @@ modules:
           type: git
           tag-pattern: ^([\d.]+)$
     post-install:
-      - ln -s /app/lib64/librtlsdr.so.0 /app/lib/librtlsdr.so.0
-      - mv /app/share/applications/nfc-lab.desktop /app/share/applications/${FLATPAK_ID}.desktop
+      - ln -sf /app/lib64/librtlsdr.so.0 /app/lib/librtlsdr.so.0
+      - test -f /app/share/applications/nfc-lab.desktop && mv /app/share/applications/nfc-lab.desktop /app/share/applications/${FLATPAK_ID}.desktop || true
       - desktop-file-edit --set-key=Icon --set-value=${FLATPAK_ID} /app/share/applications/${FLATPAK_ID}.desktop
       - desktop-file-edit --set-key=Categories --set-value="Science;Engineering;" /app/share/applications/${FLATPAK_ID}.desktop
-      - mv /app/share/icons/hicolor/512x512/apps/nfc-lab.png /app/share/icons/hicolor/512x512/apps/${FLATPAK_ID}.png
-      - rm /app/share/icons/hicolor/scalable/apps/nfc-lab.svg
+      - test -f /app/share/icons/hicolor/512x512/apps/nfc-lab.png && mv /app/share/icons/hicolor/512x512/apps/nfc-lab.png /app/share/icons/hicolor/512x512/apps/${FLATPAK_ID}.png || true
+      - rm -f /app/share/icons/hicolor/scalable/apps/nfc-lab.svg
       - mkdir -p /app/share/nfc-lab
       - if [ -d dat/firmware ]; then cp -r dat/firmware /app/share/nfc-lab/; fi
       - if [ -d dat/config ]; then cp -r dat/config /app/share/nfc-lab/; fi
