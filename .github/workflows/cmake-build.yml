@@ -242,7 +242,7 @@ jobs:
       - name: 'WinGet Releaser'
         uses: vedantmgoyal9/winget-releaser@v2
         with:
-          identifier: JoseVicente.nfc-lab
+          identifier: josevcm.nfc-lab
           installers-regex: 'nfc-lab-.*-x86_64\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
           fork-user: josevcm
