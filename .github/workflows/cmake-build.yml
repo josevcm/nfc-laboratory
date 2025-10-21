@@ -227,3 +227,22 @@ jobs:
             This is the latest snapshot build for ${{ github.ref }}.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  #
+  # WinGet release job
+  #
+  winget-release:
+
+    runs-on: windows-latest
+    needs: create-release
+    if: github.ref_type == 'tag'
+
+    steps:
+
+      - name: 'WinGet Releaser'
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: JoseVicente.nfc-lab
+          installers-regex: 'nfc-lab-.*-x86_64\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+          fork-user: josevcm

@@ -1,0 +1,96 @@
+name: Check Flatpak Updates
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  check-updates:
+    name: Check for new releases
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for new upstream version
+        id: version-check
+        run: |
+          # Get latest release from GitHub API
+          LATEST=$(curl -s https://api.github.com/repos/josevcm/nfc-laboratory/releases/latest | jq -r .tag_name)
+
+          # Get current version from manifest
+          CURRENT=$(grep "tag:" com.github.josevcm.nfc-laboratory.yml | grep "3\." | head -1 | grep -oP "'\K[^']+")
+
+          echo "Latest version: $LATEST"
+          echo "Current version: $CURRENT"
+
+          if [ "$LATEST" != "$CURRENT" ]; then
+            echo "update_available=true" >> $GITHUB_OUTPUT
+            echo "latest_version=$LATEST" >> $GITHUB_OUTPUT
+            echo "current_version=$CURRENT" >> $GITHUB_OUTPUT
+          else
+            echo "update_available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue for update
+        if: steps.version-check.outputs.update_available == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const latest = '${{ steps.version-check.outputs.latest_version }}';
+            const current = '${{ steps.version-check.outputs.current_version }}';
+
+            const title = `Update Flatpak manifest to version ${latest}`;
+            const body = `A new version of NFC Laboratory is available.
+
+            **Current version in Flatpak manifest:** ${current}
+            **Latest upstream version:** ${latest}
+
+            ## Required changes
+
+            1. Update \`com.github.josevcm.nfc-laboratory.yml\`:
+               - Update \`tag:\` to \`'${latest}'\`
+               - Update \`-DBUILD_PROJECT_VERSION=${latest}\`
+
+            2. Update \`dat/flatpak/com.github.josevcm.nfc-laboratory.metainfo.xml\`:
+               - Add new \`<release>\` entry with version and date
+
+            3. Test the build locally:
+               \`\`\`bash
+               flatpak-builder --user --install --force-clean build-dir com.github.josevcm.nfc-laboratory.yml
+               \`\`\`
+
+            4. After merge to master: Update Flathub repository
+
+            This issue was automatically created by the Flatpak Update Checker workflow.`;
+
+            // Check if issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'flatpak,update'
+            });
+
+            const existingIssue = issues.data.find(issue => issue.title === title);
+
+            if (!existingIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['flatpak', 'update', 'automated']
+              });
+            }
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.version-check.outputs.update_available }}" == "true" ]; then
+            echo "✅ New version available: ${{ steps.version-check.outputs.latest_version }}"
+            echo "An issue has been created to track this update."
+          else
+            echo "✅ Flatpak manifest is up to date"
+          fi
