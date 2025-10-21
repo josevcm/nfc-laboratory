@@ -92,7 +92,7 @@ flatpak run com.github.josevcm.nfc-laboratory
   - `flatpak/flatpak-github-actions/flatpak-builder@v6`
 
 - Container images:
-  - `bilelmoussaoui/flatpak-github-actions:kde-6.8`
+  - `ghcr.io/flathub-infra/flatpak-github-actions:kde-6.8`
 
 ## Troubleshooting
 
@@ -102,7 +102,7 @@ The workflow uses KDE Platform 6.8, which is the current stable version. If you 
 
 ```yaml
 container:
-  image: bilelmoussaoui/flatpak-github-actions:kde-<VERSION>
+  image: ghcr.io/flathub-infra/flatpak-github-actions:kde-<VERSION>
 ```
 
 ### Validation fails
