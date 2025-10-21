@@ -5,3 +5,5 @@
 src/nfc-app/app-qt/src/main/cpp/QtConfig.h
 /build
 /nfc-lab
+.flatpak-builder/
+build-dir/

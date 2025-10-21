@@ -21,6 +21,39 @@ signals in real-time up to 424 Kbps. Logic analyzer for contact smart cards with
 - Support for AirSpy and RTL-SDR receivers.
 - Support for DreamSourceLab DSLogic Plus, Pro16 and Pro32 logic analyzer.
 
+## Installation
+
+### Windows
+
+You can install NFC Laboratory using Windows Package Manager:
+
+```
+winget install JoseVicente.nfc-lab
+```
+
+Or download the portable installer from [releases](https://github.com/josevcm/nfc-laboratory/releases/latest/).
+
+### Linux
+
+#### Flatpak (recommended)
+
+Once published on Flathub:
+
+```bash
+flatpak install flathub com.github.josevcm.nfc-laboratory
+flatpak run com.github.josevcm.nfc-laboratory
+```
+
+#### Debian/Ubuntu
+
+Download the `.deb` package from [releases](https://github.com/josevcm/nfc-laboratory/releases/latest/) and install:
+
+```bash
+sudo dpkg -i nfc-lab_*_amd64.deb
+```
+
+For detailed Flatpak build instructions, see [FLATPAK.md](FLATPAK.md).
+
 ## Description
 
 By using an SDR receiver it is possible to capture, demodulate and decode the NFC signal between the card and the
