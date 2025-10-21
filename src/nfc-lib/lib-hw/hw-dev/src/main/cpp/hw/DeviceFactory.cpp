@@ -48,10 +48,10 @@ std::vector<std::string> DeviceFactory::enumerate(const std::string &filter)
 
    std::vector<std::string> devices;
 
-   for (const auto &entry: enumerators)
+   for (const auto &[type, enumerator]: enumerators)
    {
       // execute enumerator and collect available devices
-      for (const auto &name: entry.second())
+      for (const auto &name: enumerator())
       {
          if (filter.empty() || name.find(filter) != std::string::npos)
             devices.push_back(name);
