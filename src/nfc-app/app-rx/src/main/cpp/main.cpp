@@ -23,9 +23,10 @@
 #include <windows.h>
 #else
 #include <signal.h>
+#endif
+
 #include <unistd.h>
 #include <getopt.h>
-#endif
 
 #include <cstdio>
 #include <cstdlib>
