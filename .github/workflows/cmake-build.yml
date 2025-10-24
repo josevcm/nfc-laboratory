@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - '*' # any tag
-    branches:
-      - master
   workflow_dispatch:
 
 jobs:
