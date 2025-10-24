@@ -28,7 +28,7 @@ signals in real-time up to 424 Kbps. Logic analyzer for contact smart cards with
 You can install NFC Laboratory using Windows Package Manager:
 
 ```
-winget install JoseVicente.nfc-lab
+winget install josevcm.nfc-lab
 ```
 
 Or download the portable installer from [releases](https://github.com/josevcm/nfc-laboratory/releases/latest/).
