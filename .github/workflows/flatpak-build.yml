@@ -5,15 +5,14 @@ on:
     paths:
       - 'io.github.josevcm.nfc-laboratory.yml'
       - 'dat/flatpak/**'
-      - '.github/workflows/flatpak.yml'
+      - 'flatpak-build.yml'
   push:
-    branches:
-      - master
-      - develop
+    tags:
+      - '*' # any tag
     paths:
       - 'io.github.josevcm.nfc-laboratory.yml'
       - 'dat/flatpak/**'
-      - '.github/workflows/flatpak.yml'
+      - 'flatpak-build.yml'
 
 jobs:
   validate-metadata:
