@@ -7,3 +7,4 @@ src/nfc-app/app-qt/src/main/cpp/QtConfig.h
 /nfc-lab
 .flatpak-builder/
 build-dir/
+repo/
