@@ -9,7 +9,7 @@ Automatically validates and builds the Flatpak package on every pull request and
 ### Triggers
 
 - Pull requests that modify:
-  - `com.github.josevcm.nfc-laboratory.yml`
+  - `io.github.josevcm.nfc-laboratory.yml`
   - `dat/flatpak/**`
   - `.github/workflows/flatpak.yml`
 - Pushes to `master` or `develop` branches with the same file changes
@@ -67,20 +67,20 @@ You can manually run this workflow from the Actions tab:
 ### Validate metadata locally
 
 ```bash
-appstreamcli validate --pedantic dat/flatpak/com.github.josevcm.nfc-laboratory.metainfo.xml
-desktop-file-validate dat/flatpak/com.github.josevcm.nfc-laboratory.desktop
+appstreamcli validate --pedantic dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml
+desktop-file-validate dat/flatpak/io.github.josevcm.nfc-laboratory.desktop
 ```
 
 ### Build Flatpak locally
 
 ```bash
-flatpak-builder --user --install --force-clean build-dir com.github.josevcm.nfc-laboratory.yml
+flatpak-builder --user --install --force-clean build-dir io.github.josevcm.nfc-laboratory.yml
 ```
 
 ### Test the built Flatpak
 
 ```bash
-flatpak run com.github.josevcm.nfc-laboratory
+flatpak run io.github.josevcm.nfc-laboratory
 ```
 
 ## Workflow Dependencies

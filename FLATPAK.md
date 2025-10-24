@@ -7,8 +7,8 @@ NFC Laboratory is available as a Flatpak package for Linux systems.
 Once published on Flathub:
 
 ```bash
-flatpak install flathub com.github.josevcm.nfc-laboratory
-flatpak run com.github.josevcm.nfc-laboratory
+flatpak install flathub io.github.josevcm.nfc-laboratory
+flatpak run io.github.josevcm.nfc-laboratory
 ```
 
 ## Local Build
@@ -22,6 +22,7 @@ flatpak install flathub org.kde.Platform//6.8 org.kde.Sdk//6.8
 ```
 
 **Note:** Runtime version 6.8 is the current stable version. Check available versions:
+
 ```bash
 flatpak remote-info flathub org.kde.Platform | grep Branch
 ```
@@ -29,20 +30,45 @@ flatpak remote-info flathub org.kde.Platform | grep Branch
 ### Build and Install
 
 ```bash
-flatpak-builder --user --install --force-clean build-dir com.github.josevcm.nfc-laboratory.yml
+flatpak-builder --user --install --force-clean build-dir io.github.josevcm.nfc-laboratory.yml
 ```
 
 ### Run
 
 ```bash
-flatpak run com.github.josevcm.nfc-laboratory
+flatpak run io.github.josevcm.nfc-laboratory
 ```
 
 ## Validation
 
 ```bash
-appstreamcli validate --pedantic dat/flatpak/com.github.josevcm.nfc-laboratory.metainfo.xml
-desktop-file-validate dat/flatpak/com.github.josevcm.nfc-laboratory.desktop
+# Standard validation
+appstreamcli validate --pedantic dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml
+desktop-file-validate dat/flatpak/io.github.josevcm.nfc-laboratory.desktop
+
+# Flatpak-builder lint (optional, for Flathub submission)
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest io.github.josevcm.nfc-laboratory.yml
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml
+```
+
+## Testing
+
+```bash
+# Test flags
+flatpak run io.github.josevcm.nfc-laboratory --help
+flatpak run io.github.josevcm.nfc-laboratory --version
+
+# Check library dependencies
+flatpak run --command=sh io.github.josevcm.nfc-laboratory -c "ldd /app/bin/nfc-lab | grep 'not found'"
+
+# Build with local repository (for testing installation)
+flatpak-builder --force-clean --repo=repo build-dir io.github.josevcm.nfc-laboratory.yml
+flatpak --user remote-add --no-gpg-verify test-repo repo
+flatpak --user install test-repo io.github.josevcm.nfc-laboratory
+
+# Lint build artifacts (may show screenshot warnings - acceptable)
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder builddir build-dir
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
 ```
 
 ## Hardware Access
@@ -50,6 +76,7 @@ desktop-file-validate dat/flatpak/com.github.josevcm.nfc-laboratory.desktop
 The Flatpak requires USB access for SDR receivers and logic analyzers:
 
 1. Add user to plugdev group:
+
    ```bash
    sudo usermod -a -G plugdev $USER
    ```
@@ -60,19 +87,20 @@ The Flatpak requires USB access for SDR receivers and logic analyzers:
 
 ## File Structure
 
-- `com.github.josevcm.nfc-laboratory.yml` - Flatpak manifest
-- `dat/flatpak/com.github.josevcm.nfc-laboratory.metainfo.xml` - AppStream metadata
-- `dat/flatpak/com.github.josevcm.nfc-laboratory.desktop` - Desktop entry
+- `io.github.josevcm.nfc-laboratory.yml` - Flatpak manifest
+- `dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml` - AppStream metadata
+- `dat/flatpak/io.github.josevcm.nfc-laboratory.desktop` - Desktop entry
 - `dat/flatpak/README.md` - Additional documentation
 
 ## Configuration
 
 User configuration is stored in:
+
 ```
-~/.var/app/com.github.josevcm.nfc-laboratory/.nfc-lab/
+~/.var/app/io.github.josevcm.nfc-laboratory/.nfc-lab/
 ```
 
 ## Support
 
 For issues specific to the Flatpak package, please report at:
-https://github.com/josevcm/nfc-laboratory/issues
+<https://github.com/josevcm/nfc-laboratory/issues>

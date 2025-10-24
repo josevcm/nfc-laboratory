@@ -21,7 +21,7 @@ jobs:
           LATEST=$(curl -s https://api.github.com/repos/josevcm/nfc-laboratory/releases/latest | jq -r .tag_name)
 
           # Get current version from manifest
-          CURRENT=$(grep "tag:" com.github.josevcm.nfc-laboratory.yml | grep "3\." | head -1 | grep -oP "'\K[^']+")
+          CURRENT=$(grep "tag:" io.github.josevcm.nfc-laboratory.yml | grep "3\." | head -1 | grep -oP "'\K[^']+")
 
           echo "Latest version: $LATEST"
           echo "Current version: $CURRENT"
@@ -50,16 +50,16 @@ jobs:
 
             ## Required changes
 
-            1. Update \`com.github.josevcm.nfc-laboratory.yml\`:
+            1. Update \`io.github.josevcm.nfc-laboratory.yml\`:
                - Update \`tag:\` to \`'${latest}'\`
                - Update \`-DBUILD_PROJECT_VERSION=${latest}\`
 
-            2. Update \`dat/flatpak/com.github.josevcm.nfc-laboratory.metainfo.xml\`:
+            2. Update \`dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml\`:
                - Add new \`<release>\` entry with version and date
 
             3. Test the build locally:
                \`\`\`bash
-               flatpak-builder --user --install --force-clean build-dir com.github.josevcm.nfc-laboratory.yml
+               flatpak-builder --user --install --force-clean build-dir io.github.josevcm.nfc-laboratory.yml
                \`\`\`
 
             4. After merge to master: Update Flathub repository

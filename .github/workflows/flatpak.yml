@@ -3,7 +3,7 @@ name: Flatpak CI
 on:
   pull_request:
     paths:
-      - 'com.github.josevcm.nfc-laboratory.yml'
+      - 'io.github.josevcm.nfc-laboratory.yml'
       - 'dat/flatpak/**'
       - '.github/workflows/flatpak.yml'
   push:
@@ -11,7 +11,7 @@ on:
       - master
       - develop
     paths:
-      - 'com.github.josevcm.nfc-laboratory.yml'
+      - 'io.github.josevcm.nfc-laboratory.yml'
       - 'dat/flatpak/**'
       - '.github/workflows/flatpak.yml'
 
@@ -31,11 +31,11 @@ jobs:
 
       - name: Validate AppStream metadata
         run: |
-          appstreamcli validate --pedantic dat/flatpak/com.github.josevcm.nfc-laboratory.metainfo.xml
+          appstreamcli validate --pedantic dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml
 
       - name: Validate Desktop file
         run: |
-          desktop-file-validate dat/flatpak/com.github.josevcm.nfc-laboratory.desktop
+          desktop-file-validate dat/flatpak/io.github.josevcm.nfc-laboratory.desktop
 
   flatpak-builder:
     name: Build Flatpak Bundle
@@ -53,7 +53,7 @@ jobs:
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: nfc-laboratory.flatpak
-          manifest-path: com.github.josevcm.nfc-laboratory.yml
+          manifest-path: io.github.josevcm.nfc-laboratory.yml
           cache-key: flatpak-builder-${{ github.sha }}
 
       - name: Upload Flatpak bundle

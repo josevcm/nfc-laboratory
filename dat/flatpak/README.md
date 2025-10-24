@@ -4,13 +4,13 @@ This directory contains AppStream metadata and desktop entry files for Flatpak p
 
 ## Files
 
-- `com.github.josevcm.nfc-laboratory.metainfo.xml` - AppStream metadata
-- `com.github.josevcm.nfc-laboratory.desktop` - Desktop entry file
+- `io.github.josevcm.nfc-laboratory.metainfo.xml` - AppStream metadata
+- `io.github.josevcm.nfc-laboratory.desktop` - Desktop entry file
 
 ## Main Manifest
 
 The Flatpak manifest is located in the repository root:
-- `com.github.josevcm.nfc-laboratory.yml`
+- `io.github.josevcm.nfc-laboratory.yml`
 
 ## Local Build
 
@@ -30,23 +30,23 @@ flatpak remote-info flathub org.kde.Platform | grep Branch
 ### Build and Install
 
 ```bash
-flatpak-builder --user --install --force-clean build-dir com.github.josevcm.nfc-laboratory.yml
+flatpak-builder --user --install --force-clean build-dir io.github.josevcm.nfc-laboratory.yml
 ```
 
 ### Run
 
 ```bash
-flatpak run com.github.josevcm.nfc-laboratory
+flatpak run io.github.josevcm.nfc-laboratory
 ```
 
 ## Validation
 
 ```bash
 flatpak run --command=appstreamcli org.freedesktop.Platform validate \
-  dat/flatpak/com.github.josevcm.nfc-laboratory.metainfo.xml
+  dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml
 
 flatpak run --command=desktop-file-validate org.freedesktop.Platform \
-  dat/flatpak/com.github.josevcm.nfc-laboratory.desktop
+  dat/flatpak/io.github.josevcm.nfc-laboratory.desktop
 ```
 
 ## Hardware Access
