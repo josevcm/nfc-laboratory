@@ -40,8 +40,8 @@ Or download the portable installer from [releases](https://github.com/josevcm/nf
 Once published on Flathub:
 
 ```bash
-flatpak install flathub com.github.josevcm.nfc-laboratory
-flatpak run com.github.josevcm.nfc-laboratory
+flatpak install flathub io.github.josevcm.nfc-laboratory
+flatpak run io.github.josevcm.nfc-laboratory
 ```
 
 #### Debian/Ubuntu

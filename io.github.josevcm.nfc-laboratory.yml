@@ -1,4 +1,4 @@
-id: com.github.josevcm.nfc-laboratory
+id: io.github.josevcm.nfc-laboratory
 runtime: org.kde.Platform
 runtime-version: '6.8'
 sdk: org.kde.Sdk
@@ -78,9 +78,9 @@ modules:
     buildsystem: simple
     sources:
       - type: file
-        path: dat/flatpak/com.github.josevcm.nfc-laboratory.metainfo.xml
+        path: dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml
     build-commands:
-      - install -Dm644 com.github.josevcm.nfc-laboratory.metainfo.xml /app/share/metainfo/com.github.josevcm.nfc-laboratory.metainfo.xml
+      - install -Dm644 io.github.josevcm.nfc-laboratory.metainfo.xml /app/share/metainfo/io.github.josevcm.nfc-laboratory.metainfo.xml
 
   - name: nfc-laboratory
     buildsystem: cmake-ninja
@@ -99,7 +99,6 @@ modules:
           type: git
           tag-pattern: ^([\d.]+)$
     post-install:
-      - ln -sf /app/lib64/librtlsdr.so.0 /app/lib/librtlsdr.so.0
       - test -f /app/share/applications/nfc-lab.desktop && mv /app/share/applications/nfc-lab.desktop /app/share/applications/${FLATPAK_ID}.desktop || true
       - desktop-file-edit --set-key=Icon --set-value=${FLATPAK_ID} /app/share/applications/${FLATPAK_ID}.desktop
       - desktop-file-edit --set-key=Categories --set-value="Science;Engineering;" /app/share/applications/${FLATPAK_ID}.desktop

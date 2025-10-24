@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.github.josevcm.nfc-laboratory</id>
+  <id>io.github.josevcm.nfc-laboratory</id>
   <name>NFC Laboratory</name>
   <summary>NFC signal sniffer and protocol decoder using SDR receiver</summary>
 
@@ -35,7 +35,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">com.github.josevcm.nfc-laboratory.desktop</launchable>
+  <launchable type="desktop-id">io.github.josevcm.nfc-laboratory.desktop</launchable>
 
   <screenshots>
     <screenshot type="default">
@@ -68,7 +68,7 @@
   <url type="bugtracker">https://github.com/josevcm/nfc-laboratory/issues</url>
   <url type="vcs-browser">https://github.com/josevcm/nfc-laboratory</url>
 
-  <developer id="com.github.josevcm">
+  <developer id="io.github.josevcm">
     <name>Jose Vicente Campos</name>
   </developer>
 

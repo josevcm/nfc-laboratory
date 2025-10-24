@@ -136,8 +136,8 @@ int startApp(int argc, char *argv[])
    // setup command line parser (after QtApplication is created)
    QCommandLineParser parser;
    parser.setApplicationDescription("NFC Laboratory - NFC Protocol Analyzer");
-   parser.addHelpOption();
-   parser.addVersionOption();
+   const QCommandLineOption helpOption = parser.addHelpOption();
+   const QCommandLineOption versionOption = parser.addVersionOption();
 
    // add custom options (can be extended later)
    const QCommandLineOption logLevelOption(QStringList() << "l" << "log-level", "Set log level: DEBUG, INFO, WARN, ERROR, NONE (default: INFO)", "level");
@@ -148,6 +148,16 @@ int startApp(int argc, char *argv[])
 
    // process command line arguments
    parser.process(app);
+
+   // Early exit for --help or --version to avoid hardware initialization
+   if (parser.isSet(helpOption))
+   {
+      parser.showHelp(0);
+   }
+   if (parser.isSet(versionOption))
+   {
+      parser.showVersion();
+   }
 
    // handle log level option
    if (parser.isSet(logLevelOption))
