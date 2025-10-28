@@ -238,7 +238,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
       // default parameters for DSLogic
       device->set(hw::LogicDevice::PARAM_OPERATION_MODE, hw::DSLogicDevice::OP_STREAM);
-      device->set(hw::LogicDevice::PARAM_LIMIT_SAMPLES, static_cast<unsigned long long>(-1));
+      device->set(hw::LogicDevice::PARAM_LIMIT_SAMPLES, static_cast<unsigned long long>(std::numeric_limits<uint32_t>::max()));
 
       // setup sample rate
       if (config.contains("sampleRate"))
