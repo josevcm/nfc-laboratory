@@ -181,7 +181,23 @@ at 27.12Mhz.
 centerFreq=27120000
 sampleRate=10000000
 gainMode=1
-gainValue=2
+gainValue=3
+mixerAgc=0
+tunerAgc=0
+biasTee=0
+directSampling=0
+enabled=true
+```
+
+For some readers as Renesas NFC Readers, tunning on the 2nd harmonic will not be able to decode the signal, 
+so we suggest to set center frequency on the 3rd harmonic, 40,68MHz.
+
+```
+[device.radio.hydrasdr]
+centerFreq=40680000
+sampleRate=10000000
+gainMode=1
+gainValue=3
 mixerAgc=0
 tunerAgc=0
 biasTee=0
@@ -246,9 +262,10 @@ All default values are fixed and can be enough for most of the cases.
 I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices, but surely it
 works with others.
 
-- HydraSDR RFOne: New SDR receiver with very good results, tuning the second harmonic at 27.12Mhz, with a sampling frequency of 10 Mbps,
-  with these parameters it is possible to capture the communication up to 424 Kbps. This is the recommended device
-  to use with this tool. Many thanks to Benjamin Vernoux for his support with this new receiver, see [HydraSDR RFOne](https://github.com/hydrasdr).
+- HydraSDR RFOne: New SDR receiver with very good results, tuning the second harmonic at 27.12Mhz or third harmonic at 40.68Mhz, 
+  with a sampling frequency of 10 Mbps, with these parameters it is possible to capture the communication up to 424 Kbps. 
+  This is the recommended device to use with this tool. Many thanks to Benjamin Vernoux for his support with this new receiver, 
+  see [HydraSDR RFOne](https://github.com/hydrasdr).
 
 - AirSpy Mini or R2: Very good results, tuning the third harmonic at 40.68Mhz, with a sampling frequency of 10 Mbps, 
   with these parameters it is possible to capture the communication up to 424 Kbps. This is the recommended device 
