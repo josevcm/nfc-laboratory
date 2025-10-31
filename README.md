@@ -21,6 +21,8 @@ signals in real-time up to 424 Kbps. Logic analyzer for contact smart cards with
 - Support for AirSpy and RTL-SDR receivers.
 - Support for DreamSourceLab DSLogic Plus, Pro16 and Pro32 logic analyzer.
 
+<---
+
 ## Installation
 
 ### Windows
@@ -53,6 +55,8 @@ sudo dpkg -i nfc-lab_*_amd64.deb
 ```
 
 For detailed Flatpak build instructions, see [FLATPAK.md](FLATPAK.md).
+
+-->
 
 ## Description
 
