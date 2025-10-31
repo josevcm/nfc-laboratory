@@ -21,7 +21,7 @@ signals in real-time up to 424 Kbps. Logic analyzer for contact smart cards with
 - Support for AirSpy and RTL-SDR receivers.
 - Support for DreamSourceLab DSLogic Plus, Pro16 and Pro32 logic analyzer.
 
-<---
+<--
 
 ## Installation
 
