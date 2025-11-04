@@ -116,7 +116,7 @@ struct RealtekDevice::Impl
    {
       std::vector<std::string> result;
 
-      unsigned int count = rtlsdr_get_device_count();
+      const unsigned int count = rtlsdr_get_device_count();
 
       for (int i = 0; i < count; i++)
       {
@@ -821,7 +821,7 @@ bool RealtekDevice::set(int id, const rt::Variant &value, int channel)
    {
       case PARAM_TEST_MODE:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setTestMode(*v);
 
          impl->log->error("invalid value type for PARAM_TEST_MODE");
@@ -829,7 +829,7 @@ bool RealtekDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_SAMPLE_RATE:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setSampleRate(*v);
 
          impl->log->error("invalid value type for PARAM_SAMPLE_RATE");
@@ -837,7 +837,7 @@ bool RealtekDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_TUNE_FREQUENCY:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setCenterFreq(*v);
 
          impl->log->error("invalid value type for PARAM_TUNE_FREQUENCY");
@@ -845,7 +845,7 @@ bool RealtekDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_TUNER_AGC:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setTunerAgc(*v);
 
          impl->log->error("invalid value type for PARAM_TUNER_AGC");
@@ -853,7 +853,7 @@ bool RealtekDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_MIXER_AGC:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setMixerAgc(*v);
 
          impl->log->error("invalid value type for PARAM_MIXER_AGC");
@@ -861,7 +861,7 @@ bool RealtekDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_GAIN_MODE:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setGainMode(*v);
 
          impl->log->error("invalid value type for PARAM_GAIN_MODE");
@@ -869,7 +869,7 @@ bool RealtekDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_GAIN_VALUE:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setGainValue(*v);
 
          impl->log->error("invalid value type for PARAM_GAIN_VALUE");
@@ -877,7 +877,7 @@ bool RealtekDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_DECIMATION:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setDecimation(*v);
 
          impl->log->error("invalid value type for PARAM_DECIMATION");
