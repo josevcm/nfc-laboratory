@@ -154,11 +154,11 @@ struct MiriDevice::Impl
             log->warn("failed mirisdr_set_bandwidth!");
 
          // set sample format, 10+2 bit
-         if (mirisdr_set_sample_format(handle, (char *) "384_S16") != MIRI_SUCCESS)
+         if (mirisdr_set_sample_format(handle, (char *)"384_S16") != MIRI_SUCCESS)
             log->warn("failed mirisdr_set_sample_format!");
 
          // set USB transfer type
-         if (mirisdr_set_transfer(handle, (char *) "BULK") != MIRI_SUCCESS)
+         if (mirisdr_set_transfer(handle, (char *)"BULK") != MIRI_SUCCESS)
             log->warn("failed mirisdr_set_transfer!");
 
          // set IF mode
@@ -518,10 +518,10 @@ rt::Variant MiriDevice::get(int id, int channel) const
          return impl->gainValue;
 
       case PARAM_BIAS_TEE:
-         return (unsigned int) 0;
+         return (unsigned int)0;
 
       case PARAM_DIRECT_SAMPLING:
-         return (int) 0;
+         return (unsigned int)0;
 
       case PARAM_DECIMATION:
          return impl->decimation;
@@ -555,7 +555,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
    {
       case PARAM_SAMPLE_RATE:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setSampleRate(*v);
 
          impl->log->error("invalid value type for PARAM_SAMPLE_RATE");
@@ -563,7 +563,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_TUNE_FREQUENCY:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setCenterFreq(*v);
 
          impl->log->error("invalid value type for PARAM_TUNE_FREQUENCY");
@@ -571,7 +571,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_TUNER_AGC:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setTunerAgc(*v);
 
          impl->log->error("invalid value type for PARAM_TUNER_AGC");
@@ -579,7 +579,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_MIXER_AGC:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setMixerAgc(*v);
 
          impl->log->error("invalid value type for PARAM_MIXER_AGC");
@@ -587,7 +587,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_GAIN_MODE:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setGainMode(*v);
 
          impl->log->error("invalid value type for PARAM_GAIN_MODE");
@@ -595,7 +595,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_GAIN_VALUE:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setGainValue(*v);
 
          impl->log->error("invalid value type for PARAM_GAIN_VALUE");
@@ -603,7 +603,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_DECIMATION:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setDecimation(*v);
 
          impl->log->error("invalid value type for PARAM_DECIMATION");
@@ -660,7 +660,7 @@ int process_transfer(unsigned char *buf, uint32_t len, void *ctx)
    {
       SignalBuffer buffer;
 
-//      SignalBuffer buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RAW_IQ);
+      //      SignalBuffer buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RAW_IQ);
 
       // update counters
       device->samplesReceived += len;
@@ -671,7 +671,7 @@ int process_transfer(unsigned char *buf, uint32_t len, void *ctx)
          device->streamCallback(buffer);
       }
 
-         // or store buffer in receive queue
+      // or store buffer in receive queue
       else
       {
          // lock buffer access
