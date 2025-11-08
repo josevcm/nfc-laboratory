@@ -100,6 +100,20 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
+# find dependency mirisdr
+#-------------------------------------------------------------------------------
+find_package(libmirisdr)
+
+if(LIBMIRISDR_FOUND)
+  message(STATUS "libmirisdr: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBMIRISDR_INCLUDE})
+  message(STATUS "  library: " ${LIBMIRISDR_LIBRARY})
+  include_directories(${LIBMIRISDR_INCLUDE})
+else ()
+  message(STATUS  "libmirisdr not found, using local bundle in static mode")
+endif()
+
+#-------------------------------------------------------------------------------
 # configure files
 #-------------------------------------------------------------------------------
 
