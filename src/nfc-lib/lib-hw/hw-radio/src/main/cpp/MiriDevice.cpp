@@ -652,18 +652,29 @@ long MiriDevice::write(const SignalBuffer &buffer)
 
 int process_transfer(unsigned char *buf, uint32_t len, void *ctx)
 {
-   printf("process_transfer");
-   fflush(stdout);
-
    // check device validity
    if (auto *device = static_cast<MiriDevice::Impl *>(ctx))
    {
-      SignalBuffer buffer;
+      SignalBuffer buffer = SignalBuffer(len, 2, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_IQ);
+      float scaled[len];
 
-      //      SignalBuffer buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RAW_IQ);
+#pragma GCC ivdep
+      for (int i = 0; i < len; i += 4)
+      {
+         scaled[i + 0] = 0;//static_cast<float>((buf[i + 0] - 128) / 256.0) + 0.0025f;
+         scaled[i + 1] = 0;//static_cast<float>((buf[i + 1] - 128) / 256.0) + 0.0025f;
+         scaled[i + 2] = 0;//static_cast<float>((buf[i + 2] - 128) / 256.0) + 0.0025f;
+         scaled[i + 3] = 0;//static_cast<float>((buf[i + 3] - 128) / 256.0) + 0.0025f;
+      }
+
+      // add data to buffer
+      buffer.put(scaled, len);
+
+      // flip buffer contents -> this "commits" data pointers to enable reading buffer....
+      buffer.flip();
 
       // update counters
-      device->samplesReceived += len;
+      device->samplesReceived += len / 2;
 
       // stream to buffer callback
       if (device->streamCallback)
