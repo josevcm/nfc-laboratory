@@ -264,7 +264,7 @@ struct AirspyDevice::Impl
    int stop()
    {
       if (!airspyHandle || !streamCallback)
-         return 1;
+         return -1;
 
       log->info("stop streaming for device {}", {deviceName});
 
