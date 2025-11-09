@@ -662,7 +662,7 @@ void process_transfer(unsigned char *buf, uint32_t len, void *ctx)
    if (auto *device = static_cast<MiriDevice::Impl *>(ctx))
    {
       // we are using 386_16 format, each sample is 16 bit I and 16 bit Q
-      const int *data = reinterpret_cast<int *>(buf);
+      const short *data = reinterpret_cast<short *>(buf);
 
       // total values to be processed is len/2 (16 bit per I or Q value)
       float scaled[len / 2];
