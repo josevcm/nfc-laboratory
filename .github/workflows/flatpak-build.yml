@@ -1,18 +1,9 @@
-name: Flatpak CI
+name: Flatpak CI (DISABLED)
 
+# DISABLED: The Flatpak manifest (io.github.josevcm.nfc-laboratory.yml) now lives in the Flathub repository.
+# Flatpak builds are handled there instead of in this repository.
 on:
-  pull_request:
-    paths:
-      - 'io.github.josevcm.nfc-laboratory.yml'
-      - 'dat/flatpak/**'
-      - 'flatpak-build.yml'
-  push:
-    tags:
-      - '*' # any tag
-    paths:
-      - 'io.github.josevcm.nfc-laboratory.yml'
-      - 'dat/flatpak/**'
-      - 'flatpak-build.yml'
+  workflow_dispatch:
 
 jobs:
   validate-metadata:
