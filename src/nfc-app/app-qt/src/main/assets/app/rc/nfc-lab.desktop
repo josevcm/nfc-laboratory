@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=NFC Lab
+Name=NFC Laboratory
 GenericName=NFC signal and protocol analyzer
 Comment=NFC signal and protocol analyzer using SDR receiver
 Exec=nfc-lab
 Terminal=false
-Icon=nfc-lab
-Categories=AudioVideo;Audio;Qt;HamRadio;
-Keywords=SDR;Radio;HAM;
+Icon=@ICON_NAME@
+Categories=Science;Engineering;
+Keywords=NFC;SDR;Radio;protocol analyzer;signal decoder;RTL-SDR;AirSpy;HydraSDR;ISO14443;ISO15693;ISO7816;RFID;smart card;
