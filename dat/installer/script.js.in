@@ -3,9 +3,43 @@ function Component() {
 
 Component.prototype.createOperations = function () {
     component.createOperations();
-};
 
-Component.prototype.installerFinished = function () {
-    console.log("Installation finished!");
-    QMessageBox.information("Installation", "The installation is complete!");
+    // Add Windows Registry entries for proper uninstallation and WinGet detection
+    // Note: Only access systemInfo inside functions, not at script load time
+    var isWindows = false;
+    try {
+        isWindows = (systemInfo.productType === "windows");
+    } catch (e) {
+        console.log("Could not determine OS via systemInfo, assuming Windows");
+        isWindows = true; // Fallback for Windows
+    }
+
+    if (isWindows) {
+        var uninstallKey = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{nfc-lab}";
+        var target = installer.value("TargetDir");
+        var exe    = installer.toNativeSeparators(target + "/nfc-lab.exe");
+        var mt     = installer.toNativeSeparators(target + "/maintenancetool.exe");
+        var quotedMt = '"' + mt + '"';
+
+        component.addOperation("GlobalConfig", uninstallKey, "DisplayName", "NFC Laboratory");
+        component.addOperation("GlobalConfig", uninstallKey, "DisplayVersion", "@nfc-lab_VERSION@");
+        component.addOperation("GlobalConfig", uninstallKey, "Publisher", "Jose Vicente Campos Martinez");
+        component.addOperation("GlobalConfig", uninstallKey, "InstallLocation", installer.toNativeSeparators(target));
+        component.addOperation("GlobalConfig", uninstallKey, "UninstallString", quotedMt);
+        component.addOperation("GlobalConfig", uninstallKey, "QuietUninstallString", quotedMt + " --uninstall --silent");
+        component.addOperation("GlobalConfig", uninstallKey, "DisplayIcon", exe);
+        component.addOperation("GlobalConfig", uninstallKey, "NoModify", "1");
+        component.addOperation("GlobalConfig", uninstallKey, "NoRepair", "1");
+
+        console.log("Registry entries created for WinGet compatibility");
+    }
+
+    // Connect to installationFinished signal
+    installer.installationFinished.connect(function () {
+        console.log("Installation finished!");
+        if (installer.isCommandLineInstance()) {
+            return;
+        }
+        QMessageBox.information("Installation", "The installation is complete!");
+    });
 };

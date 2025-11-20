@@ -11,5 +11,5 @@
     <Default>true</Default>
     <ForcedInstallation>true</ForcedInstallation>
     <ForcedUpdate>true</ForcedUpdate>
-    <!-- <Script>script.js</Script> -->
+    <Script>script.js</Script>
 </Package>
