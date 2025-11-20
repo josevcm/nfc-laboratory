@@ -1,0 +1,52 @@
+;--------------------------------
+; Installer definition
+;--------------------------------
+Name "nfc-lab"
+OutFile "nfc-lab-@nfc-lab_VERSION@.exe"
+InstallDir "$LOCALAPPDATA\josevcm\nfc-lab"    ; Install in user's local app data
+RequestExecutionLevel user            ; No admin privileges required
+
+;--------------------------------
+; Installer pages
+;--------------------------------
+Page directory    ; Page to select installation directory
+Page instfiles    ; Installation progress page
+
+;--------------------------------
+; Installation section
+;--------------------------------
+Section "Install"
+
+  ; Set output path to the installation directory
+  SetOutPath "$INSTDIR"
+
+  ; Copy executable and all required DLLs/plugins
+  File /r "@CMAKE_CURRENT_BINARY_DIR@\installer\build\*.*"
+
+  ; Create a shortcut on the desktop
+  CreateShortCut "$DESKTOP\nfc-lab.lnk" "$INSTDIR\nfc-lab.exe" "" "@CMAKE_CURRENT_SOURCE_DIR@\src\nfc-app\app-qt\src\main\assets\app\rc\nfc-lab.ico"
+
+  ; Create a shortcut in the Start Menu for the current user
+  CreateDirectory "$SMPROGRAMS\nfc-lab"
+  CreateShortCut "$SMPROGRAMS\nfc-lab\nfc-lab.lnk" "$INSTDIR\nfc-lab.exe" "" "@CMAKE_CURRENT_SOURCE_DIR@\src\nfc-app\app-qt\src\main\assets\app\rc\nfc-lab.ico"
+
+  ; Write the uninstaller executable
+  WriteUninstaller "$INSTDIR\uninstaller.exe"
+
+SectionEnd
+
+;--------------------------------
+; Uninstallation section
+;--------------------------------
+Section "Uninstall"
+
+  ; Delete desktop shortcut
+  Delete "$DESKTOP\nfc-lab.lnk"
+
+  ; Delete Start Menu shortcut
+  Delete "$SMPROGRAMS\nfc-lab\nfc-lab.lnk"
+
+  ; Remove the installation directory and all contents
+  RMDir /r "$INSTDIR"
+
+SectionEnd

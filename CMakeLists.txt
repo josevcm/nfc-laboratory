@@ -122,12 +122,7 @@ if (WIN32)
   # generate build scripts
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-runenv.ps1.in ${CMAKE_CURRENT_BINARY_DIR}/build-runenv.ps1)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-installer.ps1.in ${CMAKE_CURRENT_BINARY_DIR}/build-installer.ps1)
-
-  # generate build scripts
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/config.xml.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/config.xml)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/package.xml.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/package.xml)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/license.txt.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/license.txt)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/script.js.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/script.js)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/nsis/script.nsi.in ${CMAKE_CURRENT_BINARY_DIR}/installer/script.nsi)
 
 endif (WIN32)
 
