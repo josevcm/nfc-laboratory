@@ -8,6 +8,12 @@ $InstallerFiles="$InstallerPath/build"
 New-Item -Force -Path $InstallerFiles -ItemType "directory"
 
 # Copy data resources
+Copy-Item -Force -Recurse $SourcePath/dat/config $InstallerFiles
+Copy-Item -Force -Recurse $SourcePath/dat/drivers $InstallerFiles
+Copy-Item -Force -Recurse $SourcePath/dat/firmware $InstallerFiles
+
+# Copy required DLLs
+Copy-Item -Force $SourcePath/dll/airspy/x86_64/bin/*.dll $InstallerFiles
 Copy-Item -Force $SourcePath/dll/airspy/x86_64/bin/*.dll $InstallerFiles
 Copy-Item -Force $SourcePath/dll/hydrasdr/x86_64/bin/*.dll $InstallerFiles
 Copy-Item -Force $SourcePath/dll/openssl/x86_64/bin/*.dll $InstallerFiles
@@ -16,7 +22,7 @@ Copy-Item -Force $SourcePath/dll/usb/x86_64/bin/*.dll $InstallerFiles
 Copy-Item -Force $TargetPath/src/nfc-app/app-qt/nfc-lab.exe $InstallerFiles
 
 # Create QT deployment from executable
-windeployqt --verbose 1 --release --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-opengl-sw $InstallerFiles/nfc-lab.exe
+windeployqt --verbose 1 --force --compiler-runtime --no-translations --no-system-d3d-compiler --no-opengl-sw $InstallerFiles/nfc-lab.exe
 
 # Create QT installer
 makensis $InstallerPath/script.nsi
