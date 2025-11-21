@@ -121,9 +121,7 @@ jobs:
 
       - name: 'Install NSIS'
         run: |
-          choco install nsis -y --no-progress -r
-          echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
-          
+          choco install nsis.portable -y --no-progress -r
           dir C:\ProgramData\chocolatey\bin
           makensis /VERSION
 
