@@ -7,7 +7,7 @@
 ; Installer definition
 ;--------------------------------
 Name "nfc-lab"
-OutFile "@CMAKE_CURRENT_BINARY_DIR@\installer\nfc-lab-@nfc-lab_VERSION@-x86_64.exe"
+OutFile "@CMAKE_CURRENT_SOURCE_DIR@\nfc-lab-@nfc-lab_VERSION@-x86_64.exe"
 
 ; Install in user local profile (no admin rights required)
 InstallDir "$LOCALAPPDATA\josevcm\nfc-lab"
@@ -51,7 +51,7 @@ Section "Install nfc-lab"
   ; Set output path to the installation directory
   SetOutPath "$INSTDIR"
 
-  ; Copy executable and all required DLLs/plugins
+  ; Copy executable and all required DLLs\plugins
   File /r "@CMAKE_CURRENT_BINARY_DIR@\installer\data\*.*"
 
   ; Define icon path after files are copied

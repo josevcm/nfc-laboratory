@@ -164,7 +164,7 @@ jobs:
           # create portable package
           Compress-Archive `
             -Path ${{ steps.strings-windows.outputs.installer-data-dir }}/* `
-            -DestinationPath installer/nfc-lab-${{ steps.strings-windows.outputs.build-version }}-x86_64-portable.zip
+            -DestinationPath ${{ github.workspace }}/nfc-lab-${{ steps.strings-windows.outputs.build-version }}-x86_64-portable.zip
 
           # create installer
           makensis ${{ steps.strings-windows.outputs.installer-meta-dir }}/script.nsi
@@ -174,8 +174,8 @@ jobs:
         with:
           name: windows-artifact
           path: |
-            ${{ github.workspace }}/installer/*.exe
-            ${{ github.workspace }}/installer/*.zip
+            ${{ github.workspace }}/*.exe
+            ${{ github.workspace }}/*.zip
 
   #
   # Create release job
