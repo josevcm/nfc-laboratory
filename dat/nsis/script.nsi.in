@@ -1,21 +1,52 @@
 ;--------------------------------
+; Modern User Interface (MUI)
+;--------------------------------
+!include "MUI2.nsh"
+
+;--------------------------------
 ; Installer definition
 ;--------------------------------
 Name "nfc-lab"
 OutFile "nfc-lab-@nfc-lab_VERSION@.exe"
-InstallDir "$LOCALAPPDATA\josevcm\nfc-lab"    ; Install in user's local app data
-RequestExecutionLevel user            ; No admin privileges required
+
+; Install in user local profile (no admin rights required)
+InstallDir "$LOCALAPPDATA\josevcm\nfc-lab"
+
+; Ensure no UAC elevation
+RequestExecutionLevel user
+
+; Installer icon (optional)
+Icon "@CMAKE_CURRENT_BINARY_DIR@\installer\resources\nfc-lab.ico"
 
 ;--------------------------------
-; Installer pages
+; Variables
 ;--------------------------------
-Page directory    ; Page to select installation directory
-Page instfiles    ; Installation progress page
+Var ICON_PATH
+
+;--------------------------------
+; MUI Pages
+;--------------------------------
+; Installer pages
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "@CMAKE_CURRENT_SOURCE_DIR@\LICENSE"
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+; Uninstaller pages
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+;--------------------------------
+; Language
+;--------------------------------
+!insertmacro MUI_LANGUAGE "English"
 
 ;--------------------------------
 ; Installation section
 ;--------------------------------
-Section "Install"
+Section "Install nfc-lab"
 
   ; Set output path to the installation directory
   SetOutPath "$INSTDIR"
@@ -23,15 +54,20 @@ Section "Install"
   ; Copy executable and all required DLLs/plugins
   File /r "@CMAKE_CURRENT_BINARY_DIR@\installer\build\*.*"
 
-  ; Create a shortcut on the desktop
-  CreateShortCut "$DESKTOP\nfc-lab.lnk" "$INSTDIR\nfc-lab.exe" "" "@CMAKE_CURRENT_SOURCE_DIR@\src\nfc-app\app-qt\src\main\assets\app\rc\nfc-lab.ico"
+  ; Define icon path after files are copied
+  StrCpy $ICON_PATH "@CMAKE_CURRENT_BINARY_DIR@\installer\resources\nfc-lab.ico"
 
-  ; Create a shortcut in the Start Menu for the current user
+  ; Create Start Menu folder
   CreateDirectory "$SMPROGRAMS\nfc-lab"
-  CreateShortCut "$SMPROGRAMS\nfc-lab\nfc-lab.lnk" "$INSTDIR\nfc-lab.exe" "" "@CMAKE_CURRENT_SOURCE_DIR@\src\nfc-app\app-qt\src\main\assets\app\rc\nfc-lab.ico"
+
+  ; Create Start Menu shortcut
+  CreateShortCut "$SMPROGRAMS\nfc-lab\nfc-lab.lnk" "$INSTDIR\nfc-lab.exe" "" "$ICON_PATH"
+
+  ; Create Desktop shortcut
+  CreateShortCut "$DESKTOP\nfc-lab.lnk" "$INSTDIR\nfc-lab.exe" "" "$ICON_PATH"
 
   ; Write the uninstaller executable
-  WriteUninstaller "$INSTDIR\uninstaller.exe"
+  WriteUninstaller "$INSTDIR\uninstall.exe"
 
 SectionEnd
 
@@ -45,6 +81,9 @@ Section "Uninstall"
 
   ; Delete Start Menu shortcut
   Delete "$SMPROGRAMS\nfc-lab\nfc-lab.lnk"
+
+  ; Remove Start Menu folder
+  RMDir "$SMPROGRAMS\nfc-lab"
 
   ; Remove the installation directory and all contents
   RMDir /r "$INSTDIR"

@@ -5,8 +5,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(COMPANY "Jose Vicente Campos")
 set(PROGRAM_NAME "nfc-lab")
 set(ICON_FILE_PATH "../assets/app/rc/nfc-lab.ico")
-# Installs to %USERPROFILE%\AppData\Local\Programs\nfc-lab (no admin rights required)
-set(APP_TARGET_DIR "@HomeDir@/AppData/Local/Programs/${PROGRAM_NAME}")
+set(APP_TARGET_DIR "@HomeDir@/AppData/Local/josevcm/${PROGRAM_NAME}")
 
 if(NOT DEFINED BUILD_PROJECT_VERSION)
   set(BUILD_PROJECT_VERSION "0.0.0")
@@ -120,10 +119,12 @@ endif()
 
 if (WIN32)
 
-  # generate build scripts
+  # generate manual build scripts
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-runenv.ps1.in ${CMAKE_CURRENT_BINARY_DIR}/build-runenv.ps1)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-installer.ps1.in ${CMAKE_CURRENT_BINARY_DIR}/build-installer.ps1)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/nsis/script.nsi.in ${CMAKE_CURRENT_BINARY_DIR}/installer/script.nsi)
+
+  # generate installer scripts
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/nsis/script.nsi.in ${CMAKE_CURRENT_BINARY_DIR}/installer/meta/script.nsi)
 
 endif (WIN32)
 
