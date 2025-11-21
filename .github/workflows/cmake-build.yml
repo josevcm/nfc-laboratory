@@ -112,8 +112,11 @@ jobs:
           aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
+          
+          dir
 
       - name: 'Build project'
+        if: false
         run: |
           ${{ steps.strings-windows.outputs.cmake-dir }}/bin/cmake `
             -S ${{ github.workspace }} `
@@ -130,6 +133,7 @@ jobs:
             --target nfc-lab --parallel ${{ steps.strings-windows.outputs.cpu-count }} 
 
       - name: 'Create installer'
+        if: false
         run: |
           # create installer folders
           New-Item -Force -ItemType "directory" -Path ${{ steps.strings-windows.outputs.package-data-dir }}
