@@ -6,4 +6,7 @@
     <Publisher>Jose Vicente Campos Martinez</Publisher>
     <StartMenuDir>NFC LAB</StartMenuDir>
     <TargetDir>@APP_TARGET_DIR@</TargetDir>
+    <!-- WinGet compatibility settings -->
+    <AllowNonAsciiCharacters>true</AllowNonAsciiCharacters>
+    <AllowSpaceInPath>true</AllowSpaceInPath>
 </Installer>
