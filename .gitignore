@@ -4,6 +4,9 @@
 /run/
 src/nfc-app/app-qt/src/main/cpp/QtConfig.h
 /build
+/build-*
+*.exe
+*-x86_64-portable.zip
 /nfc-lab
 .flatpak-builder/
 build-dir/

@@ -158,7 +158,12 @@ jobs:
             --no-system-d3d-compiler `
             --no-opengl-sw `
             ${{ steps.strings-windows.outputs.package-data-dir }}/nfc-lab.exe
-          
+
+          # create portable package
+          Compress-Archive `
+            -Path ${{ steps.strings-windows.outputs.package-data-dir }}/* `
+            -DestinationPath nfc-lab-${{ steps.strings-windows.outputs.build-version }}-x86_64-portable.zip
+
           # create installer
           ${{ steps.strings-windows.outputs.installer-dir }}/bin/binarycreator `
             --verbose `
@@ -170,7 +175,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: ${{ github.workspace }}/*.exe
+          path: |
+            ${{ github.workspace }}/*.exe
+            ${{ github.workspace }}/*.zip
 
   #
   # Create release job
