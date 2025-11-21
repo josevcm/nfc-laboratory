@@ -104,7 +104,8 @@ jobs:
             ${{ github.workspace }}/tools
 
       - name: 'Install dependencies'
-#        if: steps.cache-dependencies.outputs.cache-hit != 'true'
+        #if: steps.cache-dependencies.outputs.cache-hit != 'true'
+        if: false
         run: |
           choco install aqt -y --no-progress -r
           choco install nsis -y --no-progress -r
@@ -114,6 +115,13 @@ jobs:
           aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
+          
+          makensis /VERSION
+          dir C:\ProgramData\chocolatey\bin
+
+      - name: 'Install NSIS'
+        run: |
+          choco install nsis -y --no-progress -r
           
           makensis /VERSION
           dir C:\ProgramData\chocolatey\bin
