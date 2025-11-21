@@ -52,7 +52,7 @@ Section "Install nfc-lab"
   SetOutPath "$INSTDIR"
 
   ; Copy executable and all required DLLs/plugins
-  File /r "@CMAKE_CURRENT_BINARY_DIR@\installer\build\*.*"
+  File /r "@CMAKE_CURRENT_BINARY_DIR@\installer\data\*.*"
 
   ; Define icon path after files are copied
   StrCpy $ICON_PATH "@CMAKE_CURRENT_BINARY_DIR@\installer\meta\resources\nfc-lab.ico"
