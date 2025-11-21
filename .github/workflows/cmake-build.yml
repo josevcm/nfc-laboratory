@@ -124,8 +124,8 @@ jobs:
           choco install nsis -y --no-progress -r
           echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
           
-          makensis /VERSION
           dir C:\ProgramData\chocolatey\bin
+          makensis /VERSION
 
       - name: 'Build project'
         if: false
