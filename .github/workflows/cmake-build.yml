@@ -146,10 +146,11 @@ jobs:
           Copy-Item -Force ${{ github.workspace }}/dll/rtlsdr/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/usb/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
           
-          # copy drivers and firmware
+          # copy drivers, firmware and installer resources
           Copy-Item -Force -Recurse ${{ github.workspace }}/dat/config ${{ steps.strings-windows.outputs.installer-data-dir }}
           Copy-Item -Force -Recurse ${{ github.workspace }}/dat/drivers ${{ steps.strings-windows.outputs.installer-data-dir }}
           Copy-Item -Force -Recurse ${{ github.workspace }}/dat/firmware ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force -Recurse ${{ github.workspace }}/dat/resources ${{ steps.strings-windows.outputs.installer-meta-dir }}
           
           # create deployment
           ${{ steps.strings-windows.outputs.qt-dir }}/bin/windeployqt `

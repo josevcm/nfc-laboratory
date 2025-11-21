@@ -16,7 +16,7 @@ InstallDir "$LOCALAPPDATA\josevcm\nfc-lab"
 RequestExecutionLevel user
 
 ; Installer icon (optional)
-Icon "@CMAKE_CURRENT_BINARY_DIR@\installer\resources\nfc-lab.ico"
+Icon "@CMAKE_CURRENT_BINARY_DIR@\installer\meta\resources\nfc-lab.ico"
 
 ;--------------------------------
 ; Variables
@@ -55,7 +55,7 @@ Section "Install nfc-lab"
   File /r "@CMAKE_CURRENT_BINARY_DIR@\installer\build\*.*"
 
   ; Define icon path after files are copied
-  StrCpy $ICON_PATH "@CMAKE_CURRENT_BINARY_DIR@\installer\resources\nfc-lab.ico"
+  StrCpy $ICON_PATH "@CMAKE_CURRENT_BINARY_DIR@\installer\meta\resources\nfc-lab.ico"
 
   ; Create Start Menu folder
   CreateDirectory "$SMPROGRAMS\nfc-lab"

@@ -8,13 +8,13 @@ $InstallerMeta="$InstallerPath/meta"
 # Create output directory
 New-Item -Force -Path $InstallerData -ItemType "directory"
 
-# Copy installer resources
-Copy-Item -Force $SourcePath/dat/resources/*.* $InstallerMeta
-
 # Copy application resources
 Copy-Item -Force -Recurse $SourcePath/dat/config $InstallerData
 Copy-Item -Force -Recurse $SourcePath/dat/drivers $InstallerData
 Copy-Item -Force -Recurse $SourcePath/dat/firmware $InstallerData
+
+# Copy installer resources
+Copy-Item -Force -Recurse $SourcePath/dat/resources $InstallerMeta
 
 # Copy required DLLs
 Copy-Item -Force $SourcePath/dll/airspy/x86_64/bin/*.dll $InstallerData

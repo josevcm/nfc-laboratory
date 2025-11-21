@@ -124,7 +124,7 @@ if (WIN32)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-installer.ps1.in ${CMAKE_CURRENT_BINARY_DIR}/build-installer.ps1)
 
   # generate installer scripts
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/nsis/script.nsi.in ${CMAKE_CURRENT_BINARY_DIR}/installer/meta/script.nsi)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/script.nsi.in ${CMAKE_CURRENT_BINARY_DIR}/installer/meta/script.nsi)
 
 endif (WIN32)
 
