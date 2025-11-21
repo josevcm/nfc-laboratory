@@ -105,16 +105,13 @@ jobs:
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
           choco install aqt -y --no-progress -r
+          choco install nsis -y --no-progress -r
+          
+          # install Qt and build tools
           aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ github.workspace }}/qt
           aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
-          aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ github.workspace }}
-          iwr -useb get.scoop.sh -outfile 'install.ps1'
-          .\install.ps1 -RunAsAdmin
-          scoop update
-          scoop bucket add extras
-          scoop install nsis
 
       - name: 'Build project'
         run: |
