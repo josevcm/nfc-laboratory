@@ -7,7 +7,7 @@
 ; Installer definition
 ;--------------------------------
 Name "nfc-lab"
-OutFile "nfc-lab-@nfc-lab_VERSION@-x86_64.exe"
+OutFile "@CMAKE_CURRENT_BINARY_DIR@\installer\nfc-lab-@nfc-lab_VERSION@-x86_64.exe"
 
 ; Install in user local profile (no admin rights required)
 InstallDir "$LOCALAPPDATA\josevcm\nfc-lab"
