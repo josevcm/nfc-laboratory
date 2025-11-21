@@ -94,6 +94,7 @@ jobs:
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
       - name: 'Cache dependencies'
+        if: false
         id: cache-dependencies
         uses: actions/cache@v4
         with:
@@ -103,7 +104,7 @@ jobs:
             ${{ github.workspace }}/tools
 
       - name: 'Install dependencies'
-        if: steps.cache-dependencies.outputs.cache-hit != 'true'
+#        if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
           choco install aqt -y --no-progress -r
           choco install nsis -y --no-progress -r
