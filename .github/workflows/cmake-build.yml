@@ -114,7 +114,8 @@ jobs:
           aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
           
-          dir
+          makensis /VERSION
+          dir C:\ProgramData\chocolatey\bin
 
       - name: 'Build project'
         if: false
