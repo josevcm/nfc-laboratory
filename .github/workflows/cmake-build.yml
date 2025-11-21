@@ -234,17 +234,15 @@ jobs:
   # WinGet release job
   #
   winget-release:
-
     runs-on: windows-latest
     needs: create-release
-    if: github.ref_type == 'tag'
-
+#    if: github.ref_type == 'tag'
+    if: false
     steps:
-
       - name: 'WinGet Releaser'
         uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: josevcm.nfc-lab
-          installers-regex: 'nfc-lab-.*-x86_64-installer\.exe$'
+          installers-regex: 'nfc-lab-.*-x86_64-portable\.zip$'
           token: ${{ secrets.WINGET_TOKEN }}
           fork-user: josevcm
