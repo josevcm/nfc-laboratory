@@ -264,7 +264,7 @@ struct AirspyDevice::Impl
    int stop()
    {
       if (!airspyHandle || !streamCallback)
-         return 1;
+         return -1;
 
       log->info("stop streaming for device {}", {deviceName});
 
@@ -694,7 +694,7 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
    {
       case PARAM_SAMPLE_RATE:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setSampleRate(*v);
 
          impl->log->error("invalid value type for PARAM_SAMPLE_RATE");
@@ -702,7 +702,7 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_TUNE_FREQUENCY:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setCenterFreq(*v);
 
          impl->log->error("invalid value type for PARAM_TUNE_FREQUENCY");
@@ -710,7 +710,7 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_TUNER_AGC:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setTunerAgc(*v);
 
          impl->log->error("invalid value type for PARAM_TUNER_AGC");
@@ -718,7 +718,7 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_MIXER_AGC:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setMixerAgc(*v);
 
          impl->log->error("invalid value type for PARAM_MIXER_AGC");
@@ -726,7 +726,7 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_GAIN_MODE:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setGainMode(*v);
 
          impl->log->error("invalid value type for PARAM_GAIN_MODE");
@@ -734,7 +734,7 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_GAIN_VALUE:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setGainValue(*v);
 
          impl->log->error("invalid value type for PARAM_GAIN_VALUE");
@@ -742,7 +742,7 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_BIAS_TEE:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setBiasTee(*v);
 
          impl->log->error("invalid value type for PARAM_BIAS_TEE");
@@ -750,7 +750,7 @@ bool AirspyDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_DECIMATION:
       {
-         if (auto v = std::get_if<unsigned int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setDecimation(*v);
 
          impl->log->error("invalid value type for PARAM_DECIMATION");
@@ -807,11 +807,11 @@ int process_transfer(airspy_transfer *transfer)
       switch (transfer->sample_type)
       {
          case AIRSPY_SAMPLE_FLOAT32_IQ:
-            buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count * 2, 2, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_IQ);
+            buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count * 2, 2, 1, device->sampleRate, device->samplesReceived, 0, SIGNAL_TYPE_RADIO_IQ);
             break;
 
          case AIRSPY_SAMPLE_FLOAT32_REAL:
-            buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count, 1, 1, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
+            buffer = SignalBuffer(static_cast<float *>(transfer->samples), transfer->sample_count, 1, 1, device->sampleRate, device->samplesReceived, 0, SIGNAL_TYPE_RADIO_SAMPLES);
             break;
 
          default:

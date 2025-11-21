@@ -132,8 +132,48 @@ target_link_libraries(nfc-lab
 
 # Install targets
 if (UNIX)
+    # Option to use Flatpak naming convention
+    option(FLATPAK_BUILD "Use Flatpak naming convention for desktop files and icons" OFF)
+
     install(TARGETS nfc-lab DESTINATION bin)
-    install(FILES src/main/assets/app/rc/nfc-lab.desktop DESTINATION share/applications)
-    install(FILES src/main/assets/app/rc/nfc-lab.png DESTINATION share/icons/hicolor/512x512/apps)
-    install(FILES src/main/assets/app/rc/nfc-lab.svg DESTINATION share/icons/hicolor/scalable/apps)
+
+    if(FLATPAK_BUILD)
+        # Flatpak build: Use reverse-DNS naming
+        set(ICON_NAME "io.github.josevcm.nfc-laboratory")
+        set(DESKTOP_FILE_NAME "io.github.josevcm.nfc-laboratory.desktop")
+        set(ICON_PNG_NAME "io.github.josevcm.nfc-laboratory.png")
+        set(ICON_SVG_NAME "io.github.josevcm.nfc-laboratory.svg")
+    else()
+        # Normal build: Use original naming
+        set(ICON_NAME "nfc-lab")
+        set(DESKTOP_FILE_NAME "nfc-lab.desktop")
+        set(ICON_PNG_NAME "nfc-lab.png")
+        set(ICON_SVG_NAME "nfc-lab.svg")
+    endif()
+
+    # Configure desktop file with correct icon name
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/app/rc/nfc-lab.desktop
+        ${CMAKE_CURRENT_BINARY_DIR}/nfc-lab.desktop
+        @ONLY
+    )
+
+    # Install configured desktop file
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/nfc-lab.desktop
+            DESTINATION share/applications
+            RENAME ${DESKTOP_FILE_NAME})
+
+    # Install icons
+    install(FILES src/main/assets/app/rc/nfc-lab.png
+            DESTINATION share/icons/hicolor/512x512/apps
+            RENAME ${ICON_PNG_NAME})
+    install(FILES src/main/assets/app/rc/nfc-lab.svg
+            DESTINATION share/icons/hicolor/scalable/apps
+            RENAME ${ICON_SVG_NAME})
+
+    # Install metainfo (only for Flatpak)
+    if(FLATPAK_BUILD)
+        install(FILES src/main/assets/app/rc/io.github.josevcm.nfc-laboratory.metainfo.xml
+                DESTINATION share/metainfo)
+    endif()
 endif (UNIX)

@@ -1,0 +1,91 @@
+;--------------------------------
+; Modern User Interface (MUI)
+;--------------------------------
+!include "MUI2.nsh"
+
+;--------------------------------
+; Installer definition
+;--------------------------------
+Name "nfc-lab"
+OutFile "@CMAKE_CURRENT_SOURCE_DIR@\nfc-lab-@nfc-lab_VERSION@-x86_64-installer.exe"
+
+; Install in user local profile (no admin rights required)
+InstallDir "$LOCALAPPDATA\josevcm\nfc-lab"
+
+; Ensure no UAC elevation
+RequestExecutionLevel user
+
+; Installer icon (optional)
+Icon "@CMAKE_CURRENT_BINARY_DIR@\installer\meta\resources\nfc-lab.ico"
+
+;--------------------------------
+; Variables
+;--------------------------------
+Var ICON_PATH
+
+;--------------------------------
+; MUI Pages
+;--------------------------------
+; Installer pages
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "@CMAKE_CURRENT_SOURCE_DIR@\LICENSE"
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+; Uninstaller pages
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+;--------------------------------
+; Language
+;--------------------------------
+!insertmacro MUI_LANGUAGE "English"
+
+;--------------------------------
+; Installation section
+;--------------------------------
+Section "Install nfc-lab"
+
+  ; Set output path to the installation directory
+  SetOutPath "$INSTDIR"
+
+  ; Copy executable and all required DLLs\plugins
+  File /r "@CMAKE_CURRENT_BINARY_DIR@\installer\data\*.*"
+
+  ; Define icon path after files are copied
+  StrCpy $ICON_PATH "@CMAKE_CURRENT_BINARY_DIR@\installer\meta\resources\nfc-lab.ico"
+
+  ; Create Start Menu folder
+  CreateDirectory "$SMPROGRAMS\nfc-lab"
+
+  ; Create Start Menu shortcut
+  CreateShortCut "$SMPROGRAMS\nfc-lab\nfc-lab.lnk" "$INSTDIR\nfc-lab.exe" "" "$ICON_PATH"
+
+  ; Create Desktop shortcut
+  CreateShortCut "$DESKTOP\nfc-lab.lnk" "$INSTDIR\nfc-lab.exe" "" "$ICON_PATH"
+
+  ; Write the uninstaller executable
+  WriteUninstaller "$INSTDIR\uninstall.exe"
+
+SectionEnd
+
+;--------------------------------
+; Uninstallation section
+;--------------------------------
+Section "Uninstall"
+
+  ; Delete desktop shortcut
+  Delete "$DESKTOP\nfc-lab.lnk"
+
+  ; Delete Start Menu shortcut
+  Delete "$SMPROGRAMS\nfc-lab\nfc-lab.lnk"
+
+  ; Remove Start Menu folder
+  RMDir "$SMPROGRAMS\nfc-lab"
+
+  ; Remove the installation directory and all contents
+  RMDir /r "$INSTDIR"
+
+SectionEnd

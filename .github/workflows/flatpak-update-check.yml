@@ -1,8 +1,8 @@
-name: Check Flatpak Updates
+name: Check Flatpak Updates (DISABLED)
 
+# DISABLED: The Flatpak manifest (io.github.josevcm.nfc-laboratory.yml) now lives in the Flathub repository.
+# Update checks should be done in that repository instead.
 on:
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC
   workflow_dispatch:
 
 jobs:

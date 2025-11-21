@@ -238,6 +238,10 @@ struct FourierProcessTask::Impl : FourierProcessTask, AbstractTask
          // calculate decimation for required bandwidth
          decimation = static_cast<int>(localBuffer.sampleRate() / bandwidth);
 
+         // buffer has to be enough data to process FFT
+         if (localBuffer.elements() < length * decimation)
+            return;
+
          // offset from the start of the signal buffer to apply FFT, must be 16 byte aligned
          int offset = 0;
 

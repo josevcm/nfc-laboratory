@@ -5,7 +5,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(COMPANY "Jose Vicente Campos")
 set(PROGRAM_NAME "nfc-lab")
 set(ICON_FILE_PATH "../assets/app/rc/nfc-lab.ico")
-set(APP_TARGET_DIR "@HomeDir@/.${PROGRAM_NAME}")
+set(APP_TARGET_DIR "@HomeDir@/AppData/Local/josevcm/${PROGRAM_NAME}")
 
 if(NOT DEFINED BUILD_PROJECT_VERSION)
   set(BUILD_PROJECT_VERSION "0.0.0")
@@ -100,20 +100,31 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
+# find dependency mirisdr
+#-------------------------------------------------------------------------------
+find_package(libmirisdr)
+
+if(LIBMIRISDR_FOUND)
+  message(STATUS "libmirisdr: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBMIRISDR_INCLUDE})
+  message(STATUS "  library: " ${LIBMIRISDR_LIBRARY})
+  include_directories(${LIBMIRISDR_INCLUDE})
+else ()
+  message(STATUS  "libmirisdr not found, using local bundle in static mode")
+endif()
+
+#-------------------------------------------------------------------------------
 # configure files
 #-------------------------------------------------------------------------------
 
 if (WIN32)
 
-  # generate build scripts
+  # generate manual build scripts
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-runenv.ps1.in ${CMAKE_CURRENT_BINARY_DIR}/build-runenv.ps1)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/scripts/build-installer.ps1.in ${CMAKE_CURRENT_BINARY_DIR}/build-installer.ps1)
 
-  # generate build scripts
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/config.xml.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/config.xml)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/package.xml.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/package.xml)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/license.txt.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/license.txt)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/script.js.in ${CMAKE_CURRENT_BINARY_DIR}/installer/config/script.js)
+  # generate installer scripts
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dat/installer/script.nsi.in ${CMAKE_CURRENT_BINARY_DIR}/installer/meta/script.nsi)
 
 endif (WIN32)
 

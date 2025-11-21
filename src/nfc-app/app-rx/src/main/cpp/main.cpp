@@ -109,6 +109,20 @@ struct Main
             {"biasTee", 0},
             {"directSampling", 0}
          }
+      },
+
+      // Mirics MSi2500
+      {
+         "radio.miri", {
+            {"centerFreq", 13560000},
+            {"sampleRate", 10000000},
+            {"gainMode", 1}, // linearity
+            {"gainValue", 0}, // 0db
+            {"mixerAgc", 0},
+            {"tunerAgc", 0},
+            {"biasTee", 0},
+            {"directSampling", 0}
+         }
       }
    };
 

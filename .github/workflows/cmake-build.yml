@@ -86,10 +86,9 @@ jobs:
           echo "ninja-dir=${{ github.workspace }}/tools/ninja" >> "$GITHUB_OUTPUT"
           echo "cmake-dir=${{ github.workspace }}/tools/cmake_64" >> "$GITHUB_OUTPUT"
           echo "mingw-dir=${{ github.workspace }}/tools/mingw1310_64" >> "$GITHUB_OUTPUT"
-          echo "installer-dir=${{ github.workspace }}/tools/QtInstallerFramework/4.7" >> "$GITHUB_OUTPUT"
           echo "package-dir=${{ github.workspace }}/build/installer/package" >> "$GITHUB_OUTPUT"
-          echo "package-data-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-lab/data" >> "$GITHUB_OUTPUT"
-          echo "package-meta-dir=${{ github.workspace }}/build/installer/package/org.josevcm.nfc-lab/meta" >> "$GITHUB_OUTPUT"
+          echo "installer-data-dir=${{ github.workspace }}/build/installer/data" >> "$GITHUB_OUTPUT"
+          echo "installer-meta-dir=${{ github.workspace }}/build/installer/meta" >> "$GITHUB_OUTPUT"
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
       - name: 'Cache dependencies'
@@ -104,12 +103,16 @@ jobs:
       - name: 'Install dependencies'
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
+          # install Qt and build tools
           choco install aqt -y --no-progress -r
           aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ github.workspace }}/qt
           aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
-          aqt install-tool windows desktop tools_ifw qt.tools.ifw.47 --outputdir ${{ github.workspace }}
+
+      - name: 'Install NSIS'
+        run: |
+          choco install nsis.portable -y --no-progress -r
 
       - name: 'Build project'
         run: |
@@ -130,25 +133,23 @@ jobs:
       - name: 'Create installer'
         run: |
           # create installer folders
-          New-Item -Force -ItemType "directory" -Path ${{ steps.strings-windows.outputs.package-data-dir }}
-          New-Item -Force -ItemType "directory" -Path ${{ steps.strings-windows.outputs.package-meta-dir }}
+          New-Item -Force -ItemType "directory" -Path ${{ steps.strings-windows.outputs.installer-data-dir }}
+          New-Item -Force -ItemType "directory" -Path ${{ steps.strings-windows.outputs.installer-meta-dir }}
           
           # copy executable and libraries
-          Copy-Item -Force ${{ steps.strings-windows.outputs.build-dir }}/src/nfc-app/app-qt/nfc-lab.exe ${{ steps.strings-windows.outputs.package-data-dir }}
-          Copy-Item -Force ${{ steps.strings-windows.outputs.mingw-dir }}/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
-          Copy-Item -Force ${{ github.workspace }}/dll/airspy/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
-          Copy-Item -Force ${{ github.workspace }}/dll/hydrasdr/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
-          Copy-Item -Force ${{ github.workspace }}/dll/openssl/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
-          Copy-Item -Force ${{ github.workspace }}/dll/rtlsdr/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
-          Copy-Item -Force ${{ github.workspace }}/dll/usb/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.package-data-dir }}
+          Copy-Item -Force ${{ steps.strings-windows.outputs.build-dir }}/src/nfc-app/app-qt/nfc-lab.exe ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force ${{ steps.strings-windows.outputs.mingw-dir }}/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force ${{ github.workspace }}/dll/airspy/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force ${{ github.workspace }}/dll/hydrasdr/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force ${{ github.workspace }}/dll/openssl/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force ${{ github.workspace }}/dll/rtlsdr/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force ${{ github.workspace }}/dll/usb/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
           
-          # copy drivers and firmware
-          Copy-Item -Force -Recurse ${{ github.workspace }}/dat/config ${{ steps.strings-windows.outputs.package-data-dir }}
-          Copy-Item -Force -Recurse ${{ github.workspace }}/dat/drivers ${{ steps.strings-windows.outputs.package-data-dir }}
-          Copy-Item -Force -Recurse ${{ github.workspace }}/dat/firmware ${{ steps.strings-windows.outputs.package-data-dir }}
-          
-          # copy installer resources
-          Copy-Item -Force ${{ steps.strings-windows.outputs.build-dir }}/installer/config/*.* ${{ steps.strings-windows.outputs.package-meta-dir }}
+          # copy drivers, firmware and installer resources
+          Copy-Item -Force -Recurse ${{ github.workspace }}/dat/config ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force -Recurse ${{ github.workspace }}/dat/drivers ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force -Recurse ${{ github.workspace }}/dat/firmware ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force -Recurse ${{ github.workspace }}/dat/resources ${{ steps.strings-windows.outputs.installer-meta-dir }}
           
           # create deployment
           ${{ steps.strings-windows.outputs.qt-dir }}/bin/windeployqt `
@@ -157,20 +158,23 @@ jobs:
             --no-translations `
             --no-system-d3d-compiler `
             --no-opengl-sw `
-            ${{ steps.strings-windows.outputs.package-data-dir }}/nfc-lab.exe
-          
+            ${{ steps.strings-windows.outputs.installer-data-dir }}/nfc-lab.exe
+
+          # create portable package
+          Compress-Archive `
+            -Path ${{ steps.strings-windows.outputs.installer-data-dir }}/* `
+            -DestinationPath ${{ github.workspace }}/nfc-lab-${{ steps.strings-windows.outputs.build-version }}-x86_64-portable.zip
+
           # create installer
-          ${{ steps.strings-windows.outputs.installer-dir }}/bin/binarycreator `
-            --verbose `
-            -c ${{ steps.strings-windows.outputs.build-dir }}/installer/config/config.xml `
-            -p ${{ steps.strings-windows.outputs.package-dir }} `
-            nfc-lab-${{ steps.strings-windows.outputs.build-version }}-x86_64.exe
+          makensis ${{ steps.strings-windows.outputs.installer-meta-dir }}/script.nsi
 
       - name: 'Upload artifact'
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: ${{ github.workspace }}/*.exe
+          path: |
+            ${{ github.workspace }}/*.exe
+            ${{ github.workspace }}/*.zip
 
   #
   # Create release job
@@ -230,17 +234,15 @@ jobs:
   # WinGet release job
   #
   winget-release:
-
     runs-on: windows-latest
     needs: create-release
-    if: github.ref_type == 'tag'
-
+#    if: github.ref_type == 'tag'
+    if: false
     steps:
-
       - name: 'WinGet Releaser'
         uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: josevcm.nfc-lab
-          installers-regex: 'nfc-lab-.*-x86_64\.exe$'
+          installers-regex: 'nfc-lab-.*-x86_64-portable\.zip$'
           token: ${{ secrets.WINGET_TOKEN }}
           fork-user: josevcm

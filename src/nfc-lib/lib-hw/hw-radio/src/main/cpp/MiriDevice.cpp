@@ -40,11 +40,11 @@ namespace hw {
 #define MAX_QUEUE_SIZE 4
 
 #define ASYNC_BUF_NUMBER 32
-#define ASYNC_BUF_LENGTH (16 * 16384)
+#define ASYNC_BUF_LENGTH (16 * 32 * 512)
 
 #define DEVICE_TYPE_PREFIX "radio.miri"
 
-int process_transfer(unsigned char *buf, uint32_t len, void *ctx);
+void process_transfer(unsigned char *buf, uint32_t len, void *ctx);
 
 struct MiriDevice::Impl
 {
@@ -154,11 +154,11 @@ struct MiriDevice::Impl
             log->warn("failed mirisdr_set_bandwidth!");
 
          // set sample format, 10+2 bit
-         if (mirisdr_set_sample_format(handle, (char *) "384_S16") != MIRI_SUCCESS)
+         if (mirisdr_set_sample_format(handle, (char *)"384_S16") != MIRI_SUCCESS)
             log->warn("failed mirisdr_set_sample_format!");
 
          // set USB transfer type
-         if (mirisdr_set_transfer(handle, (char *) "BULK") != MIRI_SUCCESS)
+         if (mirisdr_set_transfer(handle, (char *)"BULK") != MIRI_SUCCESS)
             log->warn("failed mirisdr_set_transfer!");
 
          // set IF mode
@@ -194,75 +194,78 @@ struct MiriDevice::Impl
 
    void close()
    {
-      if (deviceHandle)
-      {
-         // stop streaming if active...
-         stop();
+      if (!deviceHandle)
+         return;
 
-         log->info("close device {}", {deviceName});
+      // stop streaming if active...
+      stop();
 
-         // close device
-         if (mirisdr_close(deviceHandle) != MIRI_SUCCESS)
-            log->warn("failed mirisdr_close!");
+      log->info("close device {}", {deviceName});
 
-         deviceName = "";
-         deviceSerial = "";
-         deviceVersion = "";
-         deviceHandle = nullptr;
-      }
+      // close device
+      if (mirisdr_close(deviceHandle) != MIRI_SUCCESS)
+         log->warn("failed mirisdr_close!");
+
+      deviceName = "";
+      deviceSerial = "";
+      deviceVersion = "";
+      deviceHandle = nullptr;
    }
 
-   int start(RadioDevice::StreamHandler handler)
+   int start(StreamHandler handler)
    {
-      if (deviceHandle)
-      {
-         log->info("start streaming for device {}", {deviceName});
+      if (!deviceHandle)
+         return -1;
 
-         // clear counters
-         samplesDropped = 0;
-         samplesReceived = 0;
+      log->info("start streaming for device {}", {deviceName});
 
-         // reset stream status
-         streamCallback = std::move(handler);
-         streamQueue = std::queue<SignalBuffer>();
+      // clear counters
+      samplesDropped = 0;
+      samplesReceived = 0;
 
-         // sets stream start time
-         streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      // reset stream status
+      streamCallback = std::move(handler);
+      streamQueue = std::queue<SignalBuffer>();
 
-         // start async transfer thread
-         asyncThread = std::thread([=]() {
-            if (mirisdr_read_async(deviceHandle, reinterpret_cast<mirisdr_read_async_cb_t>(process_transfer), this, 0, 0) != MIRI_SUCCESS)
-               log->warn("failed mirisdr_read_async!");
-         });
+      // sets stream start time
+      streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-         return 0;
-      }
+      // reset endpoint before we start reading from it (mandatory)
+      if (mirisdr_reset_buffer(deviceHandle) != MIRI_SUCCESS)
+         log->warn("failed mirisdr_reset_buffer!");
 
-      return -1;
+      // start async transfer thread
+      asyncThread = std::thread([=] {
+
+         if (mirisdr_read_async(deviceHandle, process_transfer, this, ASYNC_BUF_NUMBER, ASYNC_BUF_LENGTH) != MIRI_SUCCESS)
+            log->warn("failed mirisdr_read_async!");
+
+         log->info("streaming transfer finished for device {}", {deviceName});
+      });
+
+      return 0;
    }
 
    int stop()
    {
-      if (deviceHandle && streamCallback)
-      {
-         log->info("stop streaming for device {}", {deviceName});
+      if (!deviceHandle || !streamCallback)
+         return -1;
 
-         // stop reception
-         if (mirisdr_cancel_async(deviceHandle) != MIRI_SUCCESS)
-            log->warn("failed mirisdr_cancel_async!");
+      log->info("stop streaming for device {}", {deviceName});
 
-         // wait for thread joint
-         asyncThread.join();
+      // stop reception
+      if (mirisdr_cancel_async(deviceHandle) != MIRI_SUCCESS)
+         log->warn("failed mirisdr_cancel_async!");
 
-         // disable stream callback and queue
-         streamCallback = nullptr;
-         streamQueue = std::queue<SignalBuffer>();
-         streamTime = 0;
+      // wait for thread joint
+      asyncThread.join();
 
-         return 0;
-      }
+      // disable stream callback and queue
+      streamCallback = nullptr;
+      streamQueue = std::queue<SignalBuffer>();
+      streamTime = 0;
 
-      return -1;
+      return 0;
    }
 
    bool isOpen() const
@@ -518,10 +521,10 @@ rt::Variant MiriDevice::get(int id, int channel) const
          return impl->gainValue;
 
       case PARAM_BIAS_TEE:
-         return (unsigned int) 0;
+         return (unsigned int)0;
 
       case PARAM_DIRECT_SAMPLING:
-         return (int) 0;
+         return (unsigned int)0;
 
       case PARAM_DECIMATION:
          return impl->decimation;
@@ -555,7 +558,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
    {
       case PARAM_SAMPLE_RATE:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setSampleRate(*v);
 
          impl->log->error("invalid value type for PARAM_SAMPLE_RATE");
@@ -563,7 +566,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_TUNE_FREQUENCY:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setCenterFreq(*v);
 
          impl->log->error("invalid value type for PARAM_TUNE_FREQUENCY");
@@ -571,7 +574,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_TUNER_AGC:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setTunerAgc(*v);
 
          impl->log->error("invalid value type for PARAM_TUNER_AGC");
@@ -579,7 +582,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_MIXER_AGC:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setMixerAgc(*v);
 
          impl->log->error("invalid value type for PARAM_MIXER_AGC");
@@ -587,7 +590,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_GAIN_MODE:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setGainMode(*v);
 
          impl->log->error("invalid value type for PARAM_GAIN_MODE");
@@ -595,7 +598,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_GAIN_VALUE:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setGainValue(*v);
 
          impl->log->error("invalid value type for PARAM_GAIN_VALUE");
@@ -603,7 +606,7 @@ bool MiriDevice::set(int id, const rt::Variant &value, int channel)
       }
       case PARAM_DECIMATION:
       {
-         if (auto v = std::get_if<int>(&value))
+         if (const auto v = std::get_if<unsigned int>(&value))
             return impl->setDecimation(*v);
 
          impl->log->error("invalid value type for PARAM_DECIMATION");
@@ -650,20 +653,39 @@ long MiriDevice::write(const SignalBuffer &buffer)
    return impl->write(buffer);
 }
 
-int process_transfer(unsigned char *buf, uint32_t len, void *ctx)
+/*
+ * process device samples, format is I/Q 16bit samples, total 32bit per sample!
+ */
+void process_transfer(unsigned char *buf, uint32_t len, void *ctx)
 {
-   printf("process_transfer");
-   fflush(stdout);
-
    // check device validity
    if (auto *device = static_cast<MiriDevice::Impl *>(ctx))
    {
-      SignalBuffer buffer;
+      // we are using 386_16 format, each sample is 16 bit I and 16 bit Q
+      const short *data = reinterpret_cast<short *>(buf);
 
-//      SignalBuffer buffer = SignalBuffer((float *) transfer->samples, transfer->sample_count * 2, 2, device->sampleRate, device->samplesReceived, 0, SignalType::SIGNAL_TYPE_RAW_IQ);
+      // total values to be processed is len/2 (16 bit per I or Q value)
+      float scaled[len / 2];
 
-      // update counters
-      device->samplesReceived += len;
+      // buffer for I/Q float samples
+      SignalBuffer buffer = SignalBuffer(len / 2, 2, 1, device->sampleRate, device->samplesReceived, 0, SIGNAL_TYPE_RADIO_IQ);
+
+      // source data is in range -32768 to +32767, so scale to float -1 / +1
+#pragma GCC ivdep
+      for (int i = 0; i < len / 2; ++i)
+      {
+         scaled[i + 0] = static_cast<float>(data[i + 0] / 32768.0);
+         scaled[i + 1] = static_cast<float>(data[i + 1] / 32768.0);
+      }
+
+      // add data to buffer
+      buffer.put(scaled, len / 2);
+
+      // flip buffer contents -> this "commits" data pointers to enable reading buffer....
+      buffer.flip();
+
+      // samples received total I/Q pairs, so len/4
+      device->samplesReceived += len / 4;
 
       // stream to buffer callback
       if (device->streamCallback)
@@ -671,7 +693,7 @@ int process_transfer(unsigned char *buf, uint32_t len, void *ctx)
          device->streamCallback(buffer);
       }
 
-         // or store buffer in receive queue
+      // or store buffer in receive queue
       else
       {
          // lock buffer access
@@ -687,12 +709,7 @@ int process_transfer(unsigned char *buf, uint32_t len, void *ctx)
          // queue new sample buffer
          device->streamQueue.push(buffer);
       }
-
-      // continue streaming
-      return 0;
    }
-
-   return -1;
 }
 
 }
