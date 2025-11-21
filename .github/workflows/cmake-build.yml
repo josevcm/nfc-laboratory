@@ -94,7 +94,6 @@ jobs:
           echo "cpu-count=4" >> "$GITHUB_OUTPUT"
 
       - name: 'Cache dependencies'
-        if: false
         id: cache-dependencies
         uses: actions/cache@v4
         with:
@@ -104,29 +103,20 @@ jobs:
             ${{ github.workspace }}/tools
 
       - name: 'Install dependencies'
-        #if: steps.cache-dependencies.outputs.cache-hit != 'true'
-        if: false
+        if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
-          choco install aqt -y --no-progress -r
-          choco install nsis -y --no-progress -r
-          
           # install Qt and build tools
+          choco install aqt -y --no-progress -r
           aqt install-qt windows desktop 6.7.2 win64_mingw --outputdir ${{ github.workspace }}/qt
           aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir ${{ github.workspace }}
           aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir ${{ github.workspace }}
-          
-          makensis /VERSION
-          dir C:\ProgramData\chocolatey\bin
 
       - name: 'Install NSIS'
         run: |
           choco install nsis.portable -y --no-progress -r
-          dir C:\ProgramData\chocolatey\bin
-          makensis /VERSION
 
       - name: 'Build project'
-        if: false
         run: |
           ${{ steps.strings-windows.outputs.cmake-dir }}/bin/cmake `
             -S ${{ github.workspace }} `
@@ -143,7 +133,6 @@ jobs:
             --target nfc-lab --parallel ${{ steps.strings-windows.outputs.cpu-count }} 
 
       - name: 'Create installer'
-        if: false
         run: |
           # create installer folders
           New-Item -Force -ItemType "directory" -Path ${{ steps.strings-windows.outputs.package-data-dir }}
