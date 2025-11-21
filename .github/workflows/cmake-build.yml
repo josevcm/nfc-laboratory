@@ -13,7 +13,6 @@ jobs:
   #
   build-linux:
 
-    if: false
     runs-on: ubuntu-latest
     outputs:
       artifact-name: linux-artifact
@@ -246,6 +245,6 @@ jobs:
         uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: josevcm.nfc-lab
-          installers-regex: 'nfc-lab-.*-x86_64\.exe$'
+          installers-regex: 'nfc-lab-.*-x86_64-installer\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
           fork-user: josevcm
