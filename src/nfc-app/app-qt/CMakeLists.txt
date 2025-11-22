@@ -173,7 +173,8 @@ if (UNIX)
 
     # Install metainfo (only for Flatpak)
     if(FLATPAK_BUILD)
-        install(FILES src/main/assets/app/rc/io.github.josevcm.nfc-laboratory.metainfo.xml
+        install(FILES ${CMAKE_SOURCE_DIR}/dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml
                 DESTINATION share/metainfo)
     endif()
+
 endif (UNIX)
