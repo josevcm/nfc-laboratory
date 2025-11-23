@@ -19,10 +19,10 @@ The Flatpak manifest is located in the repository root:
 ```bash
 sudo apt install flatpak flatpak-builder
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install flathub org.kde.Platform//6.8 org.kde.Sdk//6.8
+flatpak install flathub org.kde.Platform//6.10 org.kde.Sdk//6.10
 ```
 
-**Note:** Runtime version 6.8 is the current stable version. Check available versions with:
+**Note:** Runtime version 6.10 is the current stable version. Check available versions with:
 ```bash
 flatpak remote-info flathub org.kde.Platform | grep Branch
 ```
