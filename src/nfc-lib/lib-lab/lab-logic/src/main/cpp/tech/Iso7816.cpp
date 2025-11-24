@@ -1131,21 +1131,22 @@ struct Iso7816::Impl : IsoTech
             }
          }
 
-         // check presence of TDk
-         if (frame[i] & ATR_TD_MASK)
-         {
-            // check presence of TCK (then T!=0 on some of TDk bytes)
-            c |= frame[n] & 0x0f;
+         // check presence of TDk, if no more leves... finish
+         if (!(frame[i] & ATR_TD_MASK))
+            break;
 
-            // next structural byte
-            i = n++;
+         // next structure level
+         k++;
 
-            // next structure level
-            k++;
-         }
+         // next structural byte
+         i = n++;
+
+         // check presence of TCK (then T!=0 on some of TDk bytes)
+         c |= frame[i] & 0x0f;
       }
-      while ((i == n - 1) && n < frame.size());
+      while (n < frame.size());
 
+      // get historical bytes
       unsigned int hb = frame[1] & 0x0f;
 
       // extract historical bytes
@@ -1406,6 +1407,7 @@ struct Iso7816::Impl : IsoTech
 
          // trace new protocol parameters
          log->info("update protocol parameters, T{} ", {protocolStatus.protocolType});
+         log->info("\t signal samplerate.....: {.2} MHz", {sampleRate / 1000000.0});
          log->info("\t clock frequency.......: {.2} MHz", {protocolStatus.clockFrequency / 1000000.0});
          log->info("\t frequency adjustment..: Fi {} Fn {}", {protocolStatus.frequencyFactorIndex, protocolStatus.frequencyFactor});
          log->info("\t baud rate adjustment..: Di {} Dn {}", {protocolStatus.baudRateFactorIndex, protocolStatus.baudRateFactor});
@@ -1448,21 +1450,21 @@ struct Iso7816::Impl : IsoTech
 
       do
       {
-         if (atr[i] & ATR_TA_MASK) n++; // skip TAi
-         if (atr[i] & ATR_TB_MASK) n++; // skip TBi
-         if (atr[i] & ATR_TC_MASK) n++; // skip TCi
+         if (atr[i] & ATR_TA_MASK) n++; // skip TAi if present
+         if (atr[i] & ATR_TB_MASK) n++; // skip TBi if present
+         if (atr[i] & ATR_TC_MASK) n++; // skip TCi if present
 
-         // check presence of TDk, using protocol indicator != 0 to trigger TCK check
-         if (atr[i] & ATR_TD_MASK)
-         {
-            // get protocol indicator
-            c |= atr[n] & 0x0f;
+         // check presence of TDk
+         if (!(atr[i] & ATR_TD_MASK))
+            break;
 
-            // next structural byte
-            i = n++;
-         }
+         // next TD index
+         i = n++;
+
+         // get protocol indicator
+         c |= atr[i] & 0x0f;
       }
-      while ((i == n - 1) && n < size);
+      while (n < size);
 
       // check frame size with historical bytes and presence of TCK
       if (size < n + hb + (c ? 1 : 0))
@@ -1516,7 +1518,7 @@ struct Iso7816::Impl : IsoTech
          return ResultInvalid;
 
       // ISO/IEC 7816-4 enforces '6X' and '9X' as invalid values of INS.
-      if (tpdu[T0_TPDU_INS_OFFSET] & 0xf0 == 0x60 || tpdu[T0_TPDU_INS_OFFSET] & 0xf0 == 0x90)
+      if ((tpdu[T0_TPDU_INS_OFFSET] & 0xf0) == 0x60 || (tpdu[T0_TPDU_INS_OFFSET] & 0xf0) == 0x90)
          return ResultInvalid;
 
       for (unsigned int offset = T0_TPDU_PROC_OFFSET; offset < size; offset++)
@@ -1534,7 +1536,7 @@ struct Iso7816::Impl : IsoTech
             offset += tpdu[T0_TPDU_P3_OFFSET];
 
             // check if procedure byte is ACK (INS^0xFF), then device must transmit ONE byte
-         else if (tpdu[offset] == tpdu[T0_TPDU_INS_OFFSET] ^ 0xFF)
+         else if (tpdu[offset] == (tpdu[T0_TPDU_INS_OFFSET] ^ 0xFF))
             offset++;
       }
 
