@@ -128,7 +128,7 @@ jobs:
             -DBUILD_PROJECT_VERSION="${{ steps.strings-windows.outputs.build-version }}"
           ${{ steps.strings-windows.outputs.cmake-dir }}/bin/cmake `
             --build ${{ steps.strings-windows.outputs.build-dir }} `
-            --target nfc-lab --parallel ${{ steps.strings-windows.outputs.cpu-count }} 
+            --target nfc-lab nfc-rx --parallel ${{ steps.strings-windows.outputs.cpu-count }}
 
       - name: 'Create installer'
         run: |
@@ -138,6 +138,7 @@ jobs:
           
           # copy executable and libraries
           Copy-Item -Force ${{ steps.strings-windows.outputs.build-dir }}/src/nfc-app/app-qt/nfc-lab.exe ${{ steps.strings-windows.outputs.installer-data-dir }}
+          Copy-Item -Force ${{ steps.strings-windows.outputs.build-dir }}/src/nfc-app/app-rx/nfc-rx.exe ${{ steps.strings-windows.outputs.installer-data-dir }}
           Copy-Item -Force ${{ steps.strings-windows.outputs.mingw-dir }}/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/airspy/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
           Copy-Item -Force ${{ github.workspace }}/dll/hydrasdr/x86_64/bin/*.dll ${{ steps.strings-windows.outputs.installer-data-dir }}
