@@ -1,8 +1,8 @@
 # SDR nfc-laboratory 3
 
 [![GitHub Release](https://img.shields.io/github/release/josevcm/nfc-laboratory.svg)](https://github.com/josevcm/nfc-laboratory/releases/latest) 
-[![Windows](https://img.shields.io/badge/Windows-Installer-0078D6?logo=windows&logoColor=white)](https://github.com/josevcm/nfc-laboratory/releases/download/3.3.1/nfc-lab-3.3.1-x86_64.exe) 
-[![Linux](https://img.shields.io/badge/Linux-Debian%20%2F%20Ubuntu-FCC624?logo=linux&logoColor=black)](https://github.com/josevcm/nfc-laboratory/releases/download/3.3.1/nfc-lab_3.3.1_amd64.deb)
+[![Windows](https://img.shields.io/badge/Windows-Installer-0078D6?logo=windows&logoColor=white)](https://github.com/josevcm/nfc-laboratory/releases/download/3.4.2/nfc-lab-3.4.2-x86_64-installer.exe)
+[![Linux](https://img.shields.io/badge/Linux-Debian%20%2F%20Ubuntu-FCC624?logo=linux&logoColor=black)](https://github.com/josevcm/nfc-laboratory/releases/download/3.4.2/nfc-lab_3.4.2_amd64.deb)
 
 NFC signal sniffer and protocol decoder using SDR receiver for demodulation and decoding NFC-A, NFC-B, NFC-F and NFC-V
 signals in real-time up to 424 Kbps. Logic analyzer for contact smart cards with protocol ISO7816.
