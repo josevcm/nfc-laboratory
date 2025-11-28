@@ -167,7 +167,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
 
    void processRadioSignal(const hw::SignalBuffer &buffer)
    {
-      hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, buffer.id());
+      hw::SignalBuffer resampled((buffer.elements() / RADIO_INTERVAL) * 2 + buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, buffer.id());
 
       float avrg = 0;
       float last = buffer[0];
@@ -238,7 +238,7 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
          if (n == 1)
             continue;
 
-         hw::SignalBuffer resampled(buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL, n);
+         hw::SignalBuffer resampled((buffer.elements() / LOGIC_INTERVAL) * 2 + buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL, n);
 
          // get value of the first sample of a channel
          float last = buffer[n];
