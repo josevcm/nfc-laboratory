@@ -36,6 +36,14 @@ namespace rt {
 template <class T>
 class Buffer
 {
+   public:
+
+      enum Direction
+      {
+         Left = 0,
+         Right = 1
+      };
+
    protected:
 
       std::shared_ptr<Alloc<T>> alloc;
@@ -241,6 +249,18 @@ class Buffer
          return *this;
       }
 
+      Buffer &fill(T value, unsigned int count)
+      {
+         assert(alloc != nullptr);
+         assert(state.position + count <= state.limit);
+
+         memset(alloc->data + state.position, value, count * sizeof(T));
+
+         state.position += count;
+
+         return *this;
+      }
+
       Buffer &flip()
       {
          assert(alloc != nullptr);
@@ -260,7 +280,7 @@ class Buffer
          return *this;
       }
 
-      Buffer &room(int size)
+      Buffer &room(unsigned int size)
       {
          assert(alloc != nullptr);
          assert(state.limit + size <= state.capacity);
@@ -270,6 +290,9 @@ class Buffer
          return *this;
       }
 
+      /*
+       * extract one element from head
+       */
       T get()
       {
          assert(alloc != nullptr);
@@ -278,6 +301,31 @@ class Buffer
          return alloc->data[state.position++];
       }
 
+      /*
+       * read one element from head (without update head pointer)
+       */
+      T peek() const
+      {
+         assert(alloc != nullptr);
+         assert(state.position < state.limit);
+
+         return alloc->data[state.position];
+      }
+
+      /*
+       * extract one element from tail
+       */
+      T pop()
+      {
+         assert(alloc != nullptr);
+         assert(state.position < state.limit);
+
+         return alloc->data[--state.limit];
+      }
+
+      /*
+       * add one element to tail
+       */
       Buffer &put(const T &value)
       {
          assert(alloc != nullptr);
@@ -288,6 +336,9 @@ class Buffer
          return *this;
       }
 
+      /*
+       * add element list to tail
+       */
       Buffer &put(std::initializer_list<T> data)
       {
          for (auto b: data)
@@ -296,7 +347,10 @@ class Buffer
          return *this;
       }
 
-      Buffer &get(T *data, unsigned int elements = 1)
+      /*
+       * extract elements from head
+       */
+      Buffer &get(T *data, unsigned int elements)
       {
          assert(alloc != nullptr);
          assert(elements <= state.limit - state.position);
@@ -308,6 +362,37 @@ class Buffer
          return *this;
       }
 
+      /**
+       Read elements from head (without update head pointer)
+       */
+      const Buffer &peek(T *data, unsigned int elements) const
+      {
+         assert(alloc != nullptr);
+         assert(elements <= state.limit - state.position);
+
+         std::memcpy(data, alloc->data + state.position, elements * sizeof(T));
+
+         return *this;
+      }
+
+      /*
+       * extract elements from tail
+       */
+      Buffer &pop(T *data, unsigned int elements)
+      {
+         assert(alloc != nullptr);
+         assert(elements <= state.limit - state.position);
+
+         std::memcpy(data, alloc->data + state.limit - elements, elements * sizeof(T));
+
+         state.limit -= elements;
+
+         return *this;
+      }
+
+      /*
+       * add elements from head
+       */
       Buffer &put(const T *data, unsigned int elements)
       {
          assert(alloc != nullptr);
@@ -320,6 +405,9 @@ class Buffer
          return *this;
       }
 
+      /*
+       * extract buffer from head
+       */
       Buffer &get(Buffer &data, unsigned int elements)
       {
          assert(alloc != nullptr);
@@ -334,6 +422,38 @@ class Buffer
          return *this;
       }
 
+      /*
+       * read buffer from head (without update head pointer)
+       */
+      const Buffer &peek(Buffer &data, unsigned int elements) const
+      {
+         assert(alloc != nullptr);
+         assert(data.remaining() >= elements);
+
+         int count = std::min(elements, state.limit - state.position);
+         data.put(alloc->data + state.position, count);
+         data.flip();
+
+         return *this;
+      }
+
+      /*
+       * extract buffer from tail
+       */
+      Buffer &pop(Buffer &data, unsigned int elements)
+      {
+         assert(alloc != nullptr);
+         assert(elements <= state.limit - state.position);
+         assert(data.remaining() >= elements);
+
+         pop(data.ptr(), elements);
+
+         return *this;
+      }
+
+      /*
+       * add buffer to head
+       */
       Buffer &put(const Buffer &data, unsigned int elements)
       {
          assert(alloc != nullptr);
@@ -345,34 +465,144 @@ class Buffer
          return *this;
       }
 
+      /*
+       * extract buffer from head
+       */
       Buffer &get(Buffer &data)
       {
          return get(data, data.remaining());
       }
 
+      /*
+       * read buffer from head (without update head pointer)
+       */
+      const Buffer &peek(Buffer &data) const
+      {
+         return peek(data, data.remaining());
+      }
+
+      /*
+       * get buffer from tail
+       */
+      Buffer &pop(Buffer &data)
+      {
+         return pop(data, data.remaining());
+      }
+
+      /*
+       * add buffer to head
+       */
       Buffer &put(const Buffer &data)
       {
          return put(data, data.remaining());
       }
 
-      T *push(unsigned int elements)
+      T *push(unsigned int elements, bool clear = false)
       {
          assert(alloc != nullptr);
          assert(state.position + elements <= state.capacity);
+
+         if (clear)
+            std::memset(alloc->data + state.position, 0, elements * sizeof(T));
 
          state.position += elements;
 
          return alloc->data + state.position - elements;
       }
 
-      T *pull(unsigned int size)
+      T *pull(unsigned int elements, bool clear = false)
       {
          assert(alloc != nullptr);
-         assert(state.position - size >= 0);
+         assert(state.position - elements >= 0);
 
-         state.position -= size;
+         state.position -= elements;
+
+         if (clear)
+            std::memset(alloc->data + state.position, 0, elements * sizeof(T));
 
          return alloc->data + state.position;
+      }
+
+      Buffer &rotate(Direction dir, unsigned int count = 1)
+      {
+         if (count > state.capacity)
+            count %= state.capacity;
+
+         T tmp[count];
+
+         switch (dir)
+         {
+            case Left:
+            {
+               for (int i = 0; i < state.capacity; ++i)
+               {
+                  if (i < count)
+                     tmp[i] = alloc->data[i];
+
+                  if (i < state.capacity - count)
+                     alloc->data[i] = alloc->data[i + count];
+                  else
+                     alloc->data[i] = tmp[i - state.capacity + count];
+               }
+
+               break;
+            }
+
+            case Right:
+            {
+               for (int i = state.capacity - 1; i >= 0; --i)
+               {
+                  if (i >= state.capacity - count)
+                     tmp[i - state.capacity + count] = alloc->data[i];
+
+                  if (i >= count)
+                     alloc->data[i] = alloc->data[i - count];
+                  else
+                     alloc->data[i] = tmp[i];
+               }
+
+               break;
+            }
+         }
+
+         return *this;
+      }
+
+      Buffer &shift(Direction dir, unsigned int count = 1)
+      {
+         if (count > state.capacity)
+            count %= state.capacity;
+
+         switch (dir)
+         {
+            case Left:
+            {
+               for (int i = 0; i < state.capacity; ++i)
+               {
+                  if (i < state.capacity - count)
+                     alloc->data[i] = alloc->data[i + count];
+                  else
+                     alloc->data[i] = 0;
+               }
+
+               break;
+            }
+
+            case Right:
+            {
+               for (int i = state.capacity - 1; i >= 0; --i)
+               {
+                  if (i >= count)
+                     alloc->data[i] = alloc->data[i - count];
+                  else
+                     alloc->data[i] = 0;
+               }
+
+               break;
+            }
+         }
+
+         return *this;
       }
 
       Buffer &set(const Buffer &data, unsigned int offset, unsigned int elements)

@@ -34,7 +34,7 @@ bool NfcDecoderStatus::nextSample(hw::SignalBuffer &buffer)
    ++signalClock;
    ++pulseFilter;
 
-   buffer.get(&signalValue);
+   signalValue = buffer.get();
 
    float signalDiff = std::abs(signalValue - signalEnvelope) / signalEnvelope;
 

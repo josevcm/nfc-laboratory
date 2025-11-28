@@ -22,6 +22,8 @@
 #ifndef RT_BYTEBUFFER_H
 #define RT_BYTEBUFFER_H
 
+#include <random>
+
 #include <rt/Buffer.h>
 
 namespace rt {
@@ -42,16 +44,26 @@ class ByteBuffer : public Buffer<unsigned char>
 
       ByteBuffer(const ByteBuffer &other) = default;
 
-      ByteBuffer(std::initializer_list<unsigned char> data, int type = 0, int stride = 1, int interleave = 1, void *context = nullptr) : Buffer(data, type, stride, interleave, context)
+      ByteBuffer(const std::initializer_list<unsigned char> &data) : Buffer(data, 0, 1, 1, nullptr)
       {
       }
 
-      explicit ByteBuffer(unsigned int capacity, int type = 0, int stride = 1, int interleave = 1, void *context = nullptr) : Buffer(capacity, type, stride, interleave, context)
+      explicit ByteBuffer(const unsigned int capacity) : Buffer(capacity, 0, 1, 1, nullptr)
       {
       }
 
-      explicit ByteBuffer(const unsigned char *data, unsigned int capacity, int type = 0, int stride = 1, int interleave = 1, void *context = nullptr) : Buffer(data, capacity, type, stride, interleave, context)
+      explicit ByteBuffer(const unsigned char *data, const unsigned int capacity) : Buffer(data, capacity, 0, 1, 1, nullptr)
       {
+      }
+
+      ByteBuffer &operator=(const ByteBuffer &other)
+      {
+         if (&other == this)
+            return *this;
+
+         Buffer::operator=(other);
+
+         return *this;
       }
 
       ByteBuffer operator^(const ByteBuffer &other) const
@@ -70,25 +82,97 @@ class ByteBuffer : public Buffer<unsigned char>
          return output;
       }
 
-      unsigned int getInt(int size, int endianness = LittleEndian)
+      ByteBuffer &padding(unsigned char value, unsigned int block)
+      {
+         fill(value, state.position % block == 0 ? 0 : 8 - state.position % block);
+         return *this;
+      }
+
+      ByteBuffer getBuffer(unsigned int count)
+      {
+         ByteBuffer tmp(count);
+         get(tmp);
+         return tmp;
+      }
+
+      ByteBuffer peekBuffer(unsigned int count)
+      {
+         ByteBuffer tmp(count);
+         peek(tmp);
+         return tmp;
+      }
+
+      ByteBuffer popBuffer(unsigned int count)
+      {
+         ByteBuffer tmp(count);
+         pop(tmp);
+         return tmp;
+      }
+
+      unsigned int getInt(unsigned int size, Endianness endianness = LittleEndian)
       {
          unsigned int value = 0;
+         unsigned char tmp[size];
+
+         get(tmp, size);
 
          if (endianness == LittleEndian)
          {
             for (int i = 0; i < size; ++i)
-               value |= (get() << (i * 8));
+               value |= (tmp[i] << (i * 8));
          }
          else
          {
             for (int i = 0; i < size; ++i)
-               value = (value << 8) | get();
+               value = (value << 8) | tmp[i];
          }
 
          return value;
       }
 
-      ByteBuffer &putInt(unsigned int value, int size, int endianness = LittleEndian)
+      unsigned int peekInt(unsigned int size, Endianness endianness = LittleEndian) const
+      {
+         unsigned int value = 0;
+         unsigned char tmp[size];
+
+         peek(tmp, size);
+
+         if (endianness == LittleEndian)
+         {
+            for (int i = 0; i < size; ++i)
+               value |= (tmp[i] << (i * 8));
+         }
+         else
+         {
+            for (int i = 0; i < size; ++i)
+               value = (value << 8) | tmp[i];
+         }
+
+         return value;
+      }
+
+      unsigned int popInt(unsigned int size, Endianness endianness = LittleEndian)
+      {
+         unsigned int value = 0;
+         unsigned char tmp[size];
+
+         pop(tmp, size);
+
+         if (endianness == LittleEndian)
+         {
+            for (int i = 0; i < size; ++i)
+               value |= (tmp[i] << (i * 8));
+         }
+         else
+         {
+            for (int i = 0; i < size; ++i)
+               value = (value << 8) | tmp[i];
+         }
+
+         return value;
+      }
+
+      ByteBuffer &putInt(unsigned int value, unsigned int size, Endianness endianness = LittleEndian)
       {
          if (endianness == LittleEndian)
          {
@@ -97,32 +181,35 @@ class ByteBuffer : public Buffer<unsigned char>
          }
          else
          {
-            for (int i = size - 1; i >= 0; --i)
-               put((value >> (i * 8)) & 0xFF);
+            for (int i = 0; i < size; ++i)
+                put((value >> ((size - i - 1)  * 8)) & 0xFF);
          }
 
          return *this;
       }
 
-      unsigned long long getLong(int size, int endianness = LittleEndian)
+      unsigned long long getLong(unsigned int size, Endianness endianness = LittleEndian)
       {
          unsigned long long value = 0;
+         unsigned char tmp[size];
+
+         get(tmp, size);
 
          if (endianness == LittleEndian)
          {
             for (int i = 0; i < size; ++i)
-               value |= (get() << (i * 8));
+               value |= (tmp[i] << (i * 8));
          }
          else
          {
             for (int i = 0; i < size; ++i)
-               value = (value << 8) | get();
+               value = (value << 8) | tmp[i];
          }
 
          return value;
       }
 
-      ByteBuffer &putLong(unsigned long long value, int size, int endianness = LittleEndian)
+      ByteBuffer &putLong(unsigned long long value, unsigned int size, Endianness endianness = LittleEndian)
       {
          if (endianness == LittleEndian)
          {
@@ -131,34 +218,107 @@ class ByteBuffer : public Buffer<unsigned char>
          }
          else
          {
-            for (int i = size - 1; i >= 0; --i)
-               put((value >> (i * 8)) & 0xFF);
+            for (int i = 0; i < size; ++i)
+                put((value >> ((size - i - 1)  * 8)) & 0xFF);
          }
 
          return *this;
       }
 
-      ByteBuffer slice(unsigned int offset, unsigned int length) const
+      ByteBuffer copy() const
       {
          assert(alloc != nullptr);
-         assert(offset < state.capacity);
-         assert(offset + length <= state.capacity);
+
+         ByteBuffer copy(state.capacity);
+
+         std::memcpy(copy.alloc->data, alloc->data, state.capacity);
+
+         copy.state = state;
+         copy.attrs = attrs;
+
+         return copy;
+      }
+
+      ByteBuffer slice(int offset, unsigned int length) const
+      {
+         assert(alloc != nullptr);
 
          ByteBuffer copy(length);
 
-         copy.put(alloc->data + offset, length);
+         if (offset >= 0)
+         {
+            assert(state.position + offset + length <= state.limit);
+            copy.put(alloc->data + state.position + offset, length);
+         }
+         else
+         {
+            assert(state.limit + offset + length <= state.limit);
+            copy.put(alloc->data + state.limit + offset, length);
+         }
+
          copy.flip();
 
          return copy;
       }
 
-      static ByteBuffer rotateLeft(ByteBuffer input, unsigned int count)
+      static ByteBuffer rotateBytes(const ByteBuffer &input, Direction dir)
       {
+         assert(dir == Left || dir == Right);
+
          ByteBuffer output(input.remaining());
 
-         for (int i = 0; i < input.remaining(); i++)
+         output.put(input).flip().rotate(dir);
+
+         return output;
+      }
+
+      static ByteBuffer shiftBytes(const ByteBuffer &input, Direction dir)
+      {
+         assert(dir == Left || dir == Right);
+
+         ByteBuffer output(input.remaining());
+
+         output.put(input).flip().shift(dir);
+
+         return output;
+      }
+
+      static ByteBuffer shiftBits(const ByteBuffer &input, Direction dir)
+      {
+         assert(dir == Left || dir == Right);
+
+         ByteBuffer output(input.capacity());
+
+         const unsigned char *src = input.data();
+         unsigned char *dst = output.push(input.capacity());
+
+         switch (dir)
          {
-            output.put(input[(count + i) % input.remaining()]);
+            case Left:
+            {
+               for (int i = 0; i < input.capacity(); ++i)
+               {
+                  dst[i] = src[i] << 1;
+
+                  if (i > 0)
+                     dst[i - 1] |= src[i] >> 7;
+               }
+
+               break;
+            }
+
+            case Right:
+            {
+               for (int i = 0; i < input.capacity(); ++i)
+               {
+                  dst[i] = src[i] >> 1;
+
+                  if (i > 0)
+                     dst[i] |= src[i - 1] << 7;
+               }
+
+               break;
+            }
          }
 
          output.flip();
@@ -166,42 +326,33 @@ class ByteBuffer : public Buffer<unsigned char>
          return output;
       }
 
-      static ByteBuffer rotateRight(ByteBuffer input, unsigned int count)
-      {
-         ByteBuffer output(input.remaining());
-
-         for (int i = 0; i < input.remaining(); i++)
-         {
-            output.put(input[(input.remaining() - count + i) % input.remaining()]);
-         }
-
-         output.flip();
-
-         return output;
-      }
-
-      static ByteBuffer random(const int size)
+      static ByteBuffer random(const unsigned int size)
       {
          ByteBuffer buffer(size);
 
          for (int i = 0; i < size; i++)
-            buffer.put(i + 1); //rand() % 256);
+            buffer.put(std::rand() % 256);
 
          buffer.flip();
 
          return buffer;
       }
 
-      static ByteBuffer zero(const int size)
+      static ByteBuffer zero(const unsigned int size)
       {
          ByteBuffer buffer(size);
-
-         for (int i = 0; i < size; i++)
-            buffer.put(0);
-
-         buffer.flip();
-
+         buffer.fill(0, size).flip();
          return buffer;
+      }
+
+      static ByteBuffer empty()
+      {
+         return build(0);
+      }
+
+      static ByteBuffer build(unsigned int capacity = 1024)
+      {
+         return ByteBuffer(capacity);
       }
 };
 
