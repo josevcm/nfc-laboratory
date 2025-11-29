@@ -306,16 +306,13 @@ Logger *Logger::getLogger(const std::string &name, int level)
       auto logger = std::shared_ptr<Logger>(new Logger(name, level));
 
       // check if logger has a specific level
-      if (!getLevels().empty())
+      for (const auto &[target, l]: getLevels())
       {
-         for (const auto &[target, l]: getLevels())
-         {
-            // if (std::regex regex(target); std::regex_match(name, regex))
-            //    logger->level = l;
+         // if (std::regex regex(target); std::regex_match(name, regex))
+         //    logger->level = l;
 
-            if (name == target)
-               logger->level = l;
-         }
+         if (name == target)
+            logger->level = l;
       }
 
       loggers().insert(std::make_pair(name, logger));
