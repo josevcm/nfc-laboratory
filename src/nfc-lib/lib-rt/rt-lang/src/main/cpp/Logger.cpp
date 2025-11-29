@@ -119,7 +119,7 @@ struct Appender
    // writer thread
    std::thread thread;
 
-   Appender(std::ostream &stream, int level, bool buffered) : level(level), stream(stream), shutdown(false), buffered(buffered), thread([this] { this->exec(); })
+   Appender(std::ostream &stream, int level, bool buffered) : level(level), stream(stream), shutdown(false), buffered(buffered), flush(false), thread([this] { this->exec(); })
    {
       constexpr sched_param param {};
 
