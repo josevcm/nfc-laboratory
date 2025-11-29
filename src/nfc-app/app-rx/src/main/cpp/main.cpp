@@ -445,14 +445,14 @@ struct Main
       offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%010.3f ", frame.timeStart());
 
       // add frame type
-      const char* ft = frameType.count(frame.frameType()) ? frameType.at(frame.frameType()).c_str() : "UNKNOWN";
+      const char *ft = frameType.count(frame.frameType()) ? frameType.at(frame.frameType()).c_str() : "UNKNOWN";
       offset += snprintf(buffer + offset, sizeof(buffer) - offset, "(%s) ", ft);
 
       // data frames
       if (frame.frameType() == lab::FrameType::NfcPollFrame || frame.frameType() == lab::FrameType::NfcListenFrame)
       {
          // add tech type
-         const char* tech = frameTech.count(frame.techType()) ? frameTech.at(frame.techType()).c_str() : "UNKNOWN";
+         const char *tech = frameTech.count(frame.techType()) ? frameTech.at(frame.techType()).c_str() : "UNKNOWN";
          offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[%s@%.0f]: ", tech, roundf(float(frame.frameRate()) / 1000.0f));
 
          // add data as HEX string
@@ -487,10 +487,10 @@ struct Main
 
       // define long options
       static struct option long_options[] = {
-         {"help",       no_argument,       nullptr, 'h'},
-         {"version",    no_argument,       nullptr, 'v'},
-         {"log-level",  required_argument, nullptr, 'l'},
-         {"json-frames", no_argument,      nullptr, 'j'},
+         {"help", no_argument, nullptr, 'h'},
+         {"version", no_argument, nullptr, 'v'},
+         {"log-level", required_argument, nullptr, 'l'},
+         {"json-frames", no_argument, nullptr, 'j'},
          {nullptr, 0, nullptr, 0}
       };
 
@@ -770,5 +770,10 @@ int main(int argc, char *argv[])
    app = &main;
 
    // and run
-   return main.run(argc, argv);
+   int res = main.run(argc, argv);
+
+   // shutdown logging system and flush pending messages
+   rt::Logger::shutdown();
+
+   return res;
 }

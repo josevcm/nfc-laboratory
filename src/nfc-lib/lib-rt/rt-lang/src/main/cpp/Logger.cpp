@@ -113,6 +113,9 @@ struct Appender
    // shutdown flag
    std::atomic<bool> buffered;
 
+   // flush flag
+   std::atomic<bool> flush;
+
    // writer thread
    std::thread thread;
 
@@ -128,11 +131,7 @@ struct Appender
 
    ~Appender()
    {
-      // signal shutdown
-      shutdown = true;
-
-      // wait for thread to finish
-      thread.join();
+      stop();
    }
 
    void push(Log *event)
@@ -145,7 +144,7 @@ struct Appender
 
    void exec()
    {
-      while (!shutdown)
+      do
       {
          while (auto event = queue.get(100))
          {
@@ -154,7 +153,14 @@ struct Appender
                write(event.value());
             }
          }
+
+         if (flush || shutdown)
+         {
+            stream.flush();
+            flush = false;
+         }
       }
+      while (!shutdown);
    }
 
    void write(const Log *event) const
@@ -181,6 +187,19 @@ struct Appender
       stream.write(buffer, size);
 
       delete event;
+   }
+
+   void stop()
+   {
+      // if thread is active
+      if (thread.joinable())
+      {
+         // signal shutdown
+         shutdown = true;
+
+         // wait for thread to finish
+         thread.join();
+      }
    }
 };
 
@@ -342,10 +361,14 @@ void Logger::setLoggerLevel(const std::string &target, int level)
    //       logger->level = level;
    // }
 
+   // check if any of already created logger matches and set its level
    for (const auto &[name, logger]: loggers())
    {
       if (name == target)
+      // if (std::regex_match(name, match))
+      {
          logger->level = level;
+      }
    }
 
    // add or update level for future loggers
@@ -365,7 +388,16 @@ void Logger::init(std::ostream &stream, int level, bool buffered)
 void Logger::flush()
 {
    if (appender)
-      appender->stream.flush();
+      appender->flush = true;
+}
+
+void Logger::shutdown()
+{
+   if (appender)
+   {
+      // appender->push(new Log(NONE_LEVEL, "rt::Logger", "shutting down logger system!", {}));
+      appender->stop();
+   }
 }
 
 }

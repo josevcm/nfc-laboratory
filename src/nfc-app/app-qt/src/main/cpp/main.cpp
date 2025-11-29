@@ -235,5 +235,10 @@ int main(int argc, char *argv[])
    qInstallMessageHandler(messageOutput);
 
    // start application!
-   return startApp(argc, argv);
+   int res = startApp(argc, argv);
+
+   // shutdown logging system and flush pending messages
+   rt::Logger::shutdown();
+
+   return res;
 }
