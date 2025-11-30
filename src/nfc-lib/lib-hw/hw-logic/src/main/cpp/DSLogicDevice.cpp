@@ -155,24 +155,24 @@ struct DSLogicDevice::Impl
    const static float dsl_samples[256][8];
 
    explicit Impl(const std::string &name) : deviceName(name),
-      operationMode(0),
-      channelMode(0),
-      testMode(0),
-      totalChannels(0),
-      validChannels(0),
-      clockType(false),
-      clockEdge(false),
-      rleCompress(false),
-      rleSupport(false),
-      stream(false),
-      filter(0),
-      sampleratesMinIndex(0),
-      sampleratesMaxIndex(0),
-      triggerChannel(0),
-      triggerHRate(0),
-      triggerHPos(0),
-      triggerHoldoff(0),
-      triggerMargin(0)
+                                            operationMode(0),
+                                            channelMode(0),
+                                            testMode(0),
+                                            totalChannels(0),
+                                            validChannels(0),
+                                            clockType(false),
+                                            clockEdge(false),
+                                            rleCompress(false),
+                                            rleSupport(false),
+                                            stream(false),
+                                            filter(0),
+                                            sampleratesMinIndex(0),
+                                            sampleratesMaxIndex(0),
+                                            triggerChannel(0),
+                                            triggerHRate(0),
+                                            triggerHPos(0),
+                                            triggerHoldoff(0),
+                                            triggerMargin(0)
    {
       log->debug("created DSLogicDevice [{}]", {deviceName});
    }
@@ -266,12 +266,12 @@ struct DSLogicDevice::Impl
          }
 
          /* check profile. */
-         for (int j = 0; dsl_profiles[j].vid; j++)
+         for (auto &p: dsl_profiles)
          {
             // find device and initialize for selected profile
-            if (usb.descriptor().vid == dsl_profiles[j].vid && usb.descriptor().pid == dsl_profiles[j].pid && usb.speed() == dsl_profiles[j].usb_speed)
+            if (usb.descriptor().vid == p.vid && usb.descriptor().pid == p.pid && usb.speed() == p.usb_speed)
             {
-               profile = dsl_profiles + j;
+               profile = &p;
 
                // initialize device defaults
                initDevice();
@@ -1834,7 +1834,7 @@ struct DSLogicDevice::Impl
       transfer->data = new unsigned char[headerSize()];
       transfer->available = headerSize();
       transfer->timeout = 30000;
-      transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer *{ return usbProcessHeader(t); };
+      transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessHeader(t); };
 
       // add transfer to device list
       transfers.push_back(transfer);
@@ -1852,7 +1852,7 @@ struct DSLogicDevice::Impl
          transfer->data = new unsigned char[bufferSize()];
          transfer->available = bufferSize();
          transfer->timeout = 5000;
-         transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer *{ return usbProcessData(t, handler); };
+         transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessData(t, handler); };
 
          // clean buffer
          memset(transfer->data, 0, transfer->available);
