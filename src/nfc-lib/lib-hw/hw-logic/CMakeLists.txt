@@ -5,6 +5,7 @@ set(PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
 add_library(hw-logic STATIC
         src/main/cpp/DSLogicDevice.cpp
+        src/main/cpp/SipeedLogicDevice.cpp
 )
 
 target_include_directories(hw-logic PUBLIC ${PUBLIC_INCLUDE_DIR})
