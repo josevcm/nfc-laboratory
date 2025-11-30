@@ -34,6 +34,8 @@
 
 #include <hw/logic/SipeedLogicDevice.h>
 
+#include "SipeedLogicInternal.h"
+
 #define USB_INTERFACE        0
 
 #define DEVICE_TYPE_PREFIX "logic.sipeedlogic"
@@ -56,6 +58,9 @@ struct SipeedLogicDevice::Impl
 
    // Underlying USB device.
    Usb usb;
+
+   // Device profile.
+   const sipeed_profile *profile = nullptr;
 
    explicit Impl(const std::string &name) : deviceName(name)
    {
@@ -88,23 +93,29 @@ struct SipeedLogicDevice::Impl
          return false;
       }
 
+      profile = nullptr;
+
       for (auto &descriptor: Usb::list())
       {
-         // search for DSLogic device profile
-         // for (auto &p: dsl_profiles)
-         // {
-         //    if (!(descriptor.vid == p.vid && descriptor.pid == p.pid))
-         //       continue;
-         //
-         //    if (buildName(&p) != deviceName)
-         //       continue;
-         //
-         //    usb = Usb(descriptor);
-         //
-         //    break;
-         // }
+         // search for Sipeed device profile
+         for (auto &p: sipeed_profiles)
+         {
+            if (!(descriptor.vid == p.vid && descriptor.pid == p.pid && usb.speed() == p.usb_speed))
+               continue;
 
-         if (usb.isValid())
+            if (buildName(&p) != deviceName)
+               continue;
+
+            // set USB accessor
+            usb = Usb(descriptor);
+
+            // set detected profile
+            profile = &p;
+
+            break;
+         }
+
+         if (profile)
             break;
       }
 
@@ -124,15 +135,66 @@ struct SipeedLogicDevice::Impl
 
       while (true)
       {
+         // initialize device defaults
+         // initDevice();
+
+         // initialize channel defaults
+         // initChannels();
+
+         if (!(usb.isHighSpeed() || usb.isSuperSpeed()))
+         {
+            log->error("failed to open, usb speed is too low, speed type: {}", {usb.speed()});
+            break;
+         }
+
+         if (usb.speed() != profile->usb_speed)
+         {
+            log->error("failed to open, usb speed mismatch!, device required {} != usb speed {}", {profile->usb_speed, usb.speed()});
+            break;
+         }
+
+         if (!usb.claimInterface(USB_INTERFACE))
+         {
+            log->error("failed to claim USB interface {}", {USB_INTERFACE});
+            break;
+         }
+
+         /* check profile. */
+         for (auto &p: sipeed_profiles)
+         {
+            // find device and initialize for selected profile
+            if (usb.descriptor().vid == p.vid && usb.descriptor().pid == p.pid && usb.speed() == p.usb_speed)
+            {
+               profile = &p;
+
+               // initialize device defaults
+               // initDevice();
+
+               // initialize channel defaults
+               // initChannels();
+
+               // device selected, break
+               break;
+            }
+         }
+
+         if (!profile)
+         {
+            log->error("no profile found for device {0x4}.{04x}", {usb.descriptor().vid, usb.descriptor().pid});
+            break;
+         }
+
          // finish initialization
          const Usb::Descriptor &desc = usb.descriptor();
 
-         // log->info("opened {} on bus {03} device {03}, firmware {}.{}, hw status {02x}, fpga {}", {std::string(profile->model), desc.bus, desc.address, fwVersion.major, fwVersion.minor, hwStatus, fpgaVersion});
+         log->info("opened {} on bus {03} device {03}", {std::string(profile->model), desc.bus, desc.address});
 
          return true;
       }
 
       usb.close();
+
+      profile = nullptr;
 
       return false;
    }
@@ -221,6 +283,15 @@ struct SipeedLogicDevice::Impl
 
       return false;
    }
+
+   static std::string buildName(const sipeed_profile *profile)
+   {
+      char buffer[1024];
+
+      snprintf(buffer, sizeof(buffer), "%s://%04x:%04x@%s %s", DEVICE_TYPE_PREFIX, profile->vid, profile->pid, profile->vendor, profile->model);
+
+      return {buffer};
+   }
 };
 
 SipeedLogicDevice::SipeedLogicDevice(const std::string &name) : impl(new Impl(name))
@@ -283,17 +354,17 @@ bool SipeedLogicDevice::isEof() const
 
 bool SipeedLogicDevice::isReady() const
 {
-    return false; //return impl->deviceStatus >= STATUS_READY && impl->isReady();
+   return false; //return impl->deviceStatus >= STATUS_READY && impl->isReady();
 }
 
 bool SipeedLogicDevice::isPaused() const
 {
-    return false; //return impl->deviceStatus == STATUS_PAUSE;
+   return false; //return impl->deviceStatus == STATUS_PAUSE;
 }
 
 bool SipeedLogicDevice::isStreaming() const
 {
-    return false; //return impl->deviceStatus == STATUS_START || impl->deviceStatus == STATUS_DATA;
+   return false; //return impl->deviceStatus == STATUS_START || impl->deviceStatus == STATUS_DATA;
 }
 
 long SipeedLogicDevice::read(SignalBuffer &buffer)
@@ -310,18 +381,18 @@ std::vector<std::string> SipeedLogicDevice::enumerate()
 {
    std::vector<std::string> devices;
 
-   for (auto &descriptor: Usb::list())
+   for (const auto &descriptor: Usb::list())
    {
-      // search for DSLogic device
-      // for (auto &profile: dsl_profiles)
-      // {
-      //    if (!(descriptor.vid == profile.vid && descriptor.pid == profile.pid))
-      //       continue;
-      //
-      //    devices.push_back(Impl::buildName(&profile));
-      //
-      //    break;
-      // }
+      // search for Sipeed Logic device
+      for (auto &profile: sipeed_profiles)
+      {
+         if (!(descriptor.vid == profile.vid && descriptor.pid == profile.pid))
+            continue;
+
+         devices.push_back(Impl::buildName(&profile));
+
+         break;
+      }
    }
 
    return devices;
