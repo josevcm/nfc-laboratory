@@ -62,6 +62,26 @@ struct SipeedLogicDevice::Impl
    // Device profile.
    const sipeed_profile *profile = nullptr;
 
+   // Device configuration
+   unsigned int timebase = 0;
+   unsigned int samplerate = 0;
+   unsigned int streamTime = 0;
+   unsigned long long limitSamples = 0;
+   unsigned long long captureSamples = 0;
+   unsigned long long captureBytes = 0;
+   unsigned long long currentSamples = 0;
+   unsigned long long currentBytes = 0;
+   unsigned long long droppedSamples = 0;
+   unsigned long long droppedBytes = 0;
+
+   // Operational settings
+   int deviceStatus = STATUS_ERROR;
+   int operationMode;
+   int channelMode;
+   int testMode;
+   unsigned int totalChannels;
+   unsigned int validChannels;
+
    explicit Impl(const std::string &name) : deviceName(name)
    {
       log->debug("created SipeedLogicDevice [{}]", {deviceName});
@@ -265,6 +285,47 @@ struct SipeedLogicDevice::Impl
       //    log->error("invalid channel {}", {channel});
       //    return false;
       // }
+
+      switch (id)
+      {
+         case PARAM_SAMPLE_RATE:
+         {
+            if (auto v = std::get_if<unsigned int>(&value))
+            {
+               samplerate = *v;
+               log->info("setting samplerate to {}", {samplerate});
+               return true;
+            }
+
+            log->error("invalid value type for PARAM_SAMPLE_RATE");
+            return false;
+         }
+         case PARAM_OPERATION_MODE:
+         {
+            if (auto v = std::get_if<int>(&value))
+            {
+               // update operation mode
+               operationMode = *v;
+               log->info("setting operation mode to {}", {operationMode});
+               return true;
+            }
+
+            log->error("invalid value type for PARAM_OPERATION_MODE");
+            return false;
+         }
+         case PARAM_LIMIT_SAMPLES:
+         {
+            if (auto v = std::get_if<unsigned long long>(&value))
+            {
+               limitSamples = *v;
+               log->info("setting limit samples to {}", {limitSamples});
+               return true;
+            }
+
+            log->error("invalid value type for PARAM_LIMIT_SAMPLES");
+            return false;
+         }
+      }
 
       return false;
    }

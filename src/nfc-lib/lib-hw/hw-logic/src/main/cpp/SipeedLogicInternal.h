@@ -26,6 +26,20 @@
 
 namespace hw {
 
+enum DeviceStatus
+{
+   STATUS_ERROR = -1,
+   STATUS_READY = 0,
+   STATUS_INIT = 1,
+   STATUS_START = 2,
+   STATUS_TRIGGERED = 3,
+   STATUS_DATA = 4,
+   STATUS_STOP = 5,
+   STATUS_PAUSE = 6,
+   STATUS_FINISH = 7,
+   STATUS_ABORT = 8,
+};
+
 struct sipeed_caps
 {
 };
