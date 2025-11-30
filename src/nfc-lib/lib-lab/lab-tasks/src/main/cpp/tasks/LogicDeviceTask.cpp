@@ -28,6 +28,7 @@
 
 #include <hw/logic/LogicDevice.h>
 #include <hw/logic/DSLogicDevice.h>
+#include <hw/logic/SipeedLogicDevice.h>
 
 #include <lab/tasks/LogicDeviceTask.h>
 
@@ -71,6 +72,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
       log->info("registering logic devices");
 
       hw::DeviceFactory::registerDevice("logic.dslogic", []() -> std::vector<std::string> { return hw::DSLogicDevice::enumerate(); }, [](const std::string &name) -> hw::DSLogicDevice *{ return new hw::DSLogicDevice(name); });
+      hw::DeviceFactory::registerDevice("logic.sipeedlogic", []() -> std::vector<std::string> { return hw::SipeedLogicDevice::enumerate(); }, [](const std::string &name) -> hw::SipeedLogicDevice *{ return new hw::SipeedLogicDevice(name); });
    }
 
    void stop() override
