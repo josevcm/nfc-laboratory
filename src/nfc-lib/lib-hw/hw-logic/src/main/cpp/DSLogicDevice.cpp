@@ -2379,7 +2379,7 @@ std::vector<std::string> DSLogicDevice::enumerate()
 {
    std::vector<std::string> devices;
 
-   for (auto &descriptor: Usb::list())
+   for (const auto &descriptor: Usb::list())
    {
       // search for DSLogic device
       for (auto &profile: dsl_profiles)
