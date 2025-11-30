@@ -93,14 +93,12 @@ struct SipeedLogicDevice::Impl
          return false;
       }
 
-      profile = nullptr;
-
       for (auto &descriptor: Usb::list())
       {
          // search for Sipeed device profile
          for (auto &p: sipeed_profiles)
          {
-            if (!(descriptor.vid == p.vid && descriptor.pid == p.pid && usb.speed() == p.usb_speed))
+            if (!(descriptor.vid == p.vid && descriptor.pid == p.pid))
                continue;
 
             if (buildName(&p) != deviceName)
@@ -109,13 +107,10 @@ struct SipeedLogicDevice::Impl
             // set USB accessor
             usb = Usb(descriptor);
 
-            // set detected profile
-            profile = &p;
-
             break;
          }
 
-         if (profile)
+         if (usb.isValid())
             break;
       }
 
@@ -135,21 +130,11 @@ struct SipeedLogicDevice::Impl
 
       while (true)
       {
-         // initialize device defaults
-         // initDevice();
-
-         // initialize channel defaults
-         // initChannels();
+         profile = nullptr;
 
          if (!(usb.isHighSpeed() || usb.isSuperSpeed()))
          {
             log->error("failed to open, usb speed is too low, speed type: {}", {usb.speed()});
-            break;
-         }
-
-         if (usb.speed() != profile->usb_speed)
-         {
-            log->error("failed to open, usb speed mismatch!, device required {} != usb speed {}", {profile->usb_speed, usb.speed()});
             break;
          }
 
