@@ -26,7 +26,7 @@
 
 #include <LogicInternal.h>
 
-namespace hw {
+namespace hw::logic {
 
 struct sipeed_caps
 {

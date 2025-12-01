@@ -24,7 +24,7 @@
 
 #include <cstdint>
 
-namespace hw {
+namespace hw::logic {
 
 enum DeviceMode
 {

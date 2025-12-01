@@ -228,7 +228,7 @@
 #define DSL_KV(n) ((n) * (unsigned long long)(1000000ULL))
 #define DSL_MV(n) ((n) * (unsigned long long)(1000000000ULL))
 
-namespace hw {
+namespace hw::logic {
 
 enum LedControl
 {

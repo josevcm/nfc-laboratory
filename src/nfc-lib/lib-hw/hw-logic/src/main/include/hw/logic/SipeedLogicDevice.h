@@ -28,7 +28,7 @@
 
 #include <hw/logic/LogicDevice.h>
 
-namespace hw {
+namespace hw::logic {
 
 class SipeedLogicDevice : public LogicDevice
 {

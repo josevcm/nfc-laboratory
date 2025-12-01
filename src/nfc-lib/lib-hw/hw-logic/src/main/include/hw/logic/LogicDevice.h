@@ -28,7 +28,7 @@
 
 #include <hw/SignalDevice.h>
 
-namespace hw {
+namespace hw::logic {
 
 class LogicDevice : public SignalDevice
 {

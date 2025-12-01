@@ -40,7 +40,7 @@
 #define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 64
 #define CHANNEL_BUFFER_SAMPLES 16384 // number of samples per buffer
 
-namespace hw {
+namespace hw::logic {
 
 struct DSLogicDevice::Impl
 {
