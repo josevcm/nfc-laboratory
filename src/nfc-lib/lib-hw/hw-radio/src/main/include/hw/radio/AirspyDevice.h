@@ -28,7 +28,7 @@
 
 #include <hw/radio/RadioDevice.h>
 
-namespace hw {
+namespace hw::radio {
 
 class AirspyDevice : public RadioDevice
 {

@@ -37,7 +37,7 @@
 
 #define DEVICE_TYPE_PREFIX "radio.hydrasdr"
 
-namespace hw {
+namespace hw::radio {
 
 int process_transfer(hydrasdr_transfer *transfer);
 

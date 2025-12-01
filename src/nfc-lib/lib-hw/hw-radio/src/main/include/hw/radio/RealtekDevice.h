@@ -26,7 +26,7 @@
 
 #include <hw/radio/RadioDevice.h>
 
-namespace hw {
+namespace hw::radio {
 
 class RealtekDevice : public RadioDevice
 {

@@ -37,7 +37,7 @@
 
 #define DEVICE_TYPE_PREFIX "radio.airspy"
 
-namespace hw {
+namespace hw::radio {
 
 int process_transfer(airspy_transfer *transfer);
 

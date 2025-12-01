@@ -24,7 +24,7 @@
 
 #include <hw/SignalDevice.h>
 
-namespace hw {
+namespace hw::radio {
 
 class RadioDevice : public SignalDevice
 {

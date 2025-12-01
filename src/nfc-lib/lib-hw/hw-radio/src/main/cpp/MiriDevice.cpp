@@ -33,7 +33,7 @@
 
 #include <hw/radio/MiriDevice.h>
 
-namespace hw {
+namespace hw::radio {
 
 #define MIRI_SUCCESS 0
 
