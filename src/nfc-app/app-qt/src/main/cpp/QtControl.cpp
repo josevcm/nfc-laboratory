@@ -190,10 +190,17 @@ struct QtControl::Impl
          })
       },
       {
-         "logic.dslogic", QJsonObject({
+         "logic.dreamsourcelab", QJsonObject({
             {"enabled", true},
             {"sampleRate", 10000000},
             {"vThreshold", 1.0},
+            {"channels", QJsonArray {0, 2, 3}}
+         })
+      },
+      {
+         "logic.sipeed", QJsonObject({
+            {"enabled", true},
+            {"sampleRate", 10000000},
             {"channels", QJsonArray {0, 2, 3}}
          })
       }

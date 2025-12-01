@@ -22,7 +22,30 @@
 #ifndef LOGIC_LOGICINTERNAL_H
 #define LOGIC_LOGICINTERNAL_H
 
-#include <cstdint>
+#define DEV_HZ(n)  (n)
+#define DEV_KHZ(n) ((n) * (unsigned long long)(1000ULL))
+#define DEV_MHZ(n) ((n) * (unsigned long long)(1000000ULL))
+#define DEV_GHZ(n) ((n) * (unsigned long long)(1000000000ULL))
+
+#define DEV_HZ_TO_NS(n) ((unsigned long long)(1000000000ULL) / (n))
+
+#define DEV_NS(n)   (n)
+#define DEV_US(n)   ((n) * (unsigned long long)(1000ULL))
+#define DEV_MS(n)   ((n) * (unsigned long long)(1000000ULL))
+#define DEV_SEC(n)  ((n) * (unsigned long long)(1000000000ULL))
+#define DEV_MIN(n)  ((n) * (unsigned long long)(60000000000ULL))
+#define DEV_HOUR(n) ((n) * (unsigned long long)(3600000000000ULL))
+#define DEV_DAY(n)  ((n) * (unsigned long long)(86400000000000ULL))
+
+#define DEV_n(n)  (n)
+#define DEV_Kn(n) ((n) * (unsigned long long)(1000ULL))
+#define DEV_Mn(n) ((n) * (unsigned long long)(1000000ULL))
+#define DEV_Gn(n) ((n) * (unsigned long long)(1000000000ULL))
+
+#define DEV_B(n)  (n)
+#define DEV_KB(n) ((n) * (unsigned long long)(1024ULL))
+#define DEV_MB(n) ((n) * (unsigned long long)(1048576ULL))
+#define DEV_GB(n) ((n) * (unsigned long long)(1073741824ULL))
 
 namespace hw::logic {
 

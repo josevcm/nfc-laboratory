@@ -24,12 +24,21 @@
 
 #include <libusb.h>
 
-#include <LogicInternal.h>
+#include "LogicInternal.h"
+
+/* Protocol commands */
+#define CMD_START	0xb1
+#define CMD_STOP	0xb3
 
 namespace hw::logic {
 
 struct sipeed_caps
 {
+   int total_ch_num;
+   const unsigned long long *samplerates;
+   int default_channelid;
+   long default_samplerate;
+   long default_samplelimit;
 };
 
 struct sipeed_profile
@@ -44,6 +53,47 @@ struct sipeed_profile
    sipeed_caps dev_caps;
 };
 
+#pragma pack(push, 1)
+struct cmd_start_acquisition
+{
+   union
+   {
+      struct
+      {
+         uint8_t sample_rate_l;
+         uint8_t sample_rate_h;
+      };
+
+      uint16_t sample_rate;
+   };
+
+   uint8_t sample_channel;
+};
+#pragma pack(pop)
+
+static const uint64_t samplerates[] = {
+   /* 160M = 2*2*2*2*2*5M */
+   DEV_MHZ(1),
+   DEV_MHZ(2),
+   DEV_MHZ(4),
+   DEV_MHZ(5),
+   DEV_MHZ(8),
+   DEV_MHZ(10),
+   DEV_MHZ(16),
+   DEV_MHZ(20),
+   DEV_MHZ(32),
+   DEV_MHZ(36),
+   DEV_MHZ(40),
+   /* x 4ch */
+   DEV_MHZ(64),
+   DEV_MHZ(80),
+   /* x 2ch */
+   DEV_MHZ(120),
+   DEV_MHZ(128),
+   DEV_MHZ(144),
+   DEV_MHZ(160),
+};
+
 // supported devices
 static const sipeed_profile sipeed_profiles[] = {
    {
@@ -53,6 +103,11 @@ static const sipeed_profile sipeed_profiles[] = {
       .vendor = "Sipeed",
       .model = "SLogic Combo8",
       .dev_caps {
+         .total_ch_num = 16, // total_ch_num
+         .samplerates = samplerates, // samplerates
+         .default_channelid = SipeedLogicDevice::SLD_STREAM20x8, // default_channelid
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
       }
    }
 };

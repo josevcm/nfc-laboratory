@@ -36,7 +36,7 @@
 
 #include "DSLogicInternal.h"
 
-#define DEVICE_TYPE_PREFIX "logic.dslogic"
+#define DEVICE_TYPE_PREFIX "logic.dreamsourcelab"
 #define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 64
 #define CHANNEL_BUFFER_SAMPLES 16384 // number of samples per buffer
 
@@ -992,7 +992,7 @@ struct DSLogicDevice::Impl
                   // internal test parameters
                   if (operationMode == OP_INTEST)
                   {
-                     samplerate = stream ? channel_modes[channelMode].max_samplerate / 10 : DSL_MHZ(100);
+                     samplerate = stream ? channel_modes[channelMode].max_samplerate / 10 : DEV_MHZ(100);
                      limitSamples = stream ? static_cast<unsigned long long>(samplerate) * 3 : profile->dev_caps.hw_depth / validChannels;
                   }
                }
@@ -2172,7 +2172,7 @@ struct DSLogicDevice::Impl
 
    unsigned int headerSize() const
    {
-      return profile->dev_caps.feature_caps & CAPS_FEATURE_USB30 ? DSL_KB(1) : DSL_B(512);
+      return profile->dev_caps.feature_caps & CAPS_FEATURE_USB30 ? DEV_KB(1) : DEV_B(512);
    }
 
    unsigned int bufferSize() const

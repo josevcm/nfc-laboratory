@@ -22,6 +22,8 @@
 #ifndef RT_EXECUTOR_H
 #define RT_EXECUTOR_H
 
+#include <memory>
+
 #include <rt/Task.h>
 
 namespace rt {

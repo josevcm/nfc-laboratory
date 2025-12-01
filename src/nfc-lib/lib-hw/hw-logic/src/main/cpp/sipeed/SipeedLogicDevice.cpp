@@ -19,6 +19,9 @@
 
 */
 
+// https://github.com/sipeed/sigrok_slogic/blob/hardware-sipeed-slogic-analyzer-support/src/hardware/sipeed-slogic-analyzer/protocol.h#L165
+// https://github.com/sipeed/sigrok_slogic/blob/hardware-sipeed-slogic-analyzer-support/src/hardware/dreamsourcelab-dslogic/protocol.c#L538
+
 #include <unistd.h>
 
 #include <cmath>
@@ -36,9 +39,12 @@
 
 #include "SipeedLogicInternal.h"
 
-#define USB_INTERFACE        0
+#define ENDPOINT_IN 1
+#define USB_INTERFACE 0
+#define SIZE_MAX_EP_HS 512
+#define NUM_MAX_TRANSFERS 64
 
-#define DEVICE_TYPE_PREFIX "logic.sipeedlogic"
+#define DEVICE_TYPE_PREFIX "logic.sipeed"
 #define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 64
 #define CHANNEL_BUFFER_SAMPLES 16384 // number of samples per buffer
 
@@ -78,7 +84,6 @@ struct SipeedLogicDevice::Impl
    int deviceStatus = STATUS_ERROR;
    int operationMode;
    int channelMode;
-   int testMode;
    unsigned int totalChannels;
    unsigned int validChannels;
 
@@ -173,10 +178,10 @@ struct SipeedLogicDevice::Impl
                profile = &p;
 
                // initialize device defaults
-               // initDevice();
+               initDevice();
 
                // initialize channel defaults
-               // initChannels();
+               initChannels();
 
                // device selected, break
                break;
@@ -222,6 +227,8 @@ struct SipeedLogicDevice::Impl
    int start(const StreamHandler &handler)
    {
       log->debug("starting acquisition for device {}", {deviceName});
+
+      purgeEndpoint(ENDPOINT_IN);
 
       log->debug("acquisition started for device {}", {deviceName});
 
@@ -269,6 +276,27 @@ struct SipeedLogicDevice::Impl
 
          case PARAM_DEVICE_VERSION:
             return deviceVersion;
+
+         case PARAM_CHANNEL_MODE:
+            return channelMode;
+
+         case PARAM_CHANNEL_TOTAL:
+            return totalChannels;
+
+         case PARAM_CHANNEL_VALID:
+            return validChannels;
+
+         case PARAM_STREAM_TIME:
+            return streamTime;
+
+         case PARAM_SAMPLE_RATE:
+            return samplerate;
+
+         case PARAM_SAMPLES_READ:
+            return currentSamples;
+
+         case PARAM_SAMPLES_LOST:
+            return droppedSamples;
 
          default:
             log->error("invalid configuration id {}", {id});
@@ -328,6 +356,110 @@ struct SipeedLogicDevice::Impl
       }
 
       return false;
+   }
+
+   void initDevice()
+   {
+      // device flags
+      operationMode = OP_STREAM;
+
+      // device settings
+      samplerate = profile->dev_caps.default_samplerate;
+      limitSamples = profile->dev_caps.default_samplelimit;
+      channelMode = profile->dev_caps.default_channelid;
+      timebase = 10000;
+
+      // channels
+      totalChannels = 0;
+      validChannels = 0;
+   }
+
+   int initChannels()
+   {
+      // channels.clear();
+      //
+      // for (int i = 0; i < channel_modes[channelMode].vld_num; i++)
+      // {
+      //    dsl_channel channel {
+      //       .index = i,
+      //       .type = channel_modes[channelMode].type,
+      //       .enabled = true,
+      //       .name = probe_names[i],
+      //       .bits = channel_modes[channelMode].unit_bits,
+      //       .vdiv = 1000,
+      //       .vfactor = 1,
+      //       .offset = (1 << (channel.bits - 1)),
+      //       .vpos_trans = profile->dev_caps.default_pwmtrans,
+      //       .coupling = DC_COUPLING,
+      //       .trig_value = (1 << (channel.bits - 1)),
+      //       .comb_comp = profile->dev_caps.default_comb_comp,
+      //       .digi_fgain = 0,
+      //       .cali_fgain0 = 1,
+      //       .cali_fgain1 = 1,
+      //       .cali_fgain2 = 1,
+      //       .cali_fgain3 = 1,
+      //       .cali_comb_fgain0 = 1,
+      //       .cali_comb_fgain1 = 1,
+      //       .cali_comb_fgain2 = 1,
+      //       .cali_comb_fgain3 = 1,
+      //       .map_default = true,
+      //       .map_unit = probe_units[0],
+      //       .map_min = -(static_cast<double>(channel.vdiv) * static_cast<double>(channel.vfactor) * DS_CONF_DSO_VDIVS / 2000.0),
+      //       .map_max = static_cast<double>(channel.vdiv) * static_cast<double>(channel.vfactor) * DS_CONF_DSO_VDIVS / 2000.0,
+      //    };
+      //
+      //    if (profile->dev_caps.vdivs)
+      //    {
+      //       for (int j = 0; profile->dev_caps.vdivs[j]; j++)
+      //       {
+      //          dsl_vga vga {
+      //             .id = profile->dev_caps.vga_id,
+      //             .key = profile->dev_caps.vdivs[j],
+      //             .vgain = 0,
+      //             .preoff = 0,
+      //             .preoff_comp = 0,
+      //          };
+      //
+      //          for (const auto &vga_default: vga_defaults)
+      //          {
+      //             if (vga_default.id == profile->dev_caps.vga_id && vga_default.key == profile->dev_caps.vdivs[j])
+      //             {
+      //                vga.vgain = vga_defaults[j].vgain;
+      //                vga.preoff = vga_defaults[j].preoff;
+      //                vga.preoff_comp = 0;
+      //             }
+      //          }
+      //
+      //          channel.vga_list.push_back(vga);
+      //       }
+      //    }
+      //
+      //    channels.push_back(channel);
+      // }
+      //
+      // totalChannels = channel_modes[channelMode].vld_num;
+      // validChannels = channel_modes[channelMode].vld_num;
+
+      totalChannels = 8;
+      validChannels = 8;
+
+      return true;
+   }
+
+   void purgeEndpoint(int endpoint)
+   {
+      log->debug("clearing device endpoint: {}", {endpoint});
+
+      unsigned char tmp[512];
+      unsigned int purged = 0;
+      unsigned int received = 0;
+
+      while ((received = usb.syncTransfer(Usb::In, endpoint, tmp, sizeof(tmp), 100)) > 0)
+      {
+         purged += received;
+      }
+
+      log->debug("endpoint {}, cleared, purged {} bytes", {endpoint, purged});
    }
 
    static std::string buildName(const sipeed_profile *profile)

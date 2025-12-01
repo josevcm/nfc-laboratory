@@ -71,8 +71,8 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
    {
       log->info("registering logic devices");
 
-      hw::DeviceFactory::registerDevice("logic.dslogic", []() -> std::vector<std::string> { return hw::logic::DSLogicDevice::enumerate(); }, [](const std::string &name) -> hw::logic::LogicDevice *{ return new hw::logic::DSLogicDevice(name); });
-      hw::DeviceFactory::registerDevice("logic.sipeedlogic", []() -> std::vector<std::string> { return hw::logic::SipeedLogicDevice::enumerate(); }, [](const std::string &name) -> hw::logic::LogicDevice *{ return new hw::logic::SipeedLogicDevice(name); });
+      hw::DeviceFactory::registerDevice("logic.dreamsourcelab", []() -> std::vector<std::string> { return hw::logic::DSLogicDevice::enumerate(); }, [](const std::string &name) -> hw::logic::LogicDevice *{ return new hw::logic::DSLogicDevice(name); });
+      hw::DeviceFactory::registerDevice("logic.sipeed", []() -> std::vector<std::string> { return hw::logic::SipeedLogicDevice::enumerate(); }, [](const std::string &name) -> hw::logic::LogicDevice *{ return new hw::logic::SipeedLogicDevice(name); });
    }
 
    void stop() override
