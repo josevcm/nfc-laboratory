@@ -28,6 +28,8 @@
 
 #include <hw/logic/DSLogicDevice.h>
 
+#include <LogicInternal.h>
+
 #define USB_INTERFACE        0
 #define USB_CONFIGURATION    1
 #define NUM_TRIGGER_STAGES  16
@@ -227,40 +229,6 @@
 #define DSL_MV(n) ((n) * (unsigned long long)(1000000000ULL))
 
 namespace hw {
-
-enum DeviceMode
-{
-   LOGIC = 0,
-   DSO = 1,
-   ANALOG = 2,
-   UNKNOWN_DSL_MODE = 99,
-};
-
-enum DeviceStatus
-{
-   STATUS_ERROR = -1,
-   STATUS_READY = 0,
-   STATUS_INIT = 1,
-   STATUS_START = 2,
-   STATUS_TRIGGERED = 3,
-   STATUS_DATA = 4,
-   STATUS_STOP = 5,
-   STATUS_PAUSE = 6,
-   STATUS_FINISH = 7,
-   STATUS_ABORT = 8,
-};
-
-enum ChannelType
-{
-   CHANNEL_DECODER = 9998,
-   CHANNEL_GROUP = 9999,
-   CHANNEL_LOGIC = 10000,
-   CHANNEL_DSO,
-   CHANNEL_ANALOG,
-   CHANNEL_FFT,
-   CHANNEL_LISSAJOUS,
-   CHANNEL_MATH,
-};
 
 enum LedControl
 {

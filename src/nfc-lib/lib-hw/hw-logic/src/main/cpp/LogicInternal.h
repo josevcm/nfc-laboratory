@@ -19,12 +19,20 @@
 
 */
 
-#ifndef LOGIC_SIPEEDLOGICINTERNAL_H
-#define LOGIC_SIPEEDLOGICINTERNAL_H
+#ifndef LOGIC_LOGICINTERNAL_H
+#define LOGIC_LOGICINTERNAL_H
 
-#include <libusb.h>
+#include <cstdint>
 
 namespace hw {
+
+enum DeviceMode
+{
+   LOGIC = 0,
+   DSO = 1,
+   ANALOG = 2,
+   UNKNOWN = 99,
+};
 
 enum DeviceStatus
 {
@@ -40,34 +48,13 @@ enum DeviceStatus
    STATUS_ABORT = 8,
 };
 
-struct sipeed_caps
+enum ChannelType
 {
-};
-
-struct sipeed_profile
-{
-   int vid;
-   int pid;
-   libusb_speed usb_speed;
-
-   const char *vendor;
-   const char *model; //product name
-
-   sipeed_caps dev_caps;
-};
-
-// supported devices
-static const sipeed_profile sipeed_profiles[] = {
-   {
-      .vid = 0x359F,
-      .pid = 0x0300,
-      .usb_speed = LIBUSB_SPEED_HIGH,
-      .vendor = "Sipeed",
-      .model = "SLogic Combo8",
-      .dev_caps {
-      }
-   }
+   CHANNEL_LOGIC,
+   CHANNEL_DSO,
+   CHANNEL_ANALOG,
 };
 
 }
-#endif //LOGIC_SIPEEDLOGICINTERNAL_H
+
+#endif
