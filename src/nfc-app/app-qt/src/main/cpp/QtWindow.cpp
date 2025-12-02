@@ -108,8 +108,9 @@ struct QtWindow::Impl
    int timeLimit = 60;
 
    // logic device parameters
-   bool logicDeviceLicensed = false;
+   bool logicDeviceEnabled = false;
    QString logicDeviceName;
+   QString logicDeviceVendor;
    QString logicDeviceModel;
    QString logicDeviceSerial;
    QString logicDeviceType;
@@ -118,8 +119,9 @@ struct QtWindow::Impl
    long long logicSampleCount = 0;
 
    // radio device parameters
-   bool radioDeviceLicensed = false;
+   bool radioDeviceEnabled = false;
    QString radioDeviceName;
+   QString radioDeviceVendor;
    QString radioDeviceModel;
    QString radioDeviceSerial;
    QString radioDeviceType;
@@ -527,6 +529,9 @@ struct QtWindow::Impl
       if (event->hasName())
          updated |= updateLogicDeviceName(event->name());
 
+      if (event->hasVendor())
+         updated |= updateLogicDeviceVendor(event->vendor());
+
       if (event->hasModel())
          updated |= updateLogicDeviceModel(event->model());
 
@@ -589,6 +594,9 @@ struct QtWindow::Impl
       // detect device changes
       if (event->hasName())
          updated |= updateRadioDeviceName(event->name());
+
+      if (event->hasVendor())
+         updated |= updateRadioDeviceVendor(event->vendor());
 
       if (event->hasModel())
          updated |= updateRadioDeviceModel(event->model());
@@ -1003,6 +1011,32 @@ struct QtWindow::Impl
       window->setWindowTitle(QString(NFC_LAB_VENDOR_STRING));
    }
 
+   void updateDevices()
+   {
+      enabledDevices.clear();
+      disabledDevices.clear();
+
+      if (!radioDeviceSerial.isEmpty() && !radioDeviceVendor.isEmpty() && !radioDeviceModel.isEmpty())
+      {
+         const QString radioVendorModel = radioDeviceVendor + " " + radioDeviceModel;
+
+         if (radioDeviceEnabled)
+            enabledDevices << radioVendorModel;
+         else
+            disabledDevices << radioVendorModel;
+      }
+
+      if (!logicDeviceSerial.isEmpty() && !logicDeviceVendor.isEmpty() && !logicDeviceModel.isEmpty())
+      {
+         const QString logicVendorModel = logicDeviceVendor + " " + logicDeviceModel;
+
+         if (logicDeviceEnabled)
+            enabledDevices << logicVendorModel;
+         else
+            disabledDevices << logicVendorModel;
+      }
+   }
+
    /*
     * logic status updates
     */
@@ -1063,6 +1097,20 @@ struct QtWindow::Impl
       return true;
    }
 
+   bool updateLogicDeviceVendor(const QString &value)
+   {
+      if (logicDeviceVendor == value)
+         return false;
+
+      qInfo().noquote() << "logic device vendor changed from [" << logicDeviceVendor << "] to [" << value << "]";
+
+      logicDeviceVendor = value;
+
+      updateDevices();
+
+      return true;
+   }
+
    bool updateLogicDeviceModel(const QString &value)
    {
       if (logicDeviceModel == value)
@@ -1072,19 +1120,7 @@ struct QtWindow::Impl
 
       logicDeviceModel = value;
 
-      if (!logicDeviceSerial.isEmpty())
-      {
-         if (logicDeviceLicensed)
-         {
-            if (!enabledDevices.contains(logicDeviceModel))
-               enabledDevices << logicDeviceModel;
-         }
-         else
-         {
-            if (!disabledDevices.contains(logicDeviceModel))
-               disabledDevices << logicDeviceModel;
-         }
-      }
+      updateDevices();
 
       return true;
    }
@@ -1097,29 +1133,11 @@ struct QtWindow::Impl
       qInfo().noquote() << "logic device serial changed from [" << logicDeviceSerial << "] to [" << value << "]";
 
       logicDeviceSerial = value;
-      logicDeviceLicensed = allowedDevices.match(logicDeviceSerial).hasMatch();
+      logicDeviceEnabled = allowedDevices.match(logicDeviceSerial).hasMatch();
 
-      if (!logicDeviceModel.isEmpty())
-      {
-         if (logicDeviceLicensed)
-         {
-            if (!enabledDevices.contains(logicDeviceModel))
-               enabledDevices << logicDeviceModel;
-         }
-         else
-         {
-            if (!disabledDevices.contains(logicDeviceModel))
-               disabledDevices << logicDeviceModel;
-         }
+      ui->featureLogicAcquire->setEnabled(logicDeviceEnabled);
 
-         qInfo() << "logic device" << logicDeviceModel << "serial changed to" << logicDeviceSerial << "licensed" << logicDeviceLicensed;
-      }
-      else
-      {
-         qInfo() << "logic device serial changed to" << logicDeviceSerial << "licensed" << logicDeviceLicensed;
-      }
-
-      ui->featureLogicAcquire->setEnabled(logicDeviceLicensed);
+      updateDevices();
 
       return true;
    }
@@ -1135,14 +1153,14 @@ struct QtWindow::Impl
 
       if (logicDeviceStatus == LogicDeviceStatusEvent::Absent)
       {
-         enabledDevices.removeAll(logicDeviceModel);
-
          // clear device information
          logicDeviceName.clear();
          logicDeviceSerial.clear();
          logicDeviceModel.clear();
          logicDeviceType.clear();
-         logicDeviceLicensed = false;
+         logicDeviceEnabled = false;
+
+         updateDevices();
       }
 
       return true;
@@ -1273,6 +1291,20 @@ struct QtWindow::Impl
       return true;
    }
 
+   bool updateRadioDeviceVendor(const QString &value)
+   {
+      if (radioDeviceVendor == value)
+         return false;
+
+      qInfo().noquote() << "radio device vendor changed from [" << radioDeviceVendor << "] to [" << value << "]";
+
+      radioDeviceVendor = value;
+
+      updateDevices();
+
+      return true;
+   }
+
    bool updateRadioDeviceModel(const QString &value)
    {
       if (radioDeviceModel == value)
@@ -1282,19 +1314,7 @@ struct QtWindow::Impl
 
       radioDeviceModel = value;
 
-      if (!radioDeviceSerial.isEmpty())
-      {
-         if (radioDeviceLicensed)
-         {
-            if (!enabledDevices.contains(radioDeviceModel))
-               enabledDevices << radioDeviceModel;
-         }
-         else
-         {
-            if (!disabledDevices.contains(radioDeviceModel))
-               disabledDevices << radioDeviceModel;
-         }
-      }
+      updateDevices();
 
       return true;
    }
@@ -1307,30 +1327,12 @@ struct QtWindow::Impl
       qInfo().noquote() << "radio device name serial from [" << radioDeviceSerial << "] to [" << value << "]";
 
       radioDeviceSerial = value;
-      radioDeviceLicensed = allowedDevices.match(radioDeviceSerial).hasMatch();
+      radioDeviceEnabled = allowedDevices.match(radioDeviceSerial).hasMatch();
 
-      if (!radioDeviceModel.isEmpty())
-      {
-         if (radioDeviceLicensed)
-         {
-            if (!enabledDevices.contains(radioDeviceModel))
-               enabledDevices << radioDeviceModel;
-         }
-         else
-         {
-            if (!disabledDevices.contains(radioDeviceModel))
-               disabledDevices << radioDeviceModel;
-         }
+      ui->featureRadioAcquire->setEnabled(radioDeviceEnabled);
+      ui->featureRadioSpectrum->setEnabled(radioDeviceEnabled);
 
-         qInfo() << "radio device" << radioDeviceModel << "serial changed to" << radioDeviceSerial << "licensed" << radioDeviceLicensed;
-      }
-      else
-      {
-         qInfo() << "radio device serial changed to" << radioDeviceSerial << "licensed" << radioDeviceLicensed;
-      }
-
-      ui->featureRadioAcquire->setEnabled(radioDeviceLicensed);
-      ui->featureRadioSpectrum->setEnabled(radioDeviceLicensed);
+      updateDevices();
 
       return true;
    }
@@ -1354,7 +1356,9 @@ struct QtWindow::Impl
          radioDeviceType.clear();
          radioGainMode = -1;
          radioGainValue = -1;
-         radioDeviceLicensed = false;
+         radioDeviceEnabled = false;
+
+         updateDevices();
       }
 
       changeGainMode(radioGainMode);
