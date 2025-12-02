@@ -22,6 +22,8 @@
 #ifndef LOGIC_LOGICINTERNAL_H
 #define LOGIC_LOGICINTERNAL_H
 
+#define DEV_CH(n)  (1 << n)
+
 #define DEV_HZ(n)  (n)
 #define DEV_KHZ(n) ((n) * (unsigned long long)(1000ULL))
 #define DEV_MHZ(n) ((n) * (unsigned long long)(1000000ULL))

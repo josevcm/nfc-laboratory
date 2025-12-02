@@ -196,8 +196,6 @@
 #define INT_TEST_BIT 15
 
 /* little macros */
-#define DSL_CH(n)  (1 << n)
-
 #define DSL_mV(n) (n)
 #define DSL_V(n)  ((n) * (unsigned long long)(1000ULL))
 #define DSL_KV(n) ((n) * (unsigned long long)(1000000ULL))
@@ -771,13 +769,13 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_MB(256), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -810,13 +808,13 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_KB(256), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -849,11 +847,11 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_MB(64), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -886,12 +884,12 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_GB(2), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -924,12 +922,12 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM125x16_16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM250x12_16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM500x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM1000x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM125x16_16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM250x12_16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM500x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM1000x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_GB(2), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -962,14 +960,14 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_LA_CH32, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM10x32_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM20x16_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER250x32) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM10x32_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM20x16_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER250x32) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 32, // total_ch_num
          .hw_depth = DEV_GB(2), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -1002,14 +1000,14 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_LA_CH32, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM50x32) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x30) |
-         DSL_CH(DSLogicDevice::DSL_STREAM250x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM500x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM1000x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER250x32) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM50x32) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x30) |
+         DEV_CH(DSLogicDevice::DSL_STREAM250x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM500x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM1000x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER250x32) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 32, // total_ch_num
          .hw_depth = DEV_GB(2), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -1042,12 +1040,12 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_GB(4), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -1080,13 +1078,13 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_MB(256), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -1119,11 +1117,11 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_MB(64), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -1156,13 +1154,13 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_MB(256), // hw_depth
          .dso_depth = 0, // dso_depth
@@ -1195,11 +1193,11 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
          .total_ch_num = 16, // total_ch_num
          .hw_depth = DEV_MB(64), // hw_depth
          .dso_depth = 0, // dso_depth
