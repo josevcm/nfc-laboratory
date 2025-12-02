@@ -194,6 +194,12 @@ struct SipeedLogicDevice::Impl
             break;
          }
 
+         // fill device info
+         deviceVendor = profile->vendor;
+         deviceModel = profile->model;
+         deviceSerial = "sipeed";
+         deviceStatus = STATUS_READY;
+
          // finish initialization
          const Usb::Descriptor &desc = usb.descriptor();
 
@@ -446,6 +452,11 @@ struct SipeedLogicDevice::Impl
       return true;
    }
 
+   bool isReady() const
+   {
+      return true; //return usbRead(rd_cmd_fw_version);
+   }
+
    void purgeEndpoint(int endpoint)
    {
       log->debug("clearing device endpoint: {}", {endpoint});
@@ -532,7 +543,7 @@ bool SipeedLogicDevice::isEof() const
 
 bool SipeedLogicDevice::isReady() const
 {
-   return false; //return impl->deviceStatus >= STATUS_READY && impl->isReady();
+   return impl->deviceStatus >= STATUS_READY && impl->isReady();
 }
 
 bool SipeedLogicDevice::isPaused() const

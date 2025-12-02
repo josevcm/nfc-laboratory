@@ -35,6 +35,7 @@ namespace hw::logic {
 struct sipeed_caps
 {
    int total_ch_num;
+   long channels;
    const unsigned long long *samplerates;
    int default_channelid;
    long default_samplerate;
@@ -103,7 +104,8 @@ static const sipeed_profile sipeed_profiles[] = {
       .vendor = "Sipeed",
       .model = "SLogic Combo8",
       .dev_caps {
-         .total_ch_num = 16, // total_ch_num
+         .total_ch_num = 8, // total_ch_num
+         .channels = DEV_CH(SipeedLogicDevice::SLD_STREAM120x2) | DEV_CH(SipeedLogicDevice::SLD_STREAM40x4) | DEV_CH(SipeedLogicDevice::SLD_STREAM20x8),
          .samplerates = samplerates, // samplerates
          .default_channelid = SipeedLogicDevice::SLD_STREAM20x8, // default_channelid
          .default_samplerate = DEV_MHZ(1), // default_samplerate

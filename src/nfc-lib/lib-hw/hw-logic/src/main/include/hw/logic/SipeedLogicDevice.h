@@ -38,7 +38,9 @@ class SipeedLogicDevice : public LogicDevice
 
       enum ChannelMode
       {
-         SLD_STREAM20x8 = 0
+         SLD_STREAM120x2 = 0,
+         SLD_STREAM40x4 = 1,
+         SLD_STREAM20x8 = 2,
       };
 
       /** Device threshold level. */
