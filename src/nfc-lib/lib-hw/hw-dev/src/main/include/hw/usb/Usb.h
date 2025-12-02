@@ -68,7 +68,7 @@ class Usb
          unsigned char *data = nullptr;
          unsigned int available = 0;
          unsigned int actual = 0;
-         int timeout = 0;
+         unsigned int timeout = 0;
          std::function<Transfer *(Transfer *transfer)> callback;
       };
 
@@ -80,7 +80,7 @@ class Usb
 
       static std::list<Descriptor> list();
 
-      bool open();
+      bool open() const;
 
       void close();
 
