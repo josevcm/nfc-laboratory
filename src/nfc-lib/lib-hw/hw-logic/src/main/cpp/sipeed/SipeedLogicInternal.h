@@ -30,6 +30,13 @@
 #define CMD_START	0xb1
 #define CMD_STOP	0xb3
 
+#define SAMPLES_ALIGN 1023LL
+
+// #define ATOMIC_BITS 8
+// #define ATOMIC_SAMPLES (1 << ATOMIC_BITS)
+// #define ATOMIC_SIZE (1 << (ATOMIC_BITS - 3))
+// #define ATOMIC_MASK (0xFFFF << ATOMIC_BITS)
+
 namespace hw::logic {
 
 struct sipeed_caps

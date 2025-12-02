@@ -87,6 +87,21 @@ struct SipeedLogicDevice::Impl
    unsigned int totalChannels;
    unsigned int validChannels;
 
+   /*
+    * Transfer buffers
+    */
+   std::list<Usb::Transfer *> transfers;
+
+   /*
+    * Received buffers
+    */
+   SignalBuffer buffer;
+
+   /*
+    * Receive handler
+    */
+   StreamHandler streamHandler;
+
    explicit Impl(const std::string &name) : deviceName(name)
    {
       log->debug("created SipeedLogicDevice [{}]", {deviceName});
@@ -234,7 +249,24 @@ struct SipeedLogicDevice::Impl
    {
       log->debug("starting acquisition for device {}", {deviceName});
 
-      purgeEndpoint(ENDPOINT_IN);
+      deviceStatus = STATUS_INIT;
+
+      // captureSamples = (limitSamples + SAMPLES_ALIGN) & ~SAMPLES_ALIGN;
+      // captureBytes = captureSamples / ATOMIC_SAMPLES * validChannels * ATOMIC_SIZE;
+
+      currentSamples = 0;
+      currentBytes = 0;
+
+      droppedSamples = 0;
+      droppedBytes = 0;
+
+      buffer.reset();
+
+      // purge pending data
+      purgeEndpoint();
+
+      // setup usb transfers
+      triggerTransfer(handler);
 
       log->debug("acquisition started for device {}", {deviceName});
 
@@ -244,6 +276,17 @@ struct SipeedLogicDevice::Impl
    int stop()
    {
       log->debug("stopping acquisition for device {}", {deviceName});
+
+      // if device is not started, just return
+      if (deviceStatus == STATUS_PAUSE)
+         return 0;
+
+      // cancel current transfers
+      for (const auto transfer: transfers)
+         usb.cancelTransfer(transfer);
+
+      deviceStatus = STATUS_STOP;
+      streamHandler = nullptr;
 
       log->debug("capture finished for device {}", {deviceName});
 
@@ -452,18 +495,78 @@ struct SipeedLogicDevice::Impl
       return true;
    }
 
+   bool triggerTransfer(const StreamHandler &handler)
+   {
+      // create header buffer
+      log->debug("usb transfer buffer size {}", {bufferSize()});
+
+      // submit transfer of data buffers
+      for (int i = 0; i < totalTransfers(); i++)
+      {
+         auto transfer = new Usb::Transfer();
+         transfer->data = new unsigned char[bufferSize()];
+         transfer->available = bufferSize();
+         transfer->timeout = 5000;
+         transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessData(t, handler); };
+
+         // clean buffer
+         memset(transfer->data, 0, transfer->available);
+
+         // add transfer to device list
+         transfers.push_back(transfer);
+
+         // submit transfer of data buffer
+         usb.asyncTransfer(Usb::In, ENDPOINT_IN, transfer);
+      }
+
+      return true;
+   }
+
+   Usb::Transfer *usbProcessData(Usb::Transfer *transfer, const StreamHandler &handler)
+   {
+      if (deviceStatus == STATUS_START)
+         deviceStatus = STATUS_DATA;
+
+      log->debug("finish header transfer and clearing buffers");
+
+      // remove transfer from list
+      transfers.remove(transfer);
+
+      // free header buffer
+      delete transfer->data;
+
+      // free transfer
+      delete transfer;
+
+      // no resend transfer
+      return nullptr;
+   }
+
+   unsigned int totalTransfers() const
+   {
+      return 64;
+   }
+
+   unsigned int bufferSize() const
+   {
+      return 210 * SIZE_MAX_EP_HS;
+   }
+
    bool isReady() const
    {
       return true; //return usbRead(rd_cmd_fw_version);
    }
 
-   void purgeEndpoint(int endpoint)
+   void purgeEndpoint() const
    {
+      constexpr int endpoint = ENDPOINT_IN;
+
       log->debug("clearing device endpoint: {}", {endpoint});
 
       unsigned char tmp[512];
-      unsigned int purged = 0;
-      unsigned int received = 0;
+
+      int purged = 0;
+      int received = 0;
 
       while ((received = usb.syncTransfer(Usb::In, endpoint, tmp, sizeof(tmp), 100)) > 0)
       {
