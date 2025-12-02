@@ -313,7 +313,7 @@ struct Usb::Impl
 
       libusb_transfer *usbTransfer = libusb_alloc_transfer(0);
 
-      auto transferInfo = new TransferInfo {this, transfer, usbTransfer};
+      const auto transferInfo = new TransferInfo {this, transfer, usbTransfer};
 
       libusb_fill_bulk_transfer(usbTransfer, hdl, endpoint, transfer->data, static_cast<int>(transfer->available), transferHandler, transferInfo, transfer->timeout);
 
@@ -329,7 +329,7 @@ struct Usb::Impl
       return 0;
    }
 
-   bool cancelTransfer(Transfer *transfer)
+   bool cancelTransfer(const Transfer *transfer)
    {
       if (transfer == nullptr)
       {
