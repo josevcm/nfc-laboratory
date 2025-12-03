@@ -201,7 +201,7 @@ struct QtControl::Impl
          "logic.sipeed", QJsonObject({
             {"enabled", true},
             {"sampleRate", 10000000},
-            {"channels", QJsonArray {0, 2, 3}}
+            {"channels", QJsonArray {0, 1, 2, 3}}
          })
       }
    };

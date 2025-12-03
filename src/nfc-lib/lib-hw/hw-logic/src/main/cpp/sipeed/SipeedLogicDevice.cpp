@@ -251,9 +251,6 @@ struct SipeedLogicDevice::Impl
 
       deviceStatus = STATUS_INIT;
 
-      // captureSamples = (limitSamples + SAMPLES_ALIGN) & ~SAMPLES_ALIGN;
-      // captureBytes = captureSamples / ATOMIC_SAMPLES * validChannels * ATOMIC_SIZE;
-
       currentSamples = 0;
       currentBytes = 0;
 
@@ -268,6 +265,23 @@ struct SipeedLogicDevice::Impl
       // setup usb transfers
       triggerTransfer(handler);
 
+      // prepare start command
+      cmd_start_acquisition start {};
+
+      start.sample_rate = samplerate / DEV_MHZ(1);
+      start.sample_channel = validChannels;
+
+      // send start command
+      if (!usb.ctrlTransfer(CMD_START, &start, sizeof(start), 0, nullptr, 0))
+      {
+         log->error("usb transfer CMD_START failed: {}", {usb.lastError()});
+         deviceStatus = STATUS_ERROR;
+         return -1;
+      }
+
+      streamHandler = handler;
+      deviceStatus = STATUS_START;
+
       log->debug("acquisition started for device {}", {deviceName});
 
       return 0;
@@ -281,6 +295,10 @@ struct SipeedLogicDevice::Impl
       if (deviceStatus == STATUS_PAUSE)
          return 0;
 
+      // send stop command
+      if (!usb.ctrlTransfer(CMD_STOP, nullptr, 0, 0, nullptr, 0))
+         log->error("failed to stop acquisition");
+
       // cancel current transfers
       for (const auto transfer: transfers)
          usb.cancelTransfer(transfer);
@@ -288,7 +306,7 @@ struct SipeedLogicDevice::Impl
       deviceStatus = STATUS_STOP;
       streamHandler = nullptr;
 
-      log->debug("capture finished for device {}", {deviceName});
+      log->debug("acquisition finished for device {}", {deviceName});
 
       return 0;
    }
@@ -425,70 +443,6 @@ struct SipeedLogicDevice::Impl
 
    int initChannels()
    {
-      // channels.clear();
-      //
-      // for (int i = 0; i < channel_modes[channelMode].vld_num; i++)
-      // {
-      //    dsl_channel channel {
-      //       .index = i,
-      //       .type = channel_modes[channelMode].type,
-      //       .enabled = true,
-      //       .name = probe_names[i],
-      //       .bits = channel_modes[channelMode].unit_bits,
-      //       .vdiv = 1000,
-      //       .vfactor = 1,
-      //       .offset = (1 << (channel.bits - 1)),
-      //       .vpos_trans = profile->dev_caps.default_pwmtrans,
-      //       .coupling = DC_COUPLING,
-      //       .trig_value = (1 << (channel.bits - 1)),
-      //       .comb_comp = profile->dev_caps.default_comb_comp,
-      //       .digi_fgain = 0,
-      //       .cali_fgain0 = 1,
-      //       .cali_fgain1 = 1,
-      //       .cali_fgain2 = 1,
-      //       .cali_fgain3 = 1,
-      //       .cali_comb_fgain0 = 1,
-      //       .cali_comb_fgain1 = 1,
-      //       .cali_comb_fgain2 = 1,
-      //       .cali_comb_fgain3 = 1,
-      //       .map_default = true,
-      //       .map_unit = probe_units[0],
-      //       .map_min = -(static_cast<double>(channel.vdiv) * static_cast<double>(channel.vfactor) * DS_CONF_DSO_VDIVS / 2000.0),
-      //       .map_max = static_cast<double>(channel.vdiv) * static_cast<double>(channel.vfactor) * DS_CONF_DSO_VDIVS / 2000.0,
-      //    };
-      //
-      //    if (profile->dev_caps.vdivs)
-      //    {
-      //       for (int j = 0; profile->dev_caps.vdivs[j]; j++)
-      //       {
-      //          dsl_vga vga {
-      //             .id = profile->dev_caps.vga_id,
-      //             .key = profile->dev_caps.vdivs[j],
-      //             .vgain = 0,
-      //             .preoff = 0,
-      //             .preoff_comp = 0,
-      //          };
-      //
-      //          for (const auto &vga_default: vga_defaults)
-      //          {
-      //             if (vga_default.id == profile->dev_caps.vga_id && vga_default.key == profile->dev_caps.vdivs[j])
-      //             {
-      //                vga.vgain = vga_defaults[j].vgain;
-      //                vga.preoff = vga_defaults[j].preoff;
-      //                vga.preoff_comp = 0;
-      //             }
-      //          }
-      //
-      //          channel.vga_list.push_back(vga);
-      //       }
-      //    }
-      //
-      //    channels.push_back(channel);
-      // }
-      //
-      // totalChannels = channel_modes[channelMode].vld_num;
-      // validChannels = channel_modes[channelMode].vld_num;
-
       totalChannels = 8;
       validChannels = 8;
 
@@ -527,6 +481,52 @@ struct SipeedLogicDevice::Impl
       if (deviceStatus == STATUS_START)
          deviceStatus = STATUS_DATA;
 
+      switch (transfer->status)
+      {
+         case Usb::Completed:
+         case Usb::TimeOut:
+            break;
+         case Usb::Cancelled:
+            log->debug("data transfer cancelled with USB status {}", {transfer->status});
+            break;
+         default:
+            log->error("data transfer failed with USB status {}", {transfer->status});
+            deviceStatus = STATUS_ERROR;
+            break;
+      }
+
+      // trigger next transfer
+      if (deviceStatus == STATUS_DATA && transfer->actual != 0)
+      {
+         log->info("received data {} bytes", {transfer->available});
+
+         // split received data in one buffer per channel
+         std::vector<SignalBuffer> buffers = interleave(transfer);
+
+         // call user handler for each channel
+         for (auto &b: buffers)
+         {
+            if (!handler(b))
+            {
+               log->warn("data transfer stopped by handler, aborting!");
+               deviceStatus = STATUS_ABORT;
+               break;
+            }
+         }
+
+         if (deviceStatus == STATUS_DATA)
+         {
+            // reset transfer buffer received size
+            transfer->actual = 0;
+
+            // clean buffer
+            memset(transfer->data, 0, transfer->available);
+
+            // resend new transfer
+            return transfer;
+         }
+      }
+
       log->debug("finish header transfer and clearing buffers");
 
       // remove transfer from list
@@ -540,6 +540,13 @@ struct SipeedLogicDevice::Impl
 
       // no resend transfer
       return nullptr;
+   }
+
+   std::vector<SignalBuffer> interleave(Usb::Transfer *transfer)
+   {
+      std::vector<SignalBuffer> result;
+
+      return result;
    }
 
    unsigned int totalTransfers() const
