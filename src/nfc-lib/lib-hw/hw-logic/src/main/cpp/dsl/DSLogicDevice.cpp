@@ -1935,9 +1935,9 @@ struct DSLogicDevice::Impl
          std::vector<SignalBuffer> buffers = interleave(transfer);
 
          // call user handler for each channel
-         for (auto &buffer: buffers)
+         for (auto &b: buffers)
          {
-            if (!handler(buffer))
+            if (!handler(b))
             {
                log->warn("data transfer stopped by handler, aborting!");
                deviceStatus = STATUS_ABORT;
