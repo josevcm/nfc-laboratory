@@ -315,12 +315,59 @@ struct SipeedLogicDevice::Impl
    {
       log->debug("pause acquisition for device {}", {deviceName});
 
+      if (deviceStatus != STATUS_DATA)
+      {
+         log->error("failed to pause acquisition, deice is not streaming");
+         return -1;
+      }
+
+      // send stop command
+      if (!usb.ctrlTransfer(CMD_STOP, nullptr, 0, 0, nullptr, 0))
+         log->error("failed to stop acquisition");
+
+      // cancel current transfers
+      for (const auto transfer: transfers)
+         usb.cancelTransfer(transfer);
+
+      deviceStatus = STATUS_PAUSE;
+
       return 0;
    }
 
    int resume()
    {
       log->debug("resume acquisition for device {}", {deviceName});
+
+      if (deviceStatus != STATUS_PAUSE)
+      {
+         log->error("failed to resume acquisition, deice is not paused");
+         return -1;
+      }
+
+      buffer.reset();
+
+      // purge pending data
+      purgeEndpoint();
+
+      // setup usb transfers
+      triggerTransfer(streamHandler);
+
+      // start acquisition
+      // prepare start command
+      cmd_start_acquisition start {};
+
+      start.sample_rate = samplerate / DEV_MHZ(1);
+      start.sample_channel = validChannels;
+
+      // send start command
+      if (!usb.ctrlTransfer(CMD_START, &start, sizeof(start), 0, nullptr, 0))
+      {
+         log->error("usb transfer CMD_START failed: {}", {usb.lastError()});
+         deviceStatus = STATUS_ERROR;
+         return -1;
+      }
+
+      deviceStatus = STATUS_START;
 
       return 0;
    }
