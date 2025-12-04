@@ -470,7 +470,7 @@ struct DSLogicDevice::Impl
       }
 
       // setup usb transfers
-      usbTransfer(handler);
+      usbTransfers(handler);
 
       // start acquisition
       if (!usbWrite(wr_cmd_acquisition_start))
@@ -564,7 +564,7 @@ struct DSLogicDevice::Impl
       }
 
       // setup usb transfers
-      usbTransfer(streamHandler);
+      usbTransfers(streamHandler);
 
       // start acquisition
       if (!usbWrite(wr_cmd_acquisition_start))
@@ -1827,7 +1827,7 @@ struct DSLogicDevice::Impl
       return true;
    }
 
-   bool usbTransfer(const StreamHandler &handler)
+   bool usbTransfers(const StreamHandler &handler)
    {
       // create header buffer
       auto *transfer = new Usb::Transfer();
