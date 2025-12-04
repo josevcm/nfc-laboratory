@@ -1902,8 +1902,6 @@ struct DSLogicDevice::Impl
          log->error("header transfer failed with USB status {}", {transfer->status});
       }
 
-      log->debug("finish header transfer and clearing buffers");
-
       // remove transfer from list
       transfers.remove(transfer);
 
@@ -1912,6 +1910,8 @@ struct DSLogicDevice::Impl
 
       // free transfer
       delete transfer;
+
+      log->debug("finish header transfer, remain {} transfers", {transfers.size()});
 
       // no resend transfer
       return nullptr;
@@ -1966,8 +1966,6 @@ struct DSLogicDevice::Impl
          }
       }
 
-      log->warn("finish data transfer {} and clearing buffers", {transfer});
-
       // remove transfer from list
       transfers.remove(transfer);
 
@@ -1976,6 +1974,8 @@ struct DSLogicDevice::Impl
 
       // free transfer
       delete transfer;
+
+      log->debug("finish data transfer, remain {} transfers", {transfers.size()});
 
       // no resend transfer
       return nullptr;

@@ -616,8 +616,6 @@ struct SipeedLogicDevice::Impl
          }
       }
 
-      log->debug("finish header transfer and clearing buffers");
-
       // remove transfer from list
       transfers.remove(transfer);
 
@@ -626,6 +624,8 @@ struct SipeedLogicDevice::Impl
 
       // free transfer
       delete transfer;
+
+      log->debug("finish data transfer, remain {} transfers", {transfers.size()});
 
       // no resend transfer
       return nullptr;
