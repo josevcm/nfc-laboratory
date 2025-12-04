@@ -1996,7 +1996,7 @@ struct DSLogicDevice::Impl
        */
       if (buffer.isValid())
       {
-         unsigned int filled = (currentBytes % (size >> 3)) << 3; // filled samples
+         const unsigned int filled = (currentBytes % (size >> 3)) << 3; // filled samples
 
          start = transpose(buffer, filled % chunk, transfer->data, 0, transfer->actual);
 
@@ -2011,33 +2011,33 @@ struct DSLogicDevice::Impl
        * Interleave data from transfer buffer
        */
       // number of full buffers than can be processed with remain data
-      unsigned int remain = transfer->actual - start;
-      unsigned int buffers = remain / (size >> 3) + (remain % (size >> 3) ? 1 : 0);
+      const unsigned int remain = transfer->actual - start;
+      const unsigned int buffers = remain / (size >> 3) + (remain % (size >> 3) ? 1 : 0);
 
 #pragma omp parallel for default(none) shared(start, transfer, result, size, buffers, currentSamples) schedule(static)
       for (unsigned int k = 0; k < buffers; ++k)
       {
          // sample start position
-         unsigned long long bufferOffset = currentSamples + k * (size / validChannels);
+         const unsigned long long bufferOffset = currentSamples + k * (size / validChannels);
 
          // create new buffer for interleaved data
-         SignalBuffer buffer(size, validChannels, 1, samplerate, bufferOffset, 0, SIGNAL_TYPE_LOGIC_SAMPLES);
+         SignalBuffer data(size, validChannels, 1, samplerate, bufferOffset, 0, SIGNAL_TYPE_LOGIC_SAMPLES);
 
          // transpose data from transfer buffer to interleaved buffer
-         transpose(buffer, 0, transfer->data, start + k * (size >> 3), transfer->actual);
+         transpose(data, 0, transfer->data, start + k * (size >> 3), transfer->actual);
 
 #pragma omp critical
          {
             // or if buffer is not full, keep it for next transfer
-            if (buffer.isFull())
+            if (data.isFull())
             {
-               buffer.flip();
-               result.push_back(buffer);
+               data.flip();
+               result.push_back(data);
             }
             // or add buffer to result
             else
             {
-               this->buffer = buffer;
+               buffer = data;
             }
          }
       }
