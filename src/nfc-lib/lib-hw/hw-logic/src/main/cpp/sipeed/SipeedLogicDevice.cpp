@@ -551,7 +551,15 @@ struct SipeedLogicDevice::Impl
          transfers.push_back(transfer);
 
          // submit transfer of data buffer
-         usb.asyncTransfer(Usb::In, ENDPOINT_IN, transfer);
+         if (!usb.asyncTransfer(Usb::In, ENDPOINT_IN, transfer))
+         {
+            log->error("failed to setup async transfer: {}", {usb.lastError()});
+
+            for (Usb::Transfer *t: transfers)
+               usb.cancelTransfer(t);
+
+            break;
+         }
       }
 
       return true;

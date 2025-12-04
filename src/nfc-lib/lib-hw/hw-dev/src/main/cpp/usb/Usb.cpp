@@ -303,12 +303,12 @@ struct Usb::Impl
       return transferred;
    }
 
-   int asyncTransfer(int endpoint, Transfer *transfer)
+   bool asyncTransfer(const int endpoint, Transfer *transfer)
    {
       if (transfer == nullptr)
       {
          log->error("transfer is null");
-         return -1;
+         return false;
       }
 
       libusb_transfer *usbTransfer = libusb_alloc_transfer(0);
@@ -321,12 +321,12 @@ struct Usb::Impl
       {
          libusb_free_transfer(usbTransfer);
          log->error("error in submit async transfer: {}", {lastError()});
-         return -1;
+         return false;
       }
 
       transfers.push_back(transferInfo);
 
-      return 0;
+      return true;
    }
 
    bool cancelTransfer(const Transfer *transfer)
@@ -334,35 +334,35 @@ struct Usb::Impl
       if (transfer == nullptr)
       {
          log->error("transfer is null");
-         return -1;
+         return false;
       }
 
-      for (auto transferInfo: transfers)
+      for (const auto transferInfo: transfers)
       {
-         if (transferInfo->transfer == transfer)
-         {
-            if ((result = libusb_cancel_transfer(transferInfo->usbTransfer)) != LIBUSB_SUCCESS)
-            {
-               log->error("error in cancel transfer: {}", {lastError()});
-               return false;
-            }
+         if (transferInfo->transfer != transfer)
+            continue;
 
-            return true;
+         if ((result = libusb_cancel_transfer(transferInfo->usbTransfer)) != LIBUSB_SUCCESS)
+         {
+            log->error("error in cancel transfer: {}", {lastError()});
+            return false;
          }
+
+         return true;
       }
 
       return false;
    }
 
-   int setOption(libusb_option option, int value)
+   bool setOption(libusb_option option, int value)
    {
       if ((result = libusb_set_option(*ctx, option, value)) < 0)
       {
          log->error("error in set option {}={}: {}", {option, value, lastError()});
-         return -1;
+         return false;
       }
 
-      return 0;
+      return true;
    }
 
    std::string lastError() const
@@ -495,12 +495,12 @@ int Usb::syncTransfer(Direction direction, int endpoint, void *data, unsigned in
    return impl->syncTransfer((direction ? LIBUSB_ENDPOINT_OUT : LIBUSB_ENDPOINT_IN) | endpoint, data, length, timeout);
 }
 
-int Usb::asyncTransfer(Direction direction, int endpoint, Transfer *transfer) const
+bool Usb::asyncTransfer(Direction direction, int endpoint, Transfer *transfer) const
 {
    return impl->asyncTransfer((direction ? LIBUSB_ENDPOINT_OUT : LIBUSB_ENDPOINT_IN) | endpoint, transfer);
 }
 
-int Usb::cancelTransfer(Transfer *transfer) const
+bool Usb::cancelTransfer(Transfer *transfer) const
 {
    return impl->cancelTransfer(transfer);
 }

@@ -96,9 +96,9 @@ class Usb
 
       int syncTransfer(Direction direction, int endpoint, void *data, unsigned int length, int timeout = 30000) const;
 
-      int asyncTransfer(Direction direction, int endpoint, Transfer *transfer) const;
+      bool asyncTransfer(Direction direction, int endpoint, Transfer *transfer) const;
 
-      int cancelTransfer(Transfer *transfer) const;
+      bool cancelTransfer(Transfer *transfer) const;
 
       std::string lastError() const;
 

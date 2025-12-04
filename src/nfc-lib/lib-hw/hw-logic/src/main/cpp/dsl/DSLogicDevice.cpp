@@ -470,7 +470,7 @@ struct DSLogicDevice::Impl
       }
 
       // setup usb transfers
-      usbTransfers(handler);
+      beginTransfers(handler);
 
       // start acquisition
       if (!usbWrite(wr_cmd_acquisition_start))
@@ -564,7 +564,7 @@ struct DSLogicDevice::Impl
       }
 
       // setup usb transfers
-      usbTransfers(streamHandler);
+      beginTransfers(streamHandler);
 
       // start acquisition
       if (!usbWrite(wr_cmd_acquisition_start))
@@ -1278,6 +1278,54 @@ struct DSLogicDevice::Impl
       return true;
    }
 
+   bool beginTransfers(const StreamHandler &handler)
+   {
+      // create header buffer
+      auto *transfer = new Usb::Transfer();
+      transfer->data = new unsigned char[headerSize()];
+      transfer->available = headerSize();
+      transfer->timeout = 30000;
+      transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessHeader(t); };
+
+      // add transfer to device list
+      transfers.push_back(transfer);
+
+      // submit transfer of header buffer
+      usb.asyncTransfer(Usb::In, 6, transfer);
+
+      log->debug("usb transfer header size {}", {headerSize()});
+      log->debug("usb transfer buffer size {}", {bufferSize()});
+
+      // submit transfer of data buffers
+      for (int i = 0; i < totalTransfers(); i++)
+      {
+         transfer = new Usb::Transfer();
+         transfer->data = new unsigned char[bufferSize()];
+         transfer->available = bufferSize();
+         transfer->timeout = 5000;
+         transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessData(t, handler); };
+
+         // clean buffer
+         memset(transfer->data, 0, transfer->available);
+
+         // add transfer to device list
+         transfers.push_back(transfer);
+
+         // submit transfer of data buffer
+         if (!usb.asyncTransfer(Usb::In, 6, transfer))
+         {
+            log->error("failed to setup async transfer: {}", {usb.lastError()});
+
+            for (Usb::Transfer *t: transfers)
+               usb.cancelTransfer(t);
+
+            break;
+         }
+      }
+
+      return true;
+   }
+
    bool securityCheck(uint16_t *encryption, int steps) const
    {
       uint16_t temp;
@@ -1822,46 +1870,6 @@ struct DSLogicDevice::Impl
       {
          log->error("usb transfer CMD_CTL_WR failed, command {}, offset {}, size {}", {wr_cmd.header.dest, wr_cmd.header.offset, wr_cmd.header.size});
          return false;
-      }
-
-      return true;
-   }
-
-   bool usbTransfers(const StreamHandler &handler)
-   {
-      // create header buffer
-      auto *transfer = new Usb::Transfer();
-      transfer->data = new unsigned char[headerSize()];
-      transfer->available = headerSize();
-      transfer->timeout = 30000;
-      transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessHeader(t); };
-
-      // add transfer to device list
-      transfers.push_back(transfer);
-
-      // submit transfer of header buffer
-      usb.asyncTransfer(Usb::In, 6, transfer);
-
-      log->debug("usb transfer header size {}", {headerSize()});
-      log->debug("usb transfer buffer size {}", {bufferSize()});
-
-      // submit transfer of data buffers
-      for (int i = 0; i < totalTransfers(); i++)
-      {
-         transfer = new Usb::Transfer();
-         transfer->data = new unsigned char[bufferSize()];
-         transfer->available = bufferSize();
-         transfer->timeout = 5000;
-         transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessData(t, handler); };
-
-         // clean buffer
-         memset(transfer->data, 0, transfer->available);
-
-         // add transfer to device list
-         transfers.push_back(transfer);
-
-         // submit transfer of data buffer
-         usb.asyncTransfer(Usb::In, 6, transfer);
       }
 
       return true;
