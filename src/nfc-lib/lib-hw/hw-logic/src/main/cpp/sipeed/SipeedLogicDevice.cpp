@@ -260,10 +260,10 @@ struct SipeedLogicDevice::Impl
       buffer.reset();
 
       // purge pending data
-      purgeEndpoint();
+      purgeTransfers();
 
       // setup usb transfers
-      triggerTransfer(handler);
+      beginTransfers(handler);
 
       // prepare start command
       cmd_start_acquisition start {};
@@ -272,9 +272,8 @@ struct SipeedLogicDevice::Impl
       start.sample_channel = validChannels;
 
       // send start command
-      if (!usb.ctrlTransfer(CMD_START, &start, sizeof(start), 0, nullptr, 0))
+      if (startAcquisition() != 0)
       {
-         log->error("usb transfer CMD_START failed: {}", {usb.lastError()});
          deviceStatus = STATUS_ERROR;
          return -1;
       }
@@ -296,8 +295,7 @@ struct SipeedLogicDevice::Impl
          return 0;
 
       // send stop command
-      if (!usb.ctrlTransfer(CMD_STOP, nullptr, 0, 0, nullptr, 0))
-         log->error("failed to stop acquisition");
+      stopAcquisition();
 
       // cancel current transfers
       for (const auto transfer: transfers)
@@ -322,8 +320,7 @@ struct SipeedLogicDevice::Impl
       }
 
       // send stop command
-      if (!usb.ctrlTransfer(CMD_STOP, nullptr, 0, 0, nullptr, 0))
-         log->error("failed to stop acquisition");
+      stopAcquisition();
 
       // cancel current transfers
       for (const auto transfer: transfers)
@@ -347,29 +344,18 @@ struct SipeedLogicDevice::Impl
       buffer.reset();
 
       // purge pending data
-      purgeEndpoint();
+      purgeTransfers();
 
       // setup usb transfers
-      triggerTransfer(streamHandler);
+      beginTransfers(streamHandler);
 
       // start acquisition
-      // prepare start command
-      cmd_start_acquisition start {};
-
-      start.sample_rate = samplerate / DEV_MHZ(1);
-      start.sample_channel = validChannels;
-
-      // send start command
-      if (!usb.ctrlTransfer(CMD_START, &start, sizeof(start), 0, nullptr, 0))
-      {
-         log->error("usb transfer CMD_START failed: {}", {usb.lastError()});
+      if (startAcquisition() != 0)
          deviceStatus = STATUS_ERROR;
-         return -1;
-      }
+      else
+         deviceStatus = STATUS_START;
 
-      deviceStatus = STATUS_START;
-
-      return 0;
+      return deviceStatus == STATUS_START ? 0 : -1;
    }
 
    rt::Variant get(int id, int channel) const
@@ -496,7 +482,55 @@ struct SipeedLogicDevice::Impl
       return true;
    }
 
-   bool triggerTransfer(const StreamHandler &handler)
+   int startAcquisition() const
+   {
+      cmd_start_acquisition start {};
+
+      start.sample_rate = samplerate / DEV_MHZ(1);
+      start.sample_channel = validChannels;
+
+      // send start command
+      if (!usb.ctrlTransfer(CMD_START, &start, sizeof(start), 0, nullptr, 0))
+      {
+         log->error("usb transfer CMD_START failed: {}", {usb.lastError()});
+         return -1;
+      }
+
+      return 0;
+   }
+
+   int stopAcquisition() const
+   {
+      // send start command
+      if (!usb.ctrlTransfer(CMD_STOP, nullptr, 0, 0, nullptr, 0))
+      {
+         log->error("usb transfer CMD_STOP failed: {}", {usb.lastError()});
+         return -1;
+      }
+
+      return 0;
+   }
+
+   void purgeTransfers() const
+   {
+      constexpr int endpoint = ENDPOINT_IN;
+
+      log->debug("clearing device endpoint: {}", {endpoint});
+
+      unsigned char tmp[512];
+
+      int purged = 0;
+      int received = 0;
+
+      while ((received = usb.syncTransfer(Usb::In, endpoint, tmp, sizeof(tmp), 100)) > 0)
+      {
+         purged += received;
+      }
+
+      log->debug("endpoint {}, cleared, purged {} bytes", {endpoint, purged});
+   }
+
+   bool beginTransfers(const StreamHandler &handler)
    {
       // create header buffer
       log->debug("usb transfer buffer size {}", {bufferSize()});
@@ -609,25 +643,6 @@ struct SipeedLogicDevice::Impl
    bool isReady() const
    {
       return true; //return usbRead(rd_cmd_fw_version);
-   }
-
-   void purgeEndpoint() const
-   {
-      constexpr int endpoint = ENDPOINT_IN;
-
-      log->debug("clearing device endpoint: {}", {endpoint});
-
-      unsigned char tmp[512];
-
-      int purged = 0;
-      int received = 0;
-
-      while ((received = usb.syncTransfer(Usb::In, endpoint, tmp, sizeof(tmp), 100)) > 0)
-      {
-         purged += received;
-      }
-
-      log->debug("endpoint {}, cleared, purged {} bytes", {endpoint, purged});
    }
 
    static std::string buildName(const sipeed_profile *profile)
