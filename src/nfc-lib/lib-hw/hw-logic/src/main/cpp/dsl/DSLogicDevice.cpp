@@ -152,6 +152,7 @@ struct DSLogicDevice::Impl
    const usb_wr_cmd wr_cmd_acquisition_start {.header {.dest = DSL_CTL_START, .size = 0}};
    const usb_wr_cmd wr_cmd_acquisition_stop {.header {.dest = DSL_CTL_STOP, .size = 0}};
 
+   // sample conversion map
    const static float dsl_samples[256][8];
 
    explicit Impl(const std::string &name) : deviceName(name),
@@ -1939,7 +1940,7 @@ struct DSLogicDevice::Impl
       // trigger next transfer
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
-         // split received data in one buffer per channel
+         // interleave received data in single buffer with N channels stride
          std::vector<SignalBuffer> buffers = interleave(transfer);
 
          // call user handler for each channel
