@@ -45,8 +45,7 @@
 #define NUM_MAX_TRANSFERS 64
 
 #define DEVICE_TYPE_PREFIX "logic.sipeed"
-#define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 64
-#define CHANNEL_BUFFER_SAMPLES 16384 // number of samples per buffer
+#define CHANNEL_BUFFER_SAMPLES 32768 // number of samples per buffer
 
 namespace hw::logic {
 
@@ -101,6 +100,9 @@ struct SipeedLogicDevice::Impl
     * Receive handler
     */
    StreamHandler streamHandler;
+
+   // sample conversion map
+   const static float sri_samples[256][8];
 
    explicit Impl(const std::string &name) : deviceName(name)
    {
@@ -265,12 +267,6 @@ struct SipeedLogicDevice::Impl
       // setup usb transfers
       beginTransfers(handler);
 
-      // prepare start command
-      cmd_start_acquisition start {};
-
-      start.sample_rate = samplerate / DEV_MHZ(1);
-      start.sample_channel = validChannels;
-
       // send start command
       if (startAcquisition() != 0)
       {
@@ -295,7 +291,7 @@ struct SipeedLogicDevice::Impl
          return 0;
 
       // send stop command
-      stopAcquisition();
+      // stopAcquisition();
 
       // cancel current transfers
       for (const auto transfer: transfers)
@@ -477,7 +473,7 @@ struct SipeedLogicDevice::Impl
    int initChannels()
    {
       totalChannels = 8;
-      validChannels = 8;
+      validChannels = 4;
 
       return true;
    }
@@ -487,7 +483,8 @@ struct SipeedLogicDevice::Impl
       cmd_start_acquisition start {};
 
       start.sample_rate = samplerate / DEV_MHZ(1);
-      start.sample_channel = validChannels;
+      start.sample_channel = totalChannels;
+      start.unknow_value = 0;
 
       // send start command
       if (!usb.ctrlTransfer(CMD_START, &start, sizeof(start), 0, nullptr, 0))
@@ -534,6 +531,9 @@ struct SipeedLogicDevice::Impl
    {
       // create header buffer
       log->debug("usb transfer buffer size {}", {bufferSize()});
+
+      // initialize target buffer for received data
+      buffer = SignalBuffer(CHANNEL_BUFFER_SAMPLES * validChannels, validChannels, 1, samplerate, 0, 0, SIGNAL_TYPE_LOGIC_SAMPLES);
 
       // submit transfer of data buffers
       for (int i = 0; i < totalTransfers(); i++)
@@ -587,9 +587,7 @@ struct SipeedLogicDevice::Impl
       // trigger next transfer
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
-         log->info("received data {} bytes", {transfer->available});
-
-         // split received data in one buffer per channel
+         // interleave received data in single buffer with N channels stride
          std::vector<SignalBuffer> buffers = interleave(transfer);
 
          // call user handler for each channel
@@ -631,9 +629,33 @@ struct SipeedLogicDevice::Impl
       return nullptr;
    }
 
-   std::vector<SignalBuffer> interleave(Usb::Transfer *transfer)
+   std::vector<SignalBuffer> interleave(const Usb::Transfer *transfer)
    {
       std::vector<SignalBuffer> result;
+
+      /*
+       * Interleave data from transfer buffer
+       */
+      for (unsigned int i = 0; i < transfer->actual; ++i)
+      {
+         const unsigned char value = transfer->data[i];
+
+         buffer.put(sri_samples[value], validChannels);
+
+         // rotate buffer and create new once
+         if (buffer.isFull())
+         {
+            buffer.flip();
+
+            result.push_back(buffer);
+
+            buffer = SignalBuffer(CHANNEL_BUFFER_SAMPLES * validChannels, validChannels, 1, samplerate, currentSamples + i, 0, SIGNAL_TYPE_LOGIC_SAMPLES);
+         }
+      }
+
+      // update current bytes and samples
+      currentBytes += transfer->actual;
+      currentSamples += transfer->actual;
 
       return result;
    }
@@ -645,7 +667,7 @@ struct SipeedLogicDevice::Impl
 
    unsigned int bufferSize() const
    {
-      return 210 * SIZE_MAX_EP_HS;
+      return 256 * SIZE_MAX_EP_HS;
    }
 
    bool isReady() const
@@ -766,5 +788,268 @@ std::vector<std::string> SipeedLogicDevice::enumerate()
 
    return devices;
 }
+
+#define L 0
+#define H 1
+
+// bitmap values from 0 to 255 to float
+const float SipeedLogicDevice::Impl::sri_samples[256][8] {
+   {L, L, L, L, L, L, L, L},
+   {H, L, L, L, L, L, L, L},
+   {L, H, L, L, L, L, L, L},
+   {H, H, L, L, L, L, L, L},
+   {L, L, H, L, L, L, L, L},
+   {H, L, H, L, L, L, L, L},
+   {L, H, H, L, L, L, L, L},
+   {H, H, H, L, L, L, L, L},
+   {L, L, L, H, L, L, L, L},
+   {H, L, L, H, L, L, L, L},
+   {L, H, L, H, L, L, L, L},
+   {H, H, L, H, L, L, L, L},
+   {L, L, H, H, L, L, L, L},
+   {H, L, H, H, L, L, L, L},
+   {L, H, H, H, L, L, L, L},
+   {H, H, H, H, L, L, L, L},
+   {L, L, L, L, H, L, L, L},
+   {H, L, L, L, H, L, L, L},
+   {L, H, L, L, H, L, L, L},
+   {H, H, L, L, H, L, L, L},
+   {L, L, H, L, H, L, L, L},
+   {H, L, H, L, H, L, L, L},
+   {L, H, H, L, H, L, L, L},
+   {H, H, H, L, H, L, L, L},
+   {L, L, L, H, H, L, L, L},
+   {H, L, L, H, H, L, L, L},
+   {L, H, L, H, H, L, L, L},
+   {H, H, L, H, H, L, L, L},
+   {L, L, H, H, H, L, L, L},
+   {H, L, H, H, H, L, L, L},
+   {L, H, H, H, H, L, L, L},
+   {H, H, H, H, H, L, L, L},
+   {L, L, L, L, L, H, L, L},
+   {H, L, L, L, L, H, L, L},
+   {L, H, L, L, L, H, L, L},
+   {H, H, L, L, L, H, L, L},
+   {L, L, H, L, L, H, L, L},
+   {H, L, H, L, L, H, L, L},
+   {L, H, H, L, L, H, L, L},
+   {H, H, H, L, L, H, L, L},
+   {L, L, L, H, L, H, L, L},
+   {H, L, L, H, L, H, L, L},
+   {L, H, L, H, L, H, L, L},
+   {H, H, L, H, L, H, L, L},
+   {L, L, H, H, L, H, L, L},
+   {H, L, H, H, L, H, L, L},
+   {L, H, H, H, L, H, L, L},
+   {H, H, H, H, L, H, L, L},
+   {L, L, L, L, H, H, L, L},
+   {H, L, L, L, H, H, L, L},
+   {L, H, L, L, H, H, L, L},
+   {H, H, L, L, H, H, L, L},
+   {L, L, H, L, H, H, L, L},
+   {H, L, H, L, H, H, L, L},
+   {L, H, H, L, H, H, L, L},
+   {H, H, H, L, H, H, L, L},
+   {L, L, L, H, H, H, L, L},
+   {H, L, L, H, H, H, L, L},
+   {L, H, L, H, H, H, L, L},
+   {H, H, L, H, H, H, L, L},
+   {L, L, H, H, H, H, L, L},
+   {H, L, H, H, H, H, L, L},
+   {L, H, H, H, H, H, L, L},
+   {H, H, H, H, H, H, L, L},
+   {L, L, L, L, L, L, H, L},
+   {H, L, L, L, L, L, H, L},
+   {L, H, L, L, L, L, H, L},
+   {H, H, L, L, L, L, H, L},
+   {L, L, H, L, L, L, H, L},
+   {H, L, H, L, L, L, H, L},
+   {L, H, H, L, L, L, H, L},
+   {H, H, H, L, L, L, H, L},
+   {L, L, L, H, L, L, H, L},
+   {H, L, L, H, L, L, H, L},
+   {L, H, L, H, L, L, H, L},
+   {H, H, L, H, L, L, H, L},
+   {L, L, H, H, L, L, H, L},
+   {H, L, H, H, L, L, H, L},
+   {L, H, H, H, L, L, H, L},
+   {H, H, H, H, L, L, H, L},
+   {L, L, L, L, H, L, H, L},
+   {H, L, L, L, H, L, H, L},
+   {L, H, L, L, H, L, H, L},
+   {H, H, L, L, H, L, H, L},
+   {L, L, H, L, H, L, H, L},
+   {H, L, H, L, H, L, H, L},
+   {L, H, H, L, H, L, H, L},
+   {H, H, H, L, H, L, H, L},
+   {L, L, L, H, H, L, H, L},
+   {H, L, L, H, H, L, H, L},
+   {L, H, L, H, H, L, H, L},
+   {H, H, L, H, H, L, H, L},
+   {L, L, H, H, H, L, H, L},
+   {H, L, H, H, H, L, H, L},
+   {L, H, H, H, H, L, H, L},
+   {H, H, H, H, H, L, H, L},
+   {L, L, L, L, L, H, H, L},
+   {H, L, L, L, L, H, H, L},
+   {L, H, L, L, L, H, H, L},
+   {H, H, L, L, L, H, H, L},
+   {L, L, H, L, L, H, H, L},
+   {H, L, H, L, L, H, H, L},
+   {L, H, H, L, L, H, H, L},
+   {H, H, H, L, L, H, H, L},
+   {L, L, L, H, L, H, H, L},
+   {H, L, L, H, L, H, H, L},
+   {L, H, L, H, L, H, H, L},
+   {H, H, L, H, L, H, H, L},
+   {L, L, H, H, L, H, H, L},
+   {H, L, H, H, L, H, H, L},
+   {L, H, H, H, L, H, H, L},
+   {H, H, H, H, L, H, H, L},
+   {L, L, L, L, H, H, H, L},
+   {H, L, L, L, H, H, H, L},
+   {L, H, L, L, H, H, H, L},
+   {H, H, L, L, H, H, H, L},
+   {L, L, H, L, H, H, H, L},
+   {H, L, H, L, H, H, H, L},
+   {L, H, H, L, H, H, H, L},
+   {H, H, H, L, H, H, H, L},
+   {L, L, L, H, H, H, H, L},
+   {H, L, L, H, H, H, H, L},
+   {L, H, L, H, H, H, H, L},
+   {H, H, L, H, H, H, H, L},
+   {L, L, H, H, H, H, H, L},
+   {H, L, H, H, H, H, H, L},
+   {L, H, H, H, H, H, H, L},
+   {H, H, H, H, H, H, H, L},
+   {L, L, L, L, L, L, L, H},
+   {H, L, L, L, L, L, L, H},
+   {L, H, L, L, L, L, L, H},
+   {H, H, L, L, L, L, L, H},
+   {L, L, H, L, L, L, L, H},
+   {H, L, H, L, L, L, L, H},
+   {L, H, H, L, L, L, L, H},
+   {H, H, H, L, L, L, L, H},
+   {L, L, L, H, L, L, L, H},
+   {H, L, L, H, L, L, L, H},
+   {L, H, L, H, L, L, L, H},
+   {H, H, L, H, L, L, L, H},
+   {L, L, H, H, L, L, L, H},
+   {H, L, H, H, L, L, L, H},
+   {L, H, H, H, L, L, L, H},
+   {H, H, H, H, L, L, L, H},
+   {L, L, L, L, H, L, L, H},
+   {H, L, L, L, H, L, L, H},
+   {L, H, L, L, H, L, L, H},
+   {H, H, L, L, H, L, L, H},
+   {L, L, H, L, H, L, L, H},
+   {H, L, H, L, H, L, L, H},
+   {L, H, H, L, H, L, L, H},
+   {H, H, H, L, H, L, L, H},
+   {L, L, L, H, H, L, L, H},
+   {H, L, L, H, H, L, L, H},
+   {L, H, L, H, H, L, L, H},
+   {H, H, L, H, H, L, L, H},
+   {L, L, H, H, H, L, L, H},
+   {H, L, H, H, H, L, L, H},
+   {L, H, H, H, H, L, L, H},
+   {H, H, H, H, H, L, L, H},
+   {L, L, L, L, L, H, L, H},
+   {H, L, L, L, L, H, L, H},
+   {L, H, L, L, L, H, L, H},
+   {H, H, L, L, L, H, L, H},
+   {L, L, H, L, L, H, L, H},
+   {H, L, H, L, L, H, L, H},
+   {L, H, H, L, L, H, L, H},
+   {H, H, H, L, L, H, L, H},
+   {L, L, L, H, L, H, L, H},
+   {H, L, L, H, L, H, L, H},
+   {L, H, L, H, L, H, L, H},
+   {H, H, L, H, L, H, L, H},
+   {L, L, H, H, L, H, L, H},
+   {H, L, H, H, L, H, L, H},
+   {L, H, H, H, L, H, L, H},
+   {H, H, H, H, L, H, L, H},
+   {L, L, L, L, H, H, L, H},
+   {H, L, L, L, H, H, L, H},
+   {L, H, L, L, H, H, L, H},
+   {H, H, L, L, H, H, L, H},
+   {L, L, H, L, H, H, L, H},
+   {H, L, H, L, H, H, L, H},
+   {L, H, H, L, H, H, L, H},
+   {H, H, H, L, H, H, L, H},
+   {L, L, L, H, H, H, L, H},
+   {H, L, L, H, H, H, L, H},
+   {L, H, L, H, H, H, L, H},
+   {H, H, L, H, H, H, L, H},
+   {L, L, H, H, H, H, L, H},
+   {H, L, H, H, H, H, L, H},
+   {L, H, H, H, H, H, L, H},
+   {H, H, H, H, H, H, L, H},
+   {L, L, L, L, L, L, H, H},
+   {H, L, L, L, L, L, H, H},
+   {L, H, L, L, L, L, H, H},
+   {H, H, L, L, L, L, H, H},
+   {L, L, H, L, L, L, H, H},
+   {H, L, H, L, L, L, H, H},
+   {L, H, H, L, L, L, H, H},
+   {H, H, H, L, L, L, H, H},
+   {L, L, L, H, L, L, H, H},
+   {H, L, L, H, L, L, H, H},
+   {L, H, L, H, L, L, H, H},
+   {H, H, L, H, L, L, H, H},
+   {L, L, H, H, L, L, H, H},
+   {H, L, H, H, L, L, H, H},
+   {L, H, H, H, L, L, H, H},
+   {H, H, H, H, L, L, H, H},
+   {L, L, L, L, H, L, H, H},
+   {H, L, L, L, H, L, H, H},
+   {L, H, L, L, H, L, H, H},
+   {H, H, L, L, H, L, H, H},
+   {L, L, H, L, H, L, H, H},
+   {H, L, H, L, H, L, H, H},
+   {L, H, H, L, H, L, H, H},
+   {H, H, H, L, H, L, H, H},
+   {L, L, L, H, H, L, H, H},
+   {H, L, L, H, H, L, H, H},
+   {L, H, L, H, H, L, H, H},
+   {H, H, L, H, H, L, H, H},
+   {L, L, H, H, H, L, H, H},
+   {H, L, H, H, H, L, H, H},
+   {L, H, H, H, H, L, H, H},
+   {H, H, H, H, H, L, H, H},
+   {L, L, L, L, L, H, H, H},
+   {H, L, L, L, L, H, H, H},
+   {L, H, L, L, L, H, H, H},
+   {H, H, L, L, L, H, H, H},
+   {L, L, H, L, L, H, H, H},
+   {H, L, H, L, L, H, H, H},
+   {L, H, H, L, L, H, H, H},
+   {H, H, H, L, L, H, H, H},
+   {L, L, L, H, L, H, H, H},
+   {H, L, L, H, L, H, H, H},
+   {L, H, L, H, L, H, H, H},
+   {H, H, L, H, L, H, H, H},
+   {L, L, H, H, L, H, H, H},
+   {H, L, H, H, L, H, H, H},
+   {L, H, H, H, L, H, H, H},
+   {H, H, H, H, L, H, H, H},
+   {L, L, L, L, H, H, H, H},
+   {H, L, L, L, H, H, H, H},
+   {L, H, L, L, H, H, H, H},
+   {H, H, L, L, H, H, H, H},
+   {L, L, H, L, H, H, H, H},
+   {H, L, H, L, H, H, H, H},
+   {L, H, H, L, H, H, H, H},
+   {H, H, H, L, H, H, H, H},
+   {L, L, L, H, H, H, H, H},
+   {H, L, L, H, H, H, H, H},
+   {L, H, L, H, H, H, H, H},
+   {H, H, L, H, H, H, H, H},
+   {L, L, H, H, H, H, H, H},
+   {H, L, H, H, H, H, H, H},
+   {L, H, H, H, H, H, H, H},
+   {H, H, H, H, H, H, H, H},
+};
 
 }
