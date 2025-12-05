@@ -253,7 +253,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
       // setup channels
       for (int c = 0; c < std::get<unsigned int>(device->get(hw::logic::LogicDevice::PARAM_CHANNEL_TOTAL)); c++)
       {
-         device->set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, std::find(channels.begin(), channels.end(), c) != channels.end(), c); // DATA
+         device->set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, std::find(channels.begin(), channels.end(), c) != channels.end(), c);
       }
    }
 
