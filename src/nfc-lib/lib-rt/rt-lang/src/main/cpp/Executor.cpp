@@ -57,7 +57,7 @@ struct Executor::Impl
    // sync mutex
    std::mutex syncMutex;
 
-   Impl(int poolSize, int coreSize) : poolSize(poolSize), shutdown(false)
+   Impl(const int poolSize, const int coreSize) : poolSize(poolSize), shutdown(false)
    {
       log->info("executor service starting with {} threads", {coreSize});
 
