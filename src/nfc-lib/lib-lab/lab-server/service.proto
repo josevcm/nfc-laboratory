@@ -1,0 +1,306 @@
+syntax = "proto3";
+package nfclab.grpc.service.v1;
+
+option java_package = "nfclab.grpc.service.v1";
+option java_multiple_files = true;
+
+/**
+ * Protocol Buffers schema for the NFC Laboratory gRPC service.
+ *
+ * This service exposes remote procedures to control data acquisitions,
+ * manage settings, and retrieve captured frames and summaries produced by
+ * the NFC Laboratory. The schema is versioned under the package
+ * `nfclab.grpc.service.v1` to enable forward compatibility.
+ */
+
+/**
+ *  The interface for controlling the NFC Laboratory.
+ */
+service NFCLabService
+{
+  /**
+   *  Gets the service status
+   */
+  rpc GetStatus (GetStatusRequest) returns (GetStatusResponse) {}
+
+  /**
+   *  Gets the service settings
+   */
+  rpc GetSettings (GetSettingsRequest) returns (GetSettingsResponse) {}
+
+  /**
+   *  Sets the service settings
+   */
+  rpc SetSettings (SetSettingsRequest) returns (SetSettingsResponse) {}
+
+  /**
+   *  Start recording the acquisition with the given file names
+   */
+  rpc RecordAcquisition (RecordAcquisitionRequest) returns (RecordAcquisitionResponse) {}
+
+  /**
+   *  Starts the acquisition
+   */
+  rpc StartAcquisition (StartAcquisitionRequest) returns (StartAcquisitionResponse) {}
+
+  /**
+   *  Pauses the current acquisition
+   */
+  rpc PauseAcquisition (PauseAcquisitionRequest) returns (PauseAcquisitionResponse) {}
+
+  /**
+   *  Stops the current acquisition
+   */
+  rpc StopAcquisition (StopAcquisitionRequest) returns (StopAcquisitionResponse) {}
+
+  /**
+   *  Clears the frames
+   */
+  rpc ClearFrames (ClearFramesRequest) returns (ClearFramesResponse) {}
+
+  /**
+   *  Gets the frames
+   */
+  rpc GetFrames (GetFramesRequest) returns (GetFramesResponse) {}
+}
+
+/**
+ *  Defines the message for requesting the service status
+ */
+message GetStatusRequest {
+}
+
+/**
+ *  Defines the response to the request for the service status
+ */
+message GetStatusResponse {
+  Status status = 1;
+  uint32 frames_count = 2;
+  uint64 frames_total_time = 3;
+  uint32 record_size = 4;
+}
+
+/**
+ *  Defines the message for requesting the service settings
+ */
+message GetSettingsRequest {
+}
+
+/**
+ *  Defines the response to the request for the service settings
+ */
+message GetSettingsResponse {
+  string settings = 1;
+}
+
+/**
+ *  Defines the message for setting the service settings
+ */
+message SetSettingsRequest {
+  string settings = 1;
+}
+
+/**
+ *  Defines the response to the set for the service settings
+ */
+message SetSettingsResponse {
+}
+
+/**
+ *  Defines the message for recording the acquisition
+ */
+message RecordAcquisitionRequest {
+  AcquisitionType acq_type = 1;
+  string radio_filepath = 2;
+  string iso_filepath = 3;
+}
+
+/**
+ *  Defines the response to the request for recording the acquisition
+ */
+message RecordAcquisitionResponse {
+}
+
+/**
+ *  Defines the message for starting the acquisition
+ */
+message StartAcquisitionRequest {
+    AcquisitionType acq_type = 1;
+}
+
+/**
+ *  Defines the response to the request for starting the acquisition
+ */
+message StartAcquisitionResponse {
+}
+
+/**
+ *  Defines the message for pausing the current acquisition
+ */
+message PauseAcquisitionRequest {
+}
+
+/**
+ *  Defines the response to the request for pausing the acquisition
+ */
+message PauseAcquisitionResponse {
+}
+
+/**
+ *  Defines the message for stopping the current acquisition
+ */
+message StopAcquisitionRequest {
+}
+
+/**
+ *  Defines the response to the request for stopping the acquisition
+ */
+message StopAcquisitionResponse {
+}
+
+/**
+ * Defines the request to clear all frames currently stored by the service.
+ */
+message ClearFramesRequest {
+}
+
+/**
+ * Defines the response to the request to clear frames.
+ * An empty message indicates success when the RPC completes without error.
+ */
+message ClearFramesResponse {
+}
+
+/**
+ * Defines the request to retrieve captured frames.
+ */
+message GetFramesRequest {
+}
+
+/**
+ * Defines the response that carries a list of captured frames.
+ */
+message GetFramesResponse {
+  repeated Frame frames = 1;
+}
+
+/**
+ * Enumerates the high-level service status values.
+ */
+enum Status {
+  Status_UNKNOWN = 0;
+  Status_NOT_OPERATIVE = 1;
+  Status_OPERATIVE = 2;
+  Status_RUNNING = 3;
+  Status_PROCESSING = 4;
+}
+
+/**
+ * Defines which acquisition pipeline(s) should be used when starting/recording.
+ */
+enum AcquisitionType {
+    AcquisitionType_NONE = 0;
+    AcquisitionType_NFC = 1;
+    AcquisitionType_ISO7816 = 2;
+    AcquisitionType_BOTH = 3;
+}
+
+/**
+ * A single byte of frame payload accompanied by its timestamp.
+ * `time_start` is expressed in the same time base used across the service
+ * (typically nanoseconds since the start of acquisition).
+ */
+message Data {
+  uint32 data_byte = 1;
+  uint64 time_start = 2;
+}
+
+/**
+ * Enumerates the technology families a frame belongs to.
+ */
+enum FrameTech {
+  FrameTech_NoneTech = 0;
+
+  // NFC tech types
+  FrameTech_NfcAnyTech = 1;
+  FrameTech_NfcATech = 2;
+  FrameTech_NfcBTech = 3;
+  FrameTech_NfcFTech = 4;
+  FrameTech_NfcVTech = 5;
+
+  // ISO tech types
+  FrameTech_IsoAnyTech = 30;
+  FrameTech_Iso7816Tech = 31;
+}
+
+/**
+ * Enumerates the semantic type of a frame observed on the interface.
+ */
+enum FrameType {
+  FrameType_NoneType = 0;
+
+  // NFC Frame types
+  FrameType_NfcCarrierOff = 1;
+  FrameType_NfcCarrierOn = 2;
+  FrameType_NfcPollFrame = 3;
+  FrameType_NfcListenFrame = 4;
+
+  // ISO Frame types
+  FrameType_IsoVccLow = 50;
+  FrameType_IsoVccHigh = 51;
+  FrameType_IsoRstLow = 52;
+  FrameType_IsoRstHigh = 53;
+  FrameType_IsoATRFrame = 54;
+  FrameType_IsoRequestFrame = 55;
+  FrameType_IsoResponseFrame = 56;
+  FrameType_IsoExchangeFrame = 57;
+}
+
+/**
+ * Bitmask flags describing frame-level properties and protocol semantics.
+ * Multiple flags can be combined using a bitwise OR.
+ */
+enum Flags {
+  Flags_None                           = 0x00000000;
+  Flags_Frame_ShortFrame               = 0x00000001;
+  Flags_Frame_Encrypted                = 0x00000002;
+  Flags_Frame_Truncated                = 0x00000008;
+  Flags_Frame_ParityError              = 0x00000010;
+  Flags_Frame_CrcError                 = 0x00000020;
+  Flags_Frame_SyncError                = 0x00000040;
+  Flags_Protocol_FrameField            = 0x00000100;
+  Flags_Protocol_FieldInfo             = 0x00000200;
+  Flags_Protocol_RequestFrame          = 0x00010000;
+  Flags_Protocol_ResponseFrame         = 0x00020000;
+  Flags_Protocol_SenseFrame            = 0x00040000;
+  Flags_Protocol_SelectionFrame        = 0x00080000;
+  Flags_Protocol_ApplicationFrame      = 0x00100000;
+  Flags_Protocol_AuthFrame             = 0x00200000;
+  Flags_Protocol_StartupFrame          = 0x00800000;
+  Flags_Protocol_ParityError           = 0x01000000;
+  Flags_Protocol_CrcError              = 0x02000000;
+  Flags_Protocol_SyncError             = 0x04000000;
+}
+
+/**
+ * Describes a captured frame with metadata, timing, and payload bytes.
+ *
+ * Fields:
+ *  - tech: Technology family the frame belongs to.
+ *  - type: Semantic type of the frame (e.g., carrier on/off, request/response).
+ *  - flags: Additional attributes expressed as a bitmask of `Flags`.
+ *  - name: Optional human-readable label for the frame.
+ *  - time_start/time_end: Timestamps in the common time base for the capture.
+ *  - rate: Data rate for the frame.
+ *  - data: Ordered list of payload bytes with per-byte timestamps.
+ */
+message Frame {
+  FrameTech tech = 1;
+  FrameType type = 2;
+  uint32 flags = 3;
+  string name = 4;
+  uint64 time_start = 5;
+  uint64 time_end = 6;
+  uint64 rate = 7;
+  repeated Data data = 8;
+}
