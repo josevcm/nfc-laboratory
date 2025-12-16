@@ -33,7 +33,7 @@
 
 namespace hw {
 
-void transferHandler(struct libusb_transfer *t);
+void transferHandler(libusb_transfer *t);
 
 struct TransferInfo
 {
