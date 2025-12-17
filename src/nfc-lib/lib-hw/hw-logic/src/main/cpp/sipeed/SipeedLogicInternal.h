@@ -24,7 +24,7 @@
 
 #include <libusb.h>
 
-#include "LogicInternal.h"
+#include <LogicInternal.h>
 
 /* Protocol commands */
 #define CMD_START	0xb1
