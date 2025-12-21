@@ -170,7 +170,7 @@ struct Usb::Impl
 
          log->info("libusb event handling thread running");
 
-         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+         const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
          // loop until shutdown is requested and all transfers are completed
          while (!shutdown || !transfers.empty())
@@ -217,7 +217,7 @@ struct Usb::Impl
       hdl = nullptr;
    }
 
-   bool claimInterface(int interface)
+   bool claimInterface(const int interface)
    {
       switch ((result = libusb_claim_interface(hdl, interface)))
       {
@@ -242,7 +242,7 @@ struct Usb::Impl
       }
    }
 
-   bool releaseInterface(int interface)
+   bool releaseInterface(const int interface)
    {
       if ((result = libusb_release_interface(hdl, interface)) != LIBUSB_SUCCESS)
       {
@@ -253,7 +253,7 @@ struct Usb::Impl
       return true;
    }
 
-   bool ctrlTransfer(int outCmd, const void *txData, unsigned int txSize, int inCmd, void *rxData, unsigned int rxSize, int timeout, int wait)
+   bool ctrlTransfer(const int outCmd, const void *txData, const unsigned int txSize, const int inCmd, void *rxData, const unsigned int rxSize, const int timeout, const int wait)
    {
       if (log->isDebugEnabled())
          log->debug("USB CONTROL OUT, size {} bytes\n{}", {txSize, rt::ByteBuffer((unsigned char *)txData, txSize)});
@@ -284,7 +284,7 @@ struct Usb::Impl
       return true;
    }
 
-   int syncTransfer(int endpoint, void *data, unsigned int length, int timeout)
+   int syncTransfer(const int endpoint, void *data, const unsigned int length, const int timeout)
    {
       int transferred = 0;
 
@@ -354,7 +354,7 @@ struct Usb::Impl
       return false;
    }
 
-   bool setOption(libusb_option option, int value)
+   bool setOption(const libusb_option option, int value)
    {
       if ((result = libusb_set_option(*ctx, option, value)) < 0)
       {
