@@ -23,6 +23,7 @@
 #define RT_WORKER_H
 
 #include <string>
+#include <memory>
 
 #include <rt/Task.h>
 
