@@ -197,9 +197,7 @@ int main(int argc, char *argv[])
    rt::Logger::init(std::cout);
 #else
 
-   QDir appPath(
-      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/" + NFC_LAB_COMPANY_NAME + "/" +
-      NFC_LAB_APPLICATION_NAME);
+   QDir appPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/" + NFC_LAB_COMPANY_NAME + "/" + NFC_LAB_APPLICATION_NAME);
 
    std::ofstream stream;
 

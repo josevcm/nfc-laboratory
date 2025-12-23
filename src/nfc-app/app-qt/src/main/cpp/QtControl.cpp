@@ -1286,7 +1286,7 @@ struct QtControl::Impl
     */
    void storageInitialize() const
    {
-      QJsonObject config {{"tempPath", QtApplication::tempPath().absolutePath()}};
+      QJsonObject config {{"tempPath", QtApplication::tmpPath().absolutePath()}};
 
       taskStorageConfig(config);
    }

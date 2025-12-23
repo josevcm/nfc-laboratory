@@ -130,7 +130,7 @@ struct QtCache::Impl
          return signal[name];
 
       // build fileName
-      QString fileName = QtApplication::tempPath().absoluteFilePath(name + ".cache");
+      QString fileName = QtApplication::tmpPath().absoluteFilePath(name + ".cache");
 
       //
       qInfo() << "Creating cache file:" << fileName;
