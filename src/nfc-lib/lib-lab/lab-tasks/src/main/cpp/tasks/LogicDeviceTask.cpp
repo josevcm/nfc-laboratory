@@ -71,15 +71,15 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
    {
       log->info("registering logic devices");
 
-      hw::DeviceFactory::registerDevice("logic.dreamsourcelab", []() -> std::vector<std::string> { return hw::logic::DSLogicDevice::enumerate(); }, [](const std::string &name) -> hw::logic::LogicDevice *{ return new hw::logic::DSLogicDevice(name); });
-      hw::DeviceFactory::registerDevice("logic.sipeed", []() -> std::vector<std::string> { return hw::logic::SipeedLogicDevice::enumerate(); }, [](const std::string &name) -> hw::logic::LogicDevice *{ return new hw::logic::SipeedLogicDevice(name); });
+      hw::DeviceFactory::registerDevice("logic.dreamsourcelab", []() -> std::vector<std::string> { return hw::logic::DSLogicDevice::enumerate(); }, [](const std::string &name) -> hw::logic::LogicDevice * { return new hw::logic::DSLogicDevice(name); });
+      hw::DeviceFactory::registerDevice("logic.sipeed", []() -> std::vector<std::string> { return hw::logic::SipeedLogicDevice::enumerate(); }, [](const std::string &name) -> hw::logic::LogicDevice * { return new hw::logic::SipeedLogicDevice(name); });
    }
 
    void stop() override
    {
       if (device)
       {
-         log->info("shutdown device {}", {std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_NAME))});
+         log->info("shutdown device {}", {device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_NAME)});
          device.reset();
       }
 
@@ -202,7 +202,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
       }
       else if (!device->isReady())
       {
-         log->warn("device {} disconnected", {std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_NAME))});
+         log->warn("device {} disconnected", {device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_NAME)});
 
          // send null buffer for EOF
          signalStream->next({});
@@ -251,7 +251,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
          device->set(hw::logic::LogicDevice::PARAM_VOLTAGE_THRESHOLD, static_cast<float>(config["vThreshold"]));
 
       // setup channels
-      for (int c = 0; c < std::get<unsigned int>(device->get(hw::logic::LogicDevice::PARAM_CHANNEL_TOTAL)); c++)
+      for (int c = 0; c < device->get<unsigned int>(hw::logic::LogicDevice::PARAM_CHANNEL_TOTAL); c++)
       {
          device->set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, std::find(channels.begin(), channels.end(), c) != channels.end(), c);
       }
@@ -268,7 +268,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
       if (device)
       {
-         log->info("start streaming for device {}", {std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_NAME))});
+         log->info("start streaming for device {}", {device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_NAME)});
 
          // reset throughput meter
          taskThroughput.begin();
@@ -297,7 +297,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
       if (device)
       {
-         log->info("stop streaming for device {}", {std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_NAME))});
+         log->info("stop streaming for device {}", {device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_NAME)});
 
          // stop underline receiver
          device->stop();
@@ -321,7 +321,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
       if (device)
       {
-         log->info("pause streaming for device {}", {std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_NAME))});
+         log->info("pause streaming for device {}", {device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_NAME)});
 
          // pause underline receiver
          device->pause();
@@ -345,7 +345,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
       if (device)
       {
-         log->info("resume streaming for device {}", {std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_NAME))});
+         log->info("resume streaming for device {}", {device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_NAME)});
 
          // resume underline receiver
          device->resume();
@@ -430,19 +430,19 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
       if (device)
       {
          // device name and status
-         data["name"] = std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_NAME));
-         data["vendor"] = std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_VENDOR));
-         data["model"] = std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_MODEL));
-         data["version"] = std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_VERSION));
-         data["serial"] = std::get<std::string>(device->get(hw::logic::LogicDevice::PARAM_DEVICE_SERIAL));
+         data["name"] = device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_NAME);
+         data["vendor"] = device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_VENDOR);
+         data["model"] = device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_MODEL);
+         data["version"] = device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_VERSION);
+         data["serial"] = device->get<std::string>(hw::logic::LogicDevice::PARAM_DEVICE_SERIAL);
 
          // device parameters
-         data["sampleRate"] = std::get<unsigned int>(device->get(hw::logic::LogicDevice::PARAM_SAMPLE_RATE));
-         data["streamTime"] = std::get<unsigned int>(device->get(hw::logic::LogicDevice::PARAM_STREAM_TIME));
+         data["sampleRate"] = device->get<unsigned int>(hw::logic::LogicDevice::PARAM_SAMPLE_RATE);
+         data["streamTime"] = device->get<unsigned int>(hw::logic::LogicDevice::PARAM_STREAM_TIME);
 
          // device statistics
-         data["samplesRead"] = std::get<unsigned long long>(device->get(hw::logic::LogicDevice::PARAM_SAMPLES_READ));
-         data["samplesLost"] = std::get<unsigned long long>(device->get(hw::logic::LogicDevice::PARAM_SAMPLES_LOST));
+         data["samplesRead"] = device->get<unsigned long long>(hw::logic::LogicDevice::PARAM_SAMPLES_READ);
+         data["samplesLost"] = device->get<unsigned long long>(hw::logic::LogicDevice::PARAM_SAMPLES_LOST);
 
          if (!logicReceiverEnabled)
             data["status"] = "disabled";

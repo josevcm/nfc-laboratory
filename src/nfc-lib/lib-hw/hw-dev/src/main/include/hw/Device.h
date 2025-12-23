@@ -28,7 +28,7 @@
 
 namespace hw {
 
-template<typename BufferType>
+template <typename BufferType>
 class Device
 {
    public:
@@ -59,10 +59,22 @@ class Device
 
       virtual void close() = 0;
 
-      virtual rt::Variant get(int id)
+      template <typename V>
+      const V get(int id)
       {
-         return this->get(id, -1);
+         return std::get<V>(this->get(id, -1));
       }
+
+      template <typename V>
+      const V &get(int id, int channel)
+      {
+         return std::get<V>(this->get(id, channel));
+      }
+
+      // virtual rt::Variant get(int id)
+      // {
+      //    return this->get(id, -1);
+      // }
 
       virtual bool set(int id, const rt::Variant &value)
       {

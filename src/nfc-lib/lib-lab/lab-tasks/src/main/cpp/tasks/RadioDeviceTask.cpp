@@ -98,17 +98,17 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
    {
       log->info("registering devices");
 
-      hw::DeviceFactory::registerDevice("radio.airspy", []() -> std::vector<std::string> { return hw::radio::AirspyDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice *{ return new hw::radio::AirspyDevice(name); });
-      hw::DeviceFactory::registerDevice("radio.hydrasdr", []() -> std::vector<std::string> { return hw::radio::HydraDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice *{ return new hw::radio::HydraDevice(name); });
-      hw::DeviceFactory::registerDevice("radio.rtlsdr", []() -> std::vector<std::string> { return hw::radio::RealtekDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice *{ return new hw::radio::RealtekDevice(name); });
-      hw::DeviceFactory::registerDevice("radio.miri", []() -> std::vector<std::string> { return hw::radio::MiriDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice *{ return new hw::radio::MiriDevice(name); });
+      hw::DeviceFactory::registerDevice("radio.airspy", []() -> std::vector<std::string> { return hw::radio::AirspyDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::AirspyDevice(name); });
+      hw::DeviceFactory::registerDevice("radio.hydrasdr", []() -> std::vector<std::string> { return hw::radio::HydraDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::HydraDevice(name); });
+      hw::DeviceFactory::registerDevice("radio.rtlsdr", []() -> std::vector<std::string> { return hw::radio::RealtekDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::RealtekDevice(name); });
+      hw::DeviceFactory::registerDevice("radio.miri", []() -> std::vector<std::string> { return hw::radio::MiriDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::MiriDevice(name); });
    }
 
    void stop() override
    {
       if (device)
       {
-         log->info("shutdown device {}", {std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_NAME))});
+         log->info("shutdown device {}", {device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_NAME)});
          device.reset();
       }
 
@@ -224,7 +224,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       }
       else if (!device->isReady())
       {
-         log->warn("device {} disconnected", {std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_NAME))});
+         log->warn("device {} disconnected", {device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_NAME)});
 
          // send null buffer for EOF
          signalIqStream->next({});
@@ -298,7 +298,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
 
       if (device)
       {
-         log->info("start streaming for device {}", {std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_NAME))});
+         log->info("start streaming for device {}", {device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_NAME)});
 
          // reset receiver values
          receiverGainChange = 0;
@@ -329,7 +329,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
 
       if (device)
       {
-         log->info("stop streaming for device {}", {std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_NAME))});
+         log->info("stop streaming for device {}", {device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_NAME)});
 
          // stop underline receiver
          device->stop();
@@ -353,7 +353,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
 
       if (device)
       {
-         log->info("pause streaming for device {}", {std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_NAME))});
+         log->info("pause streaming for device {}", {device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_NAME)});
 
          // pause underline receiver
          device->pause();
@@ -377,7 +377,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
 
       if (device)
       {
-         log->info("resume streaming for device {}", {std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_NAME))});
+         log->info("resume streaming for device {}", {device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_NAME)});
 
          // resume underline receiver
          device->resume();
@@ -463,26 +463,26 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       if (device)
       {
          // device name and status
-         data["name"] = std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_NAME));
-         data["vendor"] = std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_VENDOR));
-         data["model"] = std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_MODEL));
-         data["version"] = std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_VERSION));
-         data["serial"] = std::get<std::string>(device->get(hw::radio::RadioDevice::PARAM_DEVICE_SERIAL));
+         data["name"] = device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_NAME);
+         data["vendor"] = device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_VENDOR);
+         data["model"] = device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_MODEL);
+         data["version"] = device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_VERSION);
+         data["serial"] = device->get<std::string>(hw::radio::RadioDevice::PARAM_DEVICE_SERIAL);
 
          // device parameters
-         data["centerFreq"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_TUNE_FREQUENCY));
-         data["sampleRate"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_SAMPLE_RATE));
-         data["streamTime"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_STREAM_TIME));
-         data["gainMode"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_GAIN_MODE));
-         data["gainValue"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_GAIN_VALUE));
-         data["mixerAgc"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_MIXER_AGC));
-         data["tunerAgc"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_TUNER_AGC));
-         data["biasTee"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_BIAS_TEE));
-         data["directSampling"] = std::get<unsigned int>(device->get(hw::radio::RadioDevice::PARAM_DIRECT_SAMPLING));
+         data["centerFreq"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_TUNE_FREQUENCY);
+         data["sampleRate"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_SAMPLE_RATE);
+         data["streamTime"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_STREAM_TIME);
+         data["gainMode"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_GAIN_MODE);
+         data["gainValue"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_GAIN_VALUE);
+         data["mixerAgc"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_MIXER_AGC);
+         data["tunerAgc"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_TUNER_AGC);
+         data["biasTee"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_BIAS_TEE);
+         data["directSampling"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_DIRECT_SAMPLING);
 
          // device statistics
-         data["samplesRead"] = std::get<long long>(device->get(hw::radio::RadioDevice::PARAM_SAMPLES_READ));
-         data["samplesLost"] = std::get<long long>(device->get(hw::radio::RadioDevice::PARAM_SAMPLES_LOST));
+         data["samplesRead"] = device->get<unsigned long long>(hw::radio::RadioDevice::PARAM_SAMPLES_READ);
+         data["samplesLost"] = device->get<unsigned long long>(hw::radio::RadioDevice::PARAM_SAMPLES_LOST);
 
          if (!radioReceiverEnabled)
             data["status"] = "disabled";
@@ -504,9 +504,9 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
             });
 
             // get device capabilities
-            rt::Catalog gainModes = std::get<rt::Catalog>(device->get(hw::radio::RadioDevice::PARAM_SUPPORTED_GAIN_MODES));
-            rt::Catalog gainValues = std::get<rt::Catalog>(device->get(hw::radio::RadioDevice::PARAM_SUPPORTED_GAIN_VALUES));
-            rt::Catalog sampleRates = std::get<rt::Catalog>(device->get(hw::radio::RadioDevice::PARAM_SUPPORTED_SAMPLE_RATES));
+            rt::Catalog gainModes = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_GAIN_MODES);
+            rt::Catalog gainValues = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_GAIN_VALUES);
+            rt::Catalog sampleRates = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_SAMPLE_RATES);
 
             for (const auto &entry: gainModes)
             {
@@ -660,14 +660,14 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
          // if automatic gain control is engaged adjust gain dynamically
          if (receiverGainAuto && buffer.offset() > receiverGainChange)
          {
-            int gainValue = std::get<int>(device->get(hw::radio::RadioDevice::PARAM_GAIN_VALUE));
+            int gainValue = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_GAIN_VALUE);
 
             // for weak signals, increase receiver gain
             if (avrg < LOWER_GAIN_THRESHOLD && gainValue < 6)
             {
                receiverGainChange = buffer.offset() + buffer.elements();
                device->set(hw::radio::RadioDevice::PARAM_GAIN_VALUE, gainValue + 1);
-               log->info("increase gain {}", {std::get<int>(device->get(hw::radio::RadioDevice::PARAM_GAIN_VALUE))});
+               log->info("increase gain {}", {device->get<unsigned int>(hw::radio::RadioDevice::PARAM_GAIN_VALUE)});
             }
 
             // for strong signals, decrease receiver gain
@@ -675,7 +675,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
             {
                receiverGainChange = buffer.offset() + buffer.elements();
                device->set(hw::radio::RadioDevice::PARAM_GAIN_VALUE, gainValue - 1);
-               log->info("decrease gain {}", {std::get<int>(device->get(hw::radio::RadioDevice::PARAM_GAIN_VALUE))});
+               log->info("decrease gain {}", {device->get<unsigned int>(hw::radio::RadioDevice::PARAM_GAIN_VALUE)});
             }
          }
       }

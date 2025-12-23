@@ -81,7 +81,7 @@ struct IsoSignalDebug
       if (clock != time)
       {
          // store sample buffer
-         buffer.put(values, std::get<unsigned int>(recorder->get(hw::SignalDevice::PARAM_CHANNEL_COUNT)));
+         buffer.put(values, recorder->get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT));
 
          // clear sample buffer
          for (auto &f: values)
@@ -95,7 +95,7 @@ struct IsoSignalDebug
 
    void set(int channel, float value)
    {
-      if (channel >= 0 && channel < std::get<unsigned int>(recorder->get(hw::SignalDevice::PARAM_CHANNEL_COUNT)))
+      if (channel >= 0 && channel < recorder->get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT))
       {
          values[channel] = value;
       }

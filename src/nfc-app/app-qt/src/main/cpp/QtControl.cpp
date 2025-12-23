@@ -748,7 +748,7 @@ struct QtControl::Impl
             return;
          }
 
-         const unsigned int channelCount = std::get<unsigned int>(file.get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
+         const unsigned int channelCount = file.get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT);
 
          // clear storage queue
          taskStorageClear([=] {
