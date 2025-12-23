@@ -25,6 +25,7 @@
 
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QJsonObject>
 
 #include <rt/Event.h>
 #include <rt/Subject.h>
