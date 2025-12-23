@@ -22,6 +22,8 @@
 #ifndef RT_WORKER_H
 #define RT_WORKER_H
 
+#include <string>
+
 #include <rt/Task.h>
 
 namespace rt {
