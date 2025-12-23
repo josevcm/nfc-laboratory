@@ -40,6 +40,7 @@
 #include <rt/Logger.h>
 #include <rt/Format.h>
 #include <rt/BlockingQueue.h>
+#include <rt/Tokenizer.h>
 
 namespace rt {
 
@@ -83,7 +84,7 @@ struct Log
    std::thread::id thread;
    std::chrono::time_point<std::chrono::system_clock> time;
 
-   Log(int level, std::string logger, std::string format, std::vector<Variant> params) :
+   Log(const int level, std::string logger, std::string format, std::vector<Variant> params) :
       level(level),
       tag(tags[level]),
       logger(std::move(logger)),
@@ -296,26 +297,38 @@ void Logger::setLevel(const std::string &level)
    this->level = getLevelIndex(level);
 }
 
-Logger *Logger::getLogger(const std::string &name, int level)
+Logger *Logger::getLogger(const std::string &name, const int level)
 {
    std::lock_guard lock(getMutex());
 
    // insert logger if not found in instances
-   if (loggers().find(name) == loggers().end())
+   loggers().emplace(name, std::shared_ptr<Logger>(new Logger(name, level)));
+
+   // check if logger has a specific level and update
+   const std::vector<std::string> tokens = Tokenizer::tokenize(name, '.');
+
+   // check if any of already created logger matches and set its level
+   for (const auto &[target, l]: getLevels())
    {
-      auto logger = std::shared_ptr<Logger>(new Logger(name, level));
+      int i = 0;
 
-      // check if logger has a specific level
-      for (const auto &[target, l]: getLevels())
+      // split logger name by '.'
+      const std::vector<std::string> filter = Tokenizer::tokenize(target, '.');
+
+      // check each token
+      for (; i < std::min(tokens.size(), filter.size()); i++)
       {
-         // if (std::regex regex(target); std::regex_match(name, regex))
-         //    logger->level = l;
+         // use "*" as any match
+         if (filter[i] == "*")
+            continue;
 
-         if (name == target)
-            logger->level = l;
+         if (tokens[i] != filter[i])
+            break;
       }
 
-      loggers().insert(std::make_pair(name, logger));
+      // update logger level
+      if (i == std::min(tokens.size(), filter.size()))
+         loggers()[name]->level = level;
    }
 
    // return logger instance
@@ -344,32 +357,35 @@ void Logger::setRootLevel(const std::string &level)
    setRootLevel(getLevelIndex(level));
 }
 
-void Logger::setLoggerLevel(const std::string &target, int level)
+void Logger::setLoggerLevel(const std::string &target, const int level)
 {
    std::lock_guard lock(getMutex());
 
-   // create regex from target
-   // const std::regex match(target);
-   //
-   // // check if any of already created logger matches and set its level
-   // for (const auto &[name, logger]: loggers())
-   // {
-   //    if (std::regex_match(name, match))
-   //       logger->level = level;
-   // }
+   // add or update level for future loggers
+   getLevels()[target] = level;
+
+   // split target name by '.'
+   const std::vector<std::string> filter = Tokenizer::tokenize(target, '.');
 
    // check if any of already created logger matches and set its level
    for (const auto &[name, logger]: loggers())
    {
-      if (name == target)
-      // if (std::regex_match(name, match))
-      {
-         logger->level = level;
-      }
-   }
+      // split logger name by '.'
+      const std::vector<std::string> tokens = Tokenizer::tokenize(name, '.');
 
-   // add or update level for future loggers
-   getLevels()[target] = level;
+      // check each token
+      for (int i = 0; i < std::min(tokens.size(), filter.size()); i++)
+      {
+         // use "*" as any match
+         if (filter[i] == "*")
+            continue;
+
+         if (tokens[i] != filter[i])
+            return;
+      }
+
+      logger->level = level;
+   }
 }
 
 void Logger::setLoggerLevel(const std::string &target, const std::string &level)
@@ -391,10 +407,7 @@ void Logger::flush()
 void Logger::shutdown()
 {
    if (appender)
-   {
-      // appender->push(new Log(NONE_LEVEL, "rt::Logger", "shutting down logger system!", {}));
       appender->stop();
-   }
 }
 
 }
