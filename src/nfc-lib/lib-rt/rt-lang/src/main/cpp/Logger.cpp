@@ -328,7 +328,7 @@ Logger *Logger::getLogger(const std::string &name, const int level)
 
       // update logger level
       if (i == std::min(tokens.size(), filter.size()))
-         loggers()[name]->level = level;
+         loggers()[name]->level = l;
    }
 
    // return logger instance
