@@ -25,24 +25,11 @@ signals in real-time up to 424 Kbps. Logic analyzer for contact smart cards with
 
 ### Windows
 
-You can install NFC Laboratory using Windows Package Manager:
-
-```
-winget install josevcm.nfc-lab
-```
+You can install NFC Laboratory using precompiled Windows installer from [releases](https://github.com/josevcm/nfc-laboratory/releases/latest/).
 
 Or download the portable installer from [releases](https://github.com/josevcm/nfc-laboratory/releases/latest/).
 
 ### Linux
-
-#### Flatpak (recommended)
-
-Once published on Flathub:
-
-```bash
-flatpak install flathub io.github.josevcm.nfc-laboratory
-flatpak run io.github.josevcm.nfc-laboratory
-```
 
 #### Debian/Ubuntu
 
@@ -51,8 +38,6 @@ Download the `.deb` package from [releases](https://github.com/josevcm/nfc-labor
 ```bash
 sudo dpkg -i nfc-lab_*_amd64.deb
 ```
-
-For detailed Flatpak build instructions, see [FLATPAK.md](FLATPAK.md).
 
 ## Description
 
