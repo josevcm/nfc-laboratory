@@ -28,7 +28,7 @@
 
 #include <hw/logic/DSLogicDevice.h>
 
-#include <LogicInternal.h>
+#include "LogicInternal.h"
 
 #define USB_INTERFACE        0
 #define USB_CONFIGURATION    1

@@ -41,12 +41,12 @@ namespace hw::logic {
 
 struct sipeed_caps
 {
-   int total_ch_num;
-   long channels;
+   const unsigned int total_ch_num;
+   const unsigned int channels;
    const unsigned long long *samplerates;
-   int default_channelid;
-   long default_samplerate;
-   long default_samplelimit;
+   const unsigned int default_channelid;
+   const unsigned long long default_samplerate;
+   const unsigned long long default_samplelimit;
 };
 
 struct sipeed_profile
@@ -80,7 +80,7 @@ struct cmd_start_acquisition
 };
 #pragma pack(pop)
 
-static const uint64_t samplerates[] = {
+static const unsigned long long samplerates[] = {
    /* 160M = 2*2*2*2*2*5M */
    DEV_MHZ(1),
    DEV_MHZ(2),

@@ -689,9 +689,7 @@ SipeedLogicDevice::SipeedLogicDevice(const std::string &name) : impl(new Impl(na
 {
 }
 
-SipeedLogicDevice::~SipeedLogicDevice()
-{
-}
+SipeedLogicDevice::~SipeedLogicDevice() = default;
 
 bool SipeedLogicDevice::open(Mode mode)
 {
