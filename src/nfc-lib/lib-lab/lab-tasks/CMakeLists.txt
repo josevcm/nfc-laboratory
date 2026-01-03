@@ -9,8 +9,8 @@ add_library(lab-tasks STATIC
         ${PRIVATE_SOURCE_DIR}/tasks/LogicDeviceTask.cpp
         ${PRIVATE_SOURCE_DIR}/tasks/RadioDecoderTask.cpp
         ${PRIVATE_SOURCE_DIR}/tasks/RadioDeviceTask.cpp
+        ${PRIVATE_SOURCE_DIR}/tasks/SignalStreamTask.cpp
         ${PRIVATE_SOURCE_DIR}/tasks/SignalStorageTask.cpp
-        ${PRIVATE_SOURCE_DIR}/tasks/SignalResamplingTask.cpp
         ${PRIVATE_SOURCE_DIR}/tasks/TraceStorageTask.cpp
         )
 

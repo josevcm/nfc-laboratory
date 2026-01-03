@@ -19,8 +19,8 @@
 
 */
 
-#ifndef TASKS_LOGICDECODERTASK_H
-#define TASKS_LOGICDECODERTASK_H
+#ifndef TASKS_LOGIC_DECODER_TASK_H
+#define TASKS_LOGIC_DECODER_TASK_H
 
 #include <rt/Worker.h>
 

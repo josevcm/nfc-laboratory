@@ -19,8 +19,8 @@
 
 */
 
-#ifndef TASKS_LOGICDEVICETASK_H
-#define TASKS_LOGICDEVICETASK_H
+#ifndef TASKS_LOGIC_DEVICE_TASK_H
+#define TASKS_LOGIC_DEVICE_TASK_H
 
 #include <rt/Worker.h>
 

@@ -19,8 +19,8 @@
 
 */
 
-#ifndef TASKS_TRACESTORAGETASK_H
-#define TASKS_TRACESTORAGETASK_H
+#ifndef TASKS_TRACE_STORAGE_TASK_H
+#define TASKS_TRACE_STORAGE_TASK_H
 
 #include <rt/Worker.h>
 

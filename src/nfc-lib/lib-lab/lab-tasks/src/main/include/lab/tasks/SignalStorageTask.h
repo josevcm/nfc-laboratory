@@ -19,8 +19,8 @@
 
 */
 
-#ifndef TASKS_SIGNALSTORAGETASK_H
-#define TASKS_SIGNALSTORAGETASK_H
+#ifndef TASKS_SIGNAL_STORAGE_TASK_H
+#define TASKS_SIGNAL_STORAGE_TASK_H
 
 #include <rt/Worker.h>
 

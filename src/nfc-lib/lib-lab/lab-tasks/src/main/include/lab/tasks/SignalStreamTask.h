@@ -19,20 +19,20 @@
 
 */
 
-#ifndef TASKS_SIGNALRESAMPLINGTASK_H
-#define TASKS_SIGNALRESAMPLINGTASK_H
+#ifndef TASKS_SIGNAL_STREAM_TASK_H
+#define TASKS_SIGNAL_STREAM_TASK_H
 
 #include <rt/Worker.h>
 
 namespace lab {
 
-class SignalResamplingTask : public rt::Worker
+class SignalStreamTask : public rt::Worker
 {
    private:
 
       struct Impl;
 
-      SignalResamplingTask();
+      SignalStreamTask();
 
    public:
 

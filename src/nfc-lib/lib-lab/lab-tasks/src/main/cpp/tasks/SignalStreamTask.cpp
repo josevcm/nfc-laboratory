@@ -27,7 +27,7 @@
 #include <hw/SignalType.h>
 #include <hw/SignalBuffer.h>
 
-#include <lab/tasks/SignalResamplingTask.h>
+#include <lab/tasks/SignalStreamTask.h>
 
 #include "AbstractTask.h"
 
@@ -38,7 +38,7 @@
 
 namespace lab {
 
-struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
+struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 {
    // signal buffer frame stream subject
    rt::Subject<hw::SignalBuffer> *logicSignalStream = nullptr;
@@ -274,11 +274,11 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
    }
 };
 
-SignalResamplingTask::SignalResamplingTask() : Worker("SignalResampling")
+SignalStreamTask::SignalStreamTask() : Worker("SignalResampling")
 {
 }
 
-rt::Worker *SignalResamplingTask::construct()
+rt::Worker *SignalStreamTask::construct()
 {
    return new Impl;
 }

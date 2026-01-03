@@ -19,8 +19,8 @@
 
 */
 
-#ifndef TASKS_RADIODEVICETASK_H
-#define TASKS_RADIODEVICETASK_H
+#ifndef TASKS_RADIO_DEVICE_TASK_H
+#define TASKS_RADIO_DEVICE_TASK_H
 
 #include <rt/Worker.h>
 

@@ -19,8 +19,8 @@
 
 */
 
-#ifndef TASKS_RADIODECODERTASK_H
-#define TASKS_RADIODECODERTASK_H
+#ifndef TASKS_RADIO_DECODER_TASK_H
+#define TASKS_RADIO_DECODER_TASK_H
 
 #include <rt/Worker.h>
 
