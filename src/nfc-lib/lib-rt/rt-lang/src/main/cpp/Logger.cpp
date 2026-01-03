@@ -171,7 +171,7 @@ struct Appender
       std::stringstream ss;
 
       const time_t seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
-      const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
+      const time_t millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
 #ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
