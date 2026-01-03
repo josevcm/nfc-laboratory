@@ -170,7 +170,7 @@ struct Appender
       char date[32], buffer[65535];
       std::stringstream ss;
 
-      const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
+      const time_t seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
       const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
 #ifdef _WIN32
