@@ -85,7 +85,7 @@ struct NfcSignalDebug
       if (clock != time)
       {
          // store sample buffer
-         buffer.put(values, std::get<unsigned int>(recorder->get(hw::SignalDevice::PARAM_CHANNEL_COUNT)));
+         buffer.put(values, recorder->get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT));
 
          // clear sample buffer
          for (auto &f: values)
@@ -99,7 +99,7 @@ struct NfcSignalDebug
 
    void set(int channel, float value)
    {
-      if (channel >= 0 && channel < std::get<unsigned int>(recorder->get(hw::SignalDevice::PARAM_CHANNEL_COUNT)))
+      if (channel >= 0 && channel < recorder->get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT))
       {
          values[channel] = value;
       }
@@ -107,8 +107,8 @@ struct NfcSignalDebug
 
    void begin(unsigned int sampleCount)
    {
-      unsigned int channelCount = std::get<unsigned int>(recorder->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
-      unsigned int sampleRate = std::get<unsigned int>(recorder->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
+      unsigned int channelCount = recorder->get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT);
+      unsigned int sampleRate = recorder->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_RATE);
 
       buffer = hw::SignalBuffer(sampleCount * channelCount, channelCount, 1, sampleRate, 0, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES);
    }

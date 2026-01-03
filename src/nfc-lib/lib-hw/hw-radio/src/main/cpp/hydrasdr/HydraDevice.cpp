@@ -75,8 +75,8 @@ struct HydraDevice::Impl
    StreamHandler streamCallback;
    bool streamPaused = false;
 
-   long long samplesReceived = 0;
-   long long samplesDropped = 0;
+   unsigned long long samplesReceived = 0;
+   unsigned long long samplesDropped = 0;
 
    explicit Impl(std::string name) : deviceName(std::move(name))
    {

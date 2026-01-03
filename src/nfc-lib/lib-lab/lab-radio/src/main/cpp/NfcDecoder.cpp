@@ -348,7 +348,7 @@ void NfcDecoder::Impl::initialize()
 
          decoder.debug = std::make_shared<NfcSignalDebug>(DEBUG_CHANNELS, decoder.sampleRate);
 
-         log->warn("write signal debug data to file: {}", {std::get<std::string>(decoder.debug->recorder->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+         log->warn("write signal debug data to file: {}", {decoder.debug->recorder->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
       }
    }
 
@@ -439,13 +439,14 @@ std::list<RawFrame> NfcDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
             }
          }
 
-      } while (!samples.isEmpty());
+      }
+      while (!samples.isEmpty());
 
       if (decoder.debug)
          decoder.debug->write();
    }
 
-      // if sample buffer is not valid only process remain carrier detector
+   // if sample buffer is not valid only process remain carrier detector
    else
    {
       RawFrame carrierFrame = RawFrame(NfcAnyTech, decoder.carrierOnTime ? NfcCarrierOn : NfcCarrierOff);
@@ -496,7 +497,7 @@ void NfcDecoder::Impl::detectCarrier(std::list<RawFrame> &frames)
       }
    }
 
-      // carrier not present if signal average is below power Level Threshold
+   // carrier not present if signal average is below power Level Threshold
    else if (decoder.signalAverage < decoder.signalLowThreshold)
    {
       if (!decoder.carrierOffTime)

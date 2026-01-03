@@ -144,7 +144,7 @@ void IsoDecoder::Impl::initialize()
 
          decoder.debug = std::make_shared<IsoSignalDebug>(DEBUG_CHANNELS, decoder.sampleRate);
 
-         log->warn("write signal debug data to file: {}", {std::get<std::string>(decoder.debug->recorder->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+         log->warn("write signal debug data to file: {}", {decoder.debug->recorder->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
       }
    }
 
@@ -188,7 +188,7 @@ std::list<RawFrame> IsoDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
          while (decoder.nextSample(samples))
          {
             if ((enabledTech & ENABLED_ISO7816) && iso7816.detect(frames))
-            break;
+               break;
          }
       }
 

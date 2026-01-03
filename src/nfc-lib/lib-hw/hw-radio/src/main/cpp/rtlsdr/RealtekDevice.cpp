@@ -79,7 +79,7 @@ struct RealtekDevice::Impl
 
    int rtlsdrResult = 0;
    rtlsdr_dev *rtlsdrHandle = nullptr;
-   rtlsdr_tuner rtlsdrTuner;
+   rtlsdr_tuner rtlsdrTuner = RTLSDR_TUNER_UNKNOWN;
 
    std::mutex workerMutex;
    std::atomic_bool workerPaused {false};
@@ -90,8 +90,8 @@ struct RealtekDevice::Impl
    std::queue<SignalBuffer> streamQueue;
    StreamHandler streamCallback;
 
-   long long samplesReceived = 0;
-   long long samplesDropped = 0;
+   unsigned long long samplesReceived = 0;
+   unsigned long long samplesDropped = 0;
 
    explicit Impl(std::string name) : deviceName(std::move(name))
    {

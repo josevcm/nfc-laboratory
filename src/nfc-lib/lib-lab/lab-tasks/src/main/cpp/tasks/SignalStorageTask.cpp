@@ -176,12 +176,12 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
             break;
          }
 
-         if (std::get<unsigned int>(storage->get(hw::SignalDevice::PARAM_SAMPLE_SIZE)) == hw::SAMPLE_SIZE_8)
+         if (storage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_SIZE) == hw::SAMPLE_SIZE_8)
          {
             logicStorage = storage;
             logicBufferKeys = keys;
          }
-         else if (std::get<unsigned int>(storage->get(hw::SignalDevice::PARAM_SAMPLE_SIZE)) == hw::SAMPLE_SIZE_16)
+         else if (storage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_SIZE) == hw::SAMPLE_SIZE_16)
          {
             radioStorage = storage;
             radioBufferKeys = keys;
@@ -248,14 +248,14 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
    {
       if (logicStorage)
       {
-         log->info("close storage file: {}", {std::get<std::string>(logicStorage->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+         log->info("close storage file: {}", {logicStorage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
          logicStorage->close();
          logicStorage.reset();
       }
 
       if (radioStorage)
       {
-         log->info("close storage file: {}", {std::get<std::string>(radioStorage->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+         log->info("close storage file: {}", {radioStorage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
          radioStorage->close();
          radioStorage.reset();
       }
@@ -307,24 +307,24 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
       if (storage->open(mode))
       {
-         log->info("successfully opened storage file: {}", {std::get<std::string>(storage->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+         log->info("successfully opened storage file: {}", {storage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
 
          // read storage keys for channel interleaving
-         keys = std::get<std::vector<int>>(storage->get(hw::SignalDevice::PARAM_CHANNEL_KEYS));
+         keys = storage->get<std::vector<int>>(hw::SignalDevice::PARAM_CHANNEL_KEYS);
 
          return storage;
       }
 
-      log->warn("unable to open storage file [{}]", {std::get<std::string>(storage->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+      log->warn("unable to open storage file [{}]", {storage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
 
       return nullptr;
    }
 
    void readLogic()
    {
-      const unsigned int sampleRate = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
-      const unsigned int channelCount = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
-      const unsigned int sampleOffset = std::get<unsigned int>(logicStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
+      const unsigned int sampleRate = logicStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_RATE);
+      const unsigned int channelCount = logicStorage->get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT);
+      const unsigned int sampleOffset = logicStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_OFFSET);
 
       hw::SignalBuffer buffer(65536 * channelCount, channelCount, 1, sampleRate, sampleOffset, 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES);
 
@@ -337,7 +337,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
       if (logicStorage->isEof() || !logicStorage->isOpen())
       {
-         log->info("streaming finished for file [{}]", {std::get<std::string>(logicStorage->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+         log->info("streaming finished for file [{}]", {logicStorage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
 
          // send null buffer for EOF
          logicSignalRawStream->next({});
@@ -349,9 +349,9 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
    void readRadio()
    {
-      const unsigned int sampleRate = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
-      const unsigned int channelCount = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
-      const unsigned int sampleOffset = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
+      const unsigned int sampleRate = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_RATE);
+      const unsigned int channelCount = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT);
+      const unsigned int sampleOffset = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_OFFSET);
 
       switch (channelCount)
       {
@@ -447,7 +447,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
       if (radioStorage->isEof() || !radioStorage->isOpen())
       {
-         log->info("streaming finished for file [{}]", {std::get<std::string>(radioStorage->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+         log->info("streaming finished for file [{}]", {radioStorage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
 
          // send null buffer for EOF
          radioSignalIqStream->next({});
@@ -465,7 +465,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       {
          if (logicStorage)
          {
-            log->warn("closing storage file: {}", {std::get<std::string>(logicStorage->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+            log->warn("closing storage file: {}", {logicStorage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
 
             // close storage
             logicStorage->close();
@@ -497,7 +497,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       {
          if (radioStorage)
          {
-            log->warn("closing storage file: {}", {std::get<std::string>(logicStorage->get(hw::SignalDevice::PARAM_DEVICE_NAME))});
+            log->warn("closing storage file: {}", {logicStorage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME)});
 
             // close storage
             radioStorage->close();
@@ -558,14 +558,14 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
       if (radioStorage)
       {
-         data["file"] = std::get<std::string>(radioStorage->get(hw::SignalDevice::PARAM_DEVICE_NAME));
-         data["channelCount"] = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_CHANNEL_COUNT));
-         data["sampleCount"] = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLES_READ));
-         data["sampleOffset"] = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_OFFSET));
-         data["sampleRate"] = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_RATE));
-         data["sampleSize"] = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_SIZE));
-         data["sampleType"] = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_SAMPLE_TYPE));
-         data["streamTime"] = std::get<unsigned int>(radioStorage->get(hw::SignalDevice::PARAM_STREAM_TIME));
+         data["file"] = radioStorage->get<std::string>(hw::SignalDevice::PARAM_DEVICE_NAME);
+         data["channelCount"] = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT);
+         data["sampleCount"] = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLES_READ);
+         data["sampleOffset"] = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_OFFSET);
+         data["sampleRate"] = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_RATE);
+         data["sampleSize"] = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_SIZE);
+         data["sampleType"] = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_TYPE);
+         data["streamTime"] = radioStorage->get<unsigned int>(hw::SignalDevice::PARAM_STREAM_TIME);
       }
 
       if (!message.empty())

@@ -66,15 +66,10 @@ class Device
       }
 
       template <typename V>
-      const V &get(int id, int channel)
+      const V get(int id, int channel)
       {
          return std::get<V>(this->get(id, channel));
       }
-
-      // virtual rt::Variant get(int id)
-      // {
-      //    return this->get(id, -1);
-      // }
 
       virtual bool set(int id, const rt::Variant &value)
       {

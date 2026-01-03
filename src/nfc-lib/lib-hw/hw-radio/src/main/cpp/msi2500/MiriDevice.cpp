@@ -75,8 +75,8 @@ struct MiriDevice::Impl
 
    std::thread asyncThread;
 
-   long long samplesReceived = 0;
-   long long samplesDropped = 0;
+   unsigned long long samplesReceived = 0;
+   unsigned long long samplesDropped = 0;
 
    explicit Impl(std::string name) : deviceName(std::move(name))
    {
