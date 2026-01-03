@@ -25,6 +25,7 @@
 
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QJsonObject>
 
 #include <rt/Event.h>
 #include <rt/Subject.h>
@@ -190,11 +191,18 @@ struct QtControl::Impl
          })
       },
       {
-         "logic.dslogic", QJsonObject({
+         "logic.dreamsourcelab", QJsonObject({
             {"enabled", true},
-            {"sampleRate", 10000000},
+            {"sampleRate", 25000000},
             {"vThreshold", 1.0},
             {"channels", QJsonArray {0, 2, 3}}
+         })
+      },
+      {
+         "logic.sipeed", QJsonObject({
+            {"enabled", true},
+            {"sampleRate", 20000000},
+            {"channels", QJsonArray {0, 1, 2, 3}}
          })
       }
    };
@@ -1278,7 +1286,7 @@ struct QtControl::Impl
     */
    void storageInitialize() const
    {
-      QJsonObject config {{"tempPath", QtApplication::tempPath().absolutePath()}};
+      QJsonObject config {{"tempPath", QtApplication::tmpPath().absolutePath()}};
 
       taskStorageConfig(config);
    }

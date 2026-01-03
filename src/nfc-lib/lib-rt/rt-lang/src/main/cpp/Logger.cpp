@@ -40,6 +40,7 @@
 #include <rt/Logger.h>
 #include <rt/Format.h>
 #include <rt/BlockingQueue.h>
+#include <rt/Tokenizer.h>
 
 namespace rt {
 
@@ -83,7 +84,7 @@ struct Log
    std::thread::id thread;
    std::chrono::time_point<std::chrono::system_clock> time;
 
-   Log(int level, std::string logger, std::string format, std::vector<Variant> params) :
+   Log(const int level, std::string logger, std::string format, std::vector<Variant> params) :
       level(level),
       tag(tags[level]),
       logger(std::move(logger)),
@@ -113,10 +114,13 @@ struct Appender
    // shutdown flag
    std::atomic<bool> buffered;
 
+   // flush flag
+   std::atomic<bool> flush;
+
    // writer thread
    std::thread thread;
 
-   Appender(std::ostream &stream, int level, bool buffered) : level(level), stream(stream), shutdown(false), buffered(buffered), thread([this] { this->exec(); })
+   Appender(std::ostream &stream, int level, bool buffered) : level(level), stream(stream), shutdown(false), buffered(buffered), flush(false), thread([this] { this->exec(); })
    {
       constexpr sched_param param {};
 
@@ -128,11 +132,7 @@ struct Appender
 
    ~Appender()
    {
-      // signal shutdown
-      shutdown = true;
-
-      // wait for thread to finish
-      thread.join();
+      stop();
    }
 
    void push(Log *event)
@@ -145,7 +145,7 @@ struct Appender
 
    void exec()
    {
-      while (!shutdown)
+      do
       {
          while (auto event = queue.get(100))
          {
@@ -154,7 +154,14 @@ struct Appender
                write(event.value());
             }
          }
+
+         if (flush || shutdown)
+         {
+            stream.flush();
+            flush = false;
+         }
       }
+      while (!shutdown);
    }
 
    void write(const Log *event) const
@@ -164,7 +171,7 @@ struct Appender
       std::stringstream ss;
 
       const time_t seconds = std::chrono::duration_cast<std::chrono::seconds>(event->time.time_since_epoch()).count();
-      const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
+      const time_t millis = std::chrono::duration_cast<std::chrono::milliseconds>(event->time.time_since_epoch()).count() % 1000;
 
 #ifdef _WIN32
       localtime_s(&timeinfo, &seconds);
@@ -181,6 +188,19 @@ struct Appender
       stream.write(buffer, size);
 
       delete event;
+   }
+
+   void stop()
+   {
+      // if thread is active
+      if (thread.joinable())
+      {
+         // signal shutdown
+         shutdown = true;
+
+         // wait for thread to finish
+         thread.join();
+      }
    }
 };
 
@@ -277,29 +297,38 @@ void Logger::setLevel(const std::string &level)
    this->level = getLevelIndex(level);
 }
 
-Logger *Logger::getLogger(const std::string &name, int level)
+Logger *Logger::getLogger(const std::string &name, const int level)
 {
    std::lock_guard lock(getMutex());
 
    // insert logger if not found in instances
-   if (loggers().find(name) == loggers().end())
+   loggers().emplace(name, std::shared_ptr<Logger>(new Logger(name, level)));
+
+   // check if logger has a specific level and update
+   const std::vector<std::string> tokens = Tokenizer::tokenize(name, '.');
+
+   // check if any of already created logger matches and set its level
+   for (const auto &[target, l]: getLevels())
    {
-      auto logger = std::shared_ptr<Logger>(new Logger(name, level));
+      int i = 0;
 
-      // check if logger has a specific level
-      if (!getLevels().empty())
+      // split logger name by '.'
+      const std::vector<std::string> filter = Tokenizer::tokenize(target, '.');
+
+      // check each token
+      for (; i < std::min(tokens.size(), filter.size()); i++)
       {
-         for (const auto &[target, l]: getLevels())
-         {
-            // if (std::regex regex(target); std::regex_match(name, regex))
-            //    logger->level = l;
+         // use "*" as any match
+         if (filter[i] == "*")
+            continue;
 
-            if (name == target)
-               logger->level = l;
-         }
+         if (tokens[i] != filter[i])
+            break;
       }
 
-      loggers().insert(std::make_pair(name, logger));
+      // update logger level
+      if (i == std::min(tokens.size(), filter.size()))
+         loggers()[name]->level = l;
    }
 
    // return logger instance
@@ -328,28 +357,35 @@ void Logger::setRootLevel(const std::string &level)
    setRootLevel(getLevelIndex(level));
 }
 
-void Logger::setLoggerLevel(const std::string &target, int level)
+void Logger::setLoggerLevel(const std::string &target, const int level)
 {
    std::lock_guard lock(getMutex());
 
-   // create regex from target
-   // const std::regex match(target);
-   //
-   // // check if any of already created logger matches and set its level
-   // for (const auto &[name, logger]: loggers())
-   // {
-   //    if (std::regex_match(name, match))
-   //       logger->level = level;
-   // }
-
-   for (const auto &[name, logger]: loggers())
-   {
-      if (name == target)
-         logger->level = level;
-   }
-
    // add or update level for future loggers
    getLevels()[target] = level;
+
+   // split target name by '.'
+   const std::vector<std::string> filter = Tokenizer::tokenize(target, '.');
+
+   // check if any of already created logger matches and set its level
+   for (const auto &[name, logger]: loggers())
+   {
+      // split logger name by '.'
+      const std::vector<std::string> tokens = Tokenizer::tokenize(name, '.');
+
+      // check each token
+      for (int i = 0; i < std::min(tokens.size(), filter.size()); i++)
+      {
+         // use "*" as any match
+         if (filter[i] == "*")
+            continue;
+
+         if (tokens[i] != filter[i])
+            return;
+      }
+
+      logger->level = level;
+   }
 }
 
 void Logger::setLoggerLevel(const std::string &target, const std::string &level)
@@ -365,7 +401,13 @@ void Logger::init(std::ostream &stream, int level, bool buffered)
 void Logger::flush()
 {
    if (appender)
-      appender->stream.flush();
+      appender->flush = true;
+}
+
+void Logger::shutdown()
+{
+   if (appender)
+      appender->stop();
 }
 
 }

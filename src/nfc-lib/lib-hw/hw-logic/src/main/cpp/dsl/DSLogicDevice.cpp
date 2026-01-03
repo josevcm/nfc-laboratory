@@ -36,11 +36,11 @@
 
 #include "DSLogicInternal.h"
 
-#define DEVICE_TYPE_PREFIX "logic.dslogic"
+#define DEVICE_TYPE_PREFIX "logic.dreamsourcelab"
 #define CHANNEL_BUFFER_SIZE (1 << 16) // must be multiple of 64
 #define CHANNEL_BUFFER_SAMPLES 16384 // number of samples per buffer
 
-namespace hw {
+namespace hw::logic {
 
 struct DSLogicDevice::Impl
 {
@@ -152,27 +152,28 @@ struct DSLogicDevice::Impl
    const usb_wr_cmd wr_cmd_acquisition_start {.header {.dest = DSL_CTL_START, .size = 0}};
    const usb_wr_cmd wr_cmd_acquisition_stop {.header {.dest = DSL_CTL_STOP, .size = 0}};
 
+   // sample conversion map
    const static float dsl_samples[256][8];
 
    explicit Impl(const std::string &name) : deviceName(name),
-      operationMode(0),
-      channelMode(0),
-      testMode(0),
-      totalChannels(0),
-      validChannels(0),
-      clockType(false),
-      clockEdge(false),
-      rleCompress(false),
-      rleSupport(false),
-      stream(false),
-      filter(0),
-      sampleratesMinIndex(0),
-      sampleratesMaxIndex(0),
-      triggerChannel(0),
-      triggerHRate(0),
-      triggerHPos(0),
-      triggerHoldoff(0),
-      triggerMargin(0)
+                                            operationMode(0),
+                                            channelMode(0),
+                                            testMode(0),
+                                            totalChannels(0),
+                                            validChannels(0),
+                                            clockType(false),
+                                            clockEdge(false),
+                                            rleCompress(false),
+                                            rleSupport(false),
+                                            stream(false),
+                                            filter(0),
+                                            sampleratesMinIndex(0),
+                                            sampleratesMaxIndex(0),
+                                            triggerChannel(0),
+                                            triggerHRate(0),
+                                            triggerHPos(0),
+                                            triggerHoldoff(0),
+                                            triggerMargin(0)
    {
       log->debug("created DSLogicDevice [{}]", {deviceName});
    }
@@ -266,12 +267,12 @@ struct DSLogicDevice::Impl
          }
 
          /* check profile. */
-         for (int j = 0; dsl_profiles[j].vid; j++)
+         for (auto &p: dsl_profiles)
          {
             // find device and initialize for selected profile
-            if (usb.descriptor().vid == dsl_profiles[j].vid && usb.descriptor().pid == dsl_profiles[j].pid && usb.speed() == dsl_profiles[j].usb_speed)
+            if (usb.descriptor().vid == p.vid && usb.descriptor().pid == p.pid && usb.speed() == p.usb_speed)
             {
-               profile = dsl_profiles + j;
+               profile = &p;
 
                // initialize device defaults
                initDevice();
@@ -470,7 +471,7 @@ struct DSLogicDevice::Impl
       }
 
       // setup usb transfers
-      usbTransfer(handler);
+      beginTransfers(handler);
 
       // start acquisition
       if (!usbWrite(wr_cmd_acquisition_start))
@@ -564,7 +565,7 @@ struct DSLogicDevice::Impl
       }
 
       // setup usb transfers
-      usbTransfer(streamHandler);
+      beginTransfers(streamHandler);
 
       // start acquisition
       if (!usbWrite(wr_cmd_acquisition_start))
@@ -992,7 +993,7 @@ struct DSLogicDevice::Impl
                   // internal test parameters
                   if (operationMode == OP_INTEST)
                   {
-                     samplerate = stream ? channel_modes[channelMode].max_samplerate / 10 : DSL_MHZ(100);
+                     samplerate = stream ? channel_modes[channelMode].max_samplerate / 10 : DEV_MHZ(100);
                      limitSamples = stream ? static_cast<unsigned long long>(samplerate) * 3 : profile->dev_caps.hw_depth / validChannels;
                   }
                }
@@ -1274,6 +1275,54 @@ struct DSLogicDevice::Impl
 
       totalChannels = channel_modes[channelMode].vld_num;
       validChannels = channel_modes[channelMode].vld_num;
+
+      return true;
+   }
+
+   bool beginTransfers(const StreamHandler &handler)
+   {
+      // create header buffer
+      auto *transfer = new Usb::Transfer();
+      transfer->data = new unsigned char[headerSize()];
+      transfer->available = headerSize();
+      transfer->timeout = 30000;
+      transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessHeader(t); };
+
+      // add transfer to device list
+      transfers.push_back(transfer);
+
+      // submit transfer of header buffer
+      usb.asyncTransfer(Usb::In, 6, transfer);
+
+      log->debug("usb transfer header size {}", {headerSize()});
+      log->debug("usb transfer buffer size {}", {bufferSize()});
+
+      // submit transfer of data buffers
+      for (int i = 0; i < totalTransfers(); i++)
+      {
+         transfer = new Usb::Transfer();
+         transfer->data = new unsigned char[bufferSize()];
+         transfer->available = bufferSize();
+         transfer->timeout = 5000;
+         transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer * { return usbProcessData(t, handler); };
+
+         // clean buffer
+         memset(transfer->data, 0, transfer->available);
+
+         // add transfer to device list
+         transfers.push_back(transfer);
+
+         // submit transfer of data buffer
+         if (!usb.asyncTransfer(Usb::In, 6, transfer))
+         {
+            log->error("failed to setup async transfer: {}", {usb.lastError()});
+
+            for (Usb::Transfer *t: transfers)
+               usb.cancelTransfer(t);
+
+            break;
+         }
+      }
 
       return true;
    }
@@ -1827,46 +1876,6 @@ struct DSLogicDevice::Impl
       return true;
    }
 
-   bool usbTransfer(const StreamHandler &handler)
-   {
-      // create header buffer
-      auto *transfer = new Usb::Transfer();
-      transfer->data = new unsigned char[headerSize()];
-      transfer->available = headerSize();
-      transfer->timeout = 30000;
-      transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer *{ return usbProcessHeader(t); };
-
-      // add transfer to device list
-      transfers.push_back(transfer);
-
-      // submit transfer of header buffer
-      usb.asyncTransfer(Usb::In, 6, transfer);
-
-      log->debug("usb transfer header size {}", {headerSize()});
-      log->debug("usb transfer buffer size {}", {bufferSize()});
-
-      // submit transfer of data buffers
-      for (int i = 0; i < totalTransfers(); i++)
-      {
-         transfer = new Usb::Transfer();
-         transfer->data = new unsigned char[bufferSize()];
-         transfer->available = bufferSize();
-         transfer->timeout = 5000;
-         transfer->callback = [=](Usb::Transfer *t) -> Usb::Transfer *{ return usbProcessData(t, handler); };
-
-         // clean buffer
-         memset(transfer->data, 0, transfer->available);
-
-         // add transfer to device list
-         transfers.push_back(transfer);
-
-         // submit transfer of data buffer
-         usb.asyncTransfer(Usb::In, 6, transfer);
-      }
-
-      return true;
-   }
-
    Usb::Transfer *usbProcessHeader(Usb::Transfer *transfer)
    {
       if (deviceStatus != STATUS_ABORT)
@@ -1894,8 +1903,6 @@ struct DSLogicDevice::Impl
          log->error("header transfer failed with USB status {}", {transfer->status});
       }
 
-      log->debug("finish header transfer and clearing buffers");
-
       // remove transfer from list
       transfers.remove(transfer);
 
@@ -1904,6 +1911,8 @@ struct DSLogicDevice::Impl
 
       // free transfer
       delete transfer;
+
+      log->debug("finish header transfer, remain {} transfers", {transfers.size()});
 
       // no resend transfer
       return nullptr;
@@ -1931,13 +1940,13 @@ struct DSLogicDevice::Impl
       // trigger next transfer
       if (deviceStatus == STATUS_DATA && transfer->actual != 0)
       {
-         // split received data in one buffer per channel
+         // interleave received data in single buffer with N channels stride
          std::vector<SignalBuffer> buffers = interleave(transfer);
 
          // call user handler for each channel
-         for (auto &buffer: buffers)
+         for (auto &b: buffers)
          {
-            if (!handler(buffer))
+            if (!handler(b))
             {
                log->warn("data transfer stopped by handler, aborting!");
                deviceStatus = STATUS_ABORT;
@@ -1958,8 +1967,6 @@ struct DSLogicDevice::Impl
          }
       }
 
-      log->warn("finish data transfer {} and clearing buffers", {transfer});
-
       // remove transfer from list
       transfers.remove(transfer);
 
@@ -1968,6 +1975,8 @@ struct DSLogicDevice::Impl
 
       // free transfer
       delete transfer;
+
+      log->debug("finish data transfer, remain {} transfers", {transfers.size()});
 
       // no resend transfer
       return nullptr;
@@ -1988,7 +1997,7 @@ struct DSLogicDevice::Impl
        */
       if (buffer.isValid())
       {
-         unsigned int filled = (currentBytes % (size >> 3)) << 3; // filled samples
+         const unsigned int filled = (currentBytes % (size >> 3)) << 3; // filled samples
 
          start = transpose(buffer, filled % chunk, transfer->data, 0, transfer->actual);
 
@@ -2003,33 +2012,33 @@ struct DSLogicDevice::Impl
        * Interleave data from transfer buffer
        */
       // number of full buffers than can be processed with remain data
-      unsigned int remain = transfer->actual - start;
-      unsigned int buffers = remain / (size >> 3) + (remain % (size >> 3) ? 1 : 0);
+      const unsigned int remain = transfer->actual - start;
+      const unsigned int buffers = remain / (size >> 3) + (remain % (size >> 3) ? 1 : 0);
 
 #pragma omp parallel for default(none) shared(start, transfer, result, size, buffers, currentSamples) schedule(static)
       for (unsigned int k = 0; k < buffers; ++k)
       {
          // sample start position
-         unsigned long long bufferOffset = currentSamples + k * (size / validChannels);
+         const unsigned long long bufferOffset = currentSamples + k * (size / validChannels);
 
          // create new buffer for interleaved data
-         SignalBuffer buffer(size, validChannels, 1, samplerate, bufferOffset, 0, SIGNAL_TYPE_LOGIC_SAMPLES);
+         SignalBuffer data(size, validChannels, 1, samplerate, bufferOffset, 0, SIGNAL_TYPE_LOGIC_SAMPLES);
 
          // transpose data from transfer buffer to interleaved buffer
-         transpose(buffer, 0, transfer->data, start + k * (size >> 3), transfer->actual);
+         transpose(data, 0, transfer->data, start + k * (size >> 3), transfer->actual);
 
 #pragma omp critical
          {
             // or if buffer is not full, keep it for next transfer
-            if (buffer.isFull())
+            if (data.isFull())
             {
-               buffer.flip();
-               result.push_back(buffer);
+               data.flip();
+               result.push_back(data);
             }
             // or add buffer to result
             else
             {
-               this->buffer = buffer;
+               buffer = data;
             }
          }
       }
@@ -2172,7 +2181,7 @@ struct DSLogicDevice::Impl
 
    unsigned int headerSize() const
    {
-      return profile->dev_caps.feature_caps & CAPS_FEATURE_USB30 ? DSL_KB(1) : DSL_B(512);
+      return profile->dev_caps.feature_caps & CAPS_FEATURE_USB30 ? DEV_KB(1) : DEV_B(512);
    }
 
    unsigned int bufferSize() const
@@ -2296,9 +2305,7 @@ DSLogicDevice::DSLogicDevice(const std::string &name) : impl(new Impl(name))
 {
 }
 
-DSLogicDevice::~DSLogicDevice()
-{
-}
+DSLogicDevice::~DSLogicDevice() = default;
 
 bool DSLogicDevice::open(Mode mode)
 {
@@ -2379,7 +2386,7 @@ std::vector<std::string> DSLogicDevice::enumerate()
 {
    std::vector<std::string> devices;
 
-   for (auto &descriptor: Usb::list())
+   for (const auto &descriptor: Usb::list())
    {
       // search for DSLogic device
       for (auto &profile: dsl_profiles)

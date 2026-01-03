@@ -2,7 +2,7 @@
 
   This file is part of NFC-LABORATORY.
 
-  Copyright (C) 2025 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+  Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,33 +19,44 @@
 
 */
 
-#ifndef RADIO_HYDRADEVICE_H
-#define RADIO_HYDRADEVICE_H
+#ifndef LOGIC_SIPEEDLOGICDEVICE_H
+#define LOGIC_SIPEEDLOGICDEVICE_H
 
 #include <vector>
 #include <string>
 #include <memory>
 
-#include <hw/radio/RadioDevice.h>
+#include <hw/logic/LogicDevice.h>
 
-namespace hw::radio {
+namespace hw::logic {
 
-class HydraDevice : public RadioDevice
+class SipeedLogicDevice : public LogicDevice
 {
+   struct Impl;
+
    public:
 
-      struct Impl;
-
-      enum GainMode
+      enum ChannelMode
       {
-         Auto = 0, Linearity = 1, Sensitivity = 2
+         SLD_STREAM120x2 = 0,
+         SLD_STREAM40x4 = 1,
+         SLD_STREAM20x8 = 2,
+      };
+
+      /** Device threshold level. */
+      enum ThresholdLevel
+      {
+         /** 1.8/2.5/3.3 level */
+         TH_3V3 = 0,
+         /** 5.0 level */
+         TH_5V0 = 1,
       };
 
    public:
 
-      explicit HydraDevice(int fd);
+      explicit SipeedLogicDevice(const std::string &name);
 
-      explicit HydraDevice(const std::string &name);
+      ~SipeedLogicDevice() override;
 
       bool open(Mode mode) override;
 

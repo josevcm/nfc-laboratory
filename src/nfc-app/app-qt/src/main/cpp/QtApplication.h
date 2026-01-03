@@ -43,9 +43,11 @@ class QtApplication : public QApplication
 
       static QFile dataFile(const QString &fileName);
 
-      static QDir tempPath();
+      static QDir tmpPath();
 
-      static QFile tempFile(const QString &fileName);
+      static QFile tmpFile(const QString &fileName);
+
+      static QDir logPath();
 
       void setPrintFramesEnabled(bool enabled);
 

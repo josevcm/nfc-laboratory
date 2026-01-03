@@ -51,7 +51,7 @@
 
 typedef struct rtlsdr_dev *rtldev;
 
-namespace hw {
+namespace hw::radio {
 
 struct RealtekDevice::Impl
 {

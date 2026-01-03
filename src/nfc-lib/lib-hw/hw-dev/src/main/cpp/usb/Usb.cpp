@@ -50,9 +50,7 @@ struct UsbContext
 
    UsbContext()
    {
-      int result = 0;
-
-      if ((result = libusb_init(&ctx)) < 0)
+      if (int result = 0; (result = libusb_init(&ctx)) < 0)
       {
          log->error("error initializing libusb: {}", {libusb_error_name(result)});
       }
@@ -172,13 +170,13 @@ struct Usb::Impl
 
          log->info("libusb event handling thread running");
 
-         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+         const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
          // loop until shutdown is requested and all transfers are completed
          while (!shutdown || !transfers.empty())
          {
             if (shutdown)
-               log->info("waiting for transfers to complete, remaining: {}", {(int) transfers.size()});
+               log->info("waiting for transfers to complete, remaining: {}", {static_cast<int>(transfers.size())});
 
             // handle libusb events
             if ((result = libusb_handle_events_timeout_completed(*ctx, &timeout, nullptr)) < 0)
@@ -201,25 +199,25 @@ struct Usb::Impl
 
    void close()
    {
-      if (hdl)
-      {
-         log->info("stopping event handling thread");
+      if (!hdl)
+         return;
 
-         // signal shutdown to event thread
-         shutdown = true;
+      log->info("stopping event handling thread");
 
-         // wait for thread to finish
-         std::lock_guard lock(threadMutex);
+      // signal shutdown to event thread
+      shutdown = true;
 
-         // closing libusb device
-         libusb_close(hdl);
+      // wait for thread to finish
+      std::lock_guard lock(threadMutex);
 
-         // invalidate handle
-         hdl = nullptr;
-      }
+      // closing libusb device
+      libusb_close(hdl);
+
+      // invalidate handle
+      hdl = nullptr;
    }
 
-   bool claimInterface(int interface)
+   bool claimInterface(const int interface)
    {
       switch ((result = libusb_claim_interface(hdl, interface)))
       {
@@ -244,7 +242,7 @@ struct Usb::Impl
       }
    }
 
-   bool releaseInterface(int interface)
+   bool releaseInterface(const int interface)
    {
       if ((result = libusb_release_interface(hdl, interface)) != LIBUSB_SUCCESS)
       {
@@ -255,13 +253,13 @@ struct Usb::Impl
       return true;
    }
 
-   bool ctrlTransfer(int outCmd, const void *txData, unsigned int txSize, int inCmd, void *rxData, unsigned int rxSize, int timeout, int wait)
+   bool ctrlTransfer(const int outCmd, const void *txData, const unsigned int txSize, const int inCmd, void *rxData, const unsigned int rxSize, const int timeout, const int wait)
    {
       if (log->isDebugEnabled())
-         log->debug("USB CONTROL OUT, size {} bytes\n{}", {txSize, rt::ByteBuffer((unsigned char *) txData, txSize)});
+         log->debug("USB CONTROL OUT, size {} bytes\n{}", {txSize, rt::ByteBuffer((unsigned char *)txData, txSize)});
 
       /* Send the control message. */
-      if ((result = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT, outCmd, 0x0000, 0x0000, (unsigned char *) txData, txSize, timeout)) < 0)
+      if ((result = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT, outCmd, 0x0000, 0x0000, (unsigned char *)txData, txSize, timeout)) < 0)
       {
          log->error("unable to send OUT request command {}: {}", {outCmd, lastError()});
          return false;
@@ -273,98 +271,98 @@ struct Usb::Impl
          usleep(wait * 1000);
 
          /* Send the control message. */
-         if ((result = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN, inCmd, 0x0000, 0x0000, (unsigned char *) rxData, rxSize, timeout)) < 0)
+         if ((result = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN, inCmd, 0x0000, 0x0000, (unsigned char *)rxData, rxSize, timeout)) < 0)
          {
             log->error("unable to send IN request command {}: {}", {inCmd, lastError()});
             return false;
          }
 
          if (log->isDebugEnabled())
-            log->debug("USB CONTROL IN, size {} bytes\n{}", {rxSize, rt::ByteBuffer((unsigned char *) rxData, rxSize)});
+            log->debug("USB CONTROL IN, size {} bytes\n{}", {rxSize, rt::ByteBuffer((unsigned char *)rxData, rxSize)});
       }
 
       return true;
    }
 
-   int syncTransfer(int endpoint, void *data, unsigned int length, int timeout)
+   int syncTransfer(const int endpoint, void *data, const unsigned int length, const int timeout)
    {
       int transferred = 0;
 
       if (!(endpoint & LIBUSB_ENDPOINT_IN) && log->isDebugEnabled())
-         log->debug("USB BULK OUT, size {} bytes\n{}", {length, rt::ByteBuffer((unsigned char *) data, length)});
+         log->debug("USB BULK OUT, size {} bytes\n{}", {length, rt::ByteBuffer((unsigned char *)data, length)});
 
-      if ((result = libusb_bulk_transfer(hdl, endpoint, (unsigned char *) data, length, &transferred, timeout)) < 0)
+      if ((result = libusb_bulk_transfer(hdl, endpoint, static_cast<unsigned char *>(data), length, &transferred, timeout)) < 0)
       {
          log->error("error in bulk transfer: {}", {lastError()});
          return -1;
       }
 
       if (endpoint & LIBUSB_ENDPOINT_IN && log->isDebugEnabled())
-         log->debug("USB BULK IN, size {} bytes\n{}", {transferred, rt::ByteBuffer((unsigned char *) data, transferred)});
+         log->debug("USB BULK IN, size {} bytes\n{}", {transferred, rt::ByteBuffer((unsigned char *)data, transferred)});
 
       return transferred;
    }
 
-   int asyncTransfer(int endpoint, Transfer *transfer)
+   bool asyncTransfer(const int endpoint, Transfer *transfer)
    {
       if (transfer == nullptr)
       {
          log->error("transfer is null");
-         return -1;
+         return false;
       }
 
       libusb_transfer *usbTransfer = libusb_alloc_transfer(0);
 
-      auto transferInfo = new TransferInfo {this, transfer, usbTransfer};
+      const auto transferInfo = new TransferInfo {this, transfer, usbTransfer};
 
-      libusb_fill_bulk_transfer(usbTransfer, hdl, endpoint, transfer->data, (int) transfer->available, transferHandler, transferInfo, transfer->timeout);
+      libusb_fill_bulk_transfer(usbTransfer, hdl, endpoint, transfer->data, static_cast<int>(transfer->available), transferHandler, transferInfo, transfer->timeout);
 
       if ((result = libusb_submit_transfer(usbTransfer)) != LIBUSB_SUCCESS)
       {
          libusb_free_transfer(usbTransfer);
          log->error("error in submit async transfer: {}", {lastError()});
-         return -1;
+         return false;
       }
 
       transfers.push_back(transferInfo);
 
-      return 0;
+      return true;
    }
 
-   bool cancelTransfer(Transfer *transfer)
+   bool cancelTransfer(const Transfer *transfer)
    {
       if (transfer == nullptr)
       {
          log->error("transfer is null");
-         return -1;
+         return false;
       }
 
-      for (auto transferInfo: transfers)
+      for (const auto transferInfo: transfers)
       {
-         if (transferInfo->transfer == transfer)
-         {
-            if ((result = libusb_cancel_transfer(transferInfo->usbTransfer)) != LIBUSB_SUCCESS)
-            {
-               log->error("error in cancel transfer: {}", {lastError()});
-               return false;
-            }
+         if (transferInfo->transfer != transfer)
+            continue;
 
-            return true;
+         if ((result = libusb_cancel_transfer(transferInfo->usbTransfer)) != LIBUSB_SUCCESS)
+         {
+            log->error("error in cancel transfer: {}", {lastError()});
+            return false;
          }
+
+         return true;
       }
 
       return false;
    }
 
-   int setOption(libusb_option option, int value)
+   bool setOption(const libusb_option option, int value)
    {
       if ((result = libusb_set_option(*ctx, option, value)) < 0)
       {
          log->error("error in set option {}={}: {}", {option, value, lastError()});
-         return -1;
+         return false;
       }
 
-      return 0;
+      return true;
    }
 
    std::string lastError() const
@@ -379,14 +377,14 @@ struct Usb::Impl
 
    void processTransfer(TransferInfo *transferInfo)
    {
-      auto transfer = transferInfo->transfer;
-      auto usbTransfer = transferInfo->usbTransfer;
+      const auto transfer = transferInfo->transfer;
+      const auto usbTransfer = transferInfo->usbTransfer;
 
       if (log->isDebugEnabled())
          log->debug("USB BULK IN, size {} bytes\n{}", {usbTransfer->actual_length, rt::ByteBuffer(usbTransfer->buffer, usbTransfer->actual_length)});
 
       transfer->actual = usbTransfer->actual_length;
-      transfer->timeout = (int) usbTransfer->timeout;
+      transfer->timeout = usbTransfer->timeout;
 
       switch (usbTransfer->status)
       {
@@ -428,7 +426,7 @@ struct Usb::Impl
       {
          if ((transferInfo->transfer = transfer->callback(transfer)))
          {
-            libusb_fill_bulk_transfer(usbTransfer, hdl, usbTransfer->endpoint, transfer->data, (int) transfer->available, transferHandler, transferInfo, transfer->timeout);
+            libusb_fill_bulk_transfer(usbTransfer, hdl, usbTransfer->endpoint, transfer->data, (int)transfer->available, transferHandler, transferInfo, transfer->timeout);
 
             if ((result = libusb_submit_transfer(usbTransfer)) == LIBUSB_SUCCESS)
                return;
@@ -457,7 +455,7 @@ Usb::Usb(const Descriptor &desc) : impl(new Impl(desc))
 {
 }
 
-bool Usb::open()
+bool Usb::open() const
 {
    return impl->open();
 }
@@ -497,12 +495,12 @@ int Usb::syncTransfer(Direction direction, int endpoint, void *data, unsigned in
    return impl->syncTransfer((direction ? LIBUSB_ENDPOINT_OUT : LIBUSB_ENDPOINT_IN) | endpoint, data, length, timeout);
 }
 
-int Usb::asyncTransfer(Direction direction, int endpoint, Transfer *transfer) const
+bool Usb::asyncTransfer(Direction direction, int endpoint, Transfer *transfer) const
 {
    return impl->asyncTransfer((direction ? LIBUSB_ENDPOINT_OUT : LIBUSB_ENDPOINT_IN) | endpoint, transfer);
 }
 
-int Usb::cancelTransfer(Transfer *transfer) const
+bool Usb::cancelTransfer(Transfer *transfer) const
 {
    return impl->cancelTransfer(transfer);
 }
@@ -545,7 +543,6 @@ std::list<Usb::Descriptor> Usb::list()
 
    libusb_device **devs;
 
-   int result;
    ssize_t count;
 
    // initialize usb library
@@ -555,7 +552,7 @@ std::list<Usb::Descriptor> Usb::list()
    // enumerate usb devices
    if ((count = libusb_get_device_list(*ctx, &devs)) < 0)
    {
-      log->error("error getting USB device list: {}", {Impl::errorString((int) count)});
+      log->error("error getting USB device list: {}", {Impl::errorString((int)count)});
       return {};
    }
 
@@ -569,19 +566,19 @@ std::list<Usb::Descriptor> Usb::list()
       unsigned char product[64];
 
       /* Assume the FW has not been loaded, unless proven wrong. */
-      if ((result = libusb_get_device_descriptor(dev, &desc)) != LIBUSB_SUCCESS)
+      if (libusb_get_device_descriptor(dev, &desc) != LIBUSB_SUCCESS)
          continue;
 
-      if ((result = libusb_open(dev, &hdl)) != LIBUSB_SUCCESS)
+      if (libusb_open(dev, &hdl) != LIBUSB_SUCCESS)
          continue;
 
-      if ((result = libusb_get_string_descriptor_ascii(hdl, desc.iManufacturer, manufacturer, sizeof(manufacturer))) < 0)
+      if (libusb_get_string_descriptor_ascii(hdl, desc.iManufacturer, manufacturer, sizeof(manufacturer)) < 0)
       {
          libusb_close(hdl);
          continue;
       }
 
-      if ((result = libusb_get_string_descriptor_ascii(hdl, desc.iProduct, product, sizeof(product))) < 0)
+      if (libusb_get_string_descriptor_ascii(hdl, desc.iProduct, product, sizeof(product)) < 0)
       {
          libusb_close(hdl);
          continue;
@@ -592,13 +589,13 @@ std::list<Usb::Descriptor> Usb::list()
 
       // generate descriptor
       devices.push_back({
-                              .vid = desc.idVendor,
-                              .pid = desc.idProduct,
-                              .bus = libusb_get_bus_number(dev),
-                              .address = libusb_get_device_address(dev),
-                              .manufacturer = rt::Format::trim((char *) manufacturer),
-                              .product = rt::Format::trim((char *) product),
-                        });
+         .vid = desc.idVendor,
+         .pid = desc.idProduct,
+         .bus = libusb_get_bus_number(dev),
+         .address = libusb_get_device_address(dev),
+         .manufacturer = rt::Format::trim(reinterpret_cast<char *>(manufacturer)),
+         .product = rt::Format::trim(reinterpret_cast<char *>(product)),
+      });
    }
 
    return devices;

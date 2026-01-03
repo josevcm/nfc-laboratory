@@ -385,9 +385,14 @@ QDir QtApplication::dataPath()
    return {QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/data"};
 }
 
-QDir QtApplication::tempPath()
+QDir QtApplication::tmpPath()
 {
    return {QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/tmp"};
+}
+
+QDir QtApplication::logPath()
+{
+   return {QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/log"};
 }
 
 QFile QtApplication::dataFile(const QString &fileName)
@@ -400,9 +405,9 @@ QFile QtApplication::dataFile(const QString &fileName)
    return QFile(dataPath.absoluteFilePath(fileName));
 }
 
-QFile QtApplication::tempFile(const QString &fileName)
+QFile QtApplication::tmpFile(const QString &fileName)
 {
-   QDir tempPath = QtApplication::tempPath();
+   QDir tempPath = QtApplication::tmpPath();
 
    if (!tempPath.exists())
       tempPath.mkpath(".");

@@ -29,9 +29,6 @@
 
 #include <hw/logic/DSLogicDevice.h>
 
-using namespace rt;
-using namespace hw;
-
 std::string fileName(const std::string &type)
 {
    std::ostringstream oss;
@@ -45,72 +42,72 @@ std::string fileName(const std::string &type)
 
 int main(int argc, char *argv[])
 {
-   Logger::init(std::cout, false);
+   rt::Logger::init(std::cout, false);
 
-   Logger *log = Logger::getLogger("app.main", Logger::INFO_LEVEL);
+   rt::Logger *log = rt::Logger::getLogger("app.main", rt::Logger::INFO_LEVEL);
 
    log->info("***********************************************************************");
    log->info("NFC laboratory, 2024 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
    log->info("***********************************************************************");
 
-   for (std::string name: DSLogicDevice::enumerate())
+   for (std::string name: hw::logic::DSLogicDevice::enumerate())
    {
       log->info("found device: {}", {name});
 
-      DSLogicDevice device {name};
+      hw::logic::DSLogicDevice device {name};
 
-      if (device.open(LogicDevice::Read))
+      if (device.open(hw::logic::LogicDevice::Read))
       {
          log->info("start receiving");
 
-         // device.set(LogicDevice::PARAM_OPERATION_MODE, LogicDevice::OP_INTEST);
-         device.set(LogicDevice::PARAM_OPERATION_MODE, LogicDevice::OP_STREAM);
-         device.set(LogicDevice::PARAM_LIMIT_SAMPLES, static_cast<unsigned long long>(-1));
-         //         device.set(LogicDevice::PARAM_RLE_COMPRESS, false);
-         //         device.set(LogicDevice::PARAM_FILTER_MODE, FILTER_NONE);
-         device.set(LogicDevice::PARAM_CHANNEL_MODE, DSLogicDevice::DSL_STREAM50x6);
-         device.set(LogicDevice::PARAM_SAMPLE_RATE, static_cast<unsigned int>(25000000));
-         device.set(LogicDevice::PARAM_VOLTAGE_THRESHOLD, static_cast<float>(1.0));
+         // device.set(hw::logic::LogicDevice::PARAM_OPERATION_MODE, LogicDevice::OP_INTEST);
+         device.set(hw::logic::LogicDevice::PARAM_OPERATION_MODE, hw::logic::LogicDevice::OP_STREAM);
+         device.set(hw::logic::LogicDevice::PARAM_LIMIT_SAMPLES, static_cast<unsigned long long>(-1));
+         //         device.set(hw::logic::LogicDevice::PARAM_RLE_COMPRESS, false);
+         //         device.set(hw::logic::LogicDevice::PARAM_FILTER_MODE, FILTER_NONE);
+         device.set(hw::logic::LogicDevice::PARAM_CHANNEL_MODE, hw::logic::DSLogicDevice::DSL_STREAM50x6);
+         device.set(hw::logic::LogicDevice::PARAM_SAMPLE_RATE, static_cast<unsigned int>(25000000));
+         device.set(hw::logic::LogicDevice::PARAM_VOLTAGE_THRESHOLD, static_cast<float>(1.0));
 
-         device.set(LogicDevice::PARAM_PROBE_ENABLE, true, 0);
-         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 1);
-         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 2);
-         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 3);
-         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 4);
-         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 5);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 6);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 7);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 8);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 9);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 10);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 11);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 12);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 13);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 14);
-         //         device.set(LogicDevice::PARAM_PROBE_ENABLE, false, 15);
+         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, true, 0);
+         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 1);
+         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 2);
+         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 3);
+         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 4);
+         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 5);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 6);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 7);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 8);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 9);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 10);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 11);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 12);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 13);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 14);
+         //         device.set(hw::logic::LogicDevice::PARAM_PROBE_ENABLE, false, 15);
 
          //         device.set(LogicDevice::PARAM_PROBE_COUPLING, GND_COUPLING, 0);
 
          std::string fileName = ::fileName("logic");
          unsigned int sampleSize = 8;
-         unsigned int sampleRate = std::get<unsigned int>(device.get(DSLogicDevice::PARAM_SAMPLE_RATE));
-         unsigned int validChannels = std::get<unsigned int>(device.get(DSLogicDevice::PARAM_CHANNEL_VALID));
+         unsigned int sampleRate = std::get<unsigned int>(device.get(hw::logic::DSLogicDevice::PARAM_SAMPLE_RATE));
+         unsigned int validChannels = std::get<unsigned int>(device.get(hw::logic::DSLogicDevice::PARAM_CHANNEL_VALID));
 
-         RecordDevice storage(fileName);
+         hw::RecordDevice storage(fileName);
 
          log->info("creating storage file {}, sampleRate {} sampleSize {} channels {}", {fileName, sampleRate, sampleSize, validChannels});
 
-         storage.set(SignalDevice::PARAM_SAMPLE_RATE, sampleRate);
-         storage.set(SignalDevice::PARAM_SAMPLE_SIZE, sampleSize);
-         storage.set(SignalDevice::PARAM_CHANNEL_COUNT, validChannels);
+         storage.set(hw::SignalDevice::PARAM_SAMPLE_RATE, sampleRate);
+         storage.set(hw::SignalDevice::PARAM_SAMPLE_SIZE, sampleSize);
+         storage.set(hw::SignalDevice::PARAM_CHANNEL_COUNT, validChannels);
 
          int count = 0;
 
-         if (storage.open(RecordDevice::Mode::Write))
+         if (storage.open(hw::RecordDevice::Mode::Write))
          {
             log->info("successfully opened storage file: {}", {fileName});
 
-            device.start([&](SignalBuffer &buffer) {
+            device.start([&](const hw::SignalBuffer &buffer) {
 
                log->info("{} [{} - {.3}]: {} samples", {buffer.offset(), count++, buffer.offset() / (sampleRate / 1000.0), buffer.elements()});
 
@@ -130,7 +127,7 @@ int main(int argc, char *argv[])
       }
    }
 
-   Logger::flush();
+   rt::Logger::flush();
 
    return 0;
 }

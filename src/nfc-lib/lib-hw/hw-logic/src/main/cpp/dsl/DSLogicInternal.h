@@ -28,6 +28,8 @@
 
 #include <hw/logic/DSLogicDevice.h>
 
+#include "LogicInternal.h"
+
 #define USB_INTERFACE        0
 #define USB_CONFIGURATION    1
 #define NUM_TRIGGER_STAGES  16
@@ -194,73 +196,12 @@
 #define INT_TEST_BIT 15
 
 /* little macros */
-#define DSL_CH(n)  (1 << n)
-
-#define DSL_HZ(n)  (n)
-#define DSL_KHZ(n) ((n) * (unsigned long long)(1000ULL))
-#define DSL_MHZ(n) ((n) * (unsigned long long)(1000000ULL))
-#define DSL_GHZ(n) ((n) * (unsigned long long)(1000000000ULL))
-
-#define DSL_HZ_TO_NS(n) ((unsigned long long)(1000000000ULL) / (n))
-
-#define DSL_NS(n)   (n)
-#define DSL_US(n)   ((n) * (unsigned long long)(1000ULL))
-#define DSL_MS(n)   ((n) * (unsigned long long)(1000000ULL))
-#define DSL_SEC(n)  ((n) * (unsigned long long)(1000000000ULL))
-#define DSL_MIN(n)  ((n) * (unsigned long long)(60000000000ULL))
-#define DSL_HOUR(n) ((n) * (unsigned long long)(3600000000000ULL))
-#define DSL_DAY(n)  ((n) * (unsigned long long)(86400000000000ULL))
-
-#define DSL_n(n)  (n)
-#define DSL_Kn(n) ((n) * (unsigned long long)(1000ULL))
-#define DSL_Mn(n) ((n) * (unsigned long long)(1000000ULL))
-#define DSL_Gn(n) ((n) * (unsigned long long)(1000000000ULL))
-
-#define DSL_B(n)  (n)
-#define DSL_KB(n) ((n) * (unsigned long long)(1024ULL))
-#define DSL_MB(n) ((n) * (unsigned long long)(1048576ULL))
-#define DSL_GB(n) ((n) * (unsigned long long)(1073741824ULL))
-
 #define DSL_mV(n) (n)
 #define DSL_V(n)  ((n) * (unsigned long long)(1000ULL))
 #define DSL_KV(n) ((n) * (unsigned long long)(1000000ULL))
 #define DSL_MV(n) ((n) * (unsigned long long)(1000000000ULL))
 
-namespace hw {
-
-enum DeviceMode
-{
-   LOGIC = 0,
-   DSO = 1,
-   ANALOG = 2,
-   UNKNOWN_DSL_MODE = 99,
-};
-
-enum DeviceStatus
-{
-   STATUS_ERROR = -1,
-   STATUS_READY = 0,
-   STATUS_INIT = 1,
-   STATUS_START = 2,
-   STATUS_TRIGGERED = 3,
-   STATUS_DATA = 4,
-   STATUS_STOP = 5,
-   STATUS_PAUSE = 6,
-   STATUS_FINISH = 7,
-   STATUS_ABORT = 8,
-};
-
-enum ChannelType
-{
-   CHANNEL_DECODER = 9998,
-   CHANNEL_GROUP = 9999,
-   CHANNEL_LOGIC = 10000,
-   CHANNEL_DSO,
-   CHANNEL_ANALOG,
-   CHANNEL_FFT,
-   CHANNEL_LISSAJOUS,
-   CHANNEL_MATH,
-};
+namespace hw::logic {
 
 enum LedControl
 {
@@ -595,98 +536,98 @@ static const char *probe_units[] = {
 };
 
 static const unsigned long long samplerates100[] = {
-   DSL_HZ(10),
-   DSL_HZ(20),
-   DSL_HZ(50),
-   DSL_HZ(100),
-   DSL_HZ(200),
-   DSL_HZ(500),
-   DSL_KHZ(1),
-   DSL_KHZ(2),
-   DSL_KHZ(5),
-   DSL_KHZ(10),
-   DSL_KHZ(20),
-   DSL_KHZ(40),
-   DSL_KHZ(50),
-   DSL_KHZ(100),
-   DSL_KHZ(200),
-   DSL_KHZ(400),
-   DSL_KHZ(500),
-   DSL_MHZ(1),
-   DSL_MHZ(2),
-   DSL_MHZ(4),
-   DSL_MHZ(5),
-   DSL_MHZ(10),
-   DSL_MHZ(20),
-   DSL_MHZ(25),
-   DSL_MHZ(50),
-   DSL_MHZ(100),
+   DEV_HZ(10),
+   DEV_HZ(20),
+   DEV_HZ(50),
+   DEV_HZ(100),
+   DEV_HZ(200),
+   DEV_HZ(500),
+   DEV_KHZ(1),
+   DEV_KHZ(2),
+   DEV_KHZ(5),
+   DEV_KHZ(10),
+   DEV_KHZ(20),
+   DEV_KHZ(40),
+   DEV_KHZ(50),
+   DEV_KHZ(100),
+   DEV_KHZ(200),
+   DEV_KHZ(400),
+   DEV_KHZ(500),
+   DEV_MHZ(1),
+   DEV_MHZ(2),
+   DEV_MHZ(4),
+   DEV_MHZ(5),
+   DEV_MHZ(10),
+   DEV_MHZ(20),
+   DEV_MHZ(25),
+   DEV_MHZ(50),
+   DEV_MHZ(100),
    0,
 };
 
 static const unsigned long long samplerates400[] = {
-   DSL_HZ(10),
-   DSL_HZ(20),
-   DSL_HZ(50),
-   DSL_HZ(100),
-   DSL_HZ(200),
-   DSL_HZ(500),
-   DSL_KHZ(1),
-   DSL_KHZ(2),
-   DSL_KHZ(5),
-   DSL_KHZ(10),
-   DSL_KHZ(20),
-   DSL_KHZ(40),
-   DSL_KHZ(50),
-   DSL_KHZ(100),
-   DSL_KHZ(200),
-   DSL_KHZ(400),
-   DSL_KHZ(500),
-   DSL_MHZ(1),
-   DSL_MHZ(2),
-   DSL_MHZ(4),
-   DSL_MHZ(5),
-   DSL_MHZ(10),
-   DSL_MHZ(20),
-   DSL_MHZ(25),
-   DSL_MHZ(50),
-   DSL_MHZ(100),
-   DSL_MHZ(200),
-   DSL_MHZ(400),
+   DEV_HZ(10),
+   DEV_HZ(20),
+   DEV_HZ(50),
+   DEV_HZ(100),
+   DEV_HZ(200),
+   DEV_HZ(500),
+   DEV_KHZ(1),
+   DEV_KHZ(2),
+   DEV_KHZ(5),
+   DEV_KHZ(10),
+   DEV_KHZ(20),
+   DEV_KHZ(40),
+   DEV_KHZ(50),
+   DEV_KHZ(100),
+   DEV_KHZ(200),
+   DEV_KHZ(400),
+   DEV_KHZ(500),
+   DEV_MHZ(1),
+   DEV_MHZ(2),
+   DEV_MHZ(4),
+   DEV_MHZ(5),
+   DEV_MHZ(10),
+   DEV_MHZ(20),
+   DEV_MHZ(25),
+   DEV_MHZ(50),
+   DEV_MHZ(100),
+   DEV_MHZ(200),
+   DEV_MHZ(400),
    0,
 };
 
 static const unsigned long long samplerates1000[] = {
-   DSL_HZ(10),
-   DSL_HZ(20),
-   DSL_HZ(50),
-   DSL_HZ(100),
-   DSL_HZ(200),
-   DSL_HZ(500),
-   DSL_KHZ(1),
-   DSL_KHZ(2),
-   DSL_KHZ(5),
-   DSL_KHZ(10),
-   DSL_KHZ(20),
-   DSL_KHZ(40),
-   DSL_KHZ(50),
-   DSL_KHZ(100),
-   DSL_KHZ(200),
-   DSL_KHZ(400),
-   DSL_KHZ(500),
-   DSL_MHZ(1),
-   DSL_MHZ(2),
-   DSL_MHZ(4),
-   DSL_MHZ(5),
-   DSL_MHZ(10),
-   DSL_MHZ(20),
-   DSL_MHZ(25),
-   DSL_MHZ(50),
-   DSL_MHZ(100),
-   DSL_MHZ(125),
-   DSL_MHZ(250),
-   DSL_MHZ(500),
-   DSL_GHZ(1),
+   DEV_HZ(10),
+   DEV_HZ(20),
+   DEV_HZ(50),
+   DEV_HZ(100),
+   DEV_HZ(200),
+   DEV_HZ(500),
+   DEV_KHZ(1),
+   DEV_KHZ(2),
+   DEV_KHZ(5),
+   DEV_KHZ(10),
+   DEV_KHZ(20),
+   DEV_KHZ(40),
+   DEV_KHZ(50),
+   DEV_KHZ(100),
+   DEV_KHZ(200),
+   DEV_KHZ(400),
+   DEV_KHZ(500),
+   DEV_MHZ(1),
+   DEV_MHZ(2),
+   DEV_MHZ(4),
+   DEV_MHZ(5),
+   DEV_MHZ(10),
+   DEV_MHZ(20),
+   DEV_MHZ(25),
+   DEV_MHZ(50),
+   DEV_MHZ(100),
+   DEV_MHZ(125),
+   DEV_MHZ(250),
+   DEV_MHZ(500),
+   DEV_GHZ(1),
    0,
 };
 
@@ -733,35 +674,35 @@ static const dsl_adc_config adc_power_up[] = {
 
 static const dsl_channel_mode channel_modes[] = {
    // LA Stream
-   {DSLogicDevice::DSL_STREAM20x16, LOGIC, CHANNEL_LOGIC, true, 16, 16, 1, DSL_KHZ(50), DSL_MHZ(20), DSL_KHZ(10), DSL_MHZ(100), 1, "Use 16 Channels (Max 20MHz)"},
-   {DSLogicDevice::DSL_STREAM25x12, LOGIC, CHANNEL_LOGIC, true, 16, 12, 1, DSL_KHZ(50), DSL_MHZ(25), DSL_KHZ(10), DSL_MHZ(100), 1, "Use 12 Channels (Max 25MHz)"},
-   {DSLogicDevice::DSL_STREAM50x6, LOGIC, CHANNEL_LOGIC, true, 16, 6, 1, DSL_KHZ(50), DSL_MHZ(50), DSL_KHZ(10), DSL_MHZ(100), 1, "Use 6 Channels (Max 50MHz)"},
-   {DSLogicDevice::DSL_STREAM100x3, LOGIC, CHANNEL_LOGIC, true, 16, 3, 1, DSL_KHZ(50), DSL_MHZ(100), DSL_KHZ(10), DSL_MHZ(100), 1, "Use 3 Channels (Max 100MHz)"},
-   {DSLogicDevice::DSL_STREAM20x16_3DN2, LOGIC, CHANNEL_LOGIC, true, 16, 16, 1, DSL_KHZ(100), DSL_MHZ(20), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 16 Channels (Max 20MHz)"},
-   {DSLogicDevice::DSL_STREAM25x12_3DN2, LOGIC, CHANNEL_LOGIC, true, 16, 12, 1, DSL_KHZ(100), DSL_MHZ(25), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 12 Channels (Max 25MHz)"},
-   {DSLogicDevice::DSL_STREAM50x6_3DN2, LOGIC, CHANNEL_LOGIC, true, 16, 6, 1, DSL_KHZ(100), DSL_MHZ(50), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 6 Channels (Max 50MHz)"},
-   {DSLogicDevice::DSL_STREAM100x3_3DN2, LOGIC, CHANNEL_LOGIC, true, 16, 3, 1, DSL_KHZ(100), DSL_MHZ(100), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 3 Channels (Max 100MHz)"},
-   {DSLogicDevice::DSL_STREAM10x32_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 32, 1, DSL_KHZ(100), DSL_MHZ(10), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 32 Channels (Max 10MHz)"},
-   {DSLogicDevice::DSL_STREAM20x16_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 16, 1, DSL_KHZ(100), DSL_MHZ(20), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 16 Channels (Max 20MHz)"},
-   {DSLogicDevice::DSL_STREAM25x12_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 12, 1, DSL_KHZ(100), DSL_MHZ(25), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 12 Channels (Max 25MHz)"},
-   {DSLogicDevice::DSL_STREAM50x6_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 6, 1, DSL_KHZ(100), DSL_MHZ(50), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 6 Channels (Max 50MHz)"},
-   {DSLogicDevice::DSL_STREAM100x3_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 3, 1, DSL_KHZ(100), DSL_MHZ(100), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 3 Channels (Max 100MHz)"},
-   {DSLogicDevice::DSL_STREAM50x32, LOGIC, CHANNEL_LOGIC, true, 32, 32, 1, DSL_MHZ(1), DSL_MHZ(50), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 32 Channels (Max 50MHz)"},
-   {DSLogicDevice::DSL_STREAM100x30, LOGIC, CHANNEL_LOGIC, true, 32, 30, 1, DSL_MHZ(1), DSL_MHZ(100), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 30 Channels (Max 100MHz)"},
-   {DSLogicDevice::DSL_STREAM250x12, LOGIC, CHANNEL_LOGIC, true, 32, 12, 1, DSL_MHZ(1), DSL_MHZ(250), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 12 Channels (Max 250MHz)"},
-   {DSLogicDevice::DSL_STREAM125x16_16, LOGIC, CHANNEL_LOGIC, true, 16, 16, 1, DSL_MHZ(1), DSL_MHZ(125), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 16 Channels (Max 125MHz)"},
-   {DSLogicDevice::DSL_STREAM250x12_16, LOGIC, CHANNEL_LOGIC, true, 16, 12, 1, DSL_MHZ(1), DSL_MHZ(250), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 12 Channels (Max 250MHz)"},
-   {DSLogicDevice::DSL_STREAM500x6, LOGIC, CHANNEL_LOGIC, true, 16, 6, 1, DSL_MHZ(1), DSL_MHZ(500), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 6 Channels (Max 500MHz)"},
-   {DSLogicDevice::DSL_STREAM1000x3, LOGIC, CHANNEL_LOGIC, true, 8, 3, 1, DSL_MHZ(1), DSL_GHZ(1), DSL_KHZ(10), DSL_MHZ(500), 5, "Use 3 Channels (Max 1GHz)"},
+   {DSLogicDevice::DSL_STREAM20x16, LOGIC, CHANNEL_LOGIC, true, 16, 16, 1, DEV_KHZ(50), DEV_MHZ(20), DEV_KHZ(10), DEV_MHZ(100), 1, "Use 16 Channels (Max 20MHz)"},
+   {DSLogicDevice::DSL_STREAM25x12, LOGIC, CHANNEL_LOGIC, true, 16, 12, 1, DEV_KHZ(50), DEV_MHZ(25), DEV_KHZ(10), DEV_MHZ(100), 1, "Use 12 Channels (Max 25MHz)"},
+   {DSLogicDevice::DSL_STREAM50x6, LOGIC, CHANNEL_LOGIC, true, 16, 6, 1, DEV_KHZ(50), DEV_MHZ(50), DEV_KHZ(10), DEV_MHZ(100), 1, "Use 6 Channels (Max 50MHz)"},
+   {DSLogicDevice::DSL_STREAM100x3, LOGIC, CHANNEL_LOGIC, true, 16, 3, 1, DEV_KHZ(50), DEV_MHZ(100), DEV_KHZ(10), DEV_MHZ(100), 1, "Use 3 Channels (Max 100MHz)"},
+   {DSLogicDevice::DSL_STREAM20x16_3DN2, LOGIC, CHANNEL_LOGIC, true, 16, 16, 1, DEV_KHZ(100), DEV_MHZ(20), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 16 Channels (Max 20MHz)"},
+   {DSLogicDevice::DSL_STREAM25x12_3DN2, LOGIC, CHANNEL_LOGIC, true, 16, 12, 1, DEV_KHZ(100), DEV_MHZ(25), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 12 Channels (Max 25MHz)"},
+   {DSLogicDevice::DSL_STREAM50x6_3DN2, LOGIC, CHANNEL_LOGIC, true, 16, 6, 1, DEV_KHZ(100), DEV_MHZ(50), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 6 Channels (Max 50MHz)"},
+   {DSLogicDevice::DSL_STREAM100x3_3DN2, LOGIC, CHANNEL_LOGIC, true, 16, 3, 1, DEV_KHZ(100), DEV_MHZ(100), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 3 Channels (Max 100MHz)"},
+   {DSLogicDevice::DSL_STREAM10x32_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 32, 1, DEV_KHZ(100), DEV_MHZ(10), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 32 Channels (Max 10MHz)"},
+   {DSLogicDevice::DSL_STREAM20x16_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 16, 1, DEV_KHZ(100), DEV_MHZ(20), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 16 Channels (Max 20MHz)"},
+   {DSLogicDevice::DSL_STREAM25x12_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 12, 1, DEV_KHZ(100), DEV_MHZ(25), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 12 Channels (Max 25MHz)"},
+   {DSLogicDevice::DSL_STREAM50x6_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 6, 1, DEV_KHZ(100), DEV_MHZ(50), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 6 Channels (Max 50MHz)"},
+   {DSLogicDevice::DSL_STREAM100x3_32_3DN2, LOGIC, CHANNEL_LOGIC, true, 32, 3, 1, DEV_KHZ(100), DEV_MHZ(100), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 3 Channels (Max 100MHz)"},
+   {DSLogicDevice::DSL_STREAM50x32, LOGIC, CHANNEL_LOGIC, true, 32, 32, 1, DEV_MHZ(1), DEV_MHZ(50), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 32 Channels (Max 50MHz)"},
+   {DSLogicDevice::DSL_STREAM100x30, LOGIC, CHANNEL_LOGIC, true, 32, 30, 1, DEV_MHZ(1), DEV_MHZ(100), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 30 Channels (Max 100MHz)"},
+   {DSLogicDevice::DSL_STREAM250x12, LOGIC, CHANNEL_LOGIC, true, 32, 12, 1, DEV_MHZ(1), DEV_MHZ(250), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 12 Channels (Max 250MHz)"},
+   {DSLogicDevice::DSL_STREAM125x16_16, LOGIC, CHANNEL_LOGIC, true, 16, 16, 1, DEV_MHZ(1), DEV_MHZ(125), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 16 Channels (Max 125MHz)"},
+   {DSLogicDevice::DSL_STREAM250x12_16, LOGIC, CHANNEL_LOGIC, true, 16, 12, 1, DEV_MHZ(1), DEV_MHZ(250), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 12 Channels (Max 250MHz)"},
+   {DSLogicDevice::DSL_STREAM500x6, LOGIC, CHANNEL_LOGIC, true, 16, 6, 1, DEV_MHZ(1), DEV_MHZ(500), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 6 Channels (Max 500MHz)"},
+   {DSLogicDevice::DSL_STREAM1000x3, LOGIC, CHANNEL_LOGIC, true, 8, 3, 1, DEV_MHZ(1), DEV_GHZ(1), DEV_KHZ(10), DEV_MHZ(500), 5, "Use 3 Channels (Max 1GHz)"},
 
    // LA Buffer
-   {DSLogicDevice::DSL_BUFFER100x16, LOGIC, CHANNEL_LOGIC, false, 16, 16, 1, DSL_KHZ(50), DSL_MHZ(100), DSL_KHZ(10), DSL_MHZ(100), 1, "Use Channels 0~15 (Max 100MHz)"},
-   {DSLogicDevice::DSL_BUFFER200x8, LOGIC, CHANNEL_LOGIC, false, 8, 8, 1, DSL_KHZ(50), DSL_MHZ(200), DSL_KHZ(10), DSL_MHZ(100), 1, "Use Channels 0~7 (Max 200MHz)"},
-   {DSLogicDevice::DSL_BUFFER400x4, LOGIC, CHANNEL_LOGIC, false, 4, 4, 1, DSL_KHZ(50), DSL_MHZ(400), DSL_KHZ(10), DSL_MHZ(100), 1, "Use Channels 0~3 (Max 400MHz)"},
+   {DSLogicDevice::DSL_BUFFER100x16, LOGIC, CHANNEL_LOGIC, false, 16, 16, 1, DEV_KHZ(50), DEV_MHZ(100), DEV_KHZ(10), DEV_MHZ(100), 1, "Use Channels 0~15 (Max 100MHz)"},
+   {DSLogicDevice::DSL_BUFFER200x8, LOGIC, CHANNEL_LOGIC, false, 8, 8, 1, DEV_KHZ(50), DEV_MHZ(200), DEV_KHZ(10), DEV_MHZ(100), 1, "Use Channels 0~7 (Max 200MHz)"},
+   {DSLogicDevice::DSL_BUFFER400x4, LOGIC, CHANNEL_LOGIC, false, 4, 4, 1, DEV_KHZ(50), DEV_MHZ(400), DEV_KHZ(10), DEV_MHZ(100), 1, "Use Channels 0~3 (Max 400MHz)"},
 
-   {DSLogicDevice::DSL_BUFFER250x32, LOGIC, CHANNEL_LOGIC, false, 32, 32, 1, DSL_MHZ(1), DSL_MHZ(250), DSL_KHZ(10), DSL_MHZ(500), 5, "Use Channels 0~31 (Max 250MHz)"},
-   {DSLogicDevice::DSL_BUFFER500x16, LOGIC, CHANNEL_LOGIC, false, 16, 16, 1, DSL_MHZ(1), DSL_MHZ(500), DSL_KHZ(10), DSL_MHZ(500), 5, "Use Channels 0~15 (Max 500MHz)"},
-   {DSLogicDevice::DSL_BUFFER1000x8, LOGIC, CHANNEL_LOGIC, false, 8, 8, 1, DSL_MHZ(1), DSL_GHZ(1), DSL_KHZ(10), DSL_MHZ(500), 5, "Use Channels 0~7 (Max 1GHz)"},
+   {DSLogicDevice::DSL_BUFFER250x32, LOGIC, CHANNEL_LOGIC, false, 32, 32, 1, DEV_MHZ(1), DEV_MHZ(250), DEV_KHZ(10), DEV_MHZ(500), 5, "Use Channels 0~31 (Max 250MHz)"},
+   {DSLogicDevice::DSL_BUFFER500x16, LOGIC, CHANNEL_LOGIC, false, 16, 16, 1, DEV_MHZ(1), DEV_MHZ(500), DEV_KHZ(10), DEV_MHZ(500), 5, "Use Channels 0~15 (Max 500MHz)"},
+   {DSLogicDevice::DSL_BUFFER1000x8, LOGIC, CHANNEL_LOGIC, false, 8, 8, 1, DEV_MHZ(1), DEV_GHZ(1), DEV_KHZ(10), DEV_MHZ(500), 5, "Use Channels 0~7 (Max 1GHz)"},
 };
 
 static const dsl_vga vga_defaults[] = {
@@ -828,30 +769,30 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_MB(256), // hw_depth
+         .hw_depth = DEV_MB(256), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER100x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates400, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(200), // half_samplerate
-         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(200), // half_samplerate
+         .quarter_samplerate = DEV_MHZ(400), // quarter_samplerate
       }
    },
    {
@@ -867,30 +808,30 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_KB(256), // hw_depth
+         .hw_depth = DEV_KB(256), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_STREAM20x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates400, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(200), // half_samplerate
-         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(200), // half_samplerate
+         .quarter_samplerate = DEV_MHZ(400), // quarter_samplerate
       }
    },
    {
@@ -906,28 +847,28 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_MB(64), // hw_depth
+         .hw_depth = DEV_MB(64), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER100x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates100, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(200), // half_samplerate
-         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(200), // half_samplerate
+         .quarter_samplerate = DEV_MHZ(400), // quarter_samplerate
       }
    },
    {
@@ -943,29 +884,29 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_GB(2), // hw_depth
+         .hw_depth = DEV_GB(2), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER500x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates1000, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6_3DN2, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(500), // half_samplerate
-         .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(500), // half_samplerate
+         .quarter_samplerate = DEV_GHZ(1), // quarter_samplerate
       },
    },
    {
@@ -981,29 +922,29 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM125x16_16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM250x12_16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM500x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM1000x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM125x16_16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM250x12_16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM500x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM1000x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_GB(2), // hw_depth
+         .hw_depth = DEV_GB(2), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER500x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates1000, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM500x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(500), // half_samplerate
-         .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(500), // half_samplerate
+         .quarter_samplerate = DEV_GHZ(1), // quarter_samplerate
       },
    },
    {
@@ -1019,31 +960,31 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_LA_CH32, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM10x32_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM20x16_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3_32_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER250x32) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM10x32_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM20x16_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3_32_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER250x32) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 32, // total_ch_num
-         .hw_depth = DSL_GB(2), // hw_depth
+         .hw_depth = DEV_GB(2), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER250x32, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates1000, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6_32_3DN2, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(500), // half_samplerate
-         .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(500), // half_samplerate
+         .quarter_samplerate = DEV_GHZ(1), // quarter_samplerate
       },
    },
    {
@@ -1059,31 +1000,31 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_USB30 | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_LA_CH32, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM50x32) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x30) |
-         DSL_CH(DSLogicDevice::DSL_STREAM250x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM500x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM1000x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER250x32) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM50x32) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x30) |
+         DEV_CH(DSLogicDevice::DSL_STREAM250x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM500x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM1000x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER250x32) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 32, // total_ch_num
-         .hw_depth = DSL_GB(2), // hw_depth
+         .hw_depth = DEV_GB(2), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER250x32, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates1000, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM500x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(500), // half_samplerate
-         .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(500), // half_samplerate
+         .quarter_samplerate = DEV_GHZ(1), // quarter_samplerate
       },
    },
    {
@@ -1099,29 +1040,29 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_ADF4360 | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER500x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3_3DN2) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER500x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER1000x8), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_GB(4), // hw_depth
+         .hw_depth = DEV_GB(4), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER500x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates1000, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6_3DN2, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(500), // half_samplerate
-         .quarter_samplerate = DSL_GHZ(1), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(500), // half_samplerate
+         .quarter_samplerate = DEV_GHZ(1), // quarter_samplerate
       },
    },
    {
@@ -1137,30 +1078,30 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_MB(256), // hw_depth
+         .hw_depth = DEV_MB(256), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER100x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates400, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(200), // half_samplerate
-         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(200), // half_samplerate
+         .quarter_samplerate = DEV_MHZ(400), // quarter_samplerate
       },
    },
    {
@@ -1176,28 +1117,28 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_MB(64), // hw_depth
+         .hw_depth = DEV_MB(64), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER100x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates100, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(200), // half_samplerate
-         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(200), // half_samplerate
+         .quarter_samplerate = DEV_MHZ(400), // quarter_samplerate
       }
    },
    {
@@ -1213,30 +1154,30 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER200x8) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER200x8) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER400x4), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_MB(256), // hw_depth
+         .hw_depth = DEV_MB(256), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER100x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates400, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(200), // half_samplerate
-         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(200), // half_samplerate
+         .quarter_samplerate = DEV_MHZ(400), // quarter_samplerate
       }
    },
    {
@@ -1252,28 +1193,28 @@ static const dsl_profile dsl_profiles[] = {
       .dev_caps {
          .mode_caps = CAPS_MODE_LOGIC, // mode_caps
          .feature_caps = CAPS_FEATURE_VTH | CAPS_FEATURE_BUF | CAPS_FEATURE_MAX25_VTH | CAPS_FEATURE_SECURITY, // feature_caps
-         .channels = DSL_CH(DSLogicDevice::DSL_STREAM20x16) |
-         DSL_CH(DSLogicDevice::DSL_STREAM25x12) |
-         DSL_CH(DSLogicDevice::DSL_STREAM50x6) |
-         DSL_CH(DSLogicDevice::DSL_STREAM100x3) |
-         DSL_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
+         .channels = DEV_CH(DSLogicDevice::DSL_STREAM20x16) |
+         DEV_CH(DSLogicDevice::DSL_STREAM25x12) |
+         DEV_CH(DSLogicDevice::DSL_STREAM50x6) |
+         DEV_CH(DSLogicDevice::DSL_STREAM100x3) |
+         DEV_CH(DSLogicDevice::DSL_BUFFER100x16), // channels
          .total_ch_num = 16, // total_ch_num
-         .hw_depth = DSL_MB(64), // hw_depth
+         .hw_depth = DEV_MB(64), // hw_depth
          .dso_depth = 0, // dso_depth
          .intest_channel = DSLogicDevice::DSL_BUFFER100x16, // intest_channel
          .vdivs = nullptr, // vdivs
          .samplerates = samplerates100, // samplerates
          .vga_id = 0x00, // vga_id
          .default_channelid = DSLogicDevice::DSL_STREAM50x6, // default_channelid
-         .default_samplerate = DSL_MHZ(1), // default_samplerate
-         .default_samplelimit = DSL_Mn(1), // default_samplelimit
+         .default_samplerate = DEV_MHZ(1), // default_samplerate
+         .default_samplelimit = DEV_Mn(1), // default_samplelimit
          .default_pwmtrans = 0x0000, // default_pwmtrans
          .default_pwmmargin = 0x0000, // default_pwmmargin
          .ref_min = 0x00000000, // ref_min
          .ref_max = 0x00000000, // ref_max
          .default_comb_comp = 0x00, // default_comb_comp
-         .half_samplerate = DSL_MHZ(200), // half_samplerate
-         .quarter_samplerate = DSL_MHZ(400), // quarter_samplerate
+         .half_samplerate = DEV_MHZ(200), // half_samplerate
+         .quarter_samplerate = DEV_MHZ(400), // quarter_samplerate
       }
    },
    {}

@@ -235,8 +235,9 @@ struct SignalResamplingTask::Impl : SignalResamplingTask, AbstractTask
 #pragma omp parallel for default(none) shared(buffer, ch, adaptiveSignalStream, taskThroughput) schedule(static)
       for (unsigned int n = 0; n < ch; ++n)
       {
+         // skip CLK channel...
          if (n == 1)
-            continue;
+         continue;
 
          hw::SignalBuffer resampled((buffer.elements() / LOGIC_INTERVAL) * 2 + buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL, n);
 

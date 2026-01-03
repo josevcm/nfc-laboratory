@@ -108,8 +108,9 @@ struct QtWindow::Impl
    int timeLimit = 60;
 
    // logic device parameters
-   bool logicDeviceLicensed = false;
+   bool logicDeviceEnabled = false;
    QString logicDeviceName;
+   QString logicDeviceVendor;
    QString logicDeviceModel;
    QString logicDeviceSerial;
    QString logicDeviceType;
@@ -118,8 +119,9 @@ struct QtWindow::Impl
    long long logicSampleCount = 0;
 
    // radio device parameters
-   bool radioDeviceLicensed = false;
+   bool radioDeviceEnabled = false;
    QString radioDeviceName;
+   QString radioDeviceVendor;
    QString radioDeviceModel;
    QString radioDeviceSerial;
    QString radioDeviceType;
@@ -527,6 +529,9 @@ struct QtWindow::Impl
       if (event->hasName())
          updated |= updateLogicDeviceName(event->name());
 
+      if (event->hasVendor())
+         updated |= updateLogicDeviceVendor(event->vendor());
+
       if (event->hasModel())
          updated |= updateLogicDeviceModel(event->model());
 
@@ -589,6 +594,9 @@ struct QtWindow::Impl
       // detect device changes
       if (event->hasName())
          updated |= updateRadioDeviceName(event->name());
+
+      if (event->hasVendor())
+         updated |= updateRadioDeviceVendor(event->vendor());
 
       if (event->hasModel())
          updated |= updateRadioDeviceModel(event->model());
@@ -1003,6 +1011,32 @@ struct QtWindow::Impl
       window->setWindowTitle(QString(NFC_LAB_VENDOR_STRING));
    }
 
+   void updateDevices()
+   {
+      enabledDevices.clear();
+      disabledDevices.clear();
+
+      if (!radioDeviceSerial.isEmpty() && !radioDeviceVendor.isEmpty() && !radioDeviceModel.isEmpty())
+      {
+         const QString radioVendorModel = radioDeviceVendor + " " + radioDeviceModel;
+
+         if (radioDeviceEnabled)
+            enabledDevices << radioVendorModel;
+         else
+            disabledDevices << radioVendorModel;
+      }
+
+      if (!logicDeviceSerial.isEmpty() && !logicDeviceVendor.isEmpty() && !logicDeviceModel.isEmpty())
+      {
+         const QString logicVendorModel = logicDeviceVendor + " " + logicDeviceModel;
+
+         if (logicDeviceEnabled)
+            enabledDevices << logicVendorModel;
+         else
+            disabledDevices << logicVendorModel;
+      }
+   }
+
    /*
     * logic status updates
     */
@@ -1011,7 +1045,7 @@ struct QtWindow::Impl
       if (logicDecoderStatus == value)
          return false;
 
-      qInfo().noquote() << "logic decoder status changed from [" << logicDecoderStatus << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "logic decoder status changed from [" << logicDecoderStatus << "] to [" << value << "]";
 
       // reset view on decoder stop
       if (value == LogicDecoderStatusEvent::Idle && logicDecoderStatus == LogicDecoderStatusEvent::Decoding)
@@ -1056,9 +1090,23 @@ struct QtWindow::Impl
       if (logicDeviceName == value)
          return false;
 
-      qInfo().noquote() << "logic device name changed from [" << logicDeviceName << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "logic device name changed from [" << logicDeviceName << "] to [" << value << "]";
 
       logicDeviceName = value;
+
+      return true;
+   }
+
+   bool updateLogicDeviceVendor(const QString &value)
+   {
+      if (logicDeviceVendor == value)
+         return false;
+
+      qInfo().noquote().nospace() << "logic device vendor changed from [" << logicDeviceVendor << "] to [" << value << "]";
+
+      logicDeviceVendor = value;
+
+      updateDevices();
 
       return true;
    }
@@ -1068,23 +1116,11 @@ struct QtWindow::Impl
       if (logicDeviceModel == value)
          return false;
 
-      qInfo().noquote() << "logic device model changed from [" << logicDeviceModel << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "logic device model changed from [" << logicDeviceModel << "] to [" << value << "]";
 
       logicDeviceModel = value;
 
-      if (!logicDeviceSerial.isEmpty())
-      {
-         if (logicDeviceLicensed)
-         {
-            if (!enabledDevices.contains(logicDeviceModel))
-               enabledDevices << logicDeviceModel;
-         }
-         else
-         {
-            if (!disabledDevices.contains(logicDeviceModel))
-               disabledDevices << logicDeviceModel;
-         }
-      }
+      updateDevices();
 
       return true;
    }
@@ -1094,32 +1130,14 @@ struct QtWindow::Impl
       if (logicDeviceSerial == value)
          return false;
 
-      qInfo().noquote() << "logic device serial changed from [" << logicDeviceSerial << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "logic device serial changed from [" << logicDeviceSerial << "] to [" << value << "]";
 
       logicDeviceSerial = value;
-      logicDeviceLicensed = allowedDevices.match(logicDeviceSerial).hasMatch();
+      logicDeviceEnabled = allowedDevices.match(logicDeviceSerial).hasMatch();
 
-      if (!logicDeviceModel.isEmpty())
-      {
-         if (logicDeviceLicensed)
-         {
-            if (!enabledDevices.contains(logicDeviceModel))
-               enabledDevices << logicDeviceModel;
-         }
-         else
-         {
-            if (!disabledDevices.contains(logicDeviceModel))
-               disabledDevices << logicDeviceModel;
-         }
+      ui->featureLogicAcquire->setEnabled(logicDeviceEnabled);
 
-         qInfo() << "logic device" << logicDeviceModel << "serial changed to" << logicDeviceSerial << "licensed" << logicDeviceLicensed;
-      }
-      else
-      {
-         qInfo() << "logic device serial changed to" << logicDeviceSerial << "licensed" << logicDeviceLicensed;
-      }
-
-      ui->featureLogicAcquire->setEnabled(logicDeviceLicensed);
+      updateDevices();
 
       return true;
    }
@@ -1129,20 +1147,20 @@ struct QtWindow::Impl
       if (logicDeviceStatus == value)
          return false;
 
-      qInfo().noquote() << "logic device status changed from [" << logicDeviceStatus << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "logic device status changed from [" << logicDeviceStatus << "] to [" << value << "]";
 
       logicDeviceStatus = value;
 
       if (logicDeviceStatus == LogicDeviceStatusEvent::Absent)
       {
-         enabledDevices.removeAll(logicDeviceModel);
-
          // clear device information
          logicDeviceName.clear();
          logicDeviceSerial.clear();
          logicDeviceModel.clear();
          logicDeviceType.clear();
-         logicDeviceLicensed = false;
+         logicDeviceEnabled = false;
+
+         updateDevices();
       }
 
       return true;
@@ -1153,7 +1171,7 @@ struct QtWindow::Impl
       if (logicSampleRate == value)
          return false;
 
-      qInfo().noquote() << "logic device sample rate changed from [" << logicSampleRate << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "logic device sample rate changed from [" << logicSampleRate << "] to [" << value << "]";
 
       logicSampleRate = value;
 
@@ -1165,7 +1183,7 @@ struct QtWindow::Impl
       if (logicSampleCount == value)
          return false;
 
-      qInfo().noquote() << "logic device sample count changed from [" << logicSampleCount << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "logic device sample count changed from [" << logicSampleCount << "] to [" << value << "]";
 
       logicSampleCount = value;
 
@@ -1180,7 +1198,7 @@ struct QtWindow::Impl
       if (radioDecoderStatus == value)
          return false;
 
-      qInfo().noquote() << "radio decoder status changed from [" << radioDecoderStatus << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio decoder status changed from [" << radioDecoderStatus << "] to [" << value << "]";
 
       // reset view on decoder stop
       if (value == RadioDecoderStatusEvent::Idle && radioDecoderStatus == RadioDecoderStatusEvent::Decoding)
@@ -1264,11 +1282,25 @@ struct QtWindow::Impl
       if (radioDeviceName == value)
          return false;
 
-      qInfo().noquote() << "radio device name changed from [" << radioDeviceName << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device name changed from [" << radioDeviceName << "] to [" << value << "]";
 
       radioDeviceName = value;
 
       qInfo() << "radio device name changed to:" << radioDeviceName;
+
+      return true;
+   }
+
+   bool updateRadioDeviceVendor(const QString &value)
+   {
+      if (radioDeviceVendor == value)
+         return false;
+
+      qInfo().noquote().nospace() << "radio device vendor changed from [" << radioDeviceVendor << "] to [" << value << "]";
+
+      radioDeviceVendor = value;
+
+      updateDevices();
 
       return true;
    }
@@ -1278,23 +1310,11 @@ struct QtWindow::Impl
       if (radioDeviceModel == value)
          return false;
 
-      qInfo().noquote() << "radio device model changed from [" << radioDeviceModel << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device model changed from [" << radioDeviceModel << "] to [" << value << "]";
 
       radioDeviceModel = value;
 
-      if (!radioDeviceSerial.isEmpty())
-      {
-         if (radioDeviceLicensed)
-         {
-            if (!enabledDevices.contains(radioDeviceModel))
-               enabledDevices << radioDeviceModel;
-         }
-         else
-         {
-            if (!disabledDevices.contains(radioDeviceModel))
-               disabledDevices << radioDeviceModel;
-         }
-      }
+      updateDevices();
 
       return true;
    }
@@ -1304,33 +1324,15 @@ struct QtWindow::Impl
       if (radioDeviceSerial == value)
          return false;
 
-      qInfo().noquote() << "radio device name serial from [" << radioDeviceSerial << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device name serial from [" << radioDeviceSerial << "] to [" << value << "]";
 
       radioDeviceSerial = value;
-      radioDeviceLicensed = allowedDevices.match(radioDeviceSerial).hasMatch();
+      radioDeviceEnabled = allowedDevices.match(radioDeviceSerial).hasMatch();
 
-      if (!radioDeviceModel.isEmpty())
-      {
-         if (radioDeviceLicensed)
-         {
-            if (!enabledDevices.contains(radioDeviceModel))
-               enabledDevices << radioDeviceModel;
-         }
-         else
-         {
-            if (!disabledDevices.contains(radioDeviceModel))
-               disabledDevices << radioDeviceModel;
-         }
+      ui->featureRadioAcquire->setEnabled(radioDeviceEnabled);
+      ui->featureRadioSpectrum->setEnabled(radioDeviceEnabled);
 
-         qInfo() << "radio device" << radioDeviceModel << "serial changed to" << radioDeviceSerial << "licensed" << radioDeviceLicensed;
-      }
-      else
-      {
-         qInfo() << "radio device serial changed to" << radioDeviceSerial << "licensed" << radioDeviceLicensed;
-      }
-
-      ui->featureRadioAcquire->setEnabled(radioDeviceLicensed);
-      ui->featureRadioSpectrum->setEnabled(radioDeviceLicensed);
+      updateDevices();
 
       return true;
    }
@@ -1340,7 +1342,7 @@ struct QtWindow::Impl
       if (radioDeviceStatus == value)
          return false;
 
-      qInfo().noquote() << "radio device device status from [" << radioDeviceStatus << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device device status from [" << radioDeviceStatus << "] to [" << value << "]";
 
       radioDeviceStatus = value;
 
@@ -1354,7 +1356,9 @@ struct QtWindow::Impl
          radioDeviceType.clear();
          radioGainMode = -1;
          radioGainValue = -1;
-         radioDeviceLicensed = false;
+         radioDeviceEnabled = false;
+
+         updateDevices();
       }
 
       changeGainMode(radioGainMode);
@@ -1407,7 +1411,7 @@ struct QtWindow::Impl
       if (radioCenterFrequency == value)
          return false;
 
-      qInfo().noquote() << "radio device device frequency from [" << radioCenterFrequency << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device device frequency from [" << radioCenterFrequency << "] to [" << value << "]";
 
       radioCenterFrequency = value;
 
@@ -1421,7 +1425,7 @@ struct QtWindow::Impl
       if (radioSampleRate == value)
          return false;
 
-      qInfo().noquote() << "radio device device sample rate from [" << radioSampleRate << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device device sample rate from [" << radioSampleRate << "] to [" << value << "]";
 
       radioSampleRate = value;
 
@@ -1435,7 +1439,7 @@ struct QtWindow::Impl
       if (radioGainMode == value)
          return false;
 
-      qInfo().noquote() << "radio device device gain mode from [" << radioGainMode << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device device gain mode from [" << radioGainMode << "] to [" << value << "]";
 
       radioGainMode = value;
 
@@ -1447,7 +1451,7 @@ struct QtWindow::Impl
       if (radioGainValue == value || !radioGainKeys.contains(value))
          return false;
 
-      qInfo().noquote() << "radio device device gain value from [" << radioGainValue << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device device gain value from [" << radioGainValue << "] to [" << value << "]";
 
       radioGainValue = value;
 
@@ -1462,7 +1466,7 @@ struct QtWindow::Impl
       if (radioBiasTee == value)
          return false;
 
-      qInfo().noquote() << "radio device device bias-tee from [" << radioBiasTee << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device device bias-tee from [" << radioBiasTee << "] to [" << value << "]";
 
       radioBiasTee = value;
 
@@ -1474,7 +1478,7 @@ struct QtWindow::Impl
       if (radioDirectSampling == value)
          return false;
 
-      qInfo().noquote() << "radio device device direct sampling from [" << radioDirectSampling << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device device direct sampling from [" << radioDirectSampling << "] to [" << value << "]";
 
       radioDirectSampling = value;
 
@@ -1486,7 +1490,7 @@ struct QtWindow::Impl
       if (radioSampleCount == value)
          return false;
 
-      qInfo().noquote() << "radio device device direct sample count from [" << radioSampleCount << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "radio device device direct sample count from [" << radioSampleCount << "] to [" << value << "]";
 
       radioSampleCount = value;
 
@@ -1508,7 +1512,7 @@ struct QtWindow::Impl
       if (fourierStatus == value)
          return false;
 
-      qInfo().noquote() << "update fourier transformer state from [" << fourierStatus << "] to [" << value << "]";
+      qInfo().noquote().nospace() << "update fourier transformer state from [" << fourierStatus << "] to [" << value << "]";
 
       fourierStatus = value;
 

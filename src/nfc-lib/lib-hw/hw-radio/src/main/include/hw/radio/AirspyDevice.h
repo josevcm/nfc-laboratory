@@ -28,7 +28,7 @@
 
 #include <hw/radio/RadioDevice.h>
 
-namespace hw {
+namespace hw::radio {
 
 class AirspyDevice : public RadioDevice
 {
@@ -59,9 +59,13 @@ class AirspyDevice : public RadioDevice
 
       int resume() override;
 
-      rt::Variant get(int id, int channel = -1) const;
+      using Device::get;
 
-      bool set(int id, const rt::Variant &value, int channel = -1);
+      rt::Variant get(int id, int channel) const override;
+
+      using Device::set;
+
+      bool set(int id, const rt::Variant &value, int channel) override;
 
       bool isOpen() const override;
 

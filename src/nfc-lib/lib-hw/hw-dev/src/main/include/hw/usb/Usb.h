@@ -68,7 +68,7 @@ class Usb
          unsigned char *data = nullptr;
          unsigned int available = 0;
          unsigned int actual = 0;
-         int timeout = 0;
+         unsigned int timeout = 0;
          std::function<Transfer *(Transfer *transfer)> callback;
       };
 
@@ -80,7 +80,7 @@ class Usb
 
       static std::list<Descriptor> list();
 
-      bool open();
+      bool open() const;
 
       void close();
 
@@ -96,9 +96,9 @@ class Usb
 
       int syncTransfer(Direction direction, int endpoint, void *data, unsigned int length, int timeout = 30000) const;
 
-      int asyncTransfer(Direction direction, int endpoint, Transfer *transfer) const;
+      bool asyncTransfer(Direction direction, int endpoint, Transfer *transfer) const;
 
-      int cancelTransfer(Transfer *transfer) const;
+      bool cancelTransfer(Transfer *transfer) const;
 
       std::string lastError() const;
 

@@ -22,6 +22,8 @@
 #ifndef RT_TASK_H
 #define RT_TASK_H
 
+#include <string>
+
 namespace rt {
 
 class Task

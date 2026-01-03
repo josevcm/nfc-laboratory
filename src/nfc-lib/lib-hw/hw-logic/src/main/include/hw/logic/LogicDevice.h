@@ -28,7 +28,7 @@
 
 #include <hw/SignalDevice.h>
 
-namespace hw {
+namespace hw::logic {
 
 class LogicDevice : public SignalDevice
 {
@@ -71,16 +71,11 @@ class LogicDevice : public SignalDevice
 
       enum OperationMode
       {
-         /** Buffer mode */
-         OP_BUFFER = 0,
-         /** Stream mode */
-         OP_STREAM = 1,
-         /** Internal pattern test mode */
-         OP_INTEST = 2,
-         /** External pattern test mode */
-         OP_EXTEST = 3,
-         /** SDRAM loopback test mode */
-         OP_LPTEST = 4,
+         OP_BUFFER = 0, // Buffer mode
+         OP_STREAM = 1, // Stream mode
+         OP_INTEST = 2, // Internal pattern test mode
+         OP_EXTEST = 3, // External pattern test mode
+         OP_LPTEST = 4, // loopback test mode */
       };
 
    public:
