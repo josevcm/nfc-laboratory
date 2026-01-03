@@ -24,6 +24,7 @@ set(SOURCES
         ${PRIVATE_SOURCE_DIR}/main.cpp
         ${PRIVATE_SOURCE_DIR}/main.rc
         ${PRIVATE_SOURCE_DIR}/QtApplication.cpp
+        ${PRIVATE_SOURCE_DIR}/QtCache.cpp
         ${PRIVATE_SOURCE_DIR}/QtControl.cpp
         ${PRIVATE_SOURCE_DIR}/QtWindow.cpp
         ${PRIVATE_SOURCE_DIR}/events/ConsoleLogEvent.cpp
