@@ -2305,9 +2305,7 @@ DSLogicDevice::DSLogicDevice(const std::string &name) : impl(new Impl(name))
 {
 }
 
-DSLogicDevice::~DSLogicDevice()
-{
-}
+DSLogicDevice::~DSLogicDevice() = default;
 
 bool DSLogicDevice::open(Mode mode)
 {

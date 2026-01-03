@@ -58,7 +58,7 @@ class SipeedLogicDevice : public LogicDevice
 
       ~SipeedLogicDevice() override;
 
-      bool open(Device::Mode mode) override;
+      bool open(Mode mode) override;
 
       void close() override;
 
@@ -70,9 +70,13 @@ class SipeedLogicDevice : public LogicDevice
 
       int resume() override;
 
-      rt::Variant get(int id, int channel = -1) const;
+      using Device::get;
 
-      bool set(int id, const rt::Variant &value, int channel = -1);
+      rt::Variant get(int id, int channel) const override;
+
+      using Device::set;
+
+      bool set(int id, const rt::Variant &value, int channel) override;
 
       bool isOpen() const override;
 

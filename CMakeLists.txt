@@ -16,9 +16,6 @@ project(nfc-lab VERSION "${BUILD_PROJECT_VERSION}" LANGUAGES C CXX)
 #-------------------------------------------------------------------------------
 # build flags
 #-------------------------------------------------------------------------------
-set(CMAKE_AR gcc-ar)
-set(CMAKE_RANLIB gcc-ranlib)
-
 set(CMAKE_C_FLAGS_DEBUG "-g -Og -fno-omit-frame-pointer" CACHE INTERNAL "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -Og -fno-omit-frame-pointer" CACHE INTERNAL "" FORCE)
 
@@ -129,7 +126,7 @@ if (WIN32)
 endif (WIN32)
 
 #-------------------------------------------------------------------------------
-# configure resources
+# configure sources
 #-------------------------------------------------------------------------------
 add_subdirectory(src)
 
