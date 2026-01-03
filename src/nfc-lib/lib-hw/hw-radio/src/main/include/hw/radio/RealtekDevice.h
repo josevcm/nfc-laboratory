@@ -57,9 +57,9 @@ class RealtekDevice : public RadioDevice
 
       int resume() override;
 
-      rt::Variant get(int id, int channel = -1) const;
+      rt::Variant get(int id, int channel) const override;
 
-      bool set(int id, const rt::Variant &value, int channel = -1);
+      bool set(int id, const rt::Variant &value, int channel) override;
 
       bool isOpen() const override;
 

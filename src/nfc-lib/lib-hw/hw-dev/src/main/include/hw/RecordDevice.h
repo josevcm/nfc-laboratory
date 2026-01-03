@@ -38,9 +38,13 @@ class RecordDevice : public SignalDevice
 
       void close() override;
 
-      rt::Variant get(int id, int channel = -1) const;
+      using Device::get;
 
-      bool set(int id, const rt::Variant &value, int channel = -1);
+      using Device::set;
+
+      rt::Variant get(int id, int channel) const override;
+
+      bool set(int id, const rt::Variant &value, int channel) override;
 
       bool isOpen() const override;
 
