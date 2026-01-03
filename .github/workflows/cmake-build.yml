@@ -183,6 +183,7 @@ jobs:
   create-release:
 
     runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
     needs:
       - build-linux
       - build-windows
