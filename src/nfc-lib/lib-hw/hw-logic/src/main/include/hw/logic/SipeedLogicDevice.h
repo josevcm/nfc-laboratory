@@ -70,7 +70,11 @@ class SipeedLogicDevice : public LogicDevice
 
       int resume() override;
 
+      using Device::get;
+
       rt::Variant get(int id, int channel) const override;
+
+      using Device::set;
 
       bool set(int id, const rt::Variant &value, int channel) override;
 
