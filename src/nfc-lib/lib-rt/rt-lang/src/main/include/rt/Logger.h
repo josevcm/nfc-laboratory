@@ -85,9 +85,9 @@ class Logger
 
       static void setRootLevel(const std::string &level);
 
-      static void setLoggerLevel(const std::string &expr, int level);
+      static void setLoggerLevel(const std::string &target, int level);
 
-      static void setLoggerLevel(const std::string &expr, const std::string &level);
+      static void setLoggerLevel(const std::string &target, const std::string &level);
 
       static Logger *getLogger(const std::string &name, int level = WARN_LEVEL);
 
