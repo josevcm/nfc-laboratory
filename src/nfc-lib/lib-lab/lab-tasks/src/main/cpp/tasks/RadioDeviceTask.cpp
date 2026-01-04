@@ -504,9 +504,9 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
             });
 
             // get device capabilities
-            rt::Catalog gainModes = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_GAIN_MODES);
-            rt::Catalog gainValues = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_GAIN_VALUES);
-            rt::Catalog sampleRates = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_SAMPLE_RATES);
+            auto gainModes = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_GAIN_MODES);
+            auto gainValues = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_GAIN_VALUES);
+            auto sampleRates = device->get<rt::Catalog>(hw::radio::RadioDevice::PARAM_SUPPORTED_SAMPLE_RATES);
 
             for (const auto &entry: gainModes)
             {
