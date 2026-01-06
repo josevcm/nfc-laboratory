@@ -40,15 +40,15 @@ struct Alloc
 
    Alloc(unsigned int size, unsigned int alignment, bool clean = false) : data(nullptr), size(size), alignment(alignment)
    {
-      if (size == 0 || alignment == 0)
-         throw std::invalid_argument("Size and alignment must be greater than zero");
+      if (alignment == 0)
+         throw std::invalid_argument("Alignment must be greater than zero");
 
       // ensure alignment is a power of two
       if ((alignment & (alignment - 1)) != 0)
          throw std::invalid_argument("Alignment must be a power of two");
 
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
-      if (!((data = (T *)_aligned_malloc(size * sizeof(T), alignment))))
+      if (!((data = static_cast<T *>(_aligned_malloc(size * sizeof(T), alignment)))))
          throw std::bad_alloc();
 #else
       if (posix_memalign((void**)(&data), alignment, size * sizeof(T)) != 0)

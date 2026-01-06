@@ -50,10 +50,10 @@ typedef std::variant<
       void *,
       std::string,
       std::thread::id,
+      std::vector<int>,
       std::chrono::duration<long long, std::ratio<1, 1000000000>>,
-      Catalog,
-      Buffer<unsigned char>,
-      std::vector<int>
+      ByteBuffer,
+      Catalog
 > Variant;
 
 }
