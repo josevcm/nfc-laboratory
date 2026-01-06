@@ -60,13 +60,13 @@ class Device
       virtual void close() = 0;
 
       template <typename V>
-      const V get(int id)
+      V get(int id)
       {
          return std::get<V>(this->get(id, -1));
       }
 
       template <typename V>
-      const V get(int id, int channel)
+      V get(int id, int channel)
       {
          return std::get<V>(this->get(id, channel));
       }
