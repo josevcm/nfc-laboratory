@@ -129,7 +129,7 @@ std::string rt::Format::format(const std::string &fmt, const std::vector<Variant
 
          snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "}");
       }
-      else if (auto value = std::get_if<Buffer<unsigned char>>(&parameter))
+      else if (auto value = std::get_if<ByteBuffer>(&parameter))
       {
          int offset = 0;
 
