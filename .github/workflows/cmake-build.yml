@@ -61,6 +61,36 @@ jobs:
           name: linux-artifact
           path: ${{ github.workspace }}/*.deb
 
+  build-macos:
+
+    runs-on: macos-latest
+
+    steps:
+
+      - name: 'Check out code'
+        uses: actions/checkout@v4
+
+      - name: 'Set reusable strings'
+        id: strings-macos
+        shell: bash
+        run: |
+          echo "build-name=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && 'snapshot' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "build-version=${{ (github.ref_name == 'master' || github.ref_name == 'develop') && '0.0.0' || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "cpu-count=4" >> "$GITHUB_OUTPUT"
+
+      - name: 'Install dependencies'
+        run: |
+          brew install mesa libusb qt qtsvg cmake gcc
+
+      - name: 'Build project'
+        run: |
+          mkdir build
+          cd build
+          cmake .. `
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+            -DBUILD_PROJECT_VERSION="${{ steps.strings-macos.outputs.build-version }}"
+          make -j ${{ steps.strings-macos.outputs.cpu-count }}
+
   #
   # Windows build job
   #
