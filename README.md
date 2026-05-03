@@ -573,7 +573,7 @@ TEST FILE "test_POLL_AB_001.wav": PASS
 
 ## Build instructions
 
-This project is based on Qt6 and MinGW-W64, with minimal dependencies.
+This project is based on Qt6.
 
 Contains the following components:
 

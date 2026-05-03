@@ -14,6 +14,11 @@ endif()
 project(nfc-lab VERSION "${BUILD_PROJECT_VERSION}" LANGUAGES C CXX)
 
 #-------------------------------------------------------------------------------
+# customization options
+#-------------------------------------------------------------------------------
+option(ENABLE_GRPC_API "Enable gRPC remote control service (requires gRPC and protobuf)" OFF)
+
+#-------------------------------------------------------------------------------
 # build flags
 #-------------------------------------------------------------------------------
 set(CMAKE_C_FLAGS_DEBUG "-g -Og -fno-omit-frame-pointer" CACHE INTERNAL "" FORCE)

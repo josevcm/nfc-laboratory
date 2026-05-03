@@ -19,29 +19,27 @@
 
 */
 
-#ifndef APP_QTCONTROL_H
-#define APP_QTCONTROL_H
+#ifndef APP_QTREMOTE_H
+#define APP_QTREMOTE_H
 
 #include <QObject>
 #include <QSharedPointer>
 
-class QtCache;
-
-class QtControl : public QObject
+class QtRemote : public QObject
 {
-      Q_OBJECT
+   struct Impl;
 
-      struct Impl;
+      Q_OBJECT
 
    public:
 
-      explicit QtControl(QtCache *cache);
+      QtRemote();
 
-      void handleEvent(QEvent *event);
+      void handleEvent(QEvent *event) const;
 
    private:
 
       QSharedPointer<Impl> impl;
 };
 
-#endif //APP_QTCONTROL_H
+#endif //APP_QTREMOTE_H

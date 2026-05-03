@@ -144,11 +144,19 @@ jobs:
       - name: Build project
         shell: msys2 {0}
         run: |
+          rm -rf build
+          
+          export PATH=/ucrt64/bin:$PATH
+          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig
+          export CMAKE_PREFIX_PATH=/ucrt64
+          
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH=/ucrt64 \
+            -DCMAKE_FIND_ROOT_PATH=/ucrt64 \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
             -DBUILD_PROJECT_VERSION="${{ steps.strings-windows.outputs.build-version }}"
-
+          
           cmake --build build --parallel
 
       - name: Prepare installer
@@ -298,16 +306,15 @@ jobs:
   #
   # WinGet release job
   #
-  winget-release:
-    runs-on: windows-latest
-    needs: create-release
+#  winget-release:
+#    runs-on: windows-latest
+#    needs: create-release
 #    if: github.ref_type == 'tag'
-    if: false
-    steps:
-      - name: WinGet Releaser
-        uses: vedantmgoyal9/winget-releaser@v2
-        with:
-          identifier: josevcm.nfc-lab
-          installers-regex: 'nfc-lab-.*-x86_64-portable\.zip$'
-          token: ${{ secrets.WINGET_TOKEN }}
-          fork-user: josevcm
+#    steps:
+#      - name: WinGet Releaser
+#        uses: vedantmgoyal9/winget-releaser@v2
+#        with:
+#          identifier: josevcm.nfc-lab
+#          installers-regex: 'nfc-lab-.*-x86_64-portable\.zip$'
+#          token: ${{ secrets.WINGET_TOKEN }}
+#          fork-user: josevcm

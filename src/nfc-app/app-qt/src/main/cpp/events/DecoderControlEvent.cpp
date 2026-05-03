@@ -53,6 +53,22 @@ DecoderControlEvent::DecoderControlEvent(int command, const QString &name, const
    mParameters[name] = value;
 }
 
+DecoderControlEvent *DecoderControlEvent::promise(const std::shared_ptr<std::promise<Result>> &promise)
+{
+   mPromise = promise;
+   return this;
+}
+
+std::function<void(const DecoderControlEvent::Result &)> DecoderControlEvent::notifier() const
+{
+   auto promise = mPromise;
+
+   return [promise](const Result &r) {
+      if (promise)
+         promise->set_value(r);
+   };
+}
+
 int DecoderControlEvent::command() const
 {
    return mCommand;
@@ -142,4 +158,3 @@ QString DecoderControlEvent::getString(const QString &name, const QString &defVa
 
    return mParameters[name].toString();
 }
-

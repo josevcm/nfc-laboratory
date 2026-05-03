@@ -23,7 +23,6 @@
 #define APP_QTWINDOW_H
 
 #include <QMainWindow>
-#include <QSettings>
 #include <QSharedPointer>
 
 class QtCache;

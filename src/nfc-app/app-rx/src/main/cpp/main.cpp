@@ -491,11 +491,16 @@ struct Main
          {"version", no_argument, nullptr, 'v'},
          {"log-level", required_argument, nullptr, 'l'},
          {"json-frames", no_argument, nullptr, 'j'},
+         {"gain-mode", required_argument, nullptr, 'g'},
+         {"gain-value", required_argument, nullptr, 'G'},
+         {"mixer-agc", no_argument, nullptr, 'a'},
+         {"tuner-agc", no_argument, nullptr, 'u'},
+         {"bias-tee", no_argument, nullptr, 'b'},
          {nullptr, 0, nullptr, 0}
       };
 
       int option_index = 0;
-      while ((opt = getopt_long(argc, argv, "hvjl:dp:t:f:s:", long_options, &option_index)) != -1)
+      while ((opt = getopt_long(argc, argv, "hvjl:dp:t:f:s:g:G:aub", long_options, &option_index)) != -1)
       {
          switch (opt)
          {
@@ -597,6 +602,52 @@ struct Main
                break;
             }
 
+            case 'g':
+            {
+               receiverParams["gainMode"] = strtol(optarg, &endptr, 10);
+
+               if (endptr == optarg)
+               {
+                  fprintf(stderr, "Invalid value for 'g' argument\n");
+                  showUsage();
+                  return -1;
+               }
+
+               break;
+            }
+
+            case 'G':
+            {
+               receiverParams["gainValue"] = strtol(optarg, &endptr, 10);
+
+               if (endptr == optarg)
+               {
+                  fprintf(stderr, "Invalid value for 'G' argument\n");
+                  showUsage();
+                  return -1;
+               }
+
+               break;
+            }
+
+            case 'a':
+            {
+               receiverParams["mixerAgc"] = 1;
+               break;
+            }
+
+            case 'u':
+            {
+               receiverParams["tunerAgc"] = 1;
+               break;
+            }
+
+            case 'b':
+            {
+               receiverParams["biasTee"] = 1;
+               break;
+            }
+
             default:
                showUsage();
                return -1;
@@ -684,6 +735,11 @@ struct Main
       std::cout << "                        Default: auto-configured (depends on hardware)" << std::endl;
       std::cout << "  -s SAMPLERATE         Set receiver sample rate in Hz" << std::endl;
       std::cout << "                        Default: auto-configured by device" << std::endl;
+      std::cout << "  -g, --gain-mode MODE  Set receiver gain mode" << std::endl;
+      std::cout << "  -G, --gain-value VAL  Set receiver gain value" << std::endl;
+      std::cout << "  -a, --mixer-agc       Enable mixer AGC" << std::endl;
+      std::cout << "  -u, --tuner-agc       Enable tuner AGC" << std::endl;
+      std::cout << "  -b, --bias-tee        Enable bias-tee (required for Spyverter)" << std::endl;
       std::cout << "  -t SECONDS            Stop capture after specified number of seconds" << std::endl;
       std::cout << "                        Default: run until interrupted (Ctrl+C)" << std::endl;
       std::cout << std::endl;

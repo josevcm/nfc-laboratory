@@ -449,7 +449,7 @@ struct QtWindow::Impl
 
       // connect acquire timer signal
       acquireTimerTimeoutConnection = acquireTimer->callOnTimeout([=] {
-         toggleStop();
+         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Stop));
       });
 
       // connect refresh timer signal
@@ -502,6 +502,18 @@ struct QtWindow::Impl
 
    void systemShutdown(SystemShutdownEvent *event)
    {
+   }
+
+   void decoderControlEvent(DecoderControlEvent *event)
+   {
+      if (event->command() == DecoderControlEvent::Start)
+         decoderStart();
+      else if (event->command() == DecoderControlEvent::Stop)
+         decoderStop();
+      else if (event->command() == DecoderControlEvent::Pause)
+         decoderPause();
+      else if (event->command() == DecoderControlEvent::Resume)
+         decoderResume();
    }
 
    void logicDecoderStatusEvent(LogicDecoderStatusEvent *event)
@@ -1803,7 +1815,7 @@ struct QtWindow::Impl
       QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
    }
 
-   void toggleStart(bool recording)
+   void decoderStart()
    {
       qInfo() << "decoder starting";
 
@@ -1829,50 +1841,10 @@ struct QtWindow::Impl
       // get selected time limit
       timeLimit = acquireLimit->currentData().toInt();
 
-      // start decoder
-      if (recording || settings.value("settings/recordEnabled", false).toBool())
-      {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath().absolutePath()}}));
-      }
-      else
-      {
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {}));
-      }
-
       acquireTimer->start(timeLimit * 1000);
    }
 
-   void togglePause()
-   {
-      if (ui->actionPause->isChecked())
-      {
-         qInfo() << "decoder pause, remaining time:" << acquireTimer->remainingTime();
-
-         // get remaining time
-         timeLimit = acquireTimer->remainingTime() / 1000;
-
-         // stopping timer
-         acquireTimer->stop();
-
-         // sync logic && radio view ranges
-         syncDataRanges();
-
-         // pause decoder
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Pause));
-      }
-      else
-      {
-         qInfo() << "decoder resume, remaining time:" << timeLimit;
-
-         // resume timer
-         acquireTimer->start(timeLimit * 1000);
-
-         // resume decoder
-         QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Resume));
-      }
-   }
-
-   void toggleStop()
+   void decoderStop()
    {
       qInfo() << "decoder stopping";
 
@@ -1892,9 +1864,28 @@ struct QtWindow::Impl
 
       // sync logic && radio view ranges
       syncDataRanges();
+   }
 
-      // stop decoder
-      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Stop));
+   void decoderPause()
+   {
+      qInfo() << "decoder pause, remaining time:" << acquireTimer->remainingTime();
+
+      // get remaining time
+      timeLimit = acquireTimer->remainingTime() / 1000;
+
+      // stopping timer
+      acquireTimer->stop();
+
+      // sync logic && radio view ranges
+      syncDataRanges();
+   }
+
+   void decoderResume()
+   {
+      qInfo() << "decoder resume, remaining time:" << timeLimit;
+
+      // resume timer
+      acquireTimer->start(timeLimit * 1000);
    }
 
    void toggleTime()
@@ -2569,22 +2560,25 @@ void QtWindow::openStorage()
 
 void QtWindow::toggleListen()
 {
-   impl->toggleStart(false);
+   QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start));
 }
 
 void QtWindow::toggleRecord()
 {
-   impl->toggleStart(true);
+   QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath().absolutePath()}}));
 }
 
 void QtWindow::togglePause()
 {
-   impl->togglePause();
+   if (impl->ui->actionPause->isChecked())
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Pause));
+   else
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Resume));
 }
 
 void QtWindow::toggleStop()
 {
-   impl->toggleStop();
+   QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Stop));
 }
 
 void QtWindow::toggleTime()
@@ -2673,6 +2667,8 @@ void QtWindow::handleEvent(QEvent *event)
       impl->signalBufferEvent(dynamic_cast<SignalBufferEvent *>(event));
    else if (event->type() == StreamFrameEvent::Type)
       impl->streamFrameEvent(dynamic_cast<StreamFrameEvent *>(event));
+   else if (event->type() == DecoderControlEvent::Type)
+      impl->decoderControlEvent(dynamic_cast<DecoderControlEvent *>(event));
    else if (event->type() == LogicDecoderStatusEvent::Type)
       impl->logicDecoderStatusEvent(dynamic_cast<LogicDecoderStatusEvent *>(event));
    else if (event->type() == LogicDeviceStatusEvent::Type)

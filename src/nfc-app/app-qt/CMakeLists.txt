@@ -1,5 +1,46 @@
 set(CMAKE_CXX_STANDARD 17)
 
+if (ENABLE_GRPC_API)
+    find_package(gRPC CONFIG REQUIRED)
+    find_package(Protobuf CONFIG REQUIRED)
+
+    set(PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(PROTO_API_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/api/proto)
+    set(PROTO_API_FILE ${PROTO_API_DIR}/nfc_control.proto)
+
+    get_target_property(GRPC_CPP_PLUGIN gRPC::grpc_cpp_plugin LOCATION)
+
+    add_custom_command(
+            OUTPUT
+            ${PROTO_GEN_DIR}/nfc_control.pb.cc
+            ${PROTO_GEN_DIR}/nfc_control.pb.h
+            ${PROTO_GEN_DIR}/nfc_control.grpc.pb.cc
+            ${PROTO_GEN_DIR}/nfc_control.grpc.pb.h
+            COMMAND $<TARGET_FILE:protobuf::protoc>
+            ARGS
+            --grpc_out=${PROTO_GEN_DIR}
+            --cpp_out=${PROTO_GEN_DIR}
+            --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}
+            -I${PROTO_API_DIR}
+            ${PROTO_API_FILE}
+            DEPENDS ${PROTO_API_FILE}
+            COMMENT "Generating gRPC/protobuf stubs from nfc_control.proto"
+    )
+
+    add_library(remote-proto STATIC
+            ${PROTO_GEN_DIR}/nfc_control.pb.cc
+            ${PROTO_GEN_DIR}/nfc_control.grpc.pb.cc
+    )
+
+    target_include_directories(remote-proto PUBLIC ${PROTO_GEN_DIR})
+
+    target_link_libraries(remote-proto gRPC::grpc++)
+
+    message(STATUS "gRPC remote control: ENABLED")
+else ()
+    message(STATUS "gRPC remote control: DISABLED (use -DENABLE_GRPC_API=ON to enable)")
+endif ()
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
@@ -26,6 +67,7 @@ set(SOURCES
         ${PRIVATE_SOURCE_DIR}/QtApplication.cpp
         ${PRIVATE_SOURCE_DIR}/QtCache.cpp
         ${PRIVATE_SOURCE_DIR}/QtControl.cpp
+        ${PRIVATE_SOURCE_DIR}/QtRemote.cpp
         ${PRIVATE_SOURCE_DIR}/QtWindow.cpp
         ${PRIVATE_SOURCE_DIR}/events/ConsoleLogEvent.cpp
         ${PRIVATE_SOURCE_DIR}/events/DecoderControlEvent.cpp
@@ -93,6 +135,10 @@ set(SOURCES
         ${PRIVATE_ASSETS_DIR}/app/app.qrc
 )
 
+if (ENABLE_GRPC_API)
+    list(APPEND SOURCES ${PRIVATE_SOURCE_DIR}/remote/GrpcControl.cpp)
+endif ()
+
 # Build for WIN32 / UNIX-LINUX
 if (WIN32)
 
@@ -130,6 +176,12 @@ target_link_libraries(nfc-lab
         Qt6::PrintSupport
 )
 
+if (ENABLE_GRPC_API)
+    add_compile_definitions(ENABLE_GRPC_API)
+    target_include_directories(nfc-lab PRIVATE ${PROTO_GEN_DIR})
+    target_link_libraries(nfc-lab remote-proto)
+endif ()
+
 # Install targets
 if (UNIX)
     # Option to use Flatpak naming convention
@@ -137,25 +189,25 @@ if (UNIX)
 
     install(TARGETS nfc-lab DESTINATION bin)
 
-    if(FLATPAK_BUILD)
+    if (FLATPAK_BUILD)
         # Flatpak build: Use reverse-DNS naming
         set(ICON_NAME "io.github.josevcm.nfc-laboratory")
         set(DESKTOP_FILE_NAME "io.github.josevcm.nfc-laboratory.desktop")
         set(ICON_PNG_NAME "io.github.josevcm.nfc-laboratory.png")
         set(ICON_SVG_NAME "io.github.josevcm.nfc-laboratory.svg")
-    else()
+    else ()
         # Normal build: Use original naming
         set(ICON_NAME "nfc-lab")
         set(DESKTOP_FILE_NAME "nfc-lab.desktop")
         set(ICON_PNG_NAME "nfc-lab.png")
         set(ICON_SVG_NAME "nfc-lab.svg")
-    endif()
+    endif ()
 
     # Configure desktop file with correct icon name
     configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/app/rc/nfc-lab.desktop
-        ${CMAKE_CURRENT_BINARY_DIR}/nfc-lab.desktop
-        @ONLY
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/assets/app/rc/nfc-lab.desktop
+            ${CMAKE_CURRENT_BINARY_DIR}/nfc-lab.desktop
+            @ONLY
     )
 
     # Install configured desktop file
@@ -172,9 +224,9 @@ if (UNIX)
             RENAME ${ICON_SVG_NAME})
 
     # Install metainfo (only for Flatpak)
-    if(FLATPAK_BUILD)
+    if (FLATPAK_BUILD)
         install(FILES ${CMAKE_SOURCE_DIR}/dat/flatpak/io.github.josevcm.nfc-laboratory.metainfo.xml
                 DESTINATION share/metainfo)
-    endif()
+    endif ()
 
 endif (UNIX)

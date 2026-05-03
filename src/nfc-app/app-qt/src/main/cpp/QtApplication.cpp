@@ -27,13 +27,14 @@
 #include <QThreadPool>
 #include <QSplashScreen>
 #include <QStandardPaths>
-#include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonDocument>
 #include <QJsonArray>
 
 #include "QtCache.h"
 #include "QtControl.h"
 #include "QtWindow.h"
+#include "QtRemote.h"
 
 #include "features/Caps.h"
 
@@ -63,6 +64,9 @@ struct QtApplication::Impl
    // interface control
    QPointer<QtWindow> window;
 
+   // remote control
+   QPointer<QtRemote> remote;
+
    // splash screen
    QSplashScreen splash;
 
@@ -90,6 +94,9 @@ struct QtApplication::Impl
 
       // create decoder control interface
       control = new QtControl(cache);
+
+      // create remote control interface
+      remote = new QtRemote();
 
       // create user interface window
       window = new QtWindow(cache);
@@ -235,6 +242,7 @@ struct QtApplication::Impl
    {
       window->handleEvent(event);
       control->handleEvent(event);
+      remote->handleEvent(event);
 
       if (printFramesEnabled && event->type() == StreamFrameEvent::Type)
       {

@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+service LabRemote {
+  rpc Start     (ControlRequest)   returns (ControlResponse);
+  rpc Stop      (ControlRequest)   returns (ControlResponse);
+  rpc Pause     (ControlRequest)   returns (ControlResponse);
+  rpc Resume    (ControlRequest)   returns (ControlResponse);
+  rpc Subscribe (SubscribeRequest) returns (stream EventNotification);
+}
+
+// ── Control RPCs ─────────────────────────────────────────────────────────────
+
+message ControlRequest {}
+
+message ControlResponse {
+  bool   success = 1;
+  string message = 2;
+  State  state   = 3;
+}
+
+// ── Subscribe RPC ─────────────────────────────────────────────────────────────
+
+message SubscribeRequest {
+  repeated EventType filter = 1; // empty = subscribe to all event types
+}
+
+message EventNotification {
+  uint64 timestamp = 1;          // epoch milliseconds
+
+  oneof payload {
+    StateEvent  state  = 2;
+    FrameEvent  frame  = 3;
+    DeviceEvent device = 4;
+  }
+}
+
+message StateEvent {
+  State  state   = 1;
+  string message = 2;
+}
+
+message DeviceEvent {
+  string name    = 1;
+  string type    = 2;  // radio | logic
+  string status  = 3;
+}
+
+/**
+ * Describes a captured frame with metadata, timing, and payload bytes.
+ *
+ * Fields:
+ *  - tech: Technology family the frame belongs to.
+ *  - type: Semantic type of the frame (e.g., carrier on/off, request/response).
+ *  - flags: Additional attributes expressed as a bitmask of `Flags`.
+ *  - time_start/time_end: Timestamps in the common time base for the capture.
+ *  - rate: Data rate for the frame.
+ *  - data: Ordered list of payload bytes with per-byte timestamps.
+ */
+message FrameEvent {
+  FrameTech tech = 1;
+  FrameType type = 2;
+  uint32 flags = 3;
+  uint64 time_start = 5;
+  uint64 time_end = 6;
+  uint64 rate = 7;
+  bytes data = 8;
+}
+
+// ── Common enums ──────────────────────────────────────────────────────────────
+
+enum State {
+  UNKNOWN = 0;
+  IDLE    = 1;
+  RUNNING = 2;
+  PAUSED  = 3;
+}
+
+enum EventType {
+  ALL    = 0;
+  STATE  = 1;
+  FRAME  = 2;
+  DEVICE = 3;
+}
+
+/**
+ * Enumerates the technology families a frame belongs to.
+ */
+enum FrameTech {
+  FrameTech_NoneTech = 0;
+
+  // NFC tech types
+  FrameTech_NfcAnyTech = 1;
+  FrameTech_NfcATech = 2;
+  FrameTech_NfcBTech = 3;
+  FrameTech_NfcFTech = 4;
+  FrameTech_NfcVTech = 5;
+
+  // ISO tech types
+  FrameTech_IsoAnyTech = 30;
+  FrameTech_Iso7816Tech = 31;
+}
+
+/**
+ * Enumerates the semantic type of a frame observed on the interface.
+ */
+enum FrameType {
+  FrameType_NoneType = 0;
+
+  // NFC Frame types
+  FrameType_NfcCarrierOff = 1;
+  FrameType_NfcCarrierOn = 2;
+  FrameType_NfcPollFrame = 3;
+  FrameType_NfcListenFrame = 4;
+
+  // ISO Frame types
+  FrameType_IsoVccLow = 50;
+  FrameType_IsoVccHigh = 51;
+  FrameType_IsoRstLow = 52;
+  FrameType_IsoRstHigh = 53;
+  FrameType_IsoATRFrame = 54;
+  FrameType_IsoRequestFrame = 55;
+  FrameType_IsoResponseFrame = 56;
+  FrameType_IsoExchangeFrame = 57;
+}
+
+/**
+ * Bitmask flags describing frame-level properties and protocol semantics.
+ * Multiple flags can be combined using a bitwise OR.
+ */
+enum Flags {
+  Flags_None                           = 0x00000000;
+  Flags_Frame_ShortFrame               = 0x00000001;
+  Flags_Frame_Encrypted                = 0x00000002;
+  Flags_Frame_Truncated                = 0x00000008;
+  Flags_Frame_ParityError              = 0x00000010;
+  Flags_Frame_CrcError                 = 0x00000020;
+  Flags_Frame_SyncError                = 0x00000040;
+  Flags_Protocol_FrameField            = 0x00000100;
+  Flags_Protocol_FieldInfo             = 0x00000200;
+  Flags_Protocol_RequestFrame          = 0x00010000;
+  Flags_Protocol_ResponseFrame         = 0x00020000;
+  Flags_Protocol_SenseFrame            = 0x00040000;
+  Flags_Protocol_SelectionFrame        = 0x00080000;
+  Flags_Protocol_ApplicationFrame      = 0x00100000;
+  Flags_Protocol_AuthFrame             = 0x00200000;
+  Flags_Protocol_StartupFrame          = 0x00800000;
+  Flags_Protocol_ParityError           = 0x01000000;
+  Flags_Protocol_CrcError              = 0x02000000;
+  Flags_Protocol_SyncError             = 0x04000000;
+}
