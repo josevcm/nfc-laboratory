@@ -67,7 +67,6 @@ struct ConfigDialog::Impl
       ui->setupUi(dialog);
 
       fillCategories();
-      fillTimeFormats();
       fillGainModes();
       fillLoggers();
 
@@ -96,12 +95,6 @@ struct ConfigDialog::Impl
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\x8b  Logger")));
 
       ui->navList->setCurrentRow(1);
-   }
-
-   void fillTimeFormats()
-   {
-      ui->timeFormat->addItem("Elapsed", false);
-      ui->timeFormat->addItem("Date/Time", true);
    }
 
    void fillGainModes()
@@ -187,9 +180,6 @@ struct ConfigDialog::Impl
       // Page 0 — General
       ui->splashScreen->setValue(s.value("settings/splashScreen", 2500).toInt());
       ui->quitConfirmation->setChecked(s.value("settings/quitConfirmation", true).toBool());
-      ui->timeFormat->setCurrentIndex(s.value("window/timeFormat", false).toBool() ? 1 : 0);
-      ui->followEnabled->setChecked(s.value("window/followEnabled", true).toBool());
-      ui->filterEnabled->setChecked(s.value("window/filterEnabled", true).toBool());
 
       // Page 1 — Features
       s.beginGroup("features");
@@ -272,15 +262,12 @@ struct ConfigDialog::Impl
       // Page 0 — General
       s.setValue("settings/splashScreen", ui->splashScreen->value());
       s.setValue("settings/quitConfirmation", ui->quitConfirmation->isChecked());
-      s.setValue("window/timeFormat", ui->timeFormat->currentData().toBool());
-      s.setValue("window/followEnabled", ui->followEnabled->isChecked());
-      s.setValue("window/filterEnabled", ui->filterEnabled->isChecked());
 
       // Page 1 — Features
       bool featuresModified = false;
       s.beginGroup("features");
 
-      auto checkFeat = [&](const QString &key, QCheckBox *cb) {
+      auto checkFeat = [&](const QString &key, const QCheckBox *cb) {
          bool prev = s.value(key, true).toBool();
          bool now = cb->isChecked();
          s.setValue(key, now);
