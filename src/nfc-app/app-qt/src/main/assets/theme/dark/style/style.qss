@@ -2259,7 +2259,7 @@ QDialog QFrame {
 QDialog QLabel {
   margin-top: 8px;
   font-size: 10pt;
-  background-color: #2E3440;
+  background-color: transparent;
 }
 
 QDialog QLineEdit {
