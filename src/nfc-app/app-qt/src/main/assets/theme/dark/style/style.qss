@@ -737,9 +737,9 @@ QSizeGrip {
 
 --------------------------------------------------------------------------- */
 QStackedWidget {
-  padding: 2px;
-  border: 1px solid #455364;
+  padding: 1px;
   border: 1px solid #1B1B1C;
+  background: transparent;
 }
 
 /* QToolBar ---------------------------------------------------------------
@@ -2257,7 +2257,7 @@ QDialog QFrame {
 }
 
 QDialog QLabel {
-  margin-top: 8px;
+  margin-bottom: 1px;
   font-size: 10pt;
   background-color: transparent;
 }

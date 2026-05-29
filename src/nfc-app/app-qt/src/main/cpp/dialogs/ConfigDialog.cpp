@@ -65,80 +65,57 @@ struct ConfigDialog::Impl
    void setup()
    {
       ui->setupUi(dialog);
-      dialog->setFixedSize(640, 460);
-      applyNavStyle();
-      buildNav();
-      buildComboItems();
-      buildLogger();
+
+      fillCategories();
+      fillTimeFormats();
+      fillGainModes();
+      fillLoggers();
+
       connectSignals();
+
       loadSettings();
    }
 
-   void applyNavStyle()
+   void fillCategories()
    {
-      ui->navList->setStyleSheet(
-         "QListWidget {"
-         "  background-color: transparent;"
-         "  border: none;"
-         "  border-right: 1px solid #383850;"
-         "  outline: none;"
-         "}"
-         "QListWidget::item {"
-         "  padding: 5px 12px;"
-         "  color: #888888;"
-         "}"
-         "QListWidget::item:selected {"
-         "  background-color: #35355a;"
-         "  color: #a8c0ff;"
-         "  border-left: 2px solid #6878f0;"
-         "  padding-left: 10px;"
-         "}"
-         "QListWidget::item:disabled {"
-         "  padding: 4px 8px 2px;"
-         "  color: #5a5a7a;"
-         "  background-color: transparent;"
-         "}"
-      );
+      ui->navList->addItem(headerItem("Settings"));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xe2\x9a\x99  General")));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x94\x8c  Features")));
+
+      ui->navList->addItem(headerItem("Radio SDR"));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  AirSpy")));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  HydraSDR")));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  RTL-SDR")));
+
+      ui->navList->addItem(headerItem("Decoders"));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xbb  Radio NFC")));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x92\xbb  Logic / ISO7816")));
+
+      ui->navList->addItem(headerItem("Advanced"));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x8c\x90  gRPC API")));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\x8b  Logger")));
+
+      ui->navList->setCurrentRow(1);
    }
 
-   void buildNav()
+   void fillTimeFormats()
    {
-      auto *nav = ui->navList;
-
-      nav->addItem(headerItem("Settings"));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xe2\x9a\x99  General")));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x94\x8c  Features")));
-
-      nav->addItem(headerItem("Radio SDR"));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  AirSpy")));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  HydraSDR")));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  RTL-SDR")));
-
-      nav->addItem(headerItem("Decoders"));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xbb  Radio NFC")));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x92\xbb  Logic / ISO7816")));
-
-      nav->addItem(headerItem("Advanced"));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x8c\x90  gRPC API")));
-      nav->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\x8b  Logger")));
-
-      nav->setCurrentRow(1);
-   }
-
-   void buildComboItems()
-   {
-      ui->timeFormat->addItem("Elapsed",   false);
+      ui->timeFormat->addItem("Elapsed", false);
       ui->timeFormat->addItem("Date/Time", true);
+   }
 
-      for (auto *cb : {ui->airspyGainMode, ui->hydrasdrGainMode, ui->rtlsdrGainMode}) {
+   void fillGainModes()
+   {
+      for (auto *cb: {ui->airspyGainMode, ui->hydrasdrGainMode, ui->rtlsdrGainMode})
+      {
          cb->addItem("Sensitivity", 0);
-         cb->addItem("Linearity",   1);
+         cb->addItem("Linearity", 1);
       }
    }
 
-   void buildLogger()
+   void fillLoggers()
    {
-      for (const auto &lvl : LOGGER_LEVELS)
+      for (const auto &lvl: LOGGER_LEVELS)
          ui->loggerRoot->addItem(lvl, lvl);
       ui->loggerRoot->setCurrentText("WARN");
 
@@ -152,12 +129,17 @@ struct ConfigDialog::Impl
       ui->loggerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
       ui->loggerTable->setRowCount(LOGGER_SUBSYSTEMS.size());
 
-      for (int i = 0; i < LOGGER_SUBSYSTEMS.size(); ++i) {
+      for (int i = 0; i < LOGGER_SUBSYSTEMS.size(); ++i)
+      {
          ui->loggerTable->setItem(i, 0, new QTableWidgetItem(LOGGER_SUBSYSTEMS[i]));
+
          auto *cb = new QComboBox;
-         for (const auto &lvl : LOGGER_LEVELS)
+
+         for (const auto &lvl: LOGGER_LEVELS)
             cb->addItem(lvl, lvl);
+
          cb->setCurrentText("WARN");
+
          ui->loggerTable->setCellWidget(i, 1, cb);
          ui->loggerTable->setRowHeight(i, 24);
       }
@@ -170,10 +152,12 @@ struct ConfigDialog::Impl
       auto *item = new QListWidgetItem(text.toUpper());
       item->setFlags(Qt::NoItemFlags);
       item->setSizeHint(QSize(0, 24));
-      QFont f = item->font();
-      f.setPointSize(8);
-      item->setFont(f);
+
+      QFont font = item->font();
+      font.setPointSize(8);
+      item->setFont(font);
       item->setForeground(QColor("#5a5a7a"));
+
       return item;
    }
 
@@ -187,13 +171,13 @@ struct ConfigDialog::Impl
 
    void connectSignals()
    {
-      QObject::connect(ui->navList, &QListWidget::currentRowChanged, dialog, [this](int row) {
+      connect(ui->navList, &QListWidget::currentRowChanged, dialog, [this](int row) {
          if (ROW_TO_PAGE.contains(row))
             ui->contentStack->setCurrentIndex(ROW_TO_PAGE[row]);
       });
 
-      QObject::connect(ui->cancelButton, &QPushButton::clicked, dialog, &QDialog::reject);
-      QObject::connect(ui->applyButton, &QPushButton::clicked, dialog, [this] { applySettings(); });
+      connect(ui->cancelButton, &QPushButton::clicked, dialog, &QDialog::reject);
+      connect(ui->applyButton, &QPushButton::clicked, dialog, [this] { applySettings(); });
    }
 
    void loadSettings()
@@ -269,12 +253,15 @@ struct ConfigDialog::Impl
 
       // Page 8 — Logger
       s.beginGroup("logger");
+
       ui->loggerRoot->setCurrentText(s.value("root", "WARN").toString().toUpper());
-      for (int i = 0; i < LOGGER_SUBSYSTEMS.size(); ++i) {
-         auto *cb = qobject_cast<QComboBox *>(ui->loggerTable->cellWidget(i, 1));
-         if (cb)
+
+      for (int i = 0; i < LOGGER_SUBSYSTEMS.size(); ++i)
+      {
+         if (auto *cb = qobject_cast<QComboBox *>(ui->loggerTable->cellWidget(i, 1)))
             cb->setCurrentText(s.value(LOGGER_SUBSYSTEMS[i], "WARN").toString().toUpper());
       }
+
       s.endGroup();
    }
 
@@ -283,138 +270,144 @@ struct ConfigDialog::Impl
       QSettings s;
 
       // Page 0 — General
-      s.setValue("settings/splashScreen",    ui->splashScreen->value());
+      s.setValue("settings/splashScreen", ui->splashScreen->value());
       s.setValue("settings/quitConfirmation", ui->quitConfirmation->isChecked());
-      s.setValue("window/timeFormat",        ui->timeFormat->currentData().toBool());
-      s.setValue("window/followEnabled",     ui->followEnabled->isChecked());
-      s.setValue("window/filterEnabled",     ui->filterEnabled->isChecked());
+      s.setValue("window/timeFormat", ui->timeFormat->currentData().toBool());
+      s.setValue("window/followEnabled", ui->followEnabled->isChecked());
+      s.setValue("window/filterEnabled", ui->filterEnabled->isChecked());
 
       // Page 1 — Features
       bool featuresModified = false;
       s.beginGroup("features");
+
       auto checkFeat = [&](const QString &key, QCheckBox *cb) {
          bool prev = s.value(key, true).toBool();
-         bool now  = cb->isChecked();
+         bool now = cb->isChecked();
          s.setValue(key, now);
          if (prev != now) featuresModified = true;
       };
-      checkFeat("radioDevice",   ui->featRadioDevice);
-      checkFeat("logicDevice",   ui->featLogicDevice);
-      checkFeat("radioDecode",   ui->featRadioDecode);
-      checkFeat("logicDecode",   ui->featLogicDecode);
+
+      checkFeat("radioDevice", ui->featRadioDevice);
+      checkFeat("logicDevice", ui->featLogicDevice);
+      checkFeat("radioDecode", ui->featRadioDecode);
+      checkFeat("logicDecode", ui->featLogicDecode);
       checkFeat("radioSpectrum", ui->featRadioSpectrum);
-      checkFeat("signalRecord",  ui->featSignalRecord);
+      checkFeat("signalRecord", ui->featSignalRecord);
       s.endGroup();
 
       // Page 2 — AirSpy
       s.beginGroup("device.radio.airspy");
-      s.setValue("enabled",    ui->airspyEnabled->isChecked());
+      s.setValue("enabled", ui->airspyEnabled->isChecked());
       s.setValue("centerFreq", ui->airspyCenterFreq->value());
       s.setValue("sampleRate", ui->airspySampleRate->value());
-      s.setValue("gainMode",   ui->airspyGainMode->currentData().toInt());
-      s.setValue("gainValue",  ui->airspyGainValue->value());
-      s.setValue("mixerAgc",   ui->airspyMixerAgc->isChecked());
-      s.setValue("tunerAgc",   ui->airspyTunerAgc->isChecked());
-      s.setValue("biasTee",    ui->airspyBiasTee->isChecked());
+      s.setValue("gainMode", ui->airspyGainMode->currentData().toInt());
+      s.setValue("gainValue", ui->airspyGainValue->value());
+      s.setValue("mixerAgc", ui->airspyMixerAgc->isChecked());
+      s.setValue("tunerAgc", ui->airspyTunerAgc->isChecked());
+      s.setValue("biasTee", ui->airspyBiasTee->isChecked());
       s.endGroup();
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
-         {"enabled",    ui->airspyEnabled->isChecked()},
-         {"centerFreq", ui->airspyCenterFreq->value()},
-         {"sampleRate", ui->airspySampleRate->value()},
-         {"gainMode",   ui->airspyGainMode->currentData().toInt()},
-         {"gainValue",  ui->airspyGainValue->value()},
-         {"mixerAgc",   (int) ui->airspyMixerAgc->isChecked()},
-         {"tunerAgc",   (int) ui->airspyTunerAgc->isChecked()},
-         {"biasTee",    (int) ui->airspyBiasTee->isChecked()}
-      }));
+                                                     {"enabled", ui->airspyEnabled->isChecked()},
+                                                     {"centerFreq", ui->airspyCenterFreq->value()},
+                                                     {"sampleRate", ui->airspySampleRate->value()},
+                                                     {"gainMode", ui->airspyGainMode->currentData().toInt()},
+                                                     {"gainValue", ui->airspyGainValue->value()},
+                                                     {"mixerAgc", static_cast<int>(ui->airspyMixerAgc->isChecked())},
+                                                     {"tunerAgc", static_cast<int>(ui->airspyTunerAgc->isChecked())},
+                                                     {"biasTee", static_cast<int>(ui->airspyBiasTee->isChecked())}
+                                                  }));
 
       // Page 3 — HydraSDR
       s.beginGroup("device.radio.hydrasdr");
-      s.setValue("enabled",    ui->hydrasdrEnabled->isChecked());
+      s.setValue("enabled", ui->hydrasdrEnabled->isChecked());
       s.setValue("centerFreq", ui->hydrasdrCenterFreq->value());
       s.setValue("sampleRate", ui->hydrasdrSampleRate->value());
-      s.setValue("gainMode",   ui->hydrasdrGainMode->currentData().toInt());
-      s.setValue("gainValue",  ui->hydrasdrGainValue->value());
-      s.setValue("mixerAgc",   ui->hydrasdrMixerAgc->isChecked());
-      s.setValue("tunerAgc",   ui->hydrasdrTunerAgc->isChecked());
-      s.setValue("biasTee",    ui->hydrasdrBiasTee->isChecked());
+      s.setValue("gainMode", ui->hydrasdrGainMode->currentData().toInt());
+      s.setValue("gainValue", ui->hydrasdrGainValue->value());
+      s.setValue("mixerAgc", ui->hydrasdrMixerAgc->isChecked());
+      s.setValue("tunerAgc", ui->hydrasdrTunerAgc->isChecked());
+      s.setValue("biasTee", ui->hydrasdrBiasTee->isChecked());
       s.endGroup();
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
-         {"enabled",    ui->hydrasdrEnabled->isChecked()},
-         {"centerFreq", ui->hydrasdrCenterFreq->value()},
-         {"sampleRate", ui->hydrasdrSampleRate->value()},
-         {"gainMode",   ui->hydrasdrGainMode->currentData().toInt()},
-         {"gainValue",  ui->hydrasdrGainValue->value()},
-         {"mixerAgc",   (int) ui->hydrasdrMixerAgc->isChecked()},
-         {"tunerAgc",   (int) ui->hydrasdrTunerAgc->isChecked()},
-         {"biasTee",    (int) ui->hydrasdrBiasTee->isChecked()}
-      }));
+                                                     {"enabled", ui->hydrasdrEnabled->isChecked()},
+                                                     {"centerFreq", ui->hydrasdrCenterFreq->value()},
+                                                     {"sampleRate", ui->hydrasdrSampleRate->value()},
+                                                     {"gainMode", ui->hydrasdrGainMode->currentData().toInt()},
+                                                     {"gainValue", ui->hydrasdrGainValue->value()},
+                                                     {"mixerAgc", static_cast<int>(ui->hydrasdrMixerAgc->isChecked())},
+                                                     {"tunerAgc", static_cast<int>(ui->hydrasdrTunerAgc->isChecked())},
+                                                     {"biasTee", static_cast<int>(ui->hydrasdrBiasTee->isChecked())}
+                                                  }));
 
       // Page 4 — RTL-SDR
       s.beginGroup("device.radio.rtlsdr");
-      s.setValue("enabled",        ui->rtlsdrEnabled->isChecked());
-      s.setValue("centerFreq",     ui->rtlsdrCenterFreq->value());
-      s.setValue("sampleRate",     ui->rtlsdrSampleRate->value());
-      s.setValue("gainMode",       ui->rtlsdrGainMode->currentData().toInt());
-      s.setValue("gainValue",      ui->rtlsdrGainValue->value());
-      s.setValue("mixerAgc",       ui->rtlsdrMixerAgc->isChecked());
-      s.setValue("tunerAgc",       ui->rtlsdrTunerAgc->isChecked());
+      s.setValue("enabled", ui->rtlsdrEnabled->isChecked());
+      s.setValue("centerFreq", ui->rtlsdrCenterFreq->value());
+      s.setValue("sampleRate", ui->rtlsdrSampleRate->value());
+      s.setValue("gainMode", ui->rtlsdrGainMode->currentData().toInt());
+      s.setValue("gainValue", ui->rtlsdrGainValue->value());
+      s.setValue("mixerAgc", ui->rtlsdrMixerAgc->isChecked());
+      s.setValue("tunerAgc", ui->rtlsdrTunerAgc->isChecked());
       s.setValue("directSampling", ui->rtlsdrDirectSampling->currentIndex());
       s.endGroup();
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
-         {"enabled",        ui->rtlsdrEnabled->isChecked()},
-         {"centerFreq",     ui->rtlsdrCenterFreq->value()},
-         {"sampleRate",     ui->rtlsdrSampleRate->value()},
-         {"gainMode",       ui->rtlsdrGainMode->currentData().toInt()},
-         {"gainValue",      ui->rtlsdrGainValue->value()},
-         {"mixerAgc",       (int) ui->rtlsdrMixerAgc->isChecked()},
-         {"tunerAgc",       (int) ui->rtlsdrTunerAgc->isChecked()},
-         {"directSampling", ui->rtlsdrDirectSampling->currentIndex()}
-      }));
+                                                     {"enabled", ui->rtlsdrEnabled->isChecked()},
+                                                     {"centerFreq", ui->rtlsdrCenterFreq->value()},
+                                                     {"sampleRate", ui->rtlsdrSampleRate->value()},
+                                                     {"gainMode", ui->rtlsdrGainMode->currentData().toInt()},
+                                                     {"gainValue", ui->rtlsdrGainValue->value()},
+                                                     {"mixerAgc", static_cast<int>(ui->rtlsdrMixerAgc->isChecked())},
+                                                     {"tunerAgc", static_cast<int>(ui->rtlsdrTunerAgc->isChecked())},
+                                                     {"directSampling", ui->rtlsdrDirectSampling->currentIndex()}
+                                                  }));
 
       // Page 5 — Radio NFC
-      s.setValue("decoder.radio/enabled",                 ui->radioEnabled->isChecked());
-      s.setValue("decoder.radio.protocol.nfca/enabled",   ui->radioNfcA->isChecked());
-      s.setValue("decoder.radio.protocol.nfcb/enabled",   ui->radioNfcB->isChecked());
-      s.setValue("decoder.radio.protocol.nfcf/enabled",   ui->radioNfcF->isChecked());
-      s.setValue("decoder.radio.protocol.nfcv/enabled",   ui->radioNfcV->isChecked());
+      s.setValue("decoder.radio/enabled", ui->radioEnabled->isChecked());
+      s.setValue("decoder.radio.protocol.nfca/enabled", ui->radioNfcA->isChecked());
+      s.setValue("decoder.radio.protocol.nfcb/enabled", ui->radioNfcB->isChecked());
+      s.setValue("decoder.radio.protocol.nfcf/enabled", ui->radioNfcF->isChecked());
+      s.setValue("decoder.radio.protocol.nfcv/enabled", ui->radioNfcV->isChecked());
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDecoderConfig, {
-         {"enabled",               ui->radioEnabled->isChecked()},
-         {"protocol/nfca/enabled", ui->radioNfcA->isChecked()},
-         {"protocol/nfcb/enabled", ui->radioNfcB->isChecked()},
-         {"protocol/nfcf/enabled", ui->radioNfcF->isChecked()},
-         {"protocol/nfcv/enabled", ui->radioNfcV->isChecked()}
-      }));
+                                                     {"enabled", ui->radioEnabled->isChecked()},
+                                                     {"protocol/nfca/enabled", ui->radioNfcA->isChecked()},
+                                                     {"protocol/nfcb/enabled", ui->radioNfcB->isChecked()},
+                                                     {"protocol/nfcf/enabled", ui->radioNfcF->isChecked()},
+                                                     {"protocol/nfcv/enabled", ui->radioNfcV->isChecked()}
+                                                  }));
 
       // Page 6 — Logic / ISO7816
-      s.setValue("decoder.logic/enabled",                  ui->logicEnabled->isChecked());
+      s.setValue("decoder.logic/enabled", ui->logicEnabled->isChecked());
       s.setValue("decoder.logic.protocol.iso7816/enabled", ui->logicIso7816->isChecked());
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::LogicDecoderConfig, {
-         {"enabled",                  ui->logicEnabled->isChecked()},
-         {"protocol/iso7816/enabled", ui->logicIso7816->isChecked()}
-      }));
+                                                     {"enabled", ui->logicEnabled->isChecked()},
+                                                     {"protocol/iso7816/enabled", ui->logicIso7816->isChecked()}
+                                                  }));
 
       // Page 7 — gRPC
       s.setValue("grpc/port", ui->grpcPort->value());
 
       // Page 8 — Logger
       s.beginGroup("logger");
+
       const QString rootLevel = ui->loggerRoot->currentText();
       s.setValue("root", rootLevel);
       rt::Logger::setRootLevel(rootLevel.toStdString());
 
-      for (int i = 0; i < LOGGER_SUBSYSTEMS.size(); ++i) {
-         auto *cb = qobject_cast<QComboBox *>(ui->loggerTable->cellWidget(i, 1));
-         if (!cb) continue;
-         const QString level = cb->currentText();
-         s.setValue(LOGGER_SUBSYSTEMS[i], level);
-         rt::Logger::getLogger(LOGGER_SUBSYSTEMS[i].toStdString())->setLevel(level.toStdString());
+      for (int i = 0; i < LOGGER_SUBSYSTEMS.size(); ++i)
+      {
+         if (const auto *cb = qobject_cast<QComboBox *>(ui->loggerTable->cellWidget(i, 1)))
+         {
+            const QString level = cb->currentText();
+            s.setValue(LOGGER_SUBSYSTEMS[i], level);
+            rt::Logger::getLogger(LOGGER_SUBSYSTEMS[i].toStdString())->setLevel(level.toStdString());
+         }
       }
+
       s.endGroup();
 
       s.sync();
