@@ -1804,7 +1804,7 @@ struct QtWindow::Impl
    void openConfig()
    {
       ConfigDialog dialog(window);
-      QObject::connect(&dialog, &ConfigDialog::featuresChanged, window, &QtWindow::reload);
+      connect(&dialog, &ConfigDialog::featuresChanged, window, &QtWindow::reload);
       dialog.exec();
    }
 
