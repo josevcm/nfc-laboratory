@@ -38,6 +38,7 @@
 #include <hw/radio/RadioDevice.h>
 #include <hw/radio/AirspyDevice.h>
 #include <hw/radio/HydraDevice.h>
+#include <hw/radio/HackrfDevice.h>
 #include <hw/radio/MiriDevice.h>
 #include <hw/radio/RealtekDevice.h>
 
@@ -100,6 +101,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
 
       hw::DeviceFactory::registerDevice("radio.airspy", []() -> std::vector<std::string> { return hw::radio::AirspyDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::AirspyDevice(name); });
       hw::DeviceFactory::registerDevice("radio.hydrasdr", []() -> std::vector<std::string> { return hw::radio::HydraDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::HydraDevice(name); });
+	  hw::DeviceFactory::registerDevice("radio.hackrf", []() -> std::vector<std::string> { return hw::radio::HackrfDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::HackrfDevice(name); });
       hw::DeviceFactory::registerDevice("radio.rtlsdr", []() -> std::vector<std::string> { return hw::radio::RealtekDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::RealtekDevice(name); });
       hw::DeviceFactory::registerDevice("radio.miri", []() -> std::vector<std::string> { return hw::radio::MiriDevice::enumerate(); }, [](const std::string &name) -> hw::radio::RadioDevice * { return new hw::radio::MiriDevice(name); });
    }

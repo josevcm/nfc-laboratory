@@ -722,6 +722,7 @@ licenses, please check if you are interested in this work.
 - HydraSDR RFOne driver at `src/nfc-lib/lib-ext/hydrasdr` see https://github.com/hydrasdr/rfone_host
 - MiriSDR driver at `src/nfc-lib/lib-ext/mirisdr` see https://github.com/f4exb/libmirisdr-4
 - RTL SDR driver at `src/nfc-lib/lib-ext/rtlsdr` see https://osmocom.org/projects/rtl-sdr
+- HackRF One at `src/nfc-lib/lib-ext/hackrf` see https://github.com/greatscottgadgets/hackrf
 - mufft library at `src/nfc-lib/lib-ext/mufft` see https://github.com/Themaister/muFFT
 - nlohmann json at `src/nfc-lib/lib-ext/nlohmann` see https://github.com/nlohmann/json
 - microtar at `src/nfc-lib/lib-ext/microtar` see https://github.com/rxi/microtar
