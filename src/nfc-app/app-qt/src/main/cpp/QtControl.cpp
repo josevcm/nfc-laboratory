@@ -32,6 +32,7 @@
 
 #include <hw/SignalBuffer.h>
 #include <hw/RecordDevice.h>
+#include <hw/SignalType.h>
 
 #include <lab/data/RawFrame.h>
 
@@ -158,6 +159,19 @@ struct QtControl::Impl
             {"sampleRate", 10000000},
             {"gainMode", 1}, // linearity
             {"gainValue", 4}, // 4db
+            {"mixerAgc", 0},
+            {"tunerAgc", 0},
+            {"biasTee", 0},
+            {"directSampling", 0}
+         })
+      },
+	  {
+         "radio.hackrf", QJsonObject({
+            {"enabled", true},
+            {"centerFreq", 11560000}, // HackRF specific, avoid DC spike at center
+            {"sampleRate", 10000000},
+            {"gainMode", 2}, // LNA/IF gain stage -> 8 db
+            {"gainValue", 1}, // VGA/baseband gain stage -> 2 db
             {"mixerAgc", 0},
             {"tunerAgc", 0},
             {"biasTee", 0},
@@ -1342,6 +1356,27 @@ struct QtControl::Impl
     */
    void signalBufferEvent(const hw::SignalBuffer &buffer)
    {
+      // HackRF feeds the decoder at full 8-bit scale (/128) so the weak card load-modulation stays above the detection threshold
+	  // It pushes the carrier to the top of the fixed RMS view, so we apply a cosmetic half-scale to the **display copy** ONLY (the decoder is not impacted)
+      // It results in keeping the envelope readable without touching decoding
+      if (radioDeviceType == "radio.hackrf" && buffer.type() == hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL)
+      {
+         const unsigned int n = buffer.limit();
+
+         hw::SignalBuffer scaled(n, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, buffer.id());
+
+         const float *src = buffer.data();
+         float *dst = scaled.push(n);
+
+         for (unsigned int i = 0; i < n; i++)
+            dst[i] = (i & 1u) ? src[i] : src[i] * 0.5f;
+
+         scaled.flip();
+
+         QtApplication::post(new SignalBufferEvent(scaled), Qt::LowEventPriority);
+         return;
+      }
+
       QtApplication::post(new SignalBufferEvent(buffer), Qt::LowEventPriority);
    }
 
