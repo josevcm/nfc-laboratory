@@ -90,6 +90,20 @@ else ()
 endif()
 
 #-------------------------------------------------------------------------------
+# find dependency hackrf
+#-------------------------------------------------------------------------------
+find_package(libhackrf)
+
+if(LIBHACKRF_FOUND)
+  message(STATUS "libhackrf: found and using dynamic link mode")
+  message(STATUS "  include: " ${LIBHACKRF_INCLUDE})
+  message(STATUS "  library: " ${LIBHACKRF_LIBRARY})
+  include_directories(${LIBHACKRF_INCLUDE})
+else ()
+  message(STATUS  "libhackrf: not found, using local bundle in static mode")
+endif()
+
+#-------------------------------------------------------------------------------
 # find dependency rltsdr
 #-------------------------------------------------------------------------------
 find_package(librtlsdr)

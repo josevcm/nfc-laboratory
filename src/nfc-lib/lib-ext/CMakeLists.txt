@@ -1,5 +1,6 @@
 add_subdirectory(airspy)
 add_subdirectory(hydrasdr)
+add_subdirectory(hackrf)
 add_subdirectory(ed25519)
 add_subdirectory(nlohmann)
 add_subdirectory(microtar)
