@@ -93,24 +93,76 @@ As can be seen, the application split functionalities in different tabs:
 
 ## Application settings
 
-Settings are stored in user home directory, inside Roaming folder for windows %USERPROFILE%\AppData\Roaming\josevcm\nfc-lab.ini.
-The file is created the first time the application is run and can contain the following sections:
+Settings are stored in the user home directory. On Windows the file is located at `%USERPROFILE%\AppData\Roaming\josevcm\nfc-lab.ini`. The file is created the first time the application runs and is automatically updated on every close.
 
-Window state, updated every application close.
+### [window] — Window state and UI preferences
 
-```
+Updated every time the application closes.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `windowWidth` | int | 1024 | Window width in pixels |
+| `windowHeight` | int | 720 | Window height in pixels |
+| `windowState` | int | 0 | Window state: `0` = normal, `2` = maximized |
+| `timeFormat` | bool | false | Time display: `false` = elapsed seconds, `true` = absolute date/time |
+| `followEnabled` | bool | true | Auto-scroll frame table to the latest decoded frame |
+| `filterEnabled` | bool | true | Enable frame filtering in the decoded frames table |
+
+```ini
 [window]
+windowWidth=1024
+windowHeight=720
+windowState=0
 timeFormat=false
 followEnabled=true
 filterEnabled=true
-windowWidth=1024
-windowHeight=700
 ```
 
-Logic decoder and ISO7816 status, controlled from the toolbar option **Logic Acquire**, **Logic Decoder** under **Features** and **Protocol** menu. 
-Currently, channel signal mappings **channelIO**, **channelCLK**, **channelRST**, **channelVCC** are fixed, change this values has no effect.
+### [settings] — Application behaviour
 
+These settings are **not** modified by the application and must be edited manually in the INI file.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `splashScreen` | int | 2500 | Splash screen duration in milliseconds. Set to `0` to disable |
+| `theme` | string | dark | UI theme. Only `dark` is currently supported |
+| `quitConfirmation` | bool | true | Show a confirmation dialog before quitting |
+
+```ini
+[settings]
+splashScreen=2500
+theme=dark
+quitConfirmation=true
 ```
+
+### [features] — Feature toggles
+
+Controls which features are available in the UI. All features are enabled by default. Disabling a feature hides the corresponding toolbar button and skips the initialisation of the related hardware or processing thread.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `radioDevice` | bool | true | Enable the SDR radio receiver |
+| `logicDevice` | bool | true | Enable the logic analyser |
+| `radioDecode` | bool | true | Enable radio NFC protocol decoding |
+| `logicDecode` | bool | true | Enable contact card (ISO 7816) protocol decoding |
+| `radioSpectrum` | bool | true | Enable the radio spectrum (FFT) view |
+| `signalRecord` | bool | true | Enable signal recording to disk |
+
+```ini
+[features]
+radioDevice=true
+logicDevice=true
+radioDecode=true
+logicDecode=true
+radioSpectrum=true
+signalRecord=true
+```
+
+### [decoder.logic] — Logic (contact card) decoder
+
+Controlled from the toolbar via **Logic Acquire** / **Logic Decoder** under the **Features** and **Protocol** menus.
+
+```ini
 [decoder.logic]
 enabled=true
 
@@ -122,9 +174,13 @@ channelRST=2
 channelVCC=3
 ```
 
-Radio decoder and NFC-A, NFC-B, NFC-F, NFC-V status, controlled from the toolbar option **Radio Acquire**, **Radio Decoder** under **Features** and **Protocol** menu.
+> **Note:** `channelIO`, `channelCLK`, `channelRST` and `channelVCC` are fixed values. Changing them has no effect.
 
-```
+### [decoder.radio] — Radio (contactless NFC) decoder
+
+Controlled from the toolbar via **Radio Acquire** / **Radio Decoder** under the **Features** and **Protocol** menus.
+
+```ini
 [decoder.radio]
 enabled=true
 
@@ -141,10 +197,23 @@ enabled=true
 enabled=true
 ```
 
-Configuration parameters for the Airspy receiver, the best performance is obtained by tuning in 3rd harmonic
-at 40.68Mhz.
+### [device.radio.airspy] — AirSpy Mini / R2
 
-```
+Best results are obtained by tuning to the **3rd harmonic at 40.68 MHz** with a 10 Msps sample rate.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `centerFreq` | int | 40680000 | Center frequency in Hz |
+| `sampleRate` | int | 10000000 | Sample rate in samples/s |
+| `gainMode` | int | 1 | Gain mode: `0` = sensitivity, `1` = linearity |
+| `gainValue` | int | 4 | Gain step index (mode-dependent; higher = more gain) |
+| `mixerAgc` | int | 0 | Mixer AGC: `0` = off, `1` = on |
+| `tunerAgc` | int | 0 | Tuner AGC: `0` = off, `1` = on |
+| `biasTee` | int | 0 | Bias-Tee power for external LNA or SpyVerter: `0` = off, `1` = on |
+| `directSampling` | int | 0 | Direct sampling (not applicable on AirSpy) |
+| `enabled` | bool | true | Enable or disable this receiver |
+
+```ini
 [device.radio.airspy]
 centerFreq=40680000
 sampleRate=10000000
@@ -157,32 +226,28 @@ directSampling=0
 enabled=true
 ```
 
+### [device.radio.hydrasdr] — HydraSDR RFOne
 
-Configuration parameters for the HydraSDR RFOne receiver, the best performance is obtained by tuning in 2rd harmonic
-at 27.12Mhz.
+Best results are obtained by tuning to the **3rd harmonic at 40.68 MHz** or the **2nd harmonic at 27.12 MHz** with a 10 Msps sample rate. For some readers (e.g. Renesas NFC readers) the 3rd harmonic at 40.68 MHz gives better results.
 
-```
-[device.radio.hydrasdr]
-centerFreq=27120000
-sampleRate=10000000
-gainMode=1
-gainValue=3
-mixerAgc=0
-tunerAgc=0
-biasTee=0
-directSampling=0
-enabled=true
-```
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `centerFreq` | int | 40680000 | Center frequency in Hz |
+| `sampleRate` | int | 10000000 | Sample rate in samples/s |
+| `gainMode` | int | 1 | Gain mode: `0` = sensitivity, `1` = linearity |
+| `gainValue` | int | 4 | Gain step index |
+| `mixerAgc` | int | 0 | Mixer AGC: `0` = off, `1` = on |
+| `tunerAgc` | int | 0 | Tuner AGC: `0` = off, `1` = on |
+| `biasTee` | int | 0 | Bias-Tee for SpyVerter up-converter: `0` = off, `1` = on |
+| `directSampling` | int | 0 | Direct sampling (not applicable on HydraSDR) |
+| `enabled` | bool | true | Enable or disable this receiver |
 
-For some readers as Renesas NFC Readers, tunning on the 2nd harmonic will not be able to decode the signal, 
-so we suggest to set center frequency on the 3rd harmonic, 40,68MHz.
-
-```
+```ini
 [device.radio.hydrasdr]
 centerFreq=40680000
 sampleRate=10000000
 gainMode=1
-gainValue=3
+gainValue=4
 mixerAgc=0
 tunerAgc=0
 biasTee=0
@@ -190,25 +255,72 @@ directSampling=0
 enabled=true
 ```
 
-Configuration parameters for the RTL-SDR receiver, the best performance is obtained by tuning to the 2nd harmonic
-at 27.12Mhz. Decoding with this device is quite limited due to its low sampling frequency and 8-bit resolution,
-it will not offer the necessary quality, is supported only as a reference to experiment with it.
+### [device.radio.rtlsdr] — RTL-SDR
 
-```
+Best results are obtained by tuning to the **2nd harmonic at 27.12 MHz** at 3.2 Msps. Due to the low sample rate and 8-bit resolution, decoding is limited to 106 Kbps; this device is supported only as a reference.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `centerFreq` | int | 27120000 | Center frequency in Hz |
+| `sampleRate` | int | 3200000 | Sample rate in samples/s |
+| `gainMode` | int | 1 | Gain mode: `0` = AGC, `1` = manual |
+| `gainValue` | int | 77 | Gain value (77 ≈ 7.7 dB in the driver's gain table) |
+| `mixerAgc` | int | 0 | Mixer AGC: `0` = off, `1` = on |
+| `tunerAgc` | int | 0 | Tuner AGC: `0` = off, `1` = on |
+| `biasTee` | int | 0 | Bias-Tee: `0` = off, `1` = on |
+| `directSampling` | int | 0 | Direct sampling: `0` = off, `1` = I-branch, `2` = Q-branch (preferred) |
+| `enabled` | bool | true | Enable or disable this receiver |
+
+```ini
 [device.radio.rtlsdr]
 centerFreq=27120000
 sampleRate=3200000
 gainMode=1
-gainValue=125
-biasTee=0
-directSampling=0
+gainValue=77
 mixerAgc=0
 tunerAgc=0
+biasTee=0
+directSampling=0
+enabled=true
 ```
 
-Logging control to see what happened.
+### [device.logic.dreamsourcelab] — DreamSourceLab DSLogic
 
+Supported models: DSLogic Plus, Pro16, Pro32.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enabled` | bool | true | Enable or disable this device |
+| `sampleRate` | int | 25000000 | Sample rate in samples/s (25 Msps) |
+| `vThreshold` | float | 1.0 | Digital signal voltage threshold in Volts |
+| `channels` | array | [0, 2, 3] | Active channel indices to capture |
+
+```ini
+[device.logic.dreamsourcelab]
+enabled=true
+sampleRate=25000000
+vThreshold=1.0
+channels=0, 2, 3
 ```
+
+### [grpc] — gRPC remote control API
+
+The application includes an optional gRPC server that allows external programs to start/stop acquisition and receive decoded frames in real time. It is **disabled by default** (port `0`).
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `port` | int | 0 | TCP port for the gRPC server. Set to `0` to disable |
+
+```ini
+[grpc]
+port=50051
+```
+
+### [logger] — Log verbosity
+
+Controls log verbosity for each subsystem. Valid levels are `DEBUG`, `INFO`, `WARN`, `ERROR`, `NONE`.
+
+```ini
 [logger]
 root=WARN
 app.main=INFO
@@ -240,7 +352,7 @@ rt.Executor=INFO
 rt.Worker=INFO
 ```
 
-All default values are fixed and can be enough for most of the cases.
+All default values provide a good starting point for most use cases.
 
 ## SDR Receivers tested
 
@@ -358,10 +470,10 @@ Note: No all RTLSDR devices support this feature.
 The configuration required is:
 
 ```
-[device.rtlsdr]
+[device.radio.rtlsdr]
 ...
 centerFreq=13560000
-directSampling=1
+directSampling=2
 ...
 ```
 

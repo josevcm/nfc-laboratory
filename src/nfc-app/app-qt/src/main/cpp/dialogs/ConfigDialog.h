@@ -34,11 +34,13 @@ class ConfigDialog : public QDialog
 
       explicit ConfigDialog(QWidget *parent = nullptr);
 
+   Q_SIGNALS:
+
+      void featuresChanged();
+
    private:
 
       QSharedPointer<Impl> impl;
-
 };
-
 
 #endif //NFC_LAB_CONFIGDIALOG_H

@@ -2,6 +2,7 @@
 
   This file is part of NFC-LABORATORY.
 
+  Copyright (C) 2026 Benjamin DELPY, <benjamin@gentilkiwi.com>
   Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify

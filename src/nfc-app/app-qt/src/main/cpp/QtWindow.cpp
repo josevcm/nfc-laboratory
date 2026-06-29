@@ -52,6 +52,7 @@
 #include <events/SystemStartupEvent.h>
 
 #include <dialogs/InspectDialog.h>
+#include <dialogs/ConfigDialog.h>
 
 #include <styles/Theme.h>
 
@@ -1800,19 +1801,11 @@ struct QtWindow::Impl
       QDesktopServices::openUrl(QUrl::fromLocalFile(QtApplication::dataPath().absolutePath()));
    }
 
-   void openConfig() const
+   void openConfig()
    {
-      QString filePath = settings.fileName();
-
-      QFileInfo info(filePath);
-
-      if (!info.exists())
-      {
-         qWarning("File not found: %s", qUtf8Printable(filePath));
-         return;
-      }
-
-      QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
+      ConfigDialog dialog(window);
+      connect(&dialog, &ConfigDialog::featuresChanged, window, &QtWindow::reload);
+      dialog.exec();
    }
 
    void decoderStart()

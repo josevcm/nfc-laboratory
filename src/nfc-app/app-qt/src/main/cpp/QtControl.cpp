@@ -3,6 +3,7 @@
   This file is part of NFC-LABORATORY.
 
   Copyright (C) 2024 Jose Vicente Campos Martinez, <josevcm@gmail.com>
+  Copyright (C) 2026 Benjamin DELPY, <benjamin@gentilkiwi.com>
 
   NFC-LABORATORY is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -1357,7 +1358,7 @@ struct QtControl::Impl
    void signalBufferEvent(const hw::SignalBuffer &buffer)
    {
       // HackRF feeds the decoder at full 8-bit scale (/128) so the weak card load-modulation stays above the detection threshold
-	  // It pushes the carrier to the top of the fixed RMS view, so we apply a cosmetic half-scale to the **display copy** ONLY (the decoder is not impacted)
+      // It pushes the carrier to the top of the fixed RMS view, so we apply a cosmetic half-scale to the **display copy** ONLY (the decoder is not impacted)
       // It results in keeping the envelope readable without touching decoding
       if (radioDeviceType == "radio.hackrf" && buffer.type() == hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL)
       {
