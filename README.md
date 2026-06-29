@@ -99,14 +99,14 @@ Settings are stored in the user home directory. On Windows the file is located a
 
 Updated every time the application closes.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `windowWidth` | int | 1024 | Window width in pixels |
-| `windowHeight` | int | 720 | Window height in pixels |
-| `windowState` | int | 0 | Window state: `0` = normal, `2` = maximized |
-| `timeFormat` | bool | false | Time display: `false` = elapsed seconds, `true` = absolute date/time |
-| `followEnabled` | bool | true | Auto-scroll frame table to the latest decoded frame |
-| `filterEnabled` | bool | true | Enable frame filtering in the decoded frames table |
+| Key             | Type | Default | Description                                                          |
+|-----------------|------|---------|----------------------------------------------------------------------|
+| `windowWidth`   | int  | 1024    | Window width in pixels                                               |
+| `windowHeight`  | int  | 720     | Window height in pixels                                              |
+| `windowState`   | int  | 0       | Window state: `0` = normal, `2` = maximized                          |
+| `timeFormat`    | bool | false   | Time display: `false` = elapsed seconds, `true` = absolute date/time |
+| `followEnabled` | bool | true    | Auto-scroll frame table to the latest decoded frame                  |
+| `filterEnabled` | bool | true    | Enable frame filtering in the decoded frames table                   |
 
 ```ini
 [window]
@@ -122,11 +122,11 @@ filterEnabled=true
 
 These settings are **not** modified by the application and must be edited manually in the INI file.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `splashScreen` | int | 2500 | Splash screen duration in milliseconds. Set to `0` to disable |
-| `theme` | string | dark | UI theme. Only `dark` is currently supported |
-| `quitConfirmation` | bool | true | Show a confirmation dialog before quitting |
+| Key                | Type   | Default | Description                                                   |
+|--------------------|--------|---------|---------------------------------------------------------------|
+| `splashScreen`     | int    | 2500    | Splash screen duration in milliseconds. Set to `0` to disable |
+| `theme`            | string | dark    | UI theme. Only `dark` is currently supported                  |
+| `quitConfirmation` | bool   | true    | Show a confirmation dialog before quitting                    |
 
 ```ini
 [settings]
@@ -139,14 +139,14 @@ quitConfirmation=true
 
 Controls which features are available in the UI. All features are enabled by default. Disabling a feature hides the corresponding toolbar button and skips the initialisation of the related hardware or processing thread.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `radioDevice` | bool | true | Enable the SDR radio receiver |
-| `logicDevice` | bool | true | Enable the logic analyser |
-| `radioDecode` | bool | true | Enable radio NFC protocol decoding |
-| `logicDecode` | bool | true | Enable contact card (ISO 7816) protocol decoding |
-| `radioSpectrum` | bool | true | Enable the radio spectrum (FFT) view |
-| `signalRecord` | bool | true | Enable signal recording to disk |
+| Key             | Type | Default | Description                                      |
+|-----------------|------|---------|--------------------------------------------------|
+| `radioDevice`   | bool | true    | Enable the SDR radio receiver                    |
+| `logicDevice`   | bool | true    | Enable the logic analyser                        |
+| `radioDecode`   | bool | true    | Enable radio NFC protocol decoding               |
+| `logicDecode`   | bool | true    | Enable contact card (ISO 7816) protocol decoding |
+| `radioSpectrum` | bool | true    | Enable the radio spectrum (FFT) view             |
+| `signalRecord`  | bool | true    | Enable signal recording to disk                  |
 
 ```ini
 [features]
@@ -201,17 +201,17 @@ enabled=true
 
 Best results are obtained by tuning to the **3rd harmonic at 40.68 MHz** with a 10 Msps sample rate.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `centerFreq` | int | 40680000 | Center frequency in Hz |
-| `sampleRate` | int | 10000000 | Sample rate in samples/s |
-| `gainMode` | int | 1 | Gain mode: `0` = sensitivity, `1` = linearity |
-| `gainValue` | int | 4 | Gain step index (mode-dependent; higher = more gain) |
-| `mixerAgc` | int | 0 | Mixer AGC: `0` = off, `1` = on |
-| `tunerAgc` | int | 0 | Tuner AGC: `0` = off, `1` = on |
-| `biasTee` | int | 0 | Bias-Tee power for external LNA or SpyVerter: `0` = off, `1` = on |
-| `directSampling` | int | 0 | Direct sampling (not applicable on AirSpy) |
-| `enabled` | bool | true | Enable or disable this receiver |
+| Key              | Type | Default  | Description                                                       |
+|------------------|------|----------|-------------------------------------------------------------------|
+| `centerFreq`     | int  | 40680000 | Center frequency in Hz                                            |
+| `sampleRate`     | int  | 10000000 | Sample rate in samples/s                                          |
+| `gainMode`       | int  | 1        | Gain mode: `0` = sensitivity, `1` = linearity                     |
+| `gainValue`      | int  | 4        | Gain step index (mode-dependent; higher = more gain)              |
+| `mixerAgc`       | int  | 0        | Mixer AGC: `0` = off, `1` = on                                    |
+| `tunerAgc`       | int  | 0        | Tuner AGC: `0` = off, `1` = on                                    |
+| `biasTee`        | int  | 0        | Bias-Tee power for external LNA or SpyVerter: `0` = off, `1` = on |
+| `directSampling` | int  | 0        | Direct sampling (not applicable on AirSpy)                        |
+| `enabled`        | bool | true     | Enable or disable this receiver                                   |
 
 ```ini
 [device.radio.airspy]
@@ -315,12 +315,12 @@ enabled=true
 
 Supported models: DSLogic Plus, Pro16, Pro32.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `enabled` | bool | true | Enable or disable this device |
-| `sampleRate` | int | 25000000 | Sample rate in samples/s (25 Msps) |
-| `vThreshold` | float | 1.0 | Digital signal voltage threshold in Volts |
-| `channels` | array | [0, 2, 3] | Active channel indices to capture |
+| Key          | Type  | Default   | Description                               |
+|--------------|-------|-----------|-------------------------------------------|
+| `enabled`    | bool  | true      | Enable or disable this device             |
+| `sampleRate` | int   | 25000000  | Sample rate in samples/s (25 Msps)        |
+| `vThreshold` | float | 1.0       | Digital signal voltage threshold in Volts |
+| `channels`   | array | [0, 2, 3] | Active channel indices to capture         |
 
 ```ini
 [device.logic.dreamsourcelab]
@@ -334,9 +334,9 @@ channels=0, 2, 3
 
 The application includes an optional gRPC server that allows external programs to start/stop acquisition and receive decoded frames in real time. It is **disabled by default** (port `0`).
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `port` | int | 0 | TCP port for the gRPC server. Set to `0` to disable |
+| Key    | Type | Default | Description                                         |
+|--------|------|---------|-----------------------------------------------------|
+| `port` | int  | 0       | TCP port for the gRPC server. Set to `0` to disable |
 
 ```ini
 [grpc]
