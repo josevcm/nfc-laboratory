@@ -18,7 +18,7 @@ signals in real-time up to 424 Kbps. Logic analyzer for contact smart cards with
 - Signal frame and protocol detail view.
 - Signal export captures to compressed TRZ format.
 - Signal import from WAV and compressed TRZ format.
-- Support for AirSpy and RTL-SDR receivers.
+- Support for AirSpy, HackRF, HydraSDR and RTL-SDR receivers.
 - Support for DreamSourceLab DSLogic Plus, Pro16 and Pro32 logic analyzer.
 
 ## Installation
@@ -99,14 +99,14 @@ Settings are stored in the user home directory. On Windows the file is located a
 
 Updated every time the application closes.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `windowWidth` | int | 1024 | Window width in pixels |
-| `windowHeight` | int | 720 | Window height in pixels |
-| `windowState` | int | 0 | Window state: `0` = normal, `2` = maximized |
-| `timeFormat` | bool | false | Time display: `false` = elapsed seconds, `true` = absolute date/time |
-| `followEnabled` | bool | true | Auto-scroll frame table to the latest decoded frame |
-| `filterEnabled` | bool | true | Enable frame filtering in the decoded frames table |
+| Key             | Type | Default | Description                                                          |
+|-----------------|------|---------|----------------------------------------------------------------------|
+| `windowWidth`   | int  | 1024    | Window width in pixels                                               |
+| `windowHeight`  | int  | 720     | Window height in pixels                                              |
+| `windowState`   | int  | 0       | Window state: `0` = normal, `2` = maximized                          |
+| `timeFormat`    | bool | false   | Time display: `false` = elapsed seconds, `true` = absolute date/time |
+| `followEnabled` | bool | true    | Auto-scroll frame table to the latest decoded frame                  |
+| `filterEnabled` | bool | true    | Enable frame filtering in the decoded frames table                   |
 
 ```ini
 [window]
@@ -122,11 +122,11 @@ filterEnabled=true
 
 These settings are **not** modified by the application and must be edited manually in the INI file.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `splashScreen` | int | 2500 | Splash screen duration in milliseconds. Set to `0` to disable |
-| `theme` | string | dark | UI theme. Only `dark` is currently supported |
-| `quitConfirmation` | bool | true | Show a confirmation dialog before quitting |
+| Key                | Type   | Default | Description                                                   |
+|--------------------|--------|---------|---------------------------------------------------------------|
+| `splashScreen`     | int    | 2500    | Splash screen duration in milliseconds. Set to `0` to disable |
+| `theme`            | string | dark    | UI theme. Only `dark` is currently supported                  |
+| `quitConfirmation` | bool   | true    | Show a confirmation dialog before quitting                    |
 
 ```ini
 [settings]
@@ -139,14 +139,14 @@ quitConfirmation=true
 
 Controls which features are available in the UI. All features are enabled by default. Disabling a feature hides the corresponding toolbar button and skips the initialisation of the related hardware or processing thread.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `radioDevice` | bool | true | Enable the SDR radio receiver |
-| `logicDevice` | bool | true | Enable the logic analyser |
-| `radioDecode` | bool | true | Enable radio NFC protocol decoding |
-| `logicDecode` | bool | true | Enable contact card (ISO 7816) protocol decoding |
-| `radioSpectrum` | bool | true | Enable the radio spectrum (FFT) view |
-| `signalRecord` | bool | true | Enable signal recording to disk |
+| Key             | Type | Default | Description                                      |
+|-----------------|------|---------|--------------------------------------------------|
+| `radioDevice`   | bool | true    | Enable the SDR radio receiver                    |
+| `logicDevice`   | bool | true    | Enable the logic analyser                        |
+| `radioDecode`   | bool | true    | Enable radio NFC protocol decoding               |
+| `logicDecode`   | bool | true    | Enable contact card (ISO 7816) protocol decoding |
+| `radioSpectrum` | bool | true    | Enable the radio spectrum (FFT) view             |
+| `signalRecord`  | bool | true    | Enable signal recording to disk                  |
 
 ```ini
 [features]
@@ -201,17 +201,17 @@ enabled=true
 
 Best results are obtained by tuning to the **3rd harmonic at 40.68 MHz** with a 10 Msps sample rate.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `centerFreq` | int | 40680000 | Center frequency in Hz |
-| `sampleRate` | int | 10000000 | Sample rate in samples/s |
-| `gainMode` | int | 1 | Gain mode: `0` = sensitivity, `1` = linearity |
-| `gainValue` | int | 4 | Gain step index (mode-dependent; higher = more gain) |
-| `mixerAgc` | int | 0 | Mixer AGC: `0` = off, `1` = on |
-| `tunerAgc` | int | 0 | Tuner AGC: `0` = off, `1` = on |
-| `biasTee` | int | 0 | Bias-Tee power for external LNA or SpyVerter: `0` = off, `1` = on |
-| `directSampling` | int | 0 | Direct sampling (not applicable on AirSpy) |
-| `enabled` | bool | true | Enable or disable this receiver |
+| Key              | Type | Default  | Description                                                       |
+|------------------|------|----------|-------------------------------------------------------------------|
+| `centerFreq`     | int  | 40680000 | Center frequency in Hz                                            |
+| `sampleRate`     | int  | 10000000 | Sample rate in samples/s                                          |
+| `gainMode`       | int  | 1        | Gain mode: `0` = sensitivity, `1` = linearity                     |
+| `gainValue`      | int  | 4        | Gain step index (mode-dependent; higher = more gain)              |
+| `mixerAgc`       | int  | 0        | Mixer AGC: `0` = off, `1` = on                                    |
+| `tunerAgc`       | int  | 0        | Tuner AGC: `0` = off, `1` = on                                    |
+| `biasTee`        | int  | 0        | Bias-Tee power for external LNA or SpyVerter: `0` = off, `1` = on |
+| `directSampling` | int  | 0        | Direct sampling (not applicable on AirSpy)                        |
+| `enabled`        | bool | true     | Enable or disable this receiver                                   |
 
 ```ini
 [device.radio.airspy]
@@ -230,17 +230,17 @@ enabled=true
 
 Best results are obtained by tuning to the **3rd harmonic at 40.68 MHz** or the **2nd harmonic at 27.12 MHz** with a 10 Msps sample rate. For some readers (e.g. Renesas NFC readers) the 3rd harmonic at 40.68 MHz gives better results.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `centerFreq` | int | 40680000 | Center frequency in Hz |
-| `sampleRate` | int | 10000000 | Sample rate in samples/s |
-| `gainMode` | int | 1 | Gain mode: `0` = sensitivity, `1` = linearity |
-| `gainValue` | int | 4 | Gain step index |
-| `mixerAgc` | int | 0 | Mixer AGC: `0` = off, `1` = on |
-| `tunerAgc` | int | 0 | Tuner AGC: `0` = off, `1` = on |
-| `biasTee` | int | 0 | Bias-Tee for SpyVerter up-converter: `0` = off, `1` = on |
-| `directSampling` | int | 0 | Direct sampling (not applicable on HydraSDR) |
-| `enabled` | bool | true | Enable or disable this receiver |
+| Key              | Type | Default  | Description                                              |
+|------------------|------|----------|----------------------------------------------------------|
+| `centerFreq`     | int  | 40680000 | Center frequency in Hz                                   |
+| `sampleRate`     | int  | 10000000 | Sample rate in samples/s                                 |
+| `gainMode`       | int  | 1        | Gain mode: `0` = sensitivity, `1` = linearity            |
+| `gainValue`      | int  | 4        | Gain step index                                          |
+| `mixerAgc`       | int  | 0        | Mixer AGC: `0` = off, `1` = on                           |
+| `tunerAgc`       | int  | 0        | Tuner AGC: `0` = off, `1` = on                           |
+| `biasTee`        | int  | 0        | Bias-Tee for SpyVerter up-converter: `0` = off, `1` = on |
+| `directSampling` | int  | 0        | Direct sampling (not applicable on HydraSDR)             |
+| `enabled`        | bool | true     | Enable or disable this receiver                          |
 
 ```ini
 [device.radio.hydrasdr]
@@ -259,17 +259,17 @@ enabled=true
 
 Best results are obtained by tuning to the **2nd harmonic at 27.12 MHz** at 3.2 Msps. Due to the low sample rate and 8-bit resolution, decoding is limited to 106 Kbps; this device is supported only as a reference.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `centerFreq` | int | 27120000 | Center frequency in Hz |
-| `sampleRate` | int | 3200000 | Sample rate in samples/s |
-| `gainMode` | int | 1 | Gain mode: `0` = AGC, `1` = manual |
-| `gainValue` | int | 77 | Gain value (77 ≈ 7.7 dB in the driver's gain table) |
-| `mixerAgc` | int | 0 | Mixer AGC: `0` = off, `1` = on |
-| `tunerAgc` | int | 0 | Tuner AGC: `0` = off, `1` = on |
-| `biasTee` | int | 0 | Bias-Tee: `0` = off, `1` = on |
-| `directSampling` | int | 0 | Direct sampling: `0` = off, `1` = I-branch, `2` = Q-branch (preferred) |
-| `enabled` | bool | true | Enable or disable this receiver |
+| Key              | Type | Default  | Description                                                            |
+|------------------|------|----------|------------------------------------------------------------------------|
+| `centerFreq`     | int  | 27120000 | Center frequency in Hz                                                 |
+| `sampleRate`     | int  | 3200000  | Sample rate in samples/s                                               |
+| `gainMode`       | int  | 1        | Gain mode: `0` = AGC, `1` = manual                                     |
+| `gainValue`      | int  | 77       | Gain value (77 ≈ 7.7 dB in the driver's gain table)                    |
+| `mixerAgc`       | int  | 0        | Mixer AGC: `0` = off, `1` = on                                         |
+| `tunerAgc`       | int  | 0        | Tuner AGC: `0` = off, `1` = on                                         |
+| `biasTee`        | int  | 0        | Bias-Tee: `0` = off, `1` = on                                          |
+| `directSampling` | int  | 0        | Direct sampling: `0` = off, `1` = I-branch, `2` = Q-branch (preferred) |
+| `enabled`        | bool | true     | Enable or disable this receiver                                        |
 
 ```ini
 [device.radio.rtlsdr]
@@ -284,16 +284,43 @@ directSampling=0
 enabled=true
 ```
 
+### [device.radio.hackrf] — HackRF One
+
+Best results are obtained by tuning 11.56E6, offset tuning: NFC carrier (13.56) lands at +2 MHz IF, away from the zero-IF DC artifacts
+
+| Key              | Type | Default  | Description                                                                               |
+|------------------|------|----------|-------------------------------------------------------------------------------------------|
+| `centerFreq`     | int  | 11560000 | Center frequency in Hz                                                                    |
+| `sampleRate`     | int  | 10000000 | Sample rate in samples/s                                                                  |
+| `gainMode`       | int  | 2        | LNA gain mode: `1` = 0 dB, `2` = 8 dB, `3` = 16 dB, `4` = 24 dB, `5` = 32 dB, `6` = 40 dB |
+| `gainValue`      | int  | 1        | VGA gain value (typically used for fine-tuning)                                           |
+| `tunerAgc`       | int  | 0        | Tuner AGC: `0` = off, `1` = on                                                            |
+| `biasTee`        | int  | 0        | Bias-Tee for SpyVerter up-converter: `0` = off, `1` = on                                  |
+| `directSampling` | int  | 0        | Direct sampling (not applicable on HackRF)                                                |
+| `enabled`        | bool | true     | Enable or disable this receiver                                                           |
+
+```ini
+[device.radio.hackrf]
+centerFreq=11560000
+sampleRate=10000000
+gainMode=2
+gainValue=1
+tunerAgc=0
+biasTee=0
+directSampling=0
+enabled=true
+```
+
 ### [device.logic.dreamsourcelab] — DreamSourceLab DSLogic
 
 Supported models: DSLogic Plus, Pro16, Pro32.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `enabled` | bool | true | Enable or disable this device |
-| `sampleRate` | int | 25000000 | Sample rate in samples/s (25 Msps) |
-| `vThreshold` | float | 1.0 | Digital signal voltage threshold in Volts |
-| `channels` | array | [0, 2, 3] | Active channel indices to capture |
+| Key          | Type  | Default   | Description                               |
+|--------------|-------|-----------|-------------------------------------------|
+| `enabled`    | bool  | true      | Enable or disable this device             |
+| `sampleRate` | int   | 25000000  | Sample rate in samples/s (25 Msps)        |
+| `vThreshold` | float | 1.0       | Digital signal voltage threshold in Volts |
+| `channels`   | array | [0, 2, 3] | Active channel indices to capture         |
 
 ```ini
 [device.logic.dreamsourcelab]
@@ -307,9 +334,9 @@ channels=0, 2, 3
 
 The application includes an optional gRPC server that allows external programs to start/stop acquisition and receive decoded frames in real time. It is **disabled by default** (port `0`).
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `port` | int | 0 | TCP port for the gRPC server. Set to `0` to disable |
+| Key    | Type | Default | Description                                         |
+|--------|------|---------|-----------------------------------------------------|
+| `port` | int  | 0       | TCP port for the gRPC server. Set to `0` to disable |
 
 ```ini
 [grpc]
@@ -356,7 +383,7 @@ All default values provide a good starting point for most use cases.
 
 ## SDR Receivers tested
 
-I have tried several receivers obtaining the best results with AirSpy Mini, I do not have more devices, but surely it
+I have tried several receivers obtaining the best results with AirSpy Mini and HackRF One, I do not have more devices, but surely it
 works with others.
 
 - HydraSDR RFOne: New SDR receiver with very good results, tuning the second harmonic at 27.12Mhz or third harmonic at 40.68Mhz, 
@@ -377,6 +404,9 @@ works with others.
   sampling frequency of 3Mbps and its 8 bits of resolution only allows you to capture the commands up to 106Kbps and some responses in
   very clean signals with good antenna. This device is supported only as a reference to experiment with it, I not
   recommend using it if you want to obtain good results.
+
+- HackRF One: Excellent SDR receiver with very good results, tuning at 11.56Mhz, with a sampling frequency of 10 Mbps.
+  see [HackRF](https://github.com/greatscottgadgets/hackrf).
 
 > **Antenna note:** The most challenging part of the whole setup is obtaining a suitable antenna correctly tuned for
 > 13.56 MHz. A poorly matched or mistuned antenna will result in weak signals, missed frames and unreliable decoding
