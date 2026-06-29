@@ -1023,6 +1023,211 @@
                               </item>
                            </layout>
                         </widget>
+                        <widget class="QWidget" name="pageHackRf">
+                           <layout class="QVBoxLayout" name="pageHackRfLayout">
+                              <property name="leftMargin">
+                                 <number>16</number>
+                              </property>
+                              <property name="topMargin">
+                                 <number>12</number>
+                              </property>
+                              <property name="rightMargin">
+                                 <number>16</number>
+                              </property>
+                              <property name="bottomMargin">
+                                 <number>0</number>
+                              </property>
+                              <property name="spacing">
+                                 <number>6</number>
+                              </property>
+                              <item>
+                                 <widget class="QLabel" name="labelTitleHackRf">
+                                    <property name="text">
+                                       <string>HackRF</string>
+                                    </property>
+                                    <property name="font">
+                                       <font>
+                                          <bold>true</bold>
+                                          <pointsize>11</pointsize>
+                                       </font>
+                                    </property>
+                                 </widget>
+                              </item>
+                              <item>
+                                 <widget class="QFrame" name="separatorHackRf">
+                                    <property name="frameShape">
+                                       <enum>QFrame::HLine</enum>
+                                    </property>
+                                    <property name="frameShadow">
+                                       <enum>QFrame::Sunken</enum>
+                                    </property>
+                                 </widget>
+                              </item>
+                              <item>
+                                 <layout class="QFormLayout" name="formHackRf">
+                                    <property name="leftMargin">
+                                       <number>0</number>
+                                    </property>
+                                    <property name="topMargin">
+                                       <number>4</number>
+                                    </property>
+                                    <property name="rightMargin">
+                                       <number>0</number>
+                                    </property>
+                                    <property name="bottomMargin">
+                                       <number>0</number>
+                                    </property>
+                                    <property name="horizontalSpacing">
+                                       <number>6</number>
+                                    </property>
+                                    <property name="verticalSpacing">
+                                       <number>6</number>
+                                    </property>
+                                    <property name="labelAlignment">
+                                       <set>Qt::AlignLeft|Qt::AlignVCenter</set>
+                                    </property>
+                                    <property name="formAlignment">
+                                       <set>Qt::AlignLeft|Qt::AlignTop</set>
+                                    </property>
+                                    <item row="0" column="0">
+                                       <widget class="QLabel" name="labelHackrfEnabled">
+                                          <property name="text">
+                                             <string>Enabled:</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="0" column="1">
+                                       <widget class="QCheckBox" name="hackrfEnabled">
+                                          <property name="text">
+                                             <string/>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="1" column="0">
+                                       <widget class="QLabel" name="labelHackrfCenterFreq">
+                                          <property name="text">
+                                             <string>Center frequency:</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="1" column="1">
+                                       <widget class="QSpinBox" name="hackrfCenterFreq">
+                                          <property name="minimum">
+                                             <number>1</number>
+                                          </property>
+                                          <property name="maximum">
+                                             <number>2000000000</number>
+                                          </property>
+                                          <property name="suffix">
+                                             <string>Hz</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="2" column="0">
+                                       <widget class="QLabel" name="labelHackrfSampleRate">
+                                          <property name="text">
+                                             <string>Sample rate:</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="2" column="1">
+                                       <widget class="QSpinBox" name="hackrfSampleRate">
+                                          <property name="minimum">
+                                             <number>1</number>
+                                          </property>
+                                          <property name="maximum">
+                                             <number>2000000000</number>
+                                          </property>
+                                          <property name="suffix">
+                                             <string>Hz</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="3" column="0">
+                                       <widget class="QLabel" name="labelHackrfGainMode">
+                                          <property name="text">
+                                             <string>LNA gain:</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="3" column="1">
+                                       <widget class="QComboBox" name="hackrfGainMode"/>
+                                    </item>
+                                    <item row="4" column="0">
+                                       <widget class="QLabel" name="labelHackrfGainValue">
+                                          <property name="text">
+                                             <string>VGA gain:</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="4" column="1">
+                                       <widget class="QSpinBox" name="hackrfGainValue">
+                                          <property name="minimum">
+                                             <number>0</number>
+                                          </property>
+                                          <property name="maximum">
+                                             <number>31</number>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="5" column="0">
+                                       <widget class="QLabel" name="labelHackrfTunerAgc">
+                                          <property name="text">
+                                             <string>RF Amp (+14 dB):</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="5" column="1">
+                                       <widget class="QCheckBox" name="hackrfTunerAgc">
+                                          <property name="text">
+                                             <string/>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="6" column="0">
+                                       <widget class="QLabel" name="labelHackrfBiasTee">
+                                          <property name="text">
+                                             <string>Bias-Tee:</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="6" column="1">
+                                       <widget class="QCheckBox" name="hackrfBiasTee">
+                                          <property name="text">
+                                             <string/>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                    <item row="7" column="0" colspan="2">
+                                       <widget class="QLabel" name="labelHackrfNote">
+                                          <property name="text">
+                                             <string>LNA gain of 8 dB or higher is recommended for NFC decoding.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                             <bool>true</bool>
+                                          </property>
+                                          <property name="styleSheet">
+                                             <string>color: #888; font-style: italic;</string>
+                                          </property>
+                                       </widget>
+                                    </item>
+                                 </layout>
+                              </item>
+                              <item>
+                                 <spacer name="spacerHackRf">
+                                    <property name="orientation">
+                                       <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                       <size>
+                                          <width>20</width>
+                                          <height>40</height>
+                                       </size>
+                                    </property>
+                                 </spacer>
+                              </item>
+                           </layout>
+                        </widget>
                         <widget class="QWidget" name="pageRadioNfc">
                            <layout class="QVBoxLayout" name="pageRadioNfcLayout">
                               <property name="leftMargin">

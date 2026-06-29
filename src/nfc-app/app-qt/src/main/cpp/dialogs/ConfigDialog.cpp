@@ -36,8 +36,8 @@
 #include "ConfigDialog.h"
 
 static const QMap<int, int> ROW_TO_PAGE = {
-   {1, 0}, {2, 1}, {4, 2}, {5, 3}, {6, 4},
-   {8, 5}, {9, 6}, {11, 7}, {12, 8}
+   {1, 0}, {2, 1}, {4, 2}, {5, 3}, {6, 4}, {7, 5},
+   {9, 6}, {10, 7}, {12, 8}, {13, 9}
 };
 
 static const QStringList LOGGER_LEVELS = {"DEBUG", "INFO", "WARN", "ERROR", "NONE"};
@@ -48,7 +48,7 @@ static const QStringList LOGGER_SUBSYSTEMS = {
    "worker.RadioDecoder", "worker.RadioDevice",
    "worker.LogicDecoder", "worker.LogicDevice",
    "worker.FourierProcess",
-   "hw.AirspyDevice", "hw.RealtekDevice", "hw.DSLogicDevice",
+   "hw.AirspyDevice", "hw.HackrfDevice", "hw.RealtekDevice", "hw.DSLogicDevice",
    "rt.Executor"
 };
 
@@ -85,6 +85,7 @@ struct ConfigDialog::Impl
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  AirSpy")));
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  HydraSDR")));
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  RTL-SDR")));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  HackRF")));
 
       ui->navList->addItem(headerItem("Decoders"));
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xbb  Radio NFC")));
@@ -104,6 +105,9 @@ struct ConfigDialog::Impl
          cb->addItem("Sensitivity", 0);
          cb->addItem("Linearity", 1);
       }
+
+      for (int i = 0; i < 6; i++)
+         ui->hackrfGainMode->addItem(QString("LNA %1 dB").arg(i * 8), i + 1);
    }
 
    void fillLoggers()
@@ -227,21 +231,32 @@ struct ConfigDialog::Impl
       ui->rtlsdrDirectSampling->setCurrentIndex(s.value("directSampling", 0).toInt());
       s.endGroup();
 
-      // Page 5 — Radio NFC
+      // Page 5 — HackRF
+      s.beginGroup("device.radio.hackrf");
+      ui->hackrfEnabled->setChecked(s.value("enabled", true).toBool());
+      ui->hackrfCenterFreq->setValue(s.value("centerFreq", 11560000).toInt());
+      ui->hackrfSampleRate->setValue(s.value("sampleRate", 10000000).toInt());
+      ui->hackrfGainMode->setCurrentIndex(ui->hackrfGainMode->findData(s.value("gainMode", 2).toInt()));
+      ui->hackrfGainValue->setValue(s.value("gainValue", 1).toInt());
+      ui->hackrfTunerAgc->setChecked(s.value("tunerAgc", false).toBool());
+      ui->hackrfBiasTee->setChecked(s.value("biasTee", false).toBool());
+      s.endGroup();
+
+      // Page 6 — Radio NFC
       ui->radioEnabled->setChecked(s.value("decoder.radio/enabled", true).toBool());
       ui->radioNfcA->setChecked(s.value("decoder.radio.protocol.nfca/enabled", true).toBool());
       ui->radioNfcB->setChecked(s.value("decoder.radio.protocol.nfcb/enabled", true).toBool());
       ui->radioNfcF->setChecked(s.value("decoder.radio.protocol.nfcf/enabled", true).toBool());
       ui->radioNfcV->setChecked(s.value("decoder.radio.protocol.nfcv/enabled", true).toBool());
 
-      // Page 6 — Logic
+      // Page 7 — Logic
       ui->logicEnabled->setChecked(s.value("decoder.logic/enabled", true).toBool());
       ui->logicIso7816->setChecked(s.value("decoder.logic.protocol.iso7816/enabled", true).toBool());
 
-      // Page 7 — gRPC
+      // Page 8 — gRPC
       ui->grpcPort->setValue(s.value("grpc/port", 0).toInt());
 
-      // Page 8 — Logger
+      // Page 9 — Logger
       s.beginGroup("logger");
 
       ui->loggerRoot->setCurrentText(s.value("root", "WARN").toString().toUpper());
@@ -351,7 +366,28 @@ struct ConfigDialog::Impl
                                                      {"directSampling", ui->rtlsdrDirectSampling->currentIndex()}
                                                   }));
 
-      // Page 5 — Radio NFC
+      // Page 5 — HackRF
+      s.beginGroup("device.radio.hackrf");
+      s.setValue("enabled", ui->hackrfEnabled->isChecked());
+      s.setValue("centerFreq", ui->hackrfCenterFreq->value());
+      s.setValue("sampleRate", ui->hackrfSampleRate->value());
+      s.setValue("gainMode", ui->hackrfGainMode->currentData().toInt());
+      s.setValue("gainValue", ui->hackrfGainValue->value());
+      s.setValue("tunerAgc", ui->hackrfTunerAgc->isChecked());
+      s.setValue("biasTee", ui->hackrfBiasTee->isChecked());
+      s.endGroup();
+
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
+                                                     {"enabled", ui->hackrfEnabled->isChecked()},
+                                                     {"centerFreq", ui->hackrfCenterFreq->value()},
+                                                     {"sampleRate", ui->hackrfSampleRate->value()},
+                                                     {"gainMode", ui->hackrfGainMode->currentData().toInt()},
+                                                     {"gainValue", ui->hackrfGainValue->value()},
+                                                     {"tunerAgc", static_cast<int>(ui->hackrfTunerAgc->isChecked())},
+                                                     {"biasTee", static_cast<int>(ui->hackrfBiasTee->isChecked())}
+                                                  }));
+
+      // Page 6 — Radio NFC
       s.setValue("decoder.radio/enabled", ui->radioEnabled->isChecked());
       s.setValue("decoder.radio.protocol.nfca/enabled", ui->radioNfcA->isChecked());
       s.setValue("decoder.radio.protocol.nfcb/enabled", ui->radioNfcB->isChecked());
@@ -366,7 +402,7 @@ struct ConfigDialog::Impl
                                                      {"protocol/nfcv/enabled", ui->radioNfcV->isChecked()}
                                                   }));
 
-      // Page 6 — Logic / ISO7816
+      // Page 7 — Logic / ISO7816
       s.setValue("decoder.logic/enabled", ui->logicEnabled->isChecked());
       s.setValue("decoder.logic.protocol.iso7816/enabled", ui->logicIso7816->isChecked());
 
@@ -375,10 +411,10 @@ struct ConfigDialog::Impl
                                                      {"protocol/iso7816/enabled", ui->logicIso7816->isChecked()}
                                                   }));
 
-      // Page 7 — gRPC
+      // Page 8 — gRPC
       s.setValue("grpc/port", ui->grpcPort->value());
 
-      // Page 8 — Logger
+      // Page 9 — Logger
       s.beginGroup("logger");
 
       const QString rootLevel = ui->loggerRoot->currentText();
