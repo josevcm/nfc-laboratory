@@ -97,6 +97,20 @@ struct Main
          }
       },
 
+      // HydraSDR
+      {
+         "radio.hydrasdr", {
+            {"centerFreq", 40680000},
+            {"sampleRate", 10000000},
+            {"gainMode", 1}, // linearity
+            {"gainValue", 4}, // 4db
+            {"mixerAgc", 0},
+            {"tunerAgc", 0},
+            {"biasTee", 0},
+            {"directSampling", 0},
+         }
+      },
+
       // RTLSDR
       {
          "radio.rtlsdr", {
@@ -767,6 +781,7 @@ struct Main
       std::cout << "  - RTL-SDR dongles" << std::endl;
       std::cout << "  - Airspy (Mini, R2, HF+)" << std::endl;
       std::cout << "  - HackRF One" << std::endl;
+      std::cout << "  - HydraSDR" << std::endl;
       std::cout << "  - Other SDR devices compatible with the driver library" << std::endl;
       std::cout << std::endl;
       std::cout << "Compatibility:" << std::endl;
