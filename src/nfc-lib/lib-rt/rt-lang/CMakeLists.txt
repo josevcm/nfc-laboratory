@@ -18,4 +18,4 @@ add_library(rt-lang STATIC
 target_include_directories(rt-lang PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(rt-lang PRIVATE ${PRIVATE_SOURCE_DIR})
 
-target_link_libraries(rt-lang microtar z)
+target_link_libraries(rt-lang microtar z zstd)

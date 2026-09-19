@@ -19,6 +19,10 @@
 
 */
 
+#include <algorithm>
+#include <cstdint>
+#include <vector>
+
 #include <rt/Format.h>
 #include <rt/Package.h>
 #include <rt/FileSystem.h>
@@ -37,6 +41,10 @@
 #define INFO_TOTAL_SAMPLES 2
 #define INFO_STREAM_ID 3
 #define INFO_SAMPLE_RATE 4
+#define INFO_STREAM_BYTES 5 // byte length of the offset stream in APCM v3 (SoA layout)
+
+// maximum batch size (in points) used when decoding a v3 entry into SignalBuffer chunks
+#define DECODE_BATCH_SIZE 16384
 
 using value_t = nlohmann::detail::value_t;
 
@@ -58,6 +66,47 @@ struct SampleHdr
    uint32_t version;
    uint32_t info[6];
 };
+
+// LEB128 unsigned varint, used for APCM v3 offset deltas (unbounded, unlike the 1-byte v1/v2 delta)
+static void putVarUInt(std::vector<uint8_t> &out, uint32_t value)
+{
+   while (value >= 0x80)
+   {
+      out.push_back(static_cast<uint8_t>(value) | 0x80);
+      value >>= 7;
+   }
+
+   out.push_back(static_cast<uint8_t>(value));
+}
+
+// reads a LEB128 unsigned varint, advancing 'p'; returns false on truncated or malformed input
+static bool getVarUInt(const uint8_t *&p, const uint8_t *end, uint32_t &value)
+{
+   value = 0;
+
+   for (int shift = 0; p < end && shift <= 28; shift += 7)
+   {
+      const uint8_t b = *p++;
+
+      value |= static_cast<uint32_t>(b & 0x7F) << shift;
+
+      if (!(b & 0x80))
+         return true;
+   }
+
+   return false;
+}
+
+// zig-zag encoding maps signed deltas to unsigned so small negative and positive values both stay short
+static inline uint32_t zigzagEncode(int32_t value)
+{
+   return (static_cast<uint32_t>(value) << 1) ^ static_cast<uint32_t>(value >> 31);
+}
+
+static inline int32_t zigzagDecode(uint32_t value)
+{
+   return static_cast<int32_t>(value >> 1) ^ -static_cast<int32_t>(value & 1);
+}
 
 struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 {
@@ -551,6 +600,98 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       log->debug("\tsample rate..: {}", {hdr.info[INFO_SAMPLE_RATE]});
       log->debug("\ttotal samples: {}", {hdr.info[INFO_TOTAL_SAMPLES]});
 
+      // APCM v3: varint offset deltas + raw level bytes, stored as two separate streams (SoA)
+      if (hdr.version == 3)
+      {
+         if (std::strncmp(hdr.magic, "APCM", sizeof(hdr.magic)) != 0)
+         {
+            log->error("invalid signal chunk magic");
+            return InvalidStorageFormat;
+         }
+
+         position = hdr.info[INFO_START_OFFSET];
+         streamId = hdr.info[INFO_STREAM_ID];
+         sampleCount = hdr.info[INFO_TOTAL_SAMPLES];
+         sampleRate = hdr.info[INFO_SAMPLE_RATE];
+
+         const unsigned int offsetBytes = hdr.info[INFO_STREAM_BYTES];
+         const unsigned int payload = length - sizeof(hdr);
+
+         if (offsetBytes > payload)
+         {
+            log->error("invalid signal chunk size");
+            return InvalidStorageFormat;
+         }
+
+         const unsigned int valueBytes = payload - offsetBytes;
+
+         std::vector<uint8_t> offsets(offsetBytes);
+         std::vector<uint8_t> values(valueBytes);
+
+         if (offsetBytes && package.readData(offsets.data(), offsetBytes) != 0)
+         {
+            log->error("failed to read signal offsets");
+            return ReadDataFailed;
+         }
+
+         if (valueBytes && package.readData(values.data(), valueBytes) != 0)
+         {
+            log->error("failed to read signal values");
+            return ReadDataFailed;
+         }
+
+         if (values.size() != sampleCount)
+         {
+            log->error("invalid signal chunk size");
+            return InvalidStorageFormat;
+         }
+
+         const uint8_t *op = offsets.data(), *oe = op + offsets.size();
+
+         unsigned int decoded = 0;
+
+         while (decoded < sampleCount)
+         {
+            const unsigned int batch = std::min<unsigned int>(sampleCount - decoded, DECODE_BATCH_SIZE);
+            const unsigned int base = position;
+
+            unsigned int local = 0;
+
+            hw::SignalBuffer buffer(batch * 2, 2, 1, sampleRate, base, 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL, streamId);
+
+            for (unsigned int n = 0; n < batch; n++)
+            {
+               uint32_t deltaOffset;
+
+               if (!getVarUInt(op, oe, deltaOffset))
+               {
+                  log->error("truncated signal offset stream");
+                  return InvalidStorageFormat;
+               }
+
+               local += deltaOffset;
+
+               buffer.put(static_cast<float>(values[decoded + n]));
+               buffer.put(static_cast<float>(local));
+            }
+
+            position = base + local;
+            decoded += batch;
+
+            log->debug("\tread data, offset {} size {} start {}", {base, batch, base});
+
+            buffer.flip();
+
+            storageSignalStream->next(buffer);
+
+            logicSignalQueue.add(buffer);
+         }
+
+         storageSignalStream->next({});
+
+         return NoError;
+      }
+
       switch (hdr.version)
       {
          case 1:
@@ -646,13 +787,16 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       unsigned int sampleEnd = 0;
       unsigned int sampleCount = 0;
 
-      // initialize header
-      SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 2, .info = {}};
+      // initialize header (v3: varint offset deltas + raw level bytes, stored as two separate streams)
+      SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 3, .info = {}};
 
-      // header buffer
-      hw::SignalBuffer header;
+      std::vector<uint8_t> offsets;
+      std::vector<uint8_t> values;
 
-      // count total samples to store between time range
+      bool first = true;
+      unsigned int lastOffset = 0;
+
+      // encode samples in a single pass
       for (const auto &buffer: logicSignalQueue)
       {
          // skip other channels
@@ -660,36 +804,44 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             continue;
 
          // catch first buffer
-         if (!header.isValid())
+         if (first)
          {
-            header = buffer;
+            first = false;
 
             // compute sample range
-            sampleStart = static_cast<unsigned int>(header.sampleRate() * rangeStart);
-            sampleEnd = static_cast<unsigned int>(header.sampleRate() * rangeEnd);
+            sampleStart = static_cast<unsigned int>(buffer.sampleRate() * rangeStart);
+            sampleEnd = static_cast<unsigned int>(buffer.sampleRate() * rangeEnd);
+            lastOffset = sampleStart;
 
-            // version 2 info contain buffer ID and SAMPLE RATE
-            hdr.info[INFO_START_OFFSET] = std::max(static_cast<unsigned int>(header.offset()), sampleStart);
-            hdr.info[INFO_STREAM_ID] = header.id();
-            hdr.info[INFO_SAMPLE_RATE] = header.sampleRate();
+            hdr.info[INFO_START_OFFSET] = std::max(static_cast<unsigned int>(buffer.offset()), sampleStart);
+            hdr.info[INFO_STREAM_ID] = buffer.id();
+            hdr.info[INFO_SAMPLE_RATE] = buffer.sampleRate();
          }
 
-         // count samples for this channel
          for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
          {
-            const auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
+            auto sample = buffer[i + 0] > 0.5 ? 1 : 0;
+            auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
 
             if (offset > sampleEnd)
                break;
 
-            if (offset >= sampleStart)
-               sampleCount++;
+            if (offset < sampleStart)
+               continue;
+
+            putVarUInt(offsets, offset - lastOffset);
+            values.push_back(static_cast<uint8_t>(sample));
+
+            // update differential values
+            lastOffset = offset;
+            sampleCount++;
          }
       }
 
       hdr.info[INFO_TOTAL_SAMPLES] = sampleCount;
+      hdr.info[INFO_STREAM_BYTES] = static_cast<unsigned int>(offsets.size());
 
-      unsigned int size = sizeof(hdr) + sampleCount * 2;
+      const unsigned int size = sizeof(hdr) + offsets.size() + values.size();
 
       log->info("add logic entry {} with size {}", {name, size});
       log->debug("\tstream id....: {}", {hdr.info[INFO_STREAM_ID]});
@@ -711,45 +863,17 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          return WriteDataFailed;
       }
 
-      unsigned int lastOffset = sampleStart;
-
-      // write sample data
-      for (const auto &buffer: logicSignalQueue)
+      // write offset stream, then value stream (SoA layout)
+      if (!offsets.empty() && package.writeData(offsets.data(), offsets.size()) != 0)
       {
-         // skip other channels
-         if (buffer.id() != id)
-            continue;
+         log->error("failed to write logic signal offsets");
+         return WriteDataFailed;
+      }
 
-         std::shared_ptr<unsigned char> chunk(new unsigned char[buffer.elements() * 2]);
-
-         int o = 0;
-
-         for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
-         {
-            auto sample = buffer[i + 0] > 0.5 ? 1 : 0;
-            auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
-
-            if (offset > sampleEnd)
-               break;
-
-            if (offset < sampleStart)
-               continue;
-
-            // write sample data (offset, sample
-            chunk.get()[o++] = static_cast<unsigned char>(offset - lastOffset);
-            chunk.get()[o++] = static_cast<unsigned char>(sample);
-
-            // update differential values
-            lastOffset = offset;
-         }
-
-         log->debug("\twrite data, offset {} size {} start {}", {buffer.offset(), o, buffer.offset() + chunk.get()[0]});
-
-         if (package.writeData(chunk.get(), o) != 0)
-         {
-            log->error("failed to write logic signal chunk");
-            return WriteDataFailed;
-         }
+      if (!values.empty() && package.writeData(values.data(), values.size()) != 0)
+      {
+         log->error("failed to write logic signal values");
+         return WriteDataFailed;
       }
 
       log->info("\t{} samples stored for logic channel {}", {sampleCount, id});
@@ -785,6 +909,95 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       log->debug("\tstream offset: {}", {hdr.info[INFO_START_OFFSET]});
       log->debug("\tsample rate..: {}", {hdr.info[INFO_SAMPLE_RATE]});
       log->debug("\ttotal samples: {}", {hdr.info[INFO_TOTAL_SAMPLES]});
+
+      // APCM v3: varint offset deltas + zigzag-varint amplitude deltas, stored as two separate streams (SoA)
+      if (hdr.version == 3)
+      {
+         if (std::strncmp(hdr.magic, "APCM", sizeof(hdr.magic)) != 0)
+         {
+            log->error("invalid signal chunk magic");
+            return InvalidStorageFormat;
+         }
+
+         position = hdr.info[INFO_START_OFFSET];
+         streamId = hdr.info[INFO_STREAM_ID];
+         sampleCount = hdr.info[INFO_TOTAL_SAMPLES];
+         sampleRate = hdr.info[INFO_SAMPLE_RATE];
+
+         const unsigned int offsetBytes = hdr.info[INFO_STREAM_BYTES];
+         const unsigned int payload = length - sizeof(hdr);
+
+         if (offsetBytes > payload)
+         {
+            log->error("invalid signal chunk size");
+            return InvalidStorageFormat;
+         }
+
+         const unsigned int valueBytes = payload - offsetBytes;
+
+         std::vector<uint8_t> offsets(offsetBytes);
+         std::vector<uint8_t> values(valueBytes);
+
+         if (offsetBytes && package.readData(offsets.data(), offsetBytes) != 0)
+         {
+            log->error("failed to read signal offsets");
+            return ReadDataFailed;
+         }
+
+         if (valueBytes && package.readData(values.data(), valueBytes) != 0)
+         {
+            log->error("failed to read signal values");
+            return ReadDataFailed;
+         }
+
+         const uint8_t *op = offsets.data(), *oe = op + offsets.size();
+         const uint8_t *vp = values.data(), *ve = vp + values.size();
+
+         short sample = 0;
+         unsigned int decoded = 0;
+
+         while (decoded < sampleCount)
+         {
+            const unsigned int batch = std::min<unsigned int>(sampleCount - decoded, DECODE_BATCH_SIZE);
+            const unsigned int base = position;
+
+            unsigned int local = 0;
+
+            hw::SignalBuffer buffer(batch * 2, 2, 1, sampleRate, base, 0, hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL, streamId);
+
+            for (unsigned int n = 0; n < batch; n++)
+            {
+               uint32_t deltaOffset, deltaValue;
+
+               if (!getVarUInt(op, oe, deltaOffset) || !getVarUInt(vp, ve, deltaValue))
+               {
+                  log->error("truncated signal stream");
+                  return InvalidStorageFormat;
+               }
+
+               local += deltaOffset;
+               sample = static_cast<short>(sample + zigzagDecode(deltaValue));
+
+               buffer.put(static_cast<float>(sample) * scale);
+               buffer.put(static_cast<float>(local));
+            }
+
+            position = base + local;
+            decoded += batch;
+
+            log->debug("\tread data, offset {} size {} start {}", {base, batch, base});
+
+            buffer.flip();
+
+            storageSignalStream->next(buffer);
+
+            radioSignalQueue.add(buffer);
+         }
+
+         storageSignalStream->next({});
+
+         return NoError;
+      }
 
       switch (hdr.version)
       {
@@ -885,13 +1098,17 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       unsigned int sampleCount = 0;
       const float scale = (1 << 15);
 
-      // initialize header
-      SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 2, .info {}};
+      // initialize header (v3: varint offset deltas + zigzag-varint amplitude deltas, two separate streams)
+      SampleHdr hdr {.magic = {'A', 'P', 'C', 'M'}, .version = 3, .info {}};
 
-      // header buffer
-      hw::SignalBuffer header;
+      std::vector<uint8_t> offsets;
+      std::vector<uint8_t> values;
 
-      // count total samples to store between time range
+      bool first = true;
+      short lastSample = 0;
+      unsigned int lastOffset = 0;
+
+      // encode samples in a single pass
       for (const auto &buffer: radioSignalQueue)
       {
          // skip other channels
@@ -899,36 +1116,45 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             continue;
 
          // catch first buffer
-         if (!header.isValid())
+         if (first)
          {
-            header = buffer;
+            first = false;
 
             // compute sample range
-            sampleStart = static_cast<unsigned int>(header.sampleRate() * rangeStart);
-            sampleEnd = static_cast<unsigned int>(header.sampleRate() * rangeEnd);
+            sampleStart = static_cast<unsigned int>(buffer.sampleRate() * rangeStart);
+            sampleEnd = static_cast<unsigned int>(buffer.sampleRate() * rangeEnd);
+            lastOffset = sampleStart;
 
-            // version 2 info contain buffer ID and SAMPLE RATE
-            hdr.info[INFO_STREAM_ID] = header.id();
+            hdr.info[INFO_STREAM_ID] = buffer.id();
             hdr.info[INFO_START_OFFSET] = 0;
-            hdr.info[INFO_SAMPLE_RATE] = header.sampleRate();
+            hdr.info[INFO_SAMPLE_RATE] = buffer.sampleRate();
          }
 
-         // count samples for this channel
          for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
          {
-            const auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
+            auto sample = static_cast<short>(buffer[i + 0] * scale);
+            auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
 
             if (offset > sampleEnd)
                break;
 
-            if (offset >= sampleStart)
-               sampleCount++;
+            if (offset < sampleStart)
+               continue;
+
+            putVarUInt(offsets, offset - lastOffset);
+            putVarUInt(values, zigzagEncode(static_cast<int32_t>(sample) - static_cast<int32_t>(lastSample)));
+
+            // update differential values
+            lastOffset = offset;
+            lastSample = sample;
+            sampleCount++;
          }
       }
 
       hdr.info[INFO_TOTAL_SAMPLES] = sampleCount;
+      hdr.info[INFO_STREAM_BYTES] = static_cast<unsigned int>(offsets.size());
 
-      unsigned int size = sizeof(hdr) + sampleCount * 3;
+      const unsigned int size = sizeof(hdr) + offsets.size() + values.size();
 
       log->info("add radio entry {} with size {}", {name, size});
       log->debug("\tstream id....: {}", {hdr.info[INFO_STREAM_ID]});
@@ -950,51 +1176,17 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          return WriteDataFailed;
       }
 
-      short lastSample = 0;
-      unsigned int lastOffset = sampleStart;
-
-      // write sample data
-      for (const auto &buffer: radioSignalQueue)
+      // write offset stream, then value stream (SoA layout)
+      if (!offsets.empty() && package.writeData(offsets.data(), offsets.size()) != 0)
       {
-         // skip other channels
-         if (buffer.id() != id)
-            continue;
+         log->error("failed to write radio signal offsets");
+         return WriteDataFailed;
+      }
 
-         std::shared_ptr<char> chunk(new char[buffer.elements() * 3]);
-
-         int o = 0;
-
-         for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
-         {
-            auto sample = static_cast<short>(buffer[i + 0] * scale);
-            auto offset = buffer.offset() + static_cast<unsigned int>(buffer[i + 1]);
-
-            if (offset > sampleEnd)
-               break;
-
-            if (offset < sampleStart)
-               continue;
-
-            // write sample data (offset, sample
-            chunk.get()[o++] = static_cast<char>((offset - lastOffset) & 0xff);
-            chunk.get()[o++] = static_cast<char>((sample - lastSample) & 0xff);
-            chunk.get()[o++] = static_cast<char>((sample - lastSample) >> 8);
-
-            // update differential values
-            lastOffset = offset;
-            lastSample = sample;
-         }
-
-         if (!o)
-            continue;
-
-         log->debug("\twrite data, offset {} size {} start {}", {buffer.offset(), o, buffer.offset() + chunk.get()[0]});
-
-         if (package.writeData(chunk.get(), o) != 0)
-         {
-            log->error("failed to write radio signal chunk");
-            return WriteDataFailed;
-         }
+      if (!values.empty() && package.writeData(values.data(), values.size()) != 0)
+      {
+         log->error("failed to write radio signal values");
+         return WriteDataFailed;
       }
 
       log->info("\t{} samples stored for radio channel {}", {sampleCount, id});

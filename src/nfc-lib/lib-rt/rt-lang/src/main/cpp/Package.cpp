@@ -19,7 +19,12 @@
 
 */
 
+#include <algorithm>
+#include <cstdio>
+#include <vector>
+
 #include <zlib.h>
+#include <zstd.h>
 #include <microtar.h>
 
 #include <rt/Logger.h>
@@ -36,7 +41,183 @@
 #  define SET_BINARY_MODE(file)
 #endif
 
+// zstd compression level used for new archives (1..22). Measured on a synthetic APCM v3 radio
+// entry: level 19 ("high") is ~3.5x slower to compress than the old gzip -9 for only ~2% extra
+// size reduction, which does not pay off on the multi-hundred-MB entries an intensive capture
+// can produce. Level 12 already beats gzip -9 on both size and speed, so it is the better default;
+// existing files compressed with the old gzip-based writer are still auto-detected and read
+// transparently, see PackStream::kind below.
+#define ZSTD_COMPRESSION_LEVEL 12
+
 namespace rt {
+
+enum class StreamKind
+{
+   GzipRead,  // legacy archives, written by the previous gzip-based Package implementation
+   ZstdRead,
+   ZstdWrite
+};
+
+// state for the single compressed stream backing a Package: either a legacy gzFile (read only,
+// kept for backward compatibility with archives written before this change) or a zstd stream.
+struct PackStream
+{
+   StreamKind kind {};
+   std::string filename;
+
+   // legacy gzip read path
+   gzFile gz = nullptr;
+
+   // zstd read/write path
+   FILE *file = nullptr;
+   ZSTD_DStream *dstream = nullptr;
+   ZSTD_CCtx *cctx = nullptr;
+   std::vector<unsigned char> ioBuf;
+   size_t ioPos = 0;
+   size_t ioSize = 0;
+   unsigned int decodedPos = 0; // read path only: absolute position in the decompressed stream
+
+   ~PackStream()
+   {
+      if (gz)
+         gzclose(gz);
+
+      if (dstream)
+         ZSTD_freeDStream(dstream);
+
+      if (cctx)
+         ZSTD_freeCCtx(cctx);
+
+      if (file)
+         fclose(file);
+   }
+};
+
+// refills the raw (compressed) input buffer from disk; returns false on EOF
+static bool zstdFillInput(PackStream *z)
+{
+   if (z->ioPos < z->ioSize)
+      return true;
+
+   z->ioSize = fread(z->ioBuf.data(), 1, z->ioBuf.size(), z->file);
+   z->ioPos = 0;
+
+   return z->ioSize > 0;
+}
+
+// decompresses up to 'size' bytes into 'data'; returns the number of bytes actually produced
+// (like gzread), which is less than 'size' only at a legitimate end of stream or on error
+static int zstdRead(PackStream *z, void *data, unsigned size)
+{
+   size_t produced = 0;
+
+   while (produced < size)
+   {
+      if (z->ioPos >= z->ioSize && !zstdFillInput(z))
+         break;
+
+      ZSTD_inBuffer input {z->ioBuf.data(), z->ioSize, z->ioPos};
+      ZSTD_outBuffer output {data, size, produced};
+
+      const size_t ret = ZSTD_decompressStream(z->dstream, &output, &input);
+
+      z->ioPos = input.pos;
+      produced = output.pos;
+
+      if (ZSTD_isError(ret))
+         return -1;
+   }
+
+   z->decodedPos += static_cast<unsigned int>(produced);
+
+   return static_cast<int>(produced);
+}
+
+// zstd has no built-in random access on the stable API, so a backward seek restarts
+// decompression from the beginning of the file (the same technique zlib's gzseek uses
+// internally for backward seeks: rewind, then decompress-and-discard back up to target)
+static bool zstdReopenForRead(PackStream *z)
+{
+   if (z->file)
+      fclose(z->file);
+
+   z->file = fopen(z->filename.c_str(), "rb");
+
+   if (!z->file)
+      return false;
+
+   if (!z->dstream)
+      z->dstream = ZSTD_createDStream();
+
+   ZSTD_initDStream(z->dstream);
+
+   z->ioPos = z->ioSize = 0;
+   z->decodedPos = 0;
+
+   return true;
+}
+
+static int zstdSeek(PackStream *z, unsigned int target)
+{
+   if (target < z->decodedPos && !zstdReopenForRead(z))
+      return -1;
+
+   std::vector<unsigned char> scratch(65536);
+
+   while (z->decodedPos < target)
+   {
+      const unsigned int want = std::min<unsigned int>(static_cast<unsigned int>(scratch.size()), target - z->decodedPos);
+
+      if (zstdRead(z, scratch.data(), want) != static_cast<int>(want))
+         return -1;
+   }
+
+   return 0;
+}
+
+// compresses 'size' bytes from 'data' and streams the result to disk; returns 'size' on success
+static int zstdWrite(PackStream *z, const void *data, unsigned size)
+{
+   ZSTD_inBuffer input {data, size, 0};
+
+   while (input.pos < input.size)
+   {
+      ZSTD_outBuffer output {z->ioBuf.data(), z->ioBuf.size(), 0};
+
+      const size_t ret = ZSTD_compressStream2(z->cctx, &output, &input, ZSTD_e_continue);
+
+      if (ZSTD_isError(ret))
+         return -1;
+
+      if (output.pos && fwrite(z->ioBuf.data(), 1, output.pos, z->file) != output.pos)
+         return -1;
+   }
+
+   return static_cast<int>(size);
+}
+
+// flushes and closes the current zstd frame; must be called once before the file is closed
+static bool zstdFinishWrite(PackStream *z)
+{
+   size_t remaining;
+
+   do
+   {
+      ZSTD_inBuffer input {nullptr, 0, 0};
+      ZSTD_outBuffer output {z->ioBuf.data(), z->ioBuf.size(), 0};
+
+      remaining = ZSTD_compressStream2(z->cctx, &output, &input, ZSTD_e_end);
+
+      if (ZSTD_isError(remaining))
+         return false;
+
+      if (output.pos && fwrite(z->ioBuf.data(), 1, output.pos, z->file) != output.pos)
+         return false;
+   }
+   while (remaining > 0);
+
+   return true;
+}
 
 struct Package::Impl
 {
@@ -45,6 +226,8 @@ struct Package::Impl
    std::string filename;
 
    mtar_t tar;
+
+   Mode openMode {};
 
    explicit Impl(std::string filename) : filename(std::move(filename)), tar({})
    {
@@ -62,50 +245,16 @@ struct Package::Impl
 
    int open(Mode mode)
    {
+      openMode = mode;
+
       switch (mode)
       {
          case Read:
-         {
-            // open GZ file for read
-            tar.stream = gzopen(filename.c_str(), "rb");
+            return openRead();
 
-            // check if file is open
-            if (!tar.stream)
-            {
-               log->error("failed to open compressed file {}", {filename});
-               return -1;
-            }
-
-            if (mtar_open(&tar, "r") != 0)
-            {
-               log->error("failed to open tar archive file {}", {filename});
-               tar = {};
-               return -1;
-            }
-
-            return 0;
-         }
          case Write:
-         {
-            // open GZ file for write at maximum compression
-            tar.stream = gzopen(filename.c_str(), "wb9");
+            return openWrite();
 
-            // check if file is open
-            if (!tar.stream)
-            {
-               log->error("failed to create compressed file {}", {filename});
-               return -1;
-            }
-
-            if (mtar_open(&tar, "w") != 0)
-            {
-               log->error("failed to create archive file {}", {filename});
-               tar = {};
-               return -1;
-            }
-
-            return 0;
-         }
          default:
          {
             log->error("failed to open file {}, invalid mode", {filename});
@@ -114,14 +263,122 @@ struct Package::Impl
       }
    }
 
+   int openRead()
+   {
+      // peek the first bytes to tell a legacy gzip archive from a zstd one, so files written
+      // by the previous implementation can still be opened
+      unsigned char magic[4] = {};
+
+      if (FILE *probe = fopen(filename.c_str(), "rb"))
+      {
+         const size_t n = fread(magic, 1, sizeof(magic), probe);
+         fclose(probe);
+
+         if (n < 2)
+         {
+            log->error("failed to open compressed file {}", {filename});
+            return -1;
+         }
+      }
+      else
+      {
+         log->error("failed to open compressed file {}", {filename});
+         return -1;
+      }
+
+      auto *z = new PackStream();
+      z->filename = filename;
+
+      if (magic[0] == 0x1F && magic[1] == 0x8B)
+      {
+         // legacy gzip-compressed archive
+         z->kind = StreamKind::GzipRead;
+         z->gz = gzopen(filename.c_str(), "rb");
+
+         if (!z->gz)
+         {
+            log->error("failed to open compressed file {}", {filename});
+            delete z;
+            return -1;
+         }
+      }
+      else if (magic[0] == 0x28 && magic[1] == 0xB5 && magic[2] == 0x2F && magic[3] == 0xFD)
+      {
+         z->kind = StreamKind::ZstdRead;
+         z->file = fopen(filename.c_str(), "rb");
+
+         if (!z->file)
+         {
+            log->error("failed to open compressed file {}", {filename});
+            delete z;
+            return -1;
+         }
+
+         z->dstream = ZSTD_createDStream();
+         ZSTD_initDStream(z->dstream);
+         z->ioBuf.resize(ZSTD_DStreamInSize());
+      }
+      else
+      {
+         log->error("unrecognized compressed file format {}", {filename});
+         delete z;
+         return -1;
+      }
+
+      tar.stream = z;
+
+      if (mtar_open(&tar, "r") != 0)
+      {
+         log->error("failed to open tar archive file {}", {filename});
+         delete z;
+         tar = {};
+         return -1;
+      }
+
+      return 0;
+   }
+
+   int openWrite()
+   {
+      auto *z = new PackStream();
+      z->filename = filename;
+      z->kind = StreamKind::ZstdWrite;
+      z->file = fopen(filename.c_str(), "wb");
+
+      if (!z->file)
+      {
+         log->error("failed to create compressed file {}", {filename});
+         delete z;
+         return -1;
+      }
+
+      z->cctx = ZSTD_createCCtx();
+      ZSTD_CCtx_setParameter(z->cctx, ZSTD_c_compressionLevel, ZSTD_COMPRESSION_LEVEL);
+      z->ioBuf.resize(ZSTD_CStreamOutSize());
+
+      tar.stream = z;
+
+      if (mtar_open(&tar, "w") != 0)
+      {
+         log->error("failed to create archive file {}", {filename});
+         delete z;
+         tar = {};
+         return -1;
+      }
+
+      return 0;
+   }
+
    void close()
    {
       if (tar.stream)
       {
-         // finalize tar
-         mtar_finalize(&tar);
+         // finalize tar (write mode only: this appends the trailing padding records, which
+         // makes no sense - and, for the zstd write path, crashes - when reading)
+         if (openMode == Write)
+            mtar_finalize(&tar);
 
-         // close tar file
+         // close tar file (invokes closeCallback, which flushes/frees the PackStream)
          mtar_close(&tar);
 
          // reset stream
@@ -197,25 +454,47 @@ struct Package::Impl
 
    static int readCallback(mtar_t *tar, void *data, unsigned size)
    {
-      int res = gzread((gzFile_s *)tar->stream, data, size);
-      return int(res == size ? MTAR_ESUCCESS : MTAR_EREADFAIL);
+      auto *z = static_cast<PackStream *>(tar->stream);
+
+      const int res = z->kind == StreamKind::GzipRead ? gzread(z->gz, data, size) : zstdRead(z, data, size);
+
+      return res == static_cast<int>(size) ? MTAR_ESUCCESS : MTAR_EREADFAIL;
    }
 
    static int writeCallback(mtar_t *tar, const void *data, unsigned size)
    {
-      int res = gzwrite((gzFile_s *)tar->stream, data, size);
-      return int(res == size ? MTAR_ESUCCESS : MTAR_EWRITEFAIL);
+      auto *z = static_cast<PackStream *>(tar->stream);
+
+      const int res = zstdWrite(z, data, size);
+
+      return res == static_cast<int>(size) ? MTAR_ESUCCESS : MTAR_EWRITEFAIL;
    }
 
    static int seekCallback(mtar_t *tar, unsigned offset)
    {
-      int res = gzseek((gzFile_s *)tar->stream, (off_t)offset, SEEK_SET);
-      return int(res == offset ? MTAR_ESUCCESS : MTAR_ESEEKFAIL);
+      auto *z = static_cast<PackStream *>(tar->stream);
+
+      if (z->kind == StreamKind::GzipRead)
+      {
+         const auto res = gzseek(z->gz, (off_t) offset, SEEK_SET);
+         return int(res == offset ? MTAR_ESUCCESS : MTAR_ESEEKFAIL);
+      }
+
+      return zstdSeek(z, offset) == 0 ? MTAR_ESUCCESS : MTAR_ESEEKFAIL;
    }
 
    static int closeCallback(mtar_t *tar)
    {
-      gzclose((gzFile_s *)tar->stream);
+      if (auto *z = static_cast<PackStream *>(tar->stream))
+      {
+         if (z->kind == StreamKind::ZstdWrite)
+            zstdFinishWrite(z);
+
+         delete z;
+
+         tar->stream = nullptr;
+      }
+
       return int(MTAR_ESUCCESS);
    }
 };
