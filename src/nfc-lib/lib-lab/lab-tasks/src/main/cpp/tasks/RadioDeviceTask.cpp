@@ -25,7 +25,10 @@
 
 #endif
 
+#include <chrono>
+#include <cmath>
 #include <memory>
+#include <optional>
 
 #include <rt/BlockingQueue.h>
 #include <rt/Throughput.h>
@@ -70,6 +73,12 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
 
    // last detection attempt
    std::chrono::time_point<std::chrono::steady_clock> lastSearch;
+
+   // common capture time reference, shared with other devices, used to align sample offsets to the same time origin
+   std::chrono::time_point<std::chrono::steady_clock> captureEpoch;
+
+   // number of samples to add to the device offset so it lines up with the shared capture epoch, computed from the first buffer received after start
+   std::optional<long long> captureOffsetBias;
 
    // current task status
    bool radioReceiverEnabled = false;
@@ -308,8 +317,29 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
          // reset throughput meter
          taskThroughput.begin();
 
+         // capture time reference shared with other devices, falling back to now() if none was supplied
+         if (auto epoch = command.get<std::chrono::duration<long long, std::ratio<1, 1000000000>>>("epoch"))
+            captureEpoch = std::chrono::time_point<std::chrono::steady_clock>(std::chrono::duration_cast<std::chrono::steady_clock::duration>(epoch.value()));
+         else
+            captureEpoch = std::chrono::steady_clock::now();
+
+         // offset bias is computed from the first buffer actually received from the hardware
+         captureOffsetBias.reset();
+
          // start receiving
          device->start([this](hw::SignalBuffer &buffer) {
+            // align device sample counter with the shared capture epoch, compensating for this device's own startup latency
+            if (!captureOffsetBias)
+            {
+               double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - captureEpoch).count();
+
+               captureOffsetBias = static_cast<long long>(std::llround(std::max(elapsed, 0.0) * buffer.sampleRate()));
+
+               log->info("synchronizing radio device offset, elapsed {.3} s, bias {} samples", {elapsed, captureOffsetBias.value()});
+            }
+
+            buffer.setOffset(buffer.offset() + captureOffsetBias.value());
+
             signalQueue.add(buffer);
          });
 

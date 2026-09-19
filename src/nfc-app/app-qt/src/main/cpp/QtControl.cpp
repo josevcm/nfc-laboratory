@@ -20,6 +20,7 @@
 
 */
 
+#include <chrono>
 #include <filesystem>
 
 #include <QDebug>
@@ -877,18 +878,21 @@ struct QtControl::Impl
     */
    void startDecoders()
    {
+      // common time reference so logic and radio sample offsets can be aligned to the same origin, regardless of each device's own startup latency
+      auto captureEpoch = std::chrono::steady_clock::now();
+
       // start logic decoder task
       if (logicDeviceEnabled && !logicDeviceType.isEmpty())
       {
          if (logicDecoderEnabled)
          {
             taskLogicDecoderStart([=] {
-               taskLogicDeviceStart();
+               taskLogicDeviceStart(captureEpoch);
             });
          }
          else
          {
-            taskLogicDeviceStart();
+            taskLogicDeviceStart(captureEpoch);
          }
       }
 
@@ -898,12 +902,12 @@ struct QtControl::Impl
          if (radioDecoderEnabled)
          {
             taskRadioDecoderStart([=] {
-               taskRadioDeviceStart();
+               taskRadioDeviceStart(captureEpoch);
             });
          }
          else
          {
-            taskRadioDeviceStart();
+            taskRadioDeviceStart(captureEpoch);
          }
       }
    }
@@ -1488,11 +1492,13 @@ struct QtControl::Impl
    /*
     * start logic task
     */
-   void taskLogicDeviceStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   void taskLogicDeviceStart(const std::chrono::steady_clock::time_point &epoch, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
       qInfo() << "start logic device task";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Start, onComplete, onReject});
+      auto nanos = std::chrono::duration_cast<std::chrono::duration<long long, std::ratio<1, 1000000000>>>(epoch.time_since_epoch());
+
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Start, onComplete, onReject, {{"epoch", nanos}}});
    }
 
    /*
@@ -1560,11 +1566,13 @@ struct QtControl::Impl
    /*
     * start radio task
     */
-   void taskRadioDeviceStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   void taskRadioDeviceStart(const std::chrono::steady_clock::time_point &epoch, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
       qInfo() << "start radio device task";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Start, onComplete, onReject});
+      auto nanos = std::chrono::duration_cast<std::chrono::duration<long long, std::ratio<1, 1000000000>>>(epoch.time_since_epoch());
+
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Start, onComplete, onReject, {{"epoch", nanos}}});
    }
 
    /*
