@@ -212,7 +212,7 @@ struct QtControl::Impl
             {"enabled", true},
             {"sampleRate", 25000000},
             {"vThreshold", 1.0},
-            {"channels", QJsonArray {0, 2, 3}}
+            {"channels", QJsonArray {0, 1, 2, 3}}
          })
       },
       {
