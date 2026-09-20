@@ -20,6 +20,7 @@
 
 */
 
+#include <chrono>
 #include <filesystem>
 
 #include <QDebug>
@@ -33,6 +34,7 @@
 
 #include <hw/SignalBuffer.h>
 #include <hw/RecordDevice.h>
+#include <hw/SigmfDevice.h>
 #include <hw/SignalType.h>
 
 #include <lab/data/RawFrame.h>
@@ -423,8 +425,9 @@ struct QtControl::Impl
    {
       qInfo() << "start decoder and receiver tasks";
 
-      // Extract the notifier before async lambdas: Qt deletes the event after
-      // customEvent() returns, so capturing event* in a lambda is use-after-free.
+      // Extract the notifier (and any other event fields the async lambdas below need)
+      // before those lambdas run: Qt deletes the event after customEvent() returns, so
+      // capturing event* itself in a lambda is use-after-free.
       auto notify = event->notifier();
 
       // if event contains file name and sample rate start recorder
@@ -432,11 +435,16 @@ struct QtControl::Impl
       {
          storagePath = event->getString("storagePath");
 
+         QJsonObject recorderData {{"storagePath", storagePath}};
+
+         if (event->contains("format"))
+            recorderData["format"] = event->getString("format");
+
          // clear storage queue
          taskStorageClear([=] {
 
             // start recorder and...
-            taskRecorderWrite({{"storagePath", storagePath}}, [=] {
+            taskRecorderWrite(recorderData, [=] {
 
                // ...start logic and radio devices
                startDecoders();
@@ -536,6 +544,12 @@ struct QtControl::Impl
    {
       qInfo() << "configure logic device";
 
+      // there is a single logic task for every supported analyzer, so a config naming a device must
+      // only reach that one, or it would reconfigure whichever analyzer happens to be connected and
+      // overwrite its stored settings through logicDeviceConfigure
+      if (event->contains("deviceType") && event->getString("deviceType") != logicDeviceType)
+         return;
+
       QJsonObject config;
 
       if (event->contains("enabled"))
@@ -599,6 +613,12 @@ struct QtControl::Impl
     */
    void doRadioDeviceConfig(DecoderControlEvent *event)
    {
+      // the settings dialog posts one config per receiver page while there is a single radio task,
+      // so apply only the page of the connected device, otherwise each page overwrites the previous
+      // one on the device and, through radioDeviceConfigure, on its stored settings as well
+      if (event->contains("deviceType") && event->getString("deviceType") != radioDeviceType)
+         return;
+
       QJsonObject config;
 
       if (event->contains("enabled"))
@@ -823,6 +843,34 @@ struct QtControl::Impl
                }
             }
          });
+
+         return;
+      }
+
+      if (path.extension() == ".sigmf-meta" || path.extension() == ".sigmf-data")
+      {
+         hw::SigmfDevice file(fileName.toStdString());
+
+         if (!file.open(hw::SignalDevice::Mode::Read))
+         {
+            qWarning() << "unable to open file: " << fileName;
+            return;
+         }
+
+         // sigmf only ever carries the radio I/Q channel (no logic-channel equivalent),
+         // so this always takes the "radio decoder" path the .wav case takes for <= 2 channels
+         taskStorageClear([=] {
+            if (radioDecoderEnabled)
+            {
+               taskRadioDecoderStart([=] {
+                  taskRecorderRead(command);
+               });
+            }
+            else
+            {
+               taskRecorderRead(command);
+            }
+         });
       }
    }
 
@@ -877,18 +925,21 @@ struct QtControl::Impl
     */
    void startDecoders()
    {
+      // common time reference so logic and radio sample offsets can be aligned to the same origin, regardless of each device's own startup latency
+      auto captureEpoch = std::chrono::steady_clock::now();
+
       // start logic decoder task
       if (logicDeviceEnabled && !logicDeviceType.isEmpty())
       {
          if (logicDecoderEnabled)
          {
             taskLogicDecoderStart([=] {
-               taskLogicDeviceStart();
+               taskLogicDeviceStart(captureEpoch);
             });
          }
          else
          {
-            taskLogicDeviceStart();
+            taskLogicDeviceStart(captureEpoch);
          }
       }
 
@@ -898,12 +949,12 @@ struct QtControl::Impl
          if (radioDecoderEnabled)
          {
             taskRadioDecoderStart([=] {
-               taskRadioDeviceStart();
+               taskRadioDeviceStart(captureEpoch);
             });
          }
          else
          {
-            taskRadioDeviceStart();
+            taskRadioDeviceStart(captureEpoch);
          }
       }
    }
@@ -1488,11 +1539,13 @@ struct QtControl::Impl
    /*
     * start logic task
     */
-   void taskLogicDeviceStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   void taskLogicDeviceStart(const std::chrono::steady_clock::time_point &epoch, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
       qInfo() << "start logic device task";
 
-      logicDeviceCommandStream->next({lab::LogicDeviceTask::Start, onComplete, onReject});
+      auto nanos = std::chrono::duration_cast<std::chrono::duration<long long, std::ratio<1, 1000000000>>>(epoch.time_since_epoch());
+
+      logicDeviceCommandStream->next({lab::LogicDeviceTask::Start, onComplete, onReject, {{"epoch", nanos}}});
    }
 
    /*
@@ -1560,11 +1613,13 @@ struct QtControl::Impl
    /*
     * start radio task
     */
-   void taskRadioDeviceStart(const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
+   void taskRadioDeviceStart(const std::chrono::steady_clock::time_point &epoch, const std::function<void()> &onComplete = nullptr, const std::function<void(int, const std::string &)> &onReject = nullptr) const
    {
       qInfo() << "start radio device task";
 
-      radioDeviceCommandStream->next({lab::RadioDeviceTask::Start, onComplete, onReject});
+      auto nanos = std::chrono::duration_cast<std::chrono::duration<long long, std::ratio<1, 1000000000>>>(epoch.time_since_epoch());
+
+      radioDeviceCommandStream->next({lab::RadioDeviceTask::Start, onComplete, onReject, {{"epoch", nanos}}});
    }
 
    /*

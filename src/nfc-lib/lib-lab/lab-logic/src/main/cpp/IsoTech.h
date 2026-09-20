@@ -37,6 +37,12 @@
 
 namespace lab {
 
+// probes tracked for each sample, buffers carrying more are truncated to this number
+constexpr unsigned int ISO_CHANNEL_COUNT = 8;
+
+// probes needed to decode ISO-7816, IO, CLK, RST and VCC, buffers carrying less cannot be decoded
+constexpr unsigned int ISO_REQUIRED_CHANNELS = 4;
+
 /*
  * Signal debugger
  */
@@ -220,20 +226,23 @@ struct IsoDecoderStatus
    // signal master clock
    unsigned int signalClock = -1;
 
+   // absolute sample offset of the stream origin, devices may bias it to align captures from several sources on a common time base
+   unsigned int signalOffset = 0;
+
    // reference time for all decoded frames
    unsigned int streamTime = 0;
 
    // signal debugger
    std::shared_ptr<IsoSignalDebug> debug;
 
-   // previous data samples
-   float sampleLast[8];
+   // previous data samples, probes absent from the signal buffer stay at rest level
+   float sampleLast[ISO_CHANNEL_COUNT] {};
 
-   // current data samples
-   float sampleData[8];
+   // current data samples, probes absent from the signal buffer stay at rest level
+   float sampleData[ISO_CHANNEL_COUNT] {};
 
-   // current sample changes
-   float sampleEdge[8];
+   // current sample changes, probes absent from the signal buffer never report an edge
+   float sampleEdge[ISO_CHANNEL_COUNT] {};
 
    // process next sample from signal buffer
    bool nextSample(hw::SignalBuffer &buffer);

@@ -33,8 +33,13 @@
 
 #define WINDOW 51
 #define THRESHOLD 0.005
-#define LOGIC_INTERVAL 255 // max 2^8-1 (1 byte)
-#define RADIO_INTERVAL 255 // max 2^8-1 (1 byte)
+
+// forced keep-alive interval (in raw samples) used during flat/idle signal, so the live plot and the
+// storage stream still get a periodic refresh point. APCM v3 stores offset deltas as varints, so this
+// is no longer bound to 1 byte (255) as in the old fixed-width storage format: raising it lets long
+// idle stretches collapse to a handful of points instead of one every 255 samples.
+#define LOGIC_INTERVAL 1000000
+#define RADIO_INTERVAL 1000000
 
 namespace lab {
 

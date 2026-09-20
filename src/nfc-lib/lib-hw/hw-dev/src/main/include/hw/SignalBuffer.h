@@ -54,6 +54,9 @@ class SignalBuffer : public rt::Buffer<float>
       // sample offset
       unsigned long long offset() const;
 
+      // adjust sample offset, used to align buffers from independent devices to a common time reference
+      void setOffset(unsigned long long offset);
+
    private:
 
       std::shared_ptr<Impl> impl;

@@ -30,7 +30,11 @@
 
 #include <hw/SignalType.h>
 #include <hw/SignalBuffer.h>
+#include <hw/SignalDevice.h>
 #include <hw/RecordDevice.h>
+#include <hw/SigmfDevice.h>
+
+#include <rt/FileSystem.h>
 
 #include <lab/tasks/SignalStorageTask.h>
 
@@ -53,13 +57,14 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
    rt::Subject<hw::SignalBuffer>::Subscription radioSignalRawSubscription;
    rt::Subject<hw::SignalBuffer>::Subscription logicSignalRawSubscription;
 
-   // record device
-   std::shared_ptr<hw::RecordDevice> logicStorage;
-   std::shared_ptr<hw::RecordDevice> radioStorage;
+   // record device (either a RecordDevice/.wav or a SigmfDevice/.sigmf-* pair, chosen by storageFormat)
+   std::shared_ptr<hw::SignalDevice> logicStorage;
+   std::shared_ptr<hw::SignalDevice> radioStorage;
 
    // signal stream queue buffer
    rt::BlockingQueue<hw::SignalBuffer> logicSignalQueue;
    rt::BlockingQueue<hw::SignalBuffer> radioSignalQueue;
+   rt::BlockingQueue<hw::SignalBuffer> radioIqSignalQueue;
 
    // signal keys vector
    std::vector<int> logicBufferKeys;
@@ -67,6 +72,9 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
    // base filename
    std::string storagePath;
+
+   // recording format for the radio channel: "wav" (default, magnitude only) or "sigmf" (lossless I/Q)
+   std::string storageFormat;
 
    Impl() : AbstractTask("worker.SignalStorage", "recorder"), status(Idle)
    {
@@ -76,10 +84,10 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       logicSignalRawStream = rt::Subject<hw::SignalBuffer>::name("logic.signal.raw");
 
       // subscribe to signal events
-      //      signalIqSubscription = signalIqStream->subscribe([this](const hw::SignalBuffer &buffer) {
-      //         if (status == Writing || status == Capture)
-      //            signalQueue.add(buffer);
-      //      });
+      radioSignalIqSubscription = radioSignalIqStream->subscribe([this](const hw::SignalBuffer &buffer) {
+         if (status == Writing)
+            radioIqSignalQueue.add(buffer);
+      });
 
       radioSignalRawSubscription = radioSignalRawStream->subscribe([this](const hw::SignalBuffer &buffer) {
          if (status == Writing)
@@ -149,6 +157,25 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       return true;
    }
 
+   // sniff whether a given path belongs to a sigmf recording, so readStorage() can pick the
+   // right hw::SignalDevice implementation without requiring callers to say so explicitly
+   std::string detectFormat(const std::string &fileName) const
+   {
+      auto endsWith = [](const std::string &value, const std::string &suffix) {
+         return value.size() >= suffix.size() && value.compare(value.size() - suffix.size(), suffix.size(), suffix) == 0;
+      };
+
+      if (endsWith(fileName, ".sigmf-meta") || endsWith(fileName, ".sigmf-data"))
+         return "sigmf";
+
+      std::string base = endsWith(fileName, ".wav") ? fileName.substr(0, fileName.size() - 4) : fileName;
+
+      if (rt::FileSystem::exists(base + ".sigmf-meta"))
+         return "sigmf";
+
+      return "wav";
+   }
+
    void readStorage(const rt::Event &command)
    {
       int error = MissingParameters;
@@ -168,7 +195,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
          std::vector<int> keys;
 
-         auto storage = open(config["fileName"], 0, 0, 0, keys, hw::RecordDevice::Mode::Read);
+         auto storage = open(config["fileName"], 0, 0, 0, keys, hw::SignalDevice::Mode::Read, detectFormat(config["fileName"]));
 
          if (!storage)
          {
@@ -195,6 +222,7 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
          logicSignalQueue.clear();
          radioSignalQueue.clear();
+         radioIqSignalQueue.clear();
 
          command.resolve();
 
@@ -226,11 +254,13 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
          }
 
          storagePath = config["storagePath"];
+         storageFormat = config.value("format", std::string("wav"));
 
-         log->info("data storage path: {}", {storagePath});
+         log->info("data storage path: {} format: {}", {storagePath, storageFormat});
 
          logicSignalQueue.clear();
          radioSignalQueue.clear();
+         radioIqSignalQueue.clear();
 
          command.resolve();
 
@@ -284,18 +314,27 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
 
    void signalWrite()
    {
-      if (const auto buffer = logicSignalQueue.get())
-         writeLogic(buffer.value());
+      // sigmf format only records the lossless radio I/Q stream; the logic channel
+      // has no SigMF equivalent and is skipped entirely for this session
+      if (storageFormat != "sigmf")
+      {
+         if (const auto buffer = logicSignalQueue.get())
+            writeLogic(buffer.value());
 
-      if (const auto buffer = radioSignalQueue.get())
+         if (const auto buffer = radioSignalQueue.get())
+            writeRadio(buffer.value());
+      }
+      else if (const auto buffer = radioIqSignalQueue.get())
+      {
          writeRadio(buffer.value());
+      }
    }
 
-   std::shared_ptr<hw::RecordDevice> open(const std::string &filename, unsigned int sampleRate, unsigned int sampleSize, unsigned int channels, std::vector<int> &keys, hw::RecordDevice::Mode mode) const
+   std::shared_ptr<hw::SignalDevice> open(const std::string &filename, unsigned int sampleRate, unsigned int sampleSize, unsigned int channels, std::vector<int> &keys, hw::SignalDevice::Mode mode, const std::string &format = "wav") const
    {
-      auto storage = std::make_shared<hw::RecordDevice>(filename);
+      std::shared_ptr<hw::SignalDevice> storage = format == "sigmf" ? std::static_pointer_cast<hw::SignalDevice>(std::make_shared<hw::SigmfDevice>(filename)) : std::static_pointer_cast<hw::SignalDevice>(std::make_shared<hw::RecordDevice>(filename));
 
-      if (mode == hw::RecordDevice::Mode::Write)
+      if (mode == hw::SignalDevice::Mode::Write)
       {
          log->info("creating storage file {}, sampleRate {} sampleSize {} channels {}", {filename, sampleRate, sampleSize, channels});
 
@@ -479,10 +518,10 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       if (buffer.type() != hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES)
          return false;
 
-      // create storage file when first buffer is processed
+      // create storage file when first buffer is processed (logic is always wav, never sigmf)
       if (!logicStorage)
       {
-         if (!((logicStorage = open(fileName("logic"), buffer.sampleRate(), hw::SAMPLE_SIZE_8, buffer.stride(), logicBufferKeys, hw::RecordDevice::Mode::Write))))
+         if (!((logicStorage = open(fileName("logic"), buffer.sampleRate(), hw::SAMPLE_SIZE_8, buffer.stride(), logicBufferKeys, hw::SignalDevice::Mode::Write, "wav"))))
             return false;
       }
 
@@ -507,15 +546,30 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
          return false;
       }
 
-      // buffer type must be radio samples or IQ samples
-      if (buffer.type() != hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES)
+      // buffer type must match the configured format: full I/Q for sigmf, magnitude for wav
+      if (storageFormat == "sigmf")
+      {
+         if (buffer.type() != hw::SignalType::SIGNAL_TYPE_RADIO_IQ)
+            return false;
+      }
+      else if (buffer.type() != hw::SignalType::SIGNAL_TYPE_RADIO_SAMPLES)
+      {
          return false;
+      }
 
       // create new storage file before first buffer is completed
       if (!radioStorage)
       {
-         if (!((radioStorage = open(fileName("radio"), buffer.sampleRate(), hw::SAMPLE_SIZE_16, buffer.stride(), radioBufferKeys, hw::RecordDevice::Mode::Write))))
+         if (storageFormat == "sigmf")
+         {
+            // fixed at 2 (I/Q), see hw::SigmfDevice's PARAM_CHANNEL_COUNT contract
+            if (!((radioStorage = open(fileName("radio"), buffer.sampleRate(), hw::SAMPLE_SIZE_16, 2, radioBufferKeys, hw::SignalDevice::Mode::Write, "sigmf"))))
+               return false;
+         }
+         else if (!((radioStorage = open(fileName("radio"), buffer.sampleRate(), hw::SAMPLE_SIZE_16, buffer.stride(), radioBufferKeys, hw::SignalDevice::Mode::Write, "wav"))))
+         {
             return false;
+         }
       }
 
       // write buffer to storage
@@ -528,7 +582,12 @@ struct SignalStorageTask::Impl : SignalStorageTask, AbstractTask
       std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
       const std::tm *tm = std::localtime(&time);
 
-      oss << storagePath << "/" << type << "-" << std::put_time(tm, "%Y%m%dT%H%M%S") << ".wav";
+      oss << storagePath << "/" << type << "-" << std::put_time(tm, "%Y%m%dT%H%M%S");
+
+      // logic is always wav (no sigmf equivalent); radio omits the extension in sigmf
+      // mode, since SigmfDevice derives both .sigmf-data/.sigmf-meta from the base name
+      if (type == "logic" || storageFormat != "sigmf")
+         oss << ".wav";
 
       return oss.str();
    }

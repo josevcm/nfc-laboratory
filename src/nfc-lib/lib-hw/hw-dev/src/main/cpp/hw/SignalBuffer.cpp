@@ -83,4 +83,9 @@ unsigned long long SignalBuffer::offset() const
    return impl->offset;
 }
 
+void SignalBuffer::setOffset(unsigned long long offset)
+{
+   impl->offset = offset;
+}
+
 }

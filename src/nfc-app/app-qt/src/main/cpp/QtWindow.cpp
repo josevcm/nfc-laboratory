@@ -23,6 +23,7 @@
 #include <QKeyEvent>
 #include <QClipboard>
 #include <QComboBox>
+#include <QSettings>
 #include <QTimer>
 #include <QStandardPaths>
 #include <QScreen>
@@ -1742,12 +1743,12 @@ struct QtWindow::Impl
 
       QDir dataPath = QtApplication::dataPath();
 
-      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath.absolutePath(), tr("Capture (*.wav *.trz)"));
+      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath.absolutePath(), tr("Capture (*.wav *.trz *.sigmf-meta *.sigmf-data)"));
 
       if (fileName.isEmpty())
          return;
 
-      if (!(fileName.endsWith(".wav") || fileName.endsWith(".trz")))
+      if (!(fileName.endsWith(".wav") || fileName.endsWith(".trz") || fileName.endsWith(".sigmf-meta") || fileName.endsWith(".sigmf-data")))
       {
          Theme::messageDialog(window, tr("Unable to open file"), tr("Invalid file name: %1").arg(fileName));
          return;
@@ -2558,7 +2559,15 @@ void QtWindow::toggleListen()
 
 void QtWindow::toggleRecord()
 {
-   QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath().absolutePath()}}));
+   QSettings settings;
+   settings.beginGroup("features");
+   const QString format = settings.value("signalRecordFormat", "wav").toString();
+   settings.endGroup();
+
+   QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {
+      {"storagePath", QtApplication::dataPath().absolutePath()},
+      {"format", format}
+   }));
 }
 
 void QtWindow::togglePause()

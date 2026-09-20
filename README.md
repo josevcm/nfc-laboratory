@@ -814,7 +814,7 @@ cp -r dat/firmware  build/src/nfc-app/app-qt/
 Install dependencies (ubuntu)
 
 ```
-sudo apt install cmake g++ g++-11 qt6-base-dev libqt6svg6 libusb-1.0-0-dev zlib1g-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
+sudo apt install cmake g++ g++-11 qt6-base-dev libqt6svg6 libusb-1.0-0-dev zlib1g-dev libzstd-dev libgl1-mesa-dev libairspy-dev librtlsdr-dev
 ```
 
 Clone the repository
