@@ -230,6 +230,21 @@ enabled=true
 
 Best results are obtained by tuning to the **3rd harmonic at 40.68 MHz** or the **2nd harmonic at 27.12 MHz** with a 10 Msps sample rate. For some readers (e.g. Renesas NFC readers) the 3rd harmonic at 40.68 MHz gives better results.
 
+The `rfPort` option selects which RF input is used: the **ANT** SMA connector, or the **CABLE1** / **CABLE2** U.FL connectors on the board. The same
+selection is available from the receiver settings dialog and from the `nfc-rx` command line with `-P, --rf-port`.
+
+> **Warning: CABLE1 and CABLE2 are unprotected on HydraSDR RFOne.**
+> The ANT port has a 10 nF DC block, an RF limiter, then a 25 MHz high-pass filter. CABLE1 and CABLE2 only have the
+> 10 nF DC block, nothing else — a 13.56 MHz NFC signal on those ports goes straight into the R828D with no clamping
+> and no filtering; above +10 dBm it can destroy the tuner or other parts.
+>
+> The SDR is not specified above 0 dBm at any input, so that is already out of spec and outside any warranty.
+>
+> NFC readers reach those levels easily, so use 20 to 30 dB of fixed attenuation, a small loosely coupled loop, and
+> never connect to a driven antenna.
+>
+> Damage is usually silent: the tuner still enumerates while sensitivity is permanently degraded.
+
 | Key              | Type | Default  | Description                                              |
 |------------------|------|----------|----------------------------------------------------------|
 | `centerFreq`     | int  | 40680000 | Center frequency in Hz                                   |
