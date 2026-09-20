@@ -37,7 +37,9 @@
 
 static const QMap<int, int> ROW_TO_PAGE = {
    {1, 0}, {2, 1}, {4, 2}, {5, 3}, {6, 4}, {7, 5},
-   {9, 6}, {10, 7}, {12, 8}, {13, 9}
+   {9, 6}, {10, 7},
+   {12, 8}, {13, 9},
+   {15, 10}, {16, 11}
 };
 
 static const QStringList LOGGER_LEVELS = {"DEBUG", "INFO", "WARN", "ERROR", "NONE"};
@@ -87,6 +89,10 @@ struct ConfigDialog::Impl
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  HydraSDR")));
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  RTL-SDR")));
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xa1  HackRF")));
+
+      ui->navList->addItem(headerItem("Logic Analyzer"));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\x8a  DSLogic")));
+      ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\x8a  Sipeed")));
 
       ui->navList->addItem(headerItem("Decoders"));
       ui->navList->addItem(sectionItem(QString::fromUtf8("    \xf0\x9f\x93\xbb  Radio NFC")));
@@ -254,21 +260,34 @@ struct ConfigDialog::Impl
       ui->hackrfBiasTee->setChecked(s.value("biasTee", false).toBool());
       s.endGroup();
 
-      // Page 6 — Radio NFC
+      // Page 6 — DSLogic
+      s.beginGroup("device.logic.dreamsourcelab");
+      ui->dslogicEnabled->setChecked(s.value("enabled", true).toBool());
+      ui->dslogicSampleRate->setValue(s.value("sampleRate", 25000000).toInt());
+      ui->dslogicVThreshold->setValue(s.value("vThreshold", 1.0).toDouble());
+      s.endGroup();
+
+      // Page 7 — Sipeed
+      s.beginGroup("device.logic.sipeed");
+      ui->sipeedEnabled->setChecked(s.value("enabled", true).toBool());
+      ui->sipeedSampleRate->setValue(s.value("sampleRate", 20000000).toInt());
+      s.endGroup();
+
+      // Page 8 — Radio NFC
       ui->radioEnabled->setChecked(s.value("decoder.radio/enabled", true).toBool());
       ui->radioNfcA->setChecked(s.value("decoder.radio.protocol.nfca/enabled", true).toBool());
       ui->radioNfcB->setChecked(s.value("decoder.radio.protocol.nfcb/enabled", true).toBool());
       ui->radioNfcF->setChecked(s.value("decoder.radio.protocol.nfcf/enabled", true).toBool());
       ui->radioNfcV->setChecked(s.value("decoder.radio.protocol.nfcv/enabled", true).toBool());
 
-      // Page 7 — Logic
+      // Page 9 — Logic
       ui->logicEnabled->setChecked(s.value("decoder.logic/enabled", true).toBool());
       ui->logicIso7816->setChecked(s.value("decoder.logic.protocol.iso7816/enabled", true).toBool());
 
-      // Page 8 — gRPC
+      // Page 10 — gRPC
       ui->grpcPort->setValue(s.value("grpc/port", 0).toInt());
 
-      // Page 9 — Logger
+      // Page 11 — Logger
       s.beginGroup("logger");
 
       ui->loggerRoot->setCurrentText(s.value("root", "WARN").toString().toUpper());
@@ -408,7 +427,33 @@ struct ConfigDialog::Impl
                                                      {"biasTee", static_cast<int>(ui->hackrfBiasTee->isChecked())}
                                                   }));
 
-      // Page 6 — Radio NFC
+      // Page 6 — DSLogic
+      s.beginGroup("device.logic.dreamsourcelab");
+      s.setValue("enabled", ui->dslogicEnabled->isChecked());
+      s.setValue("sampleRate", ui->dslogicSampleRate->value());
+      s.setValue("vThreshold", ui->dslogicVThreshold->value());
+      s.endGroup();
+
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::LogicDeviceConfig, {
+                                                     {"deviceType", QString("logic.dreamsourcelab")},
+                                                     {"enabled", ui->dslogicEnabled->isChecked()},
+                                                     {"sampleRate", ui->dslogicSampleRate->value()},
+                                                     {"vThreshold", ui->dslogicVThreshold->value()}
+                                                  }));
+
+      // Page 7 — Sipeed
+      s.beginGroup("device.logic.sipeed");
+      s.setValue("enabled", ui->sipeedEnabled->isChecked());
+      s.setValue("sampleRate", ui->sipeedSampleRate->value());
+      s.endGroup();
+
+      QtApplication::post(new DecoderControlEvent(DecoderControlEvent::LogicDeviceConfig, {
+                                                     {"deviceType", QString("logic.sipeed")},
+                                                     {"enabled", ui->sipeedEnabled->isChecked()},
+                                                     {"sampleRate", ui->sipeedSampleRate->value()}
+                                                  }));
+
+      // Page 8 — Radio NFC
       s.setValue("decoder.radio/enabled", ui->radioEnabled->isChecked());
       s.setValue("decoder.radio.protocol.nfca/enabled", ui->radioNfcA->isChecked());
       s.setValue("decoder.radio.protocol.nfcb/enabled", ui->radioNfcB->isChecked());
@@ -423,7 +468,7 @@ struct ConfigDialog::Impl
                                                      {"protocol/nfcv/enabled", ui->radioNfcV->isChecked()}
                                                   }));
 
-      // Page 7 — Logic / ISO7816
+      // Page 9 — Logic / ISO7816
       s.setValue("decoder.logic/enabled", ui->logicEnabled->isChecked());
       s.setValue("decoder.logic.protocol.iso7816/enabled", ui->logicIso7816->isChecked());
 
@@ -432,10 +477,10 @@ struct ConfigDialog::Impl
                                                      {"protocol/iso7816/enabled", ui->logicIso7816->isChecked()}
                                                   }));
 
-      // Page 8 — gRPC
+      // Page 10 — gRPC
       s.setValue("grpc/port", ui->grpcPort->value());
 
-      // Page 9 — Logger
+      // Page 11 — Logger
       s.beginGroup("logger");
 
       const QString rootLevel = ui->loggerRoot->currentText();
