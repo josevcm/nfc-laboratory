@@ -134,6 +134,7 @@ struct QtWindow::Impl
    int radioGainValue = -1;
    int radioBiasTee = 0;
    int radioDirectSampling = 0;
+   int radioRfPort = 0;
    long long radioSampleCount = 0;
 
    QList<int> radioGainKeys;
@@ -644,6 +645,9 @@ struct QtWindow::Impl
 
       if (event->hasDirectSampling())
          updated |= updateRadioDeviceDirectSampling(event->directSampling());
+
+      if (event->hasRfPort())
+         updated |= updateRadioDeviceRfPort(event->rfPort());
 
       if (updated)
       {
@@ -1500,6 +1504,18 @@ struct QtWindow::Impl
       qInfo().noquote().nospace() << "radio device device direct sampling from [" << radioDirectSampling << "] to [" << value << "]";
 
       radioDirectSampling = value;
+
+      return true;
+   }
+
+   bool updateRadioDeviceRfPort(int value)
+   {
+      if (radioRfPort == value)
+         return false;
+
+      qInfo().noquote().nospace() << "radio device device rf-port from [" << radioRfPort << "] to [" << value << "]";
+
+      radioRfPort = value;
 
       return true;
    }

@@ -219,6 +219,16 @@ bool RadioDeviceStatusEvent::hasDirectSampling() const
    return data.contains("directSampling");
 }
 
+int RadioDeviceStatusEvent::hasRfPort() const
+{
+   return data.contains("rfPort");
+}
+
+int RadioDeviceStatusEvent::rfPort() const
+{
+   return data["rfPort"].toInt();
+}
+
 int RadioDeviceStatusEvent::directSampling() const
 {
    return data["directSampling"].toInt();
