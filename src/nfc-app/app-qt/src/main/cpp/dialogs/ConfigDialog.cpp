@@ -327,6 +327,7 @@ struct ConfigDialog::Impl
       s.endGroup();
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
+                                                     {"deviceType", QString("radio.airspy")},
                                                      {"enabled", ui->airspyEnabled->isChecked()},
                                                      {"centerFreq", ui->airspyCenterFreq->value()},
                                                      {"sampleRate", ui->airspySampleRate->value()},
@@ -350,6 +351,7 @@ struct ConfigDialog::Impl
       s.endGroup();
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
+                                                     {"deviceType", QString("radio.hydrasdr")},
                                                      {"enabled", ui->hydrasdrEnabled->isChecked()},
                                                      {"centerFreq", ui->hydrasdrCenterFreq->value()},
                                                      {"sampleRate", ui->hydrasdrSampleRate->value()},
@@ -373,6 +375,7 @@ struct ConfigDialog::Impl
       s.endGroup();
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
+                                                     {"deviceType", QString("radio.rtlsdr")},
                                                      {"enabled", ui->rtlsdrEnabled->isChecked()},
                                                      {"centerFreq", ui->rtlsdrCenterFreq->value()},
                                                      {"sampleRate", ui->rtlsdrSampleRate->value()},
@@ -395,6 +398,7 @@ struct ConfigDialog::Impl
       s.endGroup();
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
+                                                     {"deviceType", QString("radio.hackrf")},
                                                      {"enabled", ui->hackrfEnabled->isChecked()},
                                                      {"centerFreq", ui->hackrfCenterFreq->value()},
                                                      {"sampleRate", ui->hackrfSampleRate->value()},

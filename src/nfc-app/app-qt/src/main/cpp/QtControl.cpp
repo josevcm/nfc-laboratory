@@ -606,6 +606,12 @@ struct QtControl::Impl
     */
    void doRadioDeviceConfig(DecoderControlEvent *event)
    {
+      // the settings dialog posts one config per receiver page while there is a single radio task,
+      // so apply only the page of the connected device, otherwise each page overwrites the previous
+      // one on the device and, through radioDeviceConfigure, on its stored settings as well
+      if (event->contains("deviceType") && event->getString("deviceType") != radioDeviceType)
+         return;
+
       QJsonObject config;
 
       if (event->contains("enabled"))
