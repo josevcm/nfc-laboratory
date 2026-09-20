@@ -51,14 +51,10 @@ constexpr unsigned int FRAME_LIMIT = 4096;
 // maximum time deviation accepted between both passes
 constexpr double TIME_EPSILON = 1E-9;
 
-// probes the ISO-7816 decoder reads on every sample, IO, CLK, RST and VCC
-constexpr unsigned int ISO7816_CHANNELS = 4;
-
 // outcome of decoding one recording
 enum Result
 {
    ResultError = -1,
-   ResultSkip = 0,
    ResultOk = 1
 };
 
@@ -103,7 +99,8 @@ int readRadioSignal(hw::RecordDevice &source, unsigned long long bias, std::vect
                list.push_back({frame.sampleStart(), frame.timeStart()});
          }
 
-         offset += samples.elements() / channelCount;
+         // elements() already counts samples per channel, not buffer values
+         offset += samples.elements();
       }
    }
 
@@ -115,16 +112,12 @@ int readRadioSignal(hw::RecordDevice &source, unsigned long long bias, std::vect
  */
 int readLogicSignal(hw::RecordDevice &source, unsigned long long bias, std::vector<Timing> &list)
 {
-   const unsigned int channelCount = source.get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT);
-   const unsigned int sampleRate = source.get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_RATE);
-
-   // ISO-7816 reads IO, CLK, RST and VCC on every sample, narrower recordings leave those probes unset
-   if (channelCount < ISO7816_CHANNELS)
-      return ResultSkip;
-
    lab::IsoDecoder decoder;
 
    decoder.setEnableISO7816(true);
+
+   const unsigned int channelCount = source.get<unsigned int>(hw::SignalDevice::PARAM_CHANNEL_COUNT);
+   const unsigned int sampleRate = source.get<unsigned int>(hw::SignalDevice::PARAM_SAMPLE_RATE);
 
    unsigned long long offset = bias;
 
@@ -142,7 +135,8 @@ int readLogicSignal(hw::RecordDevice &source, unsigned long long bias, std::vect
             list.push_back({frame.sampleStart(), frame.timeStart()});
          }
 
-         offset += samples.elements() / channelCount;
+         // elements() already counts samples per channel, not buffer values
+         offset += samples.elements();
       }
    }
 
@@ -202,16 +196,8 @@ int testFile(const std::string &signal)
    unsigned int sampleRate2 = 0;
 
    // decode the stream starting at sample zero, as when replaying a capture from file
-   const int result = readSignal(signal, 0, list1, sampleRate1);
-
-   if (result == ResultError)
+   if (readSignal(signal, 0, list1, sampleRate1) != ResultOk)
       return -1;
-
-   if (result == ResultSkip)
-   {
-      std::cout << "TEST FILE " << filename << ": SKIPPED, unsupported recording" << std::endl;
-      return 0;
-   }
 
    // decode the same stream displaced to a shared capture epoch, as device tasks do on live captures
    if (readSignal(signal, SAMPLE_BIAS, list2, sampleRate2) != ResultOk)
@@ -292,7 +278,6 @@ void printUsage(const char *programName)
    std::cout << "Test Behavior:" << std::endl;
    std::cout << "  - Decodes each WAV file twice, starting at sample 0 and displaced " << SAMPLE_BIAS << " samples" << std::endl;
    std::cout << "  - 8 bit recordings are decoded as logic signal, 16 bit ones as radio signal" << std::endl;
-   std::cout << "  - Logic recordings with less than " << ISO7816_CHANNELS << " probes are skipped, ISO-7816 needs IO, CLK, RST and VCC" << std::endl;
    std::cout << "  - If every frame is displaced exactly the same amount: PASS" << std::endl;
    std::cout << "  - If any frame keeps its original timing: FAIL" << std::endl;
    std::cout << std::endl;

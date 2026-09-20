@@ -33,11 +33,27 @@ bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)
    if (buffer.remaining() == 0 || buffer.type() != hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES)
       return false;
 
-   // number of channels
-   const unsigned int ch = buffer.stride();
+   // number of channels carried by the buffer
+   const unsigned int stride = buffer.stride();
+
+   // a sample holds one value per probe, drain anything that cannot form a complete one instead of reading past it
+   if (stride == 0 || buffer.remaining() < stride)
+   {
+      while (buffer.remaining() > 0)
+         buffer.get();
+
+      return false;
+   }
+
+   // number of channels tracked, probes beyond the ones we follow are read but discarded
+   const unsigned int ch = std::min(stride, ISO_CHANNEL_COUNT);
 
    // get next samples from buffer
    buffer.get(sampleData, ch);
+
+   // drop remaining probes of this sample, the buffer must always advance a full stride to stay aligned
+   for (unsigned int i = ch; i < stride; i++)
+      buffer.get();
 
    // initialize last samples, master clock still holds its reset value until incremented below
    if (signalClock == static_cast<unsigned int>(-1))

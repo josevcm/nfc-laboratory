@@ -45,6 +45,9 @@ struct IsoDecoder::Impl
    // global decoder status
    IsoDecoderStatus decoder;
 
+   // set once the stream has been reported as undecodable, to warn only on the first buffer
+   bool channelsRejected = false;
+
    Impl();
 
    inline void cleanup();
@@ -130,6 +133,9 @@ void IsoDecoder::Impl::initialize()
    // clear stream origin, recovered from the first processed buffer
    decoder.signalOffset = 0;
 
+   // allow the next stream to report its channel layout again
+   channelsRejected = false;
+
    // configure only if samplerate > 0
    if (decoder.sampleRate > 0)
    {
@@ -178,6 +184,19 @@ std::list<RawFrame> IsoDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
          decoder.sampleRate = samples.sampleRate();
 
          initialize();
+      }
+
+      // ISO-7816 reads IO, CLK, RST and VCC on every sample, a narrower buffer cannot tell those probes apart
+      if (samples.stride() < ISO_REQUIRED_CHANNELS)
+      {
+         if (!channelsRejected)
+         {
+            channelsRejected = true;
+
+            log->warn("signal has {} channels, ISO-7816 needs {}, nothing will be decoded", {samples.stride(), ISO_REQUIRED_CHANNELS});
+         }
+
+         return frames;
       }
 
       // pick up the absolute sample offset of the stream, the master clock runs relative to it
