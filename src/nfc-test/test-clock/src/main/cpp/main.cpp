@@ -292,6 +292,40 @@ int testNoSpuriousStates()
 }
 
 /*
+ * A clock that starts or stops part way through a measurement window leaves that window holding only a fraction of
+ * the edges a full one would. Counting edges over the window would read that as a lower frequency and raise a state
+ * for it, littering the band with a bogus segment at every start and stop.
+ */
+int testPartialWindow()
+{
+   std::cout << "test: clock starting part way through a window" << std::endl;
+
+   const double window = 0.001;
+
+   Capture capture;
+
+   // stop part way through a window, stay off for a whole number of windows, then start part way through another
+   capture.append(0, window * 4 + window * 0.37);
+   capture.append(CLOCK_FREQ, window * 0.63 + window * 3);
+
+   const std::vector<ClockState> states = detect(capture, 4096);
+
+   report(states);
+
+   int failed = 0;
+
+   failed += !check("emits two states, without a bogus one at the start", states.size() == 2);
+
+   if (states.size() == 2)
+   {
+      failed += !check("starts out stopped", states[0].frequency == 0);
+      failed += !check("measures the true frequency despite the partial window", closeTo(states[1].frequency, CLOCK_FREQ));
+   }
+
+   return failed;
+}
+
+/*
  * Saving a selection filters the states down to the saved range. A state holds until the next one starts, so the one
  * in force when the range opens has to survive that filtering, or the band reloads blank until the next change.
  */
@@ -370,6 +404,7 @@ int main(int argc, char *argv[])
    failed += testFrequencyChange();
    failed += testBlockIndependence();
    failed += testNoSpuriousStates();
+   failed += testPartialWindow();
    failed += testRangeSelection();
 
    std::cout << std::endl;

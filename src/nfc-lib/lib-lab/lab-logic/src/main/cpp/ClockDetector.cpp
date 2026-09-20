@@ -56,6 +56,12 @@ struct ClockDetector::Impl
    unsigned int windowEdges = 0;
    unsigned int windowCount = 0;
 
+   // stream sample index of the first and last rising edge seen within the window, which is what the frequency is
+   // measured from: counting edges over the whole window instead would misreport any window the clock only runs
+   // through part of, and every start and stop would raise a bogus state on the way
+   unsigned long long windowFirstEdge = 0;
+   unsigned long long windowLastEdge = 0;
+
    // stream sample index the current window starts at
    unsigned long long windowStart = 0;
 
@@ -79,6 +85,8 @@ struct ClockDetector::Impl
       primed = false;
       windowEdges = 0;
       windowCount = 0;
+      windowFirstEdge = 0;
+      windowLastEdge = 0;
       windowStart = 0;
       lastFrequency = 0;
       established = false;
@@ -121,6 +129,10 @@ struct ClockDetector::Impl
          }
          else if (level && !lastLevel)
          {
+            if (!windowEdges)
+               windowFirstEdge = offset + i;
+
+            windowLastEdge = offset + i;
             windowEdges++;
          }
 
@@ -129,8 +141,13 @@ struct ClockDetector::Impl
          if (++windowCount < window)
             continue;
 
-         // one rising edge per period, so the edge count over a window of known duration is the frequency
-         const auto frequency = static_cast<float>(static_cast<double>(windowEdges) * sampleRate / window);
+         // the span from the first to the last rising edge holds exactly one period less than the edges counted
+         // across it, so the frequency follows from the two without depending on where the window happens to fall.
+         // A window holding fewer than two edges cannot measure a period, and at the default window that puts the
+         // floor at a couple of kHz, far below any clock a card runs on, so it reads as stopped.
+         const auto frequency = windowEdges > 1
+                                   ? static_cast<float>(static_cast<double>(windowEdges - 1) * sampleRate / static_cast<double>(windowLastEdge - windowFirstEdge))
+                                   : 0.0f;
 
          if (changed(frequency))
          {
@@ -142,6 +159,8 @@ struct ClockDetector::Impl
 
          windowEdges = 0;
          windowCount = 0;
+         windowFirstEdge = 0;
+         windowLastEdge = 0;
          windowStart = offset + i + 1;
       }
 

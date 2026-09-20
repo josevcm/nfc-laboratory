@@ -64,8 +64,10 @@ class ClockDetector
       unsigned int sampleRate() const;
 
       /*
-       * Samples measured per window. Passing zero restores the default of one millisecond worth of samples, which sets
-       * the frequency resolution to sampleRate / window. Changing it resets detection.
+       * Samples measured per window. Passing zero restores the default of one millisecond worth of samples. The
+       * window sets how finely a change is located in time, and its floor: a window holding fewer than two rising
+       * edges reads as stopped, which at the default puts the floor around two kilohertz. Changing it resets
+       * detection.
        */
       void setWindow(unsigned int samples);
 
