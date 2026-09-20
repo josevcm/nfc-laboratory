@@ -28,7 +28,11 @@
 
 #include <hw/usb/Usb.h>
 
+#include <list>
+#include <mutex>
 #include <memory>
+#include <atomic>
+#include <thread>
 #include <utility>
 
 namespace hw {
@@ -75,7 +79,7 @@ struct Usb::Impl
    rt::Logger *log = rt::Logger::getLogger("hw.UsbDevice");
 
    int result = 0;
-   bool shutdown = false;
+   std::atomic<bool> shutdown {false};
    std::mutex threadMutex;
 
    libusb_device_handle *hdl = nullptr;
@@ -84,6 +88,7 @@ struct Usb::Impl
    Descriptor descriptor {};
 
    std::list<TransferInfo *> transfers;
+   std::mutex transfersMutex;
 
    explicit Impl(Descriptor desc) : descriptor(std::move(desc))
    {
@@ -173,10 +178,20 @@ struct Usb::Impl
          const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
          // loop until shutdown is requested and all transfers are completed
-         while (!shutdown || !transfers.empty())
+         while (true)
          {
+            size_t pending;
+
+            {
+               std::lock_guard lock(transfersMutex);
+               pending = transfers.size();
+            }
+
+            if (shutdown && !pending)
+               break;
+
             if (shutdown)
-               log->info("waiting for transfers to complete, remaining: {}", {static_cast<int>(transfers.size())});
+               log->info("waiting for transfers to complete, remaining: {}", {static_cast<int>(pending)});
 
             // handle libusb events
             if ((result = libusb_handle_events_timeout_completed(*ctx, &timeout, nullptr)) < 0)
@@ -293,7 +308,8 @@ struct Usb::Impl
 
       if ((result = libusb_bulk_transfer(hdl, endpoint, static_cast<unsigned char *>(data), length, &transferred, timeout)) < 0)
       {
-         log->error("error in bulk transfer: {}", {lastError()});
+         // draining an endpoint ends with a timeout, so this is not an error by itself, callers log their own
+         log->debug("bulk transfer not completed: {}", {lastError()});
          return -1;
       }
 
@@ -317,14 +333,27 @@ struct Usb::Impl
 
       libusb_fill_bulk_transfer(usbTransfer, hdl, endpoint, transfer->data, static_cast<int>(transfer->available), transferHandler, transferInfo, transfer->timeout);
 
-      if ((result = libusb_submit_transfer(usbTransfer)) != LIBUSB_SUCCESS)
+      // register the transfer before submitting it, the callback may run before submit returns
       {
-         libusb_free_transfer(usbTransfer);
-         log->error("error in submit async transfer: {}", {lastError()});
-         return false;
+         std::lock_guard lock(transfersMutex);
+         transfers.push_back(transferInfo);
       }
 
-      transfers.push_back(transferInfo);
+      if ((result = libusb_submit_transfer(usbTransfer)) != LIBUSB_SUCCESS)
+      {
+         {
+            std::lock_guard lock(transfersMutex);
+            transfers.remove(transferInfo);
+         }
+
+         delete transferInfo;
+
+         libusb_free_transfer(usbTransfer);
+
+         log->error("error in submit async transfer: {}", {lastError()});
+
+         return false;
+      }
 
       return true;
    }
@@ -337,6 +366,9 @@ struct Usb::Impl
          return false;
       }
 
+      // hold the lock while cancelling, otherwise the event thread may free the transfer in between
+      std::lock_guard lock(transfersMutex);
+
       for (const auto transferInfo: transfers)
       {
          if (transferInfo->transfer != transfer)
@@ -344,7 +376,10 @@ struct Usb::Impl
 
          if ((result = libusb_cancel_transfer(transferInfo->usbTransfer)) != LIBUSB_SUCCESS)
          {
-            log->error("error in cancel transfer: {}", {lastError()});
+            // NOT_FOUND means the transfer already completed, there is nothing left to cancel
+            if (result != LIBUSB_ERROR_NOT_FOUND)
+               log->error("error in cancel transfer: {}", {lastError()});
+
             return false;
          }
 
@@ -435,11 +470,14 @@ struct Usb::Impl
          }
       }
 
+      // remove from transfer list before releasing it
+      {
+         std::lock_guard lock(transfersMutex);
+         transfers.remove(transferInfo);
+      }
+
       // free transfer owner
       delete transferInfo;
-
-      // remove from transfer list
-      transfers.remove(transferInfo);
 
       // free underline transfer
       libusb_free_transfer(usbTransfer);
