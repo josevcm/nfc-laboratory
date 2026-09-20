@@ -268,6 +268,22 @@ struct Usb::Impl
       return true;
    }
 
+   /*
+    * Clear a halt condition and reset the data toggle of an endpoint, leaving it in a known state. Devices
+    * that stream on their own are left mid transfer when an acquisition is cancelled, and the next one has
+    * to start from a clean endpoint.
+    */
+   bool clearHalt(const int endpoint)
+   {
+      if ((result = libusb_clear_halt(hdl, endpoint)) != LIBUSB_SUCCESS)
+      {
+         log->warn("unable to clear halt on endpoint {}: {}", {endpoint, lastError()});
+         return false;
+      }
+
+      return true;
+   }
+
    bool ctrlTransfer(const int outCmd, const void *txData, const unsigned int txSize, const int inCmd, void *rxData, const unsigned int rxSize, const int timeout, const int wait)
    {
       if (log->isDebugEnabled())
@@ -521,6 +537,11 @@ bool Usb::claimInterface(int interface)
 bool Usb::releaseInterface(int interface)
 {
    return impl->releaseInterface(interface);
+}
+
+bool Usb::clearHalt(Direction direction, int endpoint) const
+{
+   return impl->clearHalt((direction ? LIBUSB_ENDPOINT_OUT : LIBUSB_ENDPOINT_IN) | endpoint);
 }
 
 bool Usb::ctrlTransfer(int outCmd, const void *txData, unsigned int txSize, int inCmd, void *rxData, unsigned int rxSize, int timeout, int wait) const

@@ -274,6 +274,10 @@ struct SipeedLogicDevice::Impl
       // purge pending data
       purgeTransfers();
 
+      // leave the endpoint in a known state before resubmitting, the device streams on its own and the
+      // previous acquisition was cancelled mid transfer, see airspy_start_rx() for the same sequence
+      usb.clearHalt(Usb::In, ENDPOINT_IN);
+
       // setup usb transfers
       if (!beginTransfers(handler))
       {
@@ -322,6 +326,10 @@ struct SipeedLogicDevice::Impl
 
       // cancel pending transfers and wait until every one of them is released
       cancelTransfers();
+
+      // do not leave the endpoint halted, the device keeps streaming into it and is left unusable until
+      // it is physically reconnected, this also runs on close() through stop()
+      usb.clearHalt(Usb::In, ENDPOINT_IN);
 
       streamHandler = nullptr;
 
