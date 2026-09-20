@@ -555,6 +555,12 @@ struct QtControl::Impl
       if (event->contains("enabled"))
          config["enabled"] = event->getBoolean("enabled");
 
+      if (event->contains("sampleRate"))
+         config["sampleRate"] = event->getInteger("sampleRate");
+
+      if (event->contains("vThreshold"))
+         config["vThreshold"] = event->getDouble("vThreshold");
+
       // update logic config
       if (!config.isEmpty())
       {
