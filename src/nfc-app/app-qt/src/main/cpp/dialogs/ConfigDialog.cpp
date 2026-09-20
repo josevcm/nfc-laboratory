@@ -68,6 +68,7 @@ struct ConfigDialog::Impl
 
       fillCategories();
       fillGainModes();
+      fillRecordFormats();
       fillLoggers();
 
       connectSignals();
@@ -108,6 +109,12 @@ struct ConfigDialog::Impl
 
       for (int i = 0; i < 6; i++)
          ui->hackrfGainMode->addItem(QString("LNA %1 dB").arg(i * 8), i + 1);
+   }
+
+   void fillRecordFormats()
+   {
+      ui->featSignalRecordFormat->addItem("WAV (magnitude, legacy)", QString("wav"));
+      ui->featSignalRecordFormat->addItem("SigMF (lossless I/Q)", QString("sigmf"));
    }
 
    void fillLoggers()
@@ -193,6 +200,11 @@ struct ConfigDialog::Impl
       ui->featLogicDecode->setChecked(s.value("logicDecode", true).toBool());
       ui->featRadioSpectrum->setChecked(s.value("radioSpectrum", true).toBool());
       ui->featSignalRecord->setChecked(s.value("signalRecord", true).toBool());
+
+      const QString recordFormat = s.value("signalRecordFormat", "wav").toString();
+      const int recordFormatIndex = ui->featSignalRecordFormat->findData(recordFormat);
+      ui->featSignalRecordFormat->setCurrentIndex(recordFormatIndex >= 0 ? recordFormatIndex : 0);
+
       s.endGroup();
 
       // Page 2 — AirSpy
@@ -295,6 +307,11 @@ struct ConfigDialog::Impl
       checkFeat("logicDecode", ui->featLogicDecode);
       checkFeat("radioSpectrum", ui->featRadioSpectrum);
       checkFeat("signalRecord", ui->featSignalRecord);
+
+      // recording format takes effect on the next "Record" click (re-read live), so it
+      // does not require restarting the interface like the feature toggles above do
+      s.setValue("signalRecordFormat", ui->featSignalRecordFormat->currentData().toString());
+
       s.endGroup();
 
       // Page 2 — AirSpy

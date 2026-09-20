@@ -23,6 +23,7 @@
 #include <QKeyEvent>
 #include <QClipboard>
 #include <QComboBox>
+#include <QSettings>
 #include <QTimer>
 #include <QStandardPaths>
 #include <QScreen>
@@ -2558,7 +2559,15 @@ void QtWindow::toggleListen()
 
 void QtWindow::toggleRecord()
 {
-   QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {{"storagePath", QtApplication::dataPath().absolutePath()}}));
+   QSettings settings;
+   settings.beginGroup("features");
+   const QString format = settings.value("signalRecordFormat", "wav").toString();
+   settings.endGroup();
+
+   QtApplication::post(new DecoderControlEvent(DecoderControlEvent::Start, {
+      {"storagePath", QtApplication::dataPath().absolutePath()},
+      {"format", format}
+   }));
 }
 
 void QtWindow::togglePause()

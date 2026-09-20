@@ -424,8 +424,9 @@ struct QtControl::Impl
    {
       qInfo() << "start decoder and receiver tasks";
 
-      // Extract the notifier before async lambdas: Qt deletes the event after
-      // customEvent() returns, so capturing event* in a lambda is use-after-free.
+      // Extract the notifier (and any other event fields the async lambdas below need)
+      // before those lambdas run: Qt deletes the event after customEvent() returns, so
+      // capturing event* itself in a lambda is use-after-free.
       auto notify = event->notifier();
 
       // if event contains file name and sample rate start recorder
@@ -433,11 +434,16 @@ struct QtControl::Impl
       {
          storagePath = event->getString("storagePath");
 
+         QJsonObject recorderData {{"storagePath", storagePath}};
+
+         if (event->contains("format"))
+            recorderData["format"] = event->getString("format");
+
          // clear storage queue
          taskStorageClear([=] {
 
             // start recorder and...
-            taskRecorderWrite({{"storagePath", storagePath}}, [=] {
+            taskRecorderWrite(recorderData, [=] {
 
                // ...start logic and radio devices
                startDecoders();
