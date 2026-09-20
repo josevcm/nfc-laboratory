@@ -831,8 +831,11 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             sampleEnd = static_cast<unsigned int>(buffer.sampleRate() * rangeEnd);
             lastOffset = sampleStart;
 
-            hdr.info[INFO_START_OFFSET] = std::max(static_cast<unsigned int>(buffer.offset()), sampleStart);
             hdr.info[INFO_STREAM_ID] = buffer.id();
+            // offsets are stored relative to the start of the saved range, as the frame and radio entries do, so
+            // everything lands on the same time base when read back. Storing the capture offset here instead shifted
+            // the signal ahead of the frames by the whole acquisition lead-in.
+            hdr.info[INFO_START_OFFSET] = 0;
             hdr.info[INFO_SAMPLE_RATE] = buffer.sampleRate();
          }
 
@@ -1370,15 +1373,17 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       offsets.reserve(saved.size());
       values.reserve(saved.size());
 
+      // offsets are stored relative to the start of the saved range, the same base the frame, logic and radio
+      // entries use, so every stream lands on one time base when the file is read back
       for (const ClockState &state: saved)
       {
-         offsets.push_back(static_cast<uint32_t>(state.offset));
+         offsets.push_back(static_cast<uint32_t>(state.offset - sampleStart));
          values.push_back(state.frequency);
       }
 
       SampleHdr hdr {.magic = {'C', 'L', 'K', 'F'}, .version = 1, .info = {}};
 
-      hdr.info[INFO_START_OFFSET] = offsets.empty() ? 0 : offsets.front();
+      hdr.info[INFO_START_OFFSET] = 0;
       hdr.info[INFO_STREAM_ID] = id;
       hdr.info[INFO_SAMPLE_RATE] = sampleRate;
       hdr.info[INFO_TOTAL_SAMPLES] = static_cast<unsigned int>(offsets.size());
