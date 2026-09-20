@@ -39,8 +39,8 @@ bool IsoDecoderStatus::nextSample(hw::SignalBuffer &buffer)
    // get next samples from buffer
    buffer.get(sampleData, ch);
 
-   // initialize last samples
-   if (signalClock < 0)
+   // initialize last samples, master clock still holds its reset value until incremented below
+   if (signalClock == static_cast<unsigned int>(-1))
    {
 #pragma omp simd
       for (int i = 0; i < ch; i++)
