@@ -1743,12 +1743,12 @@ struct QtWindow::Impl
 
       QDir dataPath = QtApplication::dataPath();
 
-      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath.absolutePath(), tr("Capture (*.wav *.trz)"));
+      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath.absolutePath(), tr("Capture (*.wav *.trz *.sigmf-meta *.sigmf-data)"));
 
       if (fileName.isEmpty())
          return;
 
-      if (!(fileName.endsWith(".wav") || fileName.endsWith(".trz")))
+      if (!(fileName.endsWith(".wav") || fileName.endsWith(".trz") || fileName.endsWith(".sigmf-meta") || fileName.endsWith(".sigmf-data")))
       {
          Theme::messageDialog(window, tr("Unable to open file"), tr("Invalid file name: %1").arg(fileName));
          return;
