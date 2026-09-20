@@ -62,6 +62,7 @@ struct HydraDevice::Impl
    unsigned int tunerAgc = 0;
    unsigned int mixerAgc = 0;
    unsigned int biasTee = 0;
+   unsigned int rfPort = 0;
    unsigned int decimation = 0;
    unsigned int streamTime = 0;
 
@@ -197,6 +198,9 @@ struct HydraDevice::Impl
 
          // configure bias tee (LNA or SpyVerter)
          setBiasTee(biasTee);
+
+         // configure rf port (SMA, U.FL 1 or U.FL 2)
+         setRfPort(rfPort);
 
          log->info("opened device {}, model {} firmware {}", {deviceName, deviceModel, deviceVersion});
 
@@ -472,6 +476,21 @@ struct HydraDevice::Impl
       return 0;
    }
 
+   int setRfPort(unsigned int value)
+   {
+      rfPort = value;
+
+      if (airspyHandle)
+      {
+         if ((airspyResult = hydrasdr_set_rf_port(airspyHandle, static_cast<hydrasdr_rf_port_t>(rfPort))) != HYDRASDR_SUCCESS)
+            log->warn("failed hydrasdr_set_rf_port: [{}] {}", {airspyResult, hydrasdr_error_name(static_cast<hydrasdr_error>(airspyResult))});
+
+         return airspyResult;
+      }
+
+      return 0;
+   }
+
    int setDecimation(unsigned int value)
    {
       decimation = value;
@@ -665,6 +684,9 @@ rt::Variant HydraDevice::get(int id, int channel) const
       case PARAM_DECIMATION:
          return impl->decimation;
 
+      case PARAM_RF_PORT:
+         return impl->rfPort;
+
       case PARAM_STREAM_TIME:
          return impl->streamTime;
 
@@ -754,6 +776,14 @@ bool HydraDevice::set(int id, const rt::Variant &value, int channel)
             return impl->setDecimation(*v);
 
          impl->log->error("invalid value type for PARAM_DECIMATION");
+         return false;
+      }
+      case PARAM_RF_PORT:
+      {
+         if (const auto v = std::get_if<unsigned int>(&value))
+            return impl->setRfPort(*v);
+
+         impl->log->error("invalid value type for PARAM_RF_PORT");
          return false;
       }
       default:

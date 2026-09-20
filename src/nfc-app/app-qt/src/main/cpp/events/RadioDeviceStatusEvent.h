@@ -117,6 +117,10 @@ class RadioDeviceStatusEvent : public QEvent
 
       bool hasDirectSampling() const;
 
+      int hasRfPort() const;
+
+      int rfPort() const;
+
       int directSampling() const;
 
       bool hasSignalPower() const;

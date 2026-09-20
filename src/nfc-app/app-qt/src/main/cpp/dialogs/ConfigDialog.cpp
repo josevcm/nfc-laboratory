@@ -71,6 +71,7 @@ struct ConfigDialog::Impl
       fillCategories();
       fillGainModes();
       fillRecordFormats();
+      fillRfPorts();
       fillLoggers();
 
       connectSignals();
@@ -121,6 +122,16 @@ struct ConfigDialog::Impl
    {
       ui->featSignalRecordFormat->addItem("WAV (magnitude, legacy)", QString("wav"));
       ui->featSignalRecordFormat->addItem("SigMF (lossless I/Q)", QString("sigmf"));
+   }
+
+   void fillRfPorts()
+   {
+      for (auto *cb: {ui->hydrasdrRfPort})
+      {
+         cb->addItem("ANT", 0);
+         cb->addItem("CABLE1", 1);
+         cb->addItem("CABLE2", 2);
+      }
    }
 
    void fillLoggers()
@@ -235,6 +246,7 @@ struct ConfigDialog::Impl
       ui->hydrasdrMixerAgc->setChecked(s.value("mixerAgc", false).toBool());
       ui->hydrasdrTunerAgc->setChecked(s.value("tunerAgc", false).toBool());
       ui->hydrasdrBiasTee->setChecked(s.value("biasTee", false).toBool());
+      ui->hydrasdrRfPort->setCurrentIndex(ui->hydrasdrRfPort->findData(s.value("rfPort", 0).toInt()));
       s.endGroup();
 
       // Page 4 — RTL-SDR
@@ -367,6 +379,7 @@ struct ConfigDialog::Impl
       s.setValue("mixerAgc", ui->hydrasdrMixerAgc->isChecked());
       s.setValue("tunerAgc", ui->hydrasdrTunerAgc->isChecked());
       s.setValue("biasTee", ui->hydrasdrBiasTee->isChecked());
+      s.setValue("rfPort", ui->hydrasdrRfPort->currentData().toInt());
       s.endGroup();
 
       QtApplication::post(new DecoderControlEvent(DecoderControlEvent::RadioDeviceConfig, {
@@ -378,7 +391,8 @@ struct ConfigDialog::Impl
                                                      {"gainValue", ui->hydrasdrGainValue->value()},
                                                      {"mixerAgc", static_cast<int>(ui->hydrasdrMixerAgc->isChecked())},
                                                      {"tunerAgc", static_cast<int>(ui->hydrasdrTunerAgc->isChecked())},
-                                                     {"biasTee", static_cast<int>(ui->hydrasdrBiasTee->isChecked())}
+                                                     {"biasTee", static_cast<int>(ui->hydrasdrBiasTee->isChecked())},
+                                                     {"rfPort", ui->hydrasdrRfPort->currentData().toInt()}
                                                   }));
 
       // Page 4 — RTL-SDR

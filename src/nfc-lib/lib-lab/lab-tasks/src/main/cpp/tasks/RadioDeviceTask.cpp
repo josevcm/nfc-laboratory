@@ -279,6 +279,9 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
       if (config.contains("directSampling"))
          device->set(hw::radio::RadioDevice::PARAM_DIRECT_SAMPLING, static_cast<unsigned int>(config["directSampling"]));
 
+      if (config.contains("rfPort"))
+         device->set(hw::radio::RadioDevice::PARAM_RF_PORT, static_cast<unsigned int>(config["rfPort"]));
+
       if (config.contains("gainValue"))
          device->set(hw::radio::RadioDevice::PARAM_GAIN_VALUE, static_cast<unsigned int>(config["gainValue"]));
 
@@ -514,6 +517,7 @@ struct RadioDeviceTask::Impl : RadioDeviceTask, AbstractTask
          data["tunerAgc"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_TUNER_AGC);
          data["biasTee"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_BIAS_TEE);
          data["directSampling"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_DIRECT_SAMPLING);
+         data["rfPort"] = device->get<unsigned int>(hw::radio::RadioDevice::PARAM_RF_PORT);
 
          // device statistics
          data["samplesRead"] = device->get<unsigned long long>(hw::radio::RadioDevice::PARAM_SAMPLES_READ);

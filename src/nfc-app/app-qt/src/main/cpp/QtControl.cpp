@@ -165,7 +165,8 @@ struct QtControl::Impl
             {"mixerAgc", 0},
             {"tunerAgc", 0},
             {"biasTee", 0},
-            {"directSampling", 0}
+            {"directSampling", 0},
+            {"rfPort", 0}
          })
       },
 	  {
@@ -653,6 +654,9 @@ struct QtControl::Impl
 
       if (event->contains("directSampling"))
          config["directSampling"] = event->getInteger("directSampling");
+
+      if (event->contains("rfPort"))
+         config["rfPort"] = event->getInteger("rfPort");
 
       // update radio config
       if (!config.isEmpty())

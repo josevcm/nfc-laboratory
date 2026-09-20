@@ -108,6 +108,7 @@ struct Main
             {"tunerAgc", 0},
             {"biasTee", 0},
             {"directSampling", 0},
+            {"rfPort", 0},
          }
       },
 
@@ -510,11 +511,12 @@ struct Main
          {"mixer-agc", no_argument, nullptr, 'a'},
          {"tuner-agc", no_argument, nullptr, 'u'},
          {"bias-tee", no_argument, nullptr, 'b'},
+         {"rf-port", required_argument, nullptr, 'P'},
          {nullptr, 0, nullptr, 0}
       };
 
       int option_index = 0;
-      while ((opt = getopt_long(argc, argv, "hvjl:dp:t:f:s:g:G:aub", long_options, &option_index)) != -1)
+      while ((opt = getopt_long(argc, argv, "hvjl:dp:t:f:s:g:G:aubP:", long_options, &option_index)) != -1)
       {
          switch (opt)
          {
@@ -662,6 +664,20 @@ struct Main
                break;
             }
 
+            case 'P':
+            {
+               receiverParams["rfPort"] = strtol(optarg, &endptr, 10);
+
+               if (endptr == optarg)
+               {
+                  fprintf(stderr, "Invalid value for 'P' argument\n");
+                  showUsage();
+                  return -1;
+               }
+
+               break;
+            }
+
             default:
                showUsage();
                return -1;
@@ -754,6 +770,7 @@ struct Main
       std::cout << "  -a, --mixer-agc       Enable mixer AGC" << std::endl;
       std::cout << "  -u, --tuner-agc       Enable tuner AGC" << std::endl;
       std::cout << "  -b, --bias-tee        Enable bias-tee (required for Spyverter)" << std::endl;
+      std::cout << "  -P, --rf-port PORT    Set the rf port on the device, currently only supported on HydraSDR" << std::endl;
       std::cout << "  -t SECONDS            Stop capture after specified number of seconds" << std::endl;
       std::cout << "                        Default: run until interrupted (Ctrl+C)" << std::endl;
       std::cout << std::endl;
