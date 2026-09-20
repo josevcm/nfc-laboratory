@@ -34,6 +34,7 @@
 
 #include <hw/SignalBuffer.h>
 #include <hw/RecordDevice.h>
+#include <hw/SigmfDevice.h>
 #include <hw/SignalType.h>
 
 #include <lab/data/RawFrame.h>
@@ -840,6 +841,34 @@ struct QtControl::Impl
                {
                   taskRecorderRead(command);
                }
+            }
+         });
+
+         return;
+      }
+
+      if (path.extension() == ".sigmf-meta" || path.extension() == ".sigmf-data")
+      {
+         hw::SigmfDevice file(fileName.toStdString());
+
+         if (!file.open(hw::SignalDevice::Mode::Read))
+         {
+            qWarning() << "unable to open file: " << fileName;
+            return;
+         }
+
+         // sigmf only ever carries the radio I/Q channel (no logic-channel equivalent),
+         // so this always takes the "radio decoder" path the .wav case takes for <= 2 channels
+         taskStorageClear([=] {
+            if (radioDecoderEnabled)
+            {
+               taskRadioDecoderStart([=] {
+                  taskRecorderRead(command);
+               });
+            }
+            else
+            {
+               taskRecorderRead(command);
             }
          });
       }
