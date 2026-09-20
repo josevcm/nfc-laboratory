@@ -293,12 +293,13 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 
          // start receiving
          device->start([this](hw::SignalBuffer &buffer) {
+
             // align device sample counter with the shared capture epoch, compensating for this device's own startup latency
             if (!captureOffsetBias)
             {
                double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - captureEpoch).count();
 
-               captureOffsetBias = static_cast<long long>(std::llround(std::max(elapsed, 0.0) * buffer.sampleRate()));
+               captureOffsetBias = std::llround(std::max(elapsed, 0.0) * buffer.sampleRate());
 
                log->info("synchronizing logic device offset, elapsed {.3} s, bias {} samples", {elapsed, captureOffsetBias.value()});
             }
@@ -306,6 +307,7 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
             buffer.setOffset(buffer.offset() + captureOffsetBias.value());
 
             signalQueue.add(buffer);
+
             return true;
          });
 
