@@ -19,6 +19,7 @@
 
 */
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <memory>
@@ -38,6 +39,9 @@
 #include "AbstractTask.h"
 
 namespace lab {
+
+// probes consumed by the ISO-7816 decoder, in the order it expects them: IO, CLK, RST, VCC
+#define ISO_PROBE_COUNT 4
 
 struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
 {
@@ -243,9 +247,13 @@ struct LogicDeviceTask::Impl : LogicDeviceTask, AbstractTask
          }
       }
 
-      // set default channel if not defined
-      if (channels.empty())
-         channels = {0};
+      // the ISO-7816 decoder indexes probes by their position inside the sample stride (IO, CLK, RST, VCC), and devices
+      // pack only the enabled probes into it, so leaving any of the first four disabled shifts every channel after it
+      for (int c = 0; c < ISO_PROBE_COUNT; c++)
+      {
+         if (std::find(channels.begin(), channels.end(), c) == channels.end())
+            channels.push_back(c);
+      }
 
       // default parameters for DSLogic
       device->set(hw::logic::LogicDevice::PARAM_OPERATION_MODE, hw::logic::DSLogicDevice::OP_STREAM);

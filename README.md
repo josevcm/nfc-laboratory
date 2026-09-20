@@ -240,6 +240,7 @@ Best results are obtained by tuning to the **3rd harmonic at 40.68 MHz** or the 
 | `tunerAgc`       | int  | 0        | Tuner AGC: `0` = off, `1` = on                           |
 | `biasTee`        | int  | 0        | Bias-Tee for SpyVerter up-converter: `0` = off, `1` = on |
 | `directSampling` | int  | 0        | Direct sampling (not applicable on HydraSDR)             |
+| `rfPort`         | int  | 0        | RF Port: `0` = ANT, `1` = CABLE1, `2` = CABLE2           |
 | `enabled`        | bool | true     | Enable or disable this receiver                          |
 
 ```ini
@@ -252,6 +253,7 @@ mixerAgc=0
 tunerAgc=0
 biasTee=0
 directSampling=0
+rfPort=0
 enabled=true
 ```
 

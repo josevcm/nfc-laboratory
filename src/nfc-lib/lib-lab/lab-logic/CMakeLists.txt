@@ -4,6 +4,7 @@ set(PRIVATE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp)
 set(PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/include)
 
 add_library(lab-logic STATIC
+        src/main/cpp/ClockDetector.cpp
         src/main/cpp/IsoDecoder.cpp
         src/main/cpp/tech/Iso7816.cpp
         src/main/cpp/IsoTech.cpp

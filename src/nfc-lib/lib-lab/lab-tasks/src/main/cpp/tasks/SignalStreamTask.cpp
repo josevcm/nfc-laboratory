@@ -27,6 +27,7 @@
 #include <hw/SignalType.h>
 #include <hw/SignalBuffer.h>
 
+#include <lab/logic/ClockDetector.h>
 #include <lab/tasks/SignalStreamTask.h>
 
 #include "AbstractTask.h"
@@ -40,6 +41,9 @@
 // idle stretches collapse to a handful of points instead of one every 255 samples.
 #define LOGIC_INTERVAL 1000000
 #define RADIO_INTERVAL 1000000
+
+// probe carrying the smart card clock, too fast to be drawn edge by edge, so it is summarized as frequency instead
+#define CLOCK_CHANNEL 1
 
 namespace lab {
 
@@ -68,6 +72,9 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 
    // stream lock
    std::mutex signalMutex;
+
+   // frequency tracker for the clock probe
+   ClockDetector clockDetector;
 
    // last status sent
    std::chrono::time_point<std::chrono::steady_clock> lastStatus;
@@ -145,6 +152,9 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       // propagate EOF
       if (!buffer.isValid())
       {
+         // the next capture starts a new stream, nothing measured so far applies to it
+         clockDetector.reset();
+
          adaptiveSignalStream->next({});
          return;
       }
@@ -161,6 +171,7 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
          // adaptive resample for stream logic signal
          case hw::SignalType::SIGNAL_TYPE_LOGIC_SAMPLES:
          {
+            processClockSignal(buffer);
             processLogicSignal(buffer);
             break;
          }
@@ -233,6 +244,43 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
       taskThroughput.update(buffer.elements());
    }
 
+   /*
+    * Summarize the clock probe as the frequency it runs at.
+    *
+    * A smart card clock toggles millions of times per second, so one plot point per edge exhausts memory within
+    * seconds of capture and makes every replot walk the whole capture. What an analyst reads off that trace is
+    * whether the clock runs and how fast, and both survive being reduced to one point per frequency change.
+    */
+   void processClockSignal(const hw::SignalBuffer &buffer)
+   {
+      // captures that do not carry the clock probe leave it out of the stride entirely
+      if (buffer.stride() <= CLOCK_CHANNEL)
+         return;
+
+      if (clockDetector.sampleRate() != buffer.sampleRate())
+         clockDetector.setSampleRate(buffer.sampleRate());
+
+      const std::vector<ClockState> states = clockDetector.process(buffer.data() + CLOCK_CHANNEL, buffer.elements(), buffer.stride(), buffer.offset());
+
+      if (states.empty())
+         return;
+
+      // a measurement window can straddle two buffers, so the first state may predate this one: anchor the buffer on
+      // that state instead of on the buffer offset, keeping every stored offset relative and positive
+      const unsigned long long base = states.front().offset;
+
+      hw::SignalBuffer clock(static_cast<unsigned int>(states.size()) * 2, 2, 1, buffer.sampleRate(), base, 0, hw::SignalType::SIGNAL_TYPE_CLK_SIGNAL, CLOCK_CHANNEL);
+
+      for (const ClockState &state: states)
+      {
+         clock.put(state.frequency).put(static_cast<float>(state.offset - base));
+      }
+
+      clock.flip();
+
+      adaptiveSignalStream->next(clock);
+   }
+
    void processLogicSignal(const hw::SignalBuffer &buffer)
    {
       unsigned int ch = buffer.stride();
@@ -240,9 +288,9 @@ struct SignalStreamTask::Impl : SignalStreamTask, AbstractTask
 #pragma omp parallel for default(none) shared(buffer, ch, adaptiveSignalStream, taskThroughput) schedule(static)
       for (unsigned int n = 0; n < ch; ++n)
       {
-         // skip CLK channel...
-         if (n == 1)
-         continue;
+         // the clock is summarized by processClockSignal instead, drawing it edge by edge would flood the plot
+         if (n == CLOCK_CHANNEL)
+            continue;
 
          hw::SignalBuffer resampled((buffer.elements() / LOGIC_INTERVAL) * 2 + buffer.elements() * 2, 2, 1, buffer.sampleRate(), buffer.offset(), 0, hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL, n);
 

@@ -134,6 +134,7 @@ struct QtWindow::Impl
    int radioGainValue = -1;
    int radioBiasTee = 0;
    int radioDirectSampling = 0;
+   int radioRfPort = 0;
    long long radioSampleCount = 0;
 
    QList<int> radioGainKeys;
@@ -645,6 +646,9 @@ struct QtWindow::Impl
       if (event->hasDirectSampling())
          updated |= updateRadioDeviceDirectSampling(event->directSampling());
 
+      if (event->hasRfPort())
+         updated |= updateRadioDeviceRfPort(event->rfPort());
+
       if (updated)
       {
          updateStatus();
@@ -711,7 +715,12 @@ struct QtWindow::Impl
    {
       if (event->buffer().isValid())
       {
-         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL)
+         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_CLK_SIGNAL)
+         {
+            // the clock band rides on the time range the logic channels establish, so it does not widen it itself
+            ui->logicView->append(event->buffer());
+         }
+         else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL)
          {
             ui->logicView->append(event->buffer());
 
@@ -1495,6 +1504,18 @@ struct QtWindow::Impl
       qInfo().noquote().nospace() << "radio device device direct sampling from [" << radioDirectSampling << "] to [" << value << "]";
 
       radioDirectSampling = value;
+
+      return true;
+   }
+
+   bool updateRadioDeviceRfPort(int value)
+   {
+      if (radioRfPort == value)
+         return false;
+
+      qInfo().noquote().nospace() << "radio device device rf-port from [" << radioRfPort << "] to [" << value << "]";
+
+      radioRfPort = value;
 
       return true;
    }

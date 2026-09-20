@@ -92,6 +92,8 @@ class Usb
 
       bool releaseInterface(int interface);
 
+      bool clearHalt(Direction direction, int endpoint) const;
+
       bool ctrlTransfer(int outCmd, const void *txData, unsigned int txSize, int inCmd = 0, void *rxData = nullptr, unsigned int rxSize = 0, int timeout = 3000, int wait = 10) const;
 
       int syncTransfer(Direction direction, int endpoint, void *data, unsigned int length, int timeout = 30000) const;

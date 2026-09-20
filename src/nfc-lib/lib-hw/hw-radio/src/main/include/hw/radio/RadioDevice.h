@@ -43,9 +43,10 @@ class RadioDevice : public SignalDevice
          PARAM_DIRECT_SAMPLING = 1008,
          PARAM_DECIMATION = 1009,
          PARAM_LIMIT_SAMPLES = 1010,
+         PARAM_RF_PORT = 1011,
 
          // operation parameters
-         PARAM_TEST_MODE = 1010,
+         PARAM_TEST_MODE = 1012,
 
          // capabilities
          PARAM_SUPPORTED_GAIN_MODES = 1101,

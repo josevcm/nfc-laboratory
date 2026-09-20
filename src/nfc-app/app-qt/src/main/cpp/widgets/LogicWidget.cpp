@@ -32,6 +32,7 @@
 
 #include <graph/AxisLabel.h>
 #include <graph/ChannelGraph.h>
+#include <graph/MarkerBand.h>
 #include <graph/MarkerRibbon.h>
 #include <graph/MarkerBracket.h>
 
@@ -57,6 +58,7 @@ struct LogicWidget::Impl
    QMap<unsigned int, ChannelStyle> channelStyle;
 
    QSharedPointer<AxisLabel> scaleLabel;
+   QSharedPointer<MarkerBand> clockBand;
    QSharedPointer<MarkerRibbon> ribbonMarker;
    QSharedPointer<QCPAxisTickerText> logicTicker;
 
@@ -73,6 +75,7 @@ struct LogicWidget::Impl
    explicit Impl(LogicWidget *parent) : widget(parent),
                                         plot(widget->plot()),
                                         scaleLabel(new AxisLabel(plot->yAxis)),
+                                        clockBand(new MarkerBand(plot)),
                                         ribbonMarker(new MarkerRibbon(plot)),
                                         logicTicker(new QCPAxisTickerText),
                                         height(0.70),
@@ -185,7 +188,7 @@ struct LogicWidget::Impl
             return true;
       }
 
-      return false;
+      return !clockBand->isEmpty();
    }
 
    /**
@@ -228,7 +231,50 @@ struct LogicWidget::Impl
 
             break;
          }
+
+         /*
+          * The clock probe arrives already summarized as the frequency it runs at, one point per change, because
+          * plotting its edges would bury the view under millions of points. Each point closes the block before it
+          * and opens a new one, and the block still open follows the capture as it grows.
+          */
+         case hw::SignalType::SIGNAL_TYPE_CLK_SIGNAL:
+         {
+            if (!channels.contains(buffer.id()))
+               return;
+
+            ChannelGraph *ch = channels[buffer.id()];
+
+            clockBand->setHeight(ch->offset() - height / 2, ch->offset() + height / 2);
+
+            const double sampleRate = buffer.sampleRate();
+            const double sampleStep = 1 / sampleRate;
+            const double startTime = static_cast<double>(buffer.offset()) / sampleRate;
+
+            for (int i = 0; i < buffer.limit(); i += 2)
+            {
+               const double time = std::fma(sampleStep, buffer[i + 1], startTime);
+               const double frequency = buffer[i + 0];
+               const bool running = frequency > 0;
+
+               clockBand->setUpperBound(time);
+
+               // a stopped clock collapses to a flat line, reading like any other idle channel
+               clockBand->addRange(time, time, running ? 1.0 : 0.0, running ? DataFormat::frequency(frequency) : QString(), ch->style().shapePen, ch->style().shapeBrush);
+            }
+
+            extendClockBand();
+
+            break;
+         }
       }
+   }
+
+   /*
+    * Stretch the block still open to the end of the data received so far, since nothing has closed it yet
+    */
+   void extendClockBand() const
+   {
+      clockBand->setUpperBound(widget->dataUpperRange());
    }
 
    /**
@@ -239,6 +285,7 @@ struct LogicWidget::Impl
       // clear all markers
       bracketList.clear();
       ribbonMarker->clear();
+      clockBand->clear();
 
       // clear graph data
       for (const auto &ch: channels)
@@ -257,6 +304,8 @@ struct LogicWidget::Impl
     */
    void refresh() const
    {
+      extendClockBand();
+
       //      double signalLowerRange = widget->dataLowerRange();
       //      double signalUpperRange = widget->dataUpperRange();
       //

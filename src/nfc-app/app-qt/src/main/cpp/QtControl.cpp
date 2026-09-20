@@ -165,7 +165,8 @@ struct QtControl::Impl
             {"mixerAgc", 0},
             {"tunerAgc", 0},
             {"biasTee", 0},
-            {"directSampling", 0}
+            {"directSampling", 0},
+            {"rfPort", 0}
          })
       },
 	  {
@@ -212,7 +213,7 @@ struct QtControl::Impl
             {"enabled", true},
             {"sampleRate", 25000000},
             {"vThreshold", 1.0},
-            {"channels", QJsonArray {0, 2, 3}}
+            {"channels", QJsonArray {0, 1, 2, 3}}
          })
       },
       {
@@ -555,6 +556,12 @@ struct QtControl::Impl
       if (event->contains("enabled"))
          config["enabled"] = event->getBoolean("enabled");
 
+      if (event->contains("sampleRate"))
+         config["sampleRate"] = event->getInteger("sampleRate");
+
+      if (event->contains("vThreshold"))
+         config["vThreshold"] = event->getDouble("vThreshold");
+
       // update logic config
       if (!config.isEmpty())
       {
@@ -647,6 +654,9 @@ struct QtControl::Impl
 
       if (event->contains("directSampling"))
          config["directSampling"] = event->getInteger("directSampling");
+
+      if (event->contains("rfPort"))
+         config["rfPort"] = event->getInteger("rfPort");
 
       // update radio config
       if (!config.isEmpty())

@@ -76,7 +76,6 @@ struct cmd_start_acquisition
    };
 
    uint8_t sample_channel;
-   uint8_t unknow_value;
 };
 #pragma pack(pop)
 
