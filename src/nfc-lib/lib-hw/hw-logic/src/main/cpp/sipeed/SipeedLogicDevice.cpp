@@ -26,8 +26,12 @@
 
 #include <cmath>
 #include <list>
+#include <mutex>
+#include <atomic>
+#include <chrono>
 #include <fstream>
 #include <algorithm>
+#include <condition_variable>
 
 #include <rt/Logger.h>
 
@@ -46,6 +50,10 @@
 
 #define DEVICE_TYPE_PREFIX "logic.sipeed"
 #define CHANNEL_BUFFER_SAMPLES 32768 // number of samples per buffer
+#define TRANSFER_DRAIN_TIMEOUT 2000 // milliseconds to wait until cancelled transfers are released
+#define TRANSFER_CANCEL_RETRY 250 // milliseconds between cancellation rounds while draining
+#define CMD_START_TIMEOUT 100 // milliseconds, the device answers the start command immediately
+#define CMD_START_RETRY 5 // attempts before giving up on the start command
 
 namespace hw::logic {
 
@@ -80,16 +88,18 @@ struct SipeedLogicDevice::Impl
    unsigned long long droppedBytes = 0;
 
    // Operational settings
-   int deviceStatus = STATUS_ERROR;
+   std::atomic<int> deviceStatus {STATUS_ERROR};
    int operationMode;
    int channelMode;
    unsigned int totalChannels;
    unsigned int validChannels;
 
    /*
-    * Transfer buffers
+    * Transfer buffers, pushed from the task thread and released from the libusb event thread
     */
    std::list<Usb::Transfer *> transfers;
+   std::mutex transfersMutex;
+   std::condition_variable transfersSync;
 
    /*
     * Received buffers
@@ -265,17 +275,30 @@ struct SipeedLogicDevice::Impl
       purgeTransfers();
 
       // setup usb transfers
-      beginTransfers(handler);
-
-      // send start command
-      if (startAcquisition() != 0)
+      if (!beginTransfers(handler))
       {
          deviceStatus = STATUS_ERROR;
          return -1;
       }
 
+      // the device streams as soon as the command is acknowledged, so the acquisition has to be flagged as
+      // running before sending it, otherwise the first completions would tear the transfers down
       streamHandler = handler;
       deviceStatus = STATUS_START;
+
+      // send start command
+      if (startAcquisition() != 0)
+      {
+         cancelTransfers();
+
+         streamHandler = nullptr;
+
+         // a failed start is recoverable, flagging it as an error makes LogicDeviceTask::refresh() report the
+         // device as disconnected and destroy it, leaving the user with no device until the app is restarted
+         deviceStatus = STATUS_READY;
+
+         return -1;
+      }
 
       log->debug("acquisition started for device {}", {deviceName});
 
@@ -290,14 +313,16 @@ struct SipeedLogicDevice::Impl
       if (deviceStatus == STATUS_PAUSE)
          return 0;
 
-      // send stop command
-      // stopAcquisition();
-
-      // cancel current transfers
-      for (const auto transfer: transfers)
-         usb.cancelTransfer(transfer);
-
+      // flag the acquisition as finished before cancelling, otherwise the event thread keeps resubmitting
+      // the transfers that still carry data and the list never drains
       deviceStatus = STATUS_STOP;
+
+      // send stop command, the device has to stop pushing data before cancelling the transfers
+      stopAcquisition();
+
+      // cancel pending transfers and wait until every one of them is released
+      cancelTransfers();
+
       streamHandler = nullptr;
 
       log->debug("acquisition finished for device {}", {deviceName});
@@ -315,14 +340,14 @@ struct SipeedLogicDevice::Impl
          return -1;
       }
 
-      // send stop command
+      // flag the acquisition as paused before cancelling, see stop()
+      deviceStatus = STATUS_PAUSE;
+
+      // send stop command, see stop()
       stopAcquisition();
 
-      // cancel current transfers
-      for (const auto transfer: transfers)
-         usb.cancelTransfer(transfer);
-
-      deviceStatus = STATUS_PAUSE;
+      // cancel pending transfers and wait until every one of them is released
+      cancelTransfers();
 
       return 0;
    }
@@ -343,13 +368,22 @@ struct SipeedLogicDevice::Impl
       purgeTransfers();
 
       // setup usb transfers
-      beginTransfers(streamHandler);
+      if (!beginTransfers(streamHandler))
+      {
+         deviceStatus = STATUS_ERROR;
+         return -1;
+      }
+
+      // see start(), the acquisition has to be flagged as running before sending the command
+      deviceStatus = STATUS_START;
 
       // start acquisition
       if (startAcquisition() != 0)
+      {
          deviceStatus = STATUS_ERROR;
-      else
-         deviceStatus = STATUS_START;
+
+         cancelTransfers();
+      }
 
       return deviceStatus == STATUS_START ? 0 : -1;
    }
@@ -484,7 +518,6 @@ struct SipeedLogicDevice::Impl
 
       start.sample_rate = samplerate / DEV_MHZ(1);
       start.sample_channel = totalChannels;
-      start.unknow_value = 0;
 
       // send start command
       if (!usb.ctrlTransfer(CMD_START, &start, sizeof(start), 0, nullptr, 0))
@@ -498,7 +531,7 @@ struct SipeedLogicDevice::Impl
 
    int stopAcquisition() const
    {
-      // send start command
+      // send stop command
       if (!usb.ctrlTransfer(CMD_STOP, nullptr, 0, 0, nullptr, 0))
       {
          log->error("usb transfer CMD_STOP failed: {}", {usb.lastError()});
@@ -547,22 +580,67 @@ struct SipeedLogicDevice::Impl
          // clean buffer
          memset(transfer->data, 0, transfer->available);
 
-         // add transfer to device list
-         transfers.push_back(transfer);
+         // add transfer to device list before submitting it, the callback may run before asyncTransfer returns
+         {
+            std::lock_guard lock(transfersMutex);
+            transfers.push_back(transfer);
+         }
 
          // submit transfer of data buffer
          if (!usb.asyncTransfer(Usb::In, ENDPOINT_IN, transfer))
          {
             log->error("failed to setup async transfer: {}", {usb.lastError()});
 
-            for (Usb::Transfer *t: transfers)
-               usb.cancelTransfer(t);
+            // this one was never submitted, no callback will ever release it
+            {
+               std::lock_guard lock(transfersMutex);
+               transfers.remove(transfer);
+            }
 
-            break;
+            delete[] transfer->data;
+            delete transfer;
+
+            // release the transfers already in flight
+            cancelTransfers();
+
+            return false;
          }
       }
 
       return true;
+   }
+
+   /*
+    * Cancel every pending transfer and wait until the event thread has released all of them. The list is
+    * copied before iterating because usbProcessData() removes entries from it as the cancellations complete,
+    * and the USB interface cannot be released while any transfer is still in flight.
+    */
+   void cancelTransfers()
+   {
+      const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(TRANSFER_DRAIN_TIMEOUT);
+
+      std::unique_lock lock(transfersMutex);
+
+      while (!transfers.empty())
+      {
+         log->debug("cancel {} pending transfers for device {}", {transfers.size(), deviceName});
+
+         // cancelling under the lock keeps the entries alive, usbProcessData() needs it to release them
+         for (const auto transfer: transfers)
+            usb.cancelTransfer(transfer);
+
+         if (transfersSync.wait_for(lock, std::chrono::milliseconds(TRANSFER_CANCEL_RETRY), [this] { return transfers.empty(); }))
+            break;
+
+         if (std::chrono::steady_clock::now() >= deadline)
+         {
+            log->warn("timeout waiting for {} transfers to complete", {transfers.size()});
+            break;
+         }
+
+         // a transfer that completed just before the status changed may have been resubmitted after its own
+         // cancellation was issued, so whatever is still pending gets cancelled again on the next round
+      }
    }
 
    Usb::Transfer *usbProcessData(Usb::Transfer *transfer, const StreamHandler &handler)
@@ -615,15 +693,26 @@ struct SipeedLogicDevice::Impl
       }
 
       // remove transfer from list
-      transfers.remove(transfer);
+      size_t remain;
 
-      // free header buffer
-      delete transfer->data;
+      {
+         std::lock_guard lock(transfersMutex);
+
+         transfers.remove(transfer);
+
+         remain = transfers.size();
+      }
+
+      // free data buffer
+      delete[] transfer->data;
 
       // free transfer
       delete transfer;
 
-      log->debug("finish data transfer, remain {} transfers", {transfers.size()});
+      // wake up any thread waiting in cancelTransfers()
+      transfersSync.notify_all();
+
+      log->debug("finish data transfer, remain {} transfers", {remain});
 
       // no resend transfer
       return nullptr;
@@ -738,7 +827,7 @@ bool SipeedLogicDevice::isOpen() const
 
 bool SipeedLogicDevice::isEof() const
 {
-   return false; //return impl->deviceStatus != STATUS_READY && impl->deviceStatus != STATUS_START && impl->deviceStatus != STATUS_DATA;
+   return impl->deviceStatus != STATUS_READY && impl->deviceStatus != STATUS_START && impl->deviceStatus != STATUS_DATA;
 }
 
 bool SipeedLogicDevice::isReady() const
@@ -748,12 +837,12 @@ bool SipeedLogicDevice::isReady() const
 
 bool SipeedLogicDevice::isPaused() const
 {
-   return false; //return impl->deviceStatus == STATUS_PAUSE;
+   return impl->deviceStatus == STATUS_PAUSE;
 }
 
 bool SipeedLogicDevice::isStreaming() const
 {
-   return false; //return impl->deviceStatus == STATUS_START || impl->deviceStatus == STATUS_DATA;
+   return impl->deviceStatus == STATUS_START || impl->deviceStatus == STATUS_DATA;
 }
 
 long SipeedLogicDevice::read(SignalBuffer &buffer)
