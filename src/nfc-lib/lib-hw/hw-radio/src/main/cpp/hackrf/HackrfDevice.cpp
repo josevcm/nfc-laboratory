@@ -604,6 +604,9 @@ rt::Variant HackrfDevice::get(int id, int channel) const
       case PARAM_DIRECT_SAMPLING:
          return (unsigned int)0;
 
+      case PARAM_RF_PORT:
+         return (unsigned int)0;
+
       case PARAM_DECIMATION:
          return impl->decimation;
 
