@@ -300,6 +300,9 @@ void NfcDecoder::Impl::initialize()
    // clear signal master clock
    decoder.signalClock = -1;
 
+   // clear stream origin, recovered from the first processed buffer
+   decoder.signalOffset = 0;
+
    // configure only if samplerate > 0
    if (decoder.sampleRate > 0)
    {
@@ -387,6 +390,10 @@ std::list<RawFrame> NfcDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
          initialize();
       }
 
+      // pick up the absolute sample offset of the stream, the master clock runs relative to it
+      if (decoder.signalClock == static_cast<unsigned int>(-1))
+         decoder.signalOffset = static_cast<unsigned int>(samples.offset());
+
       if (decoder.debug)
          decoder.debug->begin(samples.elements());
 
@@ -461,6 +468,22 @@ std::list<RawFrame> NfcDecoder::Impl::nextFrames(hw::SignalBuffer &samples)
       carrierFrame.flip();
 
       frames.push_back(carrierFrame);
+   }
+
+   // decoder master clock is relative to the stream start, translate decoded frames to the absolute sample base
+   // published on the signal buffers, otherwise markers do not match the signal view time axis
+   if (decoder.signalOffset > 0 && decoder.sampleRate > 0)
+   {
+      const double timeOffset = static_cast<double>(decoder.signalOffset) / static_cast<double>(decoder.sampleRate);
+
+      for (auto &frame: frames)
+      {
+         frame.setSampleStart(frame.sampleStart() + decoder.signalOffset);
+         frame.setSampleEnd(frame.sampleEnd() + decoder.signalOffset);
+         frame.setTimeStart(frame.timeStart() + timeOffset);
+         frame.setTimeEnd(frame.timeEnd() + timeOffset);
+         frame.setDateTime(frame.dateTime() + timeOffset);
+      }
    }
 
    // return frame list

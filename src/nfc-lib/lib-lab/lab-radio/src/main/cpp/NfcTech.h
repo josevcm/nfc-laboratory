@@ -337,6 +337,9 @@ struct NfcDecoderStatus
    // signal master clock
    unsigned int signalClock = -1;
 
+   // absolute sample offset of the stream origin, devices may bias it to align captures from several sources on a common time base
+   unsigned int signalOffset = 0;
+
    // reference time for all decoded frames
    unsigned int streamTime = 0;
 
