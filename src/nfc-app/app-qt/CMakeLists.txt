@@ -90,6 +90,7 @@ set(SOURCES
         ${PRIVATE_SOURCE_DIR}/graph/ChannelGraph.cpp
         ${PRIVATE_SOURCE_DIR}/graph/FrameData.cpp
         ${PRIVATE_SOURCE_DIR}/graph/FrameGraph.cpp
+        ${PRIVATE_SOURCE_DIR}/graph/MarkerBand.cpp
         ${PRIVATE_SOURCE_DIR}/graph/MarkerBracket.cpp
         ${PRIVATE_SOURCE_DIR}/graph/MarkerCursor.cpp
         ${PRIVATE_SOURCE_DIR}/graph/MarkerPeaks.cpp

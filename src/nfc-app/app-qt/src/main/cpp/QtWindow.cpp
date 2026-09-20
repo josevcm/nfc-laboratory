@@ -711,7 +711,12 @@ struct QtWindow::Impl
    {
       if (event->buffer().isValid())
       {
-         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL)
+         if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_CLK_SIGNAL)
+         {
+            // the clock band rides on the time range the logic channels establish, so it does not widen it itself
+            ui->logicView->append(event->buffer());
+         }
+         else if (event->buffer().type() == hw::SignalType::SIGNAL_TYPE_LOGIC_SIGNAL)
          {
             ui->logicView->append(event->buffer());
 

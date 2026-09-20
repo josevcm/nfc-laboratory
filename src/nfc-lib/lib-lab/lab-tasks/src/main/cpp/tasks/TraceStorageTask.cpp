@@ -32,6 +32,7 @@
 
 #include <lab/data/RawFrame.h>
 
+#include <lab/logic/ClockDetector.h>
 #include <lab/tasks/TraceStorageTask.h>
 
 #include "AbstractTask.h"
@@ -136,6 +137,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
    // signal stream queue buffer
    rt::BlockingQueue<hw::SignalBuffer> logicSignalQueue;
    rt::BlockingQueue<hw::SignalBuffer> radioSignalQueue;
+   rt::BlockingQueue<hw::SignalBuffer> clockSignalQueue;
 
    Impl() : AbstractTask("worker.TraceStorage", "storage")
    {
@@ -171,6 +173,9 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
                   break;
                case hw::SignalType::SIGNAL_TYPE_RADIO_SIGNAL:
                   radioSignalQueue.add(buffer);
+                  break;
+               case hw::SignalType::SIGNAL_TYPE_CLK_SIGNAL:
+                  clockSignalQueue.add(buffer);
                   break;
                default:
                   break;
@@ -253,6 +258,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       frameQueue.clear();
       logicSignalQueue.clear();
       radioSignalQueue.clear();
+      clockSignalQueue.clear();
 
       command.reject(error, storageError.at(error));
    }
@@ -299,6 +305,9 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
       log->info("clear {} entries from radio buffer cache", {radioSignalQueue.size()});
       radioSignalQueue.clear();
 
+      log->info("clear {} entries from clock buffer cache", {clockSignalQueue.size()});
+      clockSignalQueue.clear();
+
       log->info("clear all entries completed!");
 
       command.resolve();
@@ -320,6 +329,7 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          frameQueue.clear();
          logicSignalQueue.clear();
          radioSignalQueue.clear();
+         clockSignalQueue.clear();
 
          std::string name;
          unsigned int length;
@@ -339,6 +349,10 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
             else if (name.find("radio") == 0)
             {
                result = readRadioEntry(package, length);
+            }
+            else if (name.find("clock") == 0)
+            {
+               result = readClockEntry(package, length);
             }
             else
             {
@@ -393,6 +407,10 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
 
          // add radio signal
          if ((result = writeRadioData(package, rangeStart, rangeEnd)) != NoError)
+            break;
+
+         // add clock frequency band
+         if ((result = writeClockData(package, rangeStart, rangeEnd)) != NoError)
             break;
 
          break;
@@ -1214,6 +1232,211 @@ struct TraceStorageTask::Impl : TraceStorageTask, AbstractTask
          if ((result = writeLogicEntry(package, name, id, rangeStart, rangeEnd)) != NoError)
          {
             log->error("failed to write logic signal entry");
+            return result;
+         }
+      }
+
+      return NoError;
+   }
+
+   /*
+    * Clock band entry: the frequency the clock probe runs at, as one point per change.
+    *
+    * It cannot ride along the logic entries because those binarize the value to a single byte, which is enough for a
+    * probe level but not for a frequency. A capture holds tens of states rather than millions, so unlike the logic
+    * entries this one skips varint packing and stores plain fixed width arrays: offsets as uint32, values as float.
+    * The entry name shares no prefix with the ones older readers know, and readTraceFile skips what it does not
+    * recognize, so files written here still open on builds that predate the band.
+    */
+   int readClockEntry(rt::Package &package, unsigned int length)
+   {
+      SampleHdr hdr {};
+
+      if (length < sizeof(hdr))
+      {
+         log->error("invalid clock entry size");
+         return InvalidStorageFormat;
+      }
+
+      if (package.readData(&hdr, sizeof(hdr)) != 0)
+      {
+         log->error("failed to read clock chunk");
+         return ReadDataFailed;
+      }
+
+      if (std::strncmp(hdr.magic, "CLKF", sizeof(hdr.magic)) != 0)
+      {
+         log->error("invalid clock chunk magic");
+         return InvalidStorageFormat;
+      }
+
+      if (hdr.version != 1)
+      {
+         log->info("unsupported clock chunk version: {}", {hdr.version});
+         return InvalidStorageFormat;
+      }
+
+      const unsigned int streamId = hdr.info[INFO_STREAM_ID];
+      const unsigned int stateCount = hdr.info[INFO_TOTAL_SAMPLES];
+      const unsigned int sampleRate = hdr.info[INFO_SAMPLE_RATE];
+      const unsigned int base = hdr.info[INFO_START_OFFSET];
+
+      log->debug("read clock entry with size {}", {length});
+      log->debug("\tstream id....: {}", {streamId});
+      log->debug("\tstream offset: {}", {base});
+      log->debug("\tsample rate..: {}", {sampleRate});
+      log->debug("\ttotal states.: {}", {stateCount});
+
+      if (length - sizeof(hdr) != static_cast<size_t>(stateCount) * (sizeof(uint32_t) + sizeof(float)))
+      {
+         log->error("invalid clock chunk size");
+         return InvalidStorageFormat;
+      }
+
+      if (!stateCount)
+      {
+         storageSignalStream->next({});
+         return NoError;
+      }
+
+      std::vector<uint32_t> offsets(stateCount);
+      std::vector<float> values(stateCount);
+
+      if (package.readData(offsets.data(), stateCount * sizeof(uint32_t)) != 0)
+      {
+         log->error("failed to read clock offsets");
+         return ReadDataFailed;
+      }
+
+      if (package.readData(values.data(), stateCount * sizeof(float)) != 0)
+      {
+         log->error("failed to read clock values");
+         return ReadDataFailed;
+      }
+
+      hw::SignalBuffer buffer(stateCount * 2, 2, 1, sampleRate, base, 0, hw::SignalType::SIGNAL_TYPE_CLK_SIGNAL, streamId);
+
+      for (unsigned int n = 0; n < stateCount; n++)
+      {
+         if (offsets[n] < base)
+         {
+            log->error("clock offset before chunk start");
+            return InvalidStorageFormat;
+         }
+
+         buffer.put(values[n]).put(static_cast<float>(offsets[n] - base));
+      }
+
+      buffer.flip();
+
+      storageSignalStream->next(buffer);
+
+      clockSignalQueue.add(buffer);
+
+      // the clock entry is the last one written, so this closes the whole file and triggers the final view refresh
+      storageSignalStream->next({});
+
+      return NoError;
+   }
+
+   int writeClockEntry(rt::Package &package, const std::string &name, unsigned int id, double rangeStart, double rangeEnd)
+   {
+      unsigned int sampleRate = 0;
+
+      std::vector<ClockState> states;
+
+      for (const auto &buffer: clockSignalQueue)
+      {
+         if (buffer.id() != id)
+            continue;
+
+         if (!sampleRate)
+            sampleRate = buffer.sampleRate();
+
+         for (unsigned int i = 0; i < buffer.limit(); i += buffer.stride())
+         {
+            states.push_back({buffer.offset() + static_cast<unsigned long long>(buffer[i + 1]), buffer[i + 0]});
+         }
+      }
+
+      const auto sampleStart = static_cast<unsigned long long>(sampleRate * rangeStart);
+      const auto sampleEnd = static_cast<unsigned long long>(sampleRate * rangeEnd);
+
+      const std::vector<ClockState> saved = clockStatesInRange(states, sampleStart, sampleEnd);
+
+      std::vector<uint32_t> offsets;
+      std::vector<float> values;
+
+      offsets.reserve(saved.size());
+      values.reserve(saved.size());
+
+      for (const ClockState &state: saved)
+      {
+         offsets.push_back(static_cast<uint32_t>(state.offset));
+         values.push_back(state.frequency);
+      }
+
+      SampleHdr hdr {.magic = {'C', 'L', 'K', 'F'}, .version = 1, .info = {}};
+
+      hdr.info[INFO_START_OFFSET] = offsets.empty() ? 0 : offsets.front();
+      hdr.info[INFO_STREAM_ID] = id;
+      hdr.info[INFO_SAMPLE_RATE] = sampleRate;
+      hdr.info[INFO_TOTAL_SAMPLES] = static_cast<unsigned int>(offsets.size());
+
+      const auto size = static_cast<unsigned int>(sizeof(hdr) + offsets.size() * sizeof(uint32_t) + values.size() * sizeof(float));
+
+      log->info("add clock entry {} with size {}", {name, size});
+
+      if (package.addEntry(name, size) != 0)
+      {
+         log->error("failed to add clock header");
+         return WriteDataFailed;
+      }
+
+      if (package.writeData(&hdr, sizeof(hdr)) != 0)
+      {
+         log->error("failed to write clock header");
+         return WriteDataFailed;
+      }
+
+      // write offset stream, then value stream (SoA layout)
+      if (!offsets.empty() && package.writeData(offsets.data(), offsets.size() * sizeof(uint32_t)) != 0)
+      {
+         log->error("failed to write clock offsets");
+         return WriteDataFailed;
+      }
+
+      if (!values.empty() && package.writeData(values.data(), values.size() * sizeof(float)) != 0)
+      {
+         log->error("failed to write clock values");
+         return WriteDataFailed;
+      }
+
+      log->info("\t{} states stored for clock channel {}", {values.size(), id});
+
+      return NoError;
+   }
+
+   int writeClockData(rt::Package &package, double rangeStart, double rangeEnd)
+   {
+      int result;
+      std::vector<unsigned int> channels;
+
+      for (const auto &buffer: clockSignalQueue)
+      {
+         if (std::find(channels.begin(), channels.end(), buffer.id()) == channels.end())
+            channels.push_back(buffer.id());
+      }
+
+      log->info("detected {} clock channels", {channels.size()});
+
+      for (auto id: channels)
+      {
+         std::string name = rt::Format::format("clock-{}.clkf", {id});
+
+         if ((result = writeClockEntry(package, name, id, rangeStart, rangeEnd)) != NoError)
+         {
+            log->error("failed to write clock entry");
             return result;
          }
       }
