@@ -543,6 +543,12 @@ struct QtControl::Impl
    {
       qInfo() << "configure logic device";
 
+      // there is a single logic task for every supported analyzer, so a config naming a device must
+      // only reach that one, or it would reconfigure whichever analyzer happens to be connected and
+      // overwrite its stored settings through logicDeviceConfigure
+      if (event->contains("deviceType") && event->getString("deviceType") != logicDeviceType)
+         return;
+
       QJsonObject config;
 
       if (event->contains("enabled"))
