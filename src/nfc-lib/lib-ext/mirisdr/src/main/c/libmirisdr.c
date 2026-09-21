@@ -254,6 +254,19 @@ failed:
     return -1;
 }
 
+int mirisdr_is_connected (mirisdr_dev_t *dev) {
+    unsigned char status[2] = {0, 0};
+    int r;
+
+    if (!dev) return 0;
+    if (!dev->dh) return 0;
+
+    /* standard GET_STATUS request, fails with NO_DEVICE/IO once the device has been unplugged */
+    r = libusb_control_transfer(dev->dh, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_STANDARD | LIBUSB_RECIPIENT_DEVICE, LIBUSB_REQUEST_GET_STATUS, 0, 0, status, sizeof(status), CTRL_TIMEOUT);
+
+    return r != LIBUSB_ERROR_NO_DEVICE && r != LIBUSB_ERROR_IO && r != LIBUSB_ERROR_NOT_FOUND;
+}
+
 int mirisdr_get_usb_strings (mirisdr_dev_t *dev, char *manufact, char *product, char *serial) {
 (void) dev;
     fprintf( stderr, "mirisdr_get_usb_strings not implemented yet\n");

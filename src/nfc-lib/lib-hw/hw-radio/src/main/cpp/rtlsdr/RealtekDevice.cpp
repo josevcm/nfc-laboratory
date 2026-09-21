@@ -357,7 +357,10 @@ struct RealtekDevice::Impl
 
    bool isReady() const
    {
-      return rtlsdrHandle;
+      uint8_t data;
+
+      // read one byte from device eeprom, it goes through the usb bus so it fails once the device is unplugged
+      return rtlsdrHandle && rtlsdr_read_eeprom(rtlsdrHandle, &data, 0, 1) >= 0;
    }
 
    bool isPaused() const
