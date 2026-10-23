@@ -19,3 +19,11 @@ target_include_directories(rt-lang PUBLIC ${PUBLIC_INCLUDE_DIR})
 target_include_directories(rt-lang PRIVATE ${PRIVATE_SOURCE_DIR})
 
 target_link_libraries(rt-lang microtar z zstd)
+
+# use pkg-config paths for zstd when available (required for Homebrew on macOS)
+pkg_check_modules(ZSTD QUIET libzstd)
+
+if (ZSTD_FOUND)
+  target_include_directories(rt-lang PRIVATE ${ZSTD_INCLUDE_DIRS})
+  target_link_directories(rt-lang PUBLIC ${ZSTD_LIBRARY_DIRS})
+endif ()
