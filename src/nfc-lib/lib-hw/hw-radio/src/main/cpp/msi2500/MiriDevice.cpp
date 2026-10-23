@@ -280,7 +280,7 @@ struct MiriDevice::Impl
 
    bool isReady() const
    {
-      return deviceHandle;
+      return deviceHandle && mirisdr_is_connected(deviceHandle);
    }
 
    bool isPaused() const

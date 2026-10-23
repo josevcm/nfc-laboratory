@@ -232,6 +232,22 @@ struct Usb::Impl
       hdl = nullptr;
    }
 
+   /*
+    * Probe the device with a standard GET_STATUS request, it is answered by the USB stack and fails with
+    * LIBUSB_ERROR_NO_DEVICE once the device has been unplugged, even while a bulk stream is running
+    */
+   bool isConnected() const
+   {
+      if (!hdl)
+         return false;
+
+      unsigned char status[2] = {0, 0};
+
+      const int rc = libusb_control_transfer(hdl, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_STANDARD | LIBUSB_RECIPIENT_DEVICE, LIBUSB_REQUEST_GET_STATUS, 0, 0, status, sizeof(status), 500);
+
+      return rc != LIBUSB_ERROR_NO_DEVICE && rc != LIBUSB_ERROR_IO && rc != LIBUSB_ERROR_NOT_FOUND;
+   }
+
    bool claimInterface(const int interface)
    {
       switch ((result = libusb_claim_interface(hdl, interface)))
@@ -577,6 +593,11 @@ bool Usb::isValid() const
 bool Usb::isOpen() const
 {
    return impl->hdl != nullptr;
+}
+
+bool Usb::isConnected() const
+{
+   return impl->isConnected();
 }
 
 bool Usb::isLowSpeed() const

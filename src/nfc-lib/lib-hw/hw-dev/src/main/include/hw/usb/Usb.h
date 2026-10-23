@@ -108,6 +108,8 @@ class Usb
 
       bool isOpen() const;
 
+      bool isConnected() const;
+
       bool isLowSpeed() const;
 
       bool isHighSpeed() const;

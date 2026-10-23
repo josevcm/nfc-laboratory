@@ -769,7 +769,7 @@ struct SipeedLogicDevice::Impl
 
    bool isReady() const
    {
-      return true; //return usbRead(rd_cmd_fw_version);
+      return usb.isConnected();
    }
 
    static std::string buildName(const sipeed_profile *profile)

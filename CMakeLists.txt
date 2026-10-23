@@ -61,6 +61,9 @@ find_package(PkgConfig REQUIRED)
 #-------------------------------------------------------------------------------
 pkg_check_modules(LIBUSB REQUIRED libusb-1.0)
 
+# library path is not in default linker search path on some systems (Homebrew on macOS)
+link_directories(${LIBUSB_LIBRARY_DIRS})
+
 #-------------------------------------------------------------------------------
 # find dependency airspy
 #-------------------------------------------------------------------------------

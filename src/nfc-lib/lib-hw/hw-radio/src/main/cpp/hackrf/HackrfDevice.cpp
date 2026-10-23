@@ -308,7 +308,9 @@ struct HackrfDevice::Impl
 
    bool isReady() const
    {
-      return hackrfHandle != nullptr;
+      uint8_t boardId;
+
+      return hackrfHandle && hackrf_board_id_read(hackrfHandle, &boardId) == HACKRF_SUCCESS;
    }
 
    bool isPaused() const
