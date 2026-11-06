@@ -304,25 +304,37 @@ Se configura desde la API y la interfaz (`setModulationThresholdNfcA(min, max)`)
 - Hay campos que se calculan pero no se usan: `startUpGuardTime`, `requestGuardTime`, `lastFrameEnd` y `detectIntegrate`.
 - La longitud de la cadena de retardos (`symbolDelayDetect` + P1 a 424 kbps ≈ 224/fc) debe caber en `BUFFER_SIZE = 1024`, lo que limita fs a ≈ 60 MS/s. No se comprueba.
 
-## 9. Optimizaciones propuestas
+## 9. Optimizaciones
 
-1. **Eliminar los `%` por muestra.**
-   - En detección se hacen 3 módulos por velocidad (9 divisiones enteras por muestra), y 3 más durante la decodificación. P1 no es potencia de 2.
-   - Se pueden sustituir por índices incrementales con reinicio (`if (++idx == P1) idx = 0;`) que se guardan en `NfcModulationStatus`.
-   - Es el coste dominante del detector, que corre sobre todas las muestras sin señal.
-2. **Precalcular inversas.** `1.0f / period2SymbolSamples` se puede calcular en `initialize()`, en lugar de dividir en cada muestra.
-3. **Simplificar el correlador** (ligado a E7). Si `SD ≈ 2·S0` es lo que se busca, sobran `filterPoint3`, `S1` y un acceso a memoria.
-4. **Salida temprana en detección.** Si la `modulateDepth` actual es baja y no hay búsqueda en curso (`!correlatedPeakTime && !symbolStartTime`), solo hay que actualizar integradores y buffer y saltar la lógica de picos.
-5. **Paridad.** Sustituir el bucle de `checkParity` por `__builtin_parity(value) ^ parity`, o por un plegado XOR (`v ^= v >> 4; v ^= v >> 2; v ^= v >> 1`) portable con MSVC.
-6. **Reinicios más baratos.**
-   - `resetModulation()` pone a cero `modulationStatus[4]` completo (4 × 8 KB). Solo se usan 3 velocidades, y de cada una basta con limpiar los escalares y la parte de `correlationData` que se usa (P1 elementos).
-   - El `memset` de 8 KB de `decodePollFrame` se puede limitar igual.
-7. **Eliminar código duplicado.**
-   - Hay 5 bloques casi idénticos de "reset search" (l. 270, 330, 367, 1056 y `resetFrameSearch`) que pueden ser un único `resetSearch(modulation)`.
-   - Los 3 bloques que construyen un `RawFrame` (poll, listen ASK, listen BPSK) pueden ser un único `buildFrame(type, flags)`.
-   - Así se reduce el riesgo de errores como E4.
-8. **Debug fuera del bucle caliente.** Las comprobaciones `if (decoder->debug)` en cada muestra son baratas, pero se pueden eliminar del binario de producción con una plantilla o un `constexpr` sobre la ruta de debug.
+### 9.1 Aplicadas
+
+Todas mantienen la salida exacta del decodificador: con las 19 capturas de `wav/` las tramas generadas (datos, flags, fase y muestras de inicio y fin) son idénticas byte a byte antes y después, tanto con todas las tecnologías activas como con solo NFC-A.
+
+1. **Una división por muestra en lugar de tres.** `correlationPoints()` calcula `filterPoint1 = signalIndex % P1` y deriva los otros dos puntos con una comparación y una resta (`point2 = p1 + P2`, restando P1 si se pasa; `point3 = p1 − 1` con vuelta a `P1 − 1`). Se usa en detección y en los demoduladores ASK.
+2. **Inversa precalculada.** `period2Inverse[rate] = 1 / P2` se calcula en `initialize()`, y la normalización de `SD` pasa a ser una multiplicación.
+3. **Copias locales en `detectModulation`.** `signalClock` y el puntero de debug se leen una vez por llamada. Antes el compilador tenía que releerlos de memoria en cada uso, porque las escrituras en `NfcModulationStatus` podían solaparse con ellos.
+4. **Paridad sin bucle.** `checkParity` usa un plegado XOR de 8 bits, portable a MSVC.
+5. **Código duplicado eliminado.**
+   - `resetSearch(modulation)` sustituye a los 5 bloques de reinicio de búsqueda, incluido `resetFrameSearch`. Algunos bloques no limpiaban `searchPulseWidth` ni `symbolRiseTime`; ambos se escriben siempre antes de leerse, así que limpiarlos no cambia el resultado.
+   - `buildFrame(type, rate, flags)` sustituye a los 3 bloques que construían un `RawFrame`.
+
+**Rendimiento medido** (mejor de 40 repeticiones, 8 rondas intercaladas, en una máquina compartida con bastante ruido):
+
+| Escenario | Mejora media |
+|---|---|
+| Solo NFC-A, `test_NFC-A_106kbps_424kbps_001` | ≈ +14 % |
+| Solo NFC-A, `test_NFC-F_212kbps_003` (detector NFC-A sin tramas A) | ≈ +16 % |
+| Las cuatro tecnologías activas | ≈ +5–10 % (B/F/V y `nextSample` siguen igual) |
+
+### 9.2 Descartadas o pendientes
+
+- **Índices circulares incrementales** (un contador por velocidad en lugar de `%`): se probó y resultó **más lento** (~5 %). Mantener y validar el estado del contador cuesta más que una división entera en una CPU actual.
+- **Simplificar el correlador a `SD = 2·S0`** (E7): cambiaría `SD` en el término `s[t] − s[t−P/2]` y, con ello, los resultados. Antes hay que decidir si el comportamiento actual es intencionado.
+- **Salida temprana en detección**: el camino sin señal ya se reduce a unas pocas comparaciones, así que la ganancia esperada es pequeña.
+- **Reinicios más baratos**: `resetModulation()` limpia 3 × 8 KB y `decodePollFrame` hace un `memset` de 8 KB. `integrationData` se indexa con el buffer completo y se leen valores antiguos tras el reinicio, así que limpiar menos cambiaría la salida. Se ejecuta una vez por trama, por lo que no compensa.
+- **Debug en tiempo de compilación** (plantilla o `constexpr`): la comprobación ya es una sola rama muy predecible tras la copia local.
+- Fuera del alcance de NFC-A: `NfcDecoderStatus::nextSample()` supone ~30 % del tiempo (con una división por `signalEnvelope` en cada muestra) y es común a todas las tecnologías.
 
 ## 10. Pruebas
 
-En `wav/` hay capturas de referencia (`test_NFC-A_*.wav`) con su salida esperada (`*.json`). Cualquier cambio en el demodulador debería validarse comparando las tramas decodificadas con esos ficheros antes y después del cambio.
+En `wav/` hay capturas de referencia (`test_*.wav`) con su salida esperada (`*.json`). Cualquier cambio en el demodulador debería validarse comparando las tramas decodificadas con esos ficheros antes y después del cambio. Con el código actual, las 19 capturas reproducen exactamente sus `.json`.
