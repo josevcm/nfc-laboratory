@@ -99,6 +99,12 @@ struct NfcF::Impl : NfcTech
    // chained frame flags
    unsigned int chainedFlags = 0;
 
+   // a Polling request is waiting for its response (polling command code is 0, so it can not be stored in lastCommand)
+   bool pollingRequest = false;
+
+   // maximum NFC-F frame: 2 sync bytes, LEN up to 255 (includes itself) and 2 CRC bytes
+   static constexpr unsigned int NFCF_MAX_FRAME_SIZE = 2 + 255 + 2;
+
    // precomputed 1 / period2SymbolSamples for each bitrate
    float period2Inverse[4] {};
 
@@ -235,7 +241,7 @@ struct NfcF::Impl : NfcTech
       }
 
       // initialize default protocol parameters for start decoding
-      protocolStatus.maxFrameSize = 256;
+      protocolStatus.maxFrameSize = NFCF_MAX_FRAME_SIZE;
       protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCF_SFGT_DEF);
       protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCF_FGT_DEF);
       protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCF_FWT_DEF);
@@ -803,8 +809,8 @@ struct NfcF::Impl : NfcTech
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // using signal st.dev as lower level threshold
-         if (decoder->signalClock == frameStatus.guardEnd)
+         // using signal st.dev as lower level threshold, calibrated after guard time and after each failed preamble search
+         if (!modulation->searchValueThreshold)
             modulation->searchValueThreshold = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].meanDeviation * 10;
 
          // check for maximum response time
@@ -1050,6 +1056,10 @@ struct NfcF::Impl : NfcTech
       frameStatus.frameStart = 0;
       frameStatus.frameEnd = 0;
 
+      // no response is pending, forget last command
+      frameStatus.lastCommand = 0;
+      pollingRequest = false;
+
       // restore bitrate
       decoder->bitrate = nullptr;
 
@@ -1078,9 +1088,14 @@ struct NfcF::Impl : NfcTech
          frameStatus.frameGuardTime = protocolStatus.frameGuardTime;
       }
 
+      // any frame consumes the pending polling request, a new polling request sets it again
+      const bool pollingPending = pollingRequest;
+
+      pollingRequest = false;
+
       do
       {
-         if (processREQC(frame))
+         if (processREQC(frame, pollingPending))
             break;
 
          processOther(frame);
@@ -1136,19 +1151,23 @@ struct NfcF::Impl : NfcTech
    /*
     * Process REQB/WUPB frame
     */
-   bool processREQC(RawFrame &frame)
+   bool processREQC(RawFrame &frame, bool pollingPending)
    {
       if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[1] == CommandType::NFCB_REQC)
+         // Polling request: LEN = 6, command 0x00, system code (2), request code, time slot number and CRC
+         if (frame.limit() == 8 && frame[0] == 6 && frame[1] == CommandType::NFCF_REQC)
          {
             frameStatus.lastCommand = frame[1];
+
+            // the response to this frame is a polling response
+            pollingRequest = true;
 
             // read number TSN in the Polling Request
             int tsn = frame[5];
 
             // This commands starts or wakeup card communication, so reset the protocol parameters to the default values
-            protocolStatus.maxFrameSize = 256;
+            protocolStatus.maxFrameSize = NFCF_MAX_FRAME_SIZE;
             protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCF_SFGT_DEF);
             protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCF_FGT_DEF);
             protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCF_FWT_DEF);
@@ -1171,7 +1190,7 @@ struct NfcF::Impl : NfcTech
 
       if (frame.frameType() == NfcListenFrame)
       {
-         if (frameStatus.lastCommand == CommandType::NFCB_REQC)
+         if (pollingPending)
          {
             frame.setFramePhase(NfcSelectionPhase);
             frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);

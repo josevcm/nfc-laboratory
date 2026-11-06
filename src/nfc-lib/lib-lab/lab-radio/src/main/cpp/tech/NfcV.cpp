@@ -152,8 +152,11 @@ struct NfcV::Impl : NfcTech
     */
    RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
    {
-      RawFrame frame = RawFrame(NfcVTech, frameType);
+      // default frame capacity is 512 bytes, allocate enough room for large responses
+      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
 
+      frame.setTechType(NfcVTech);
+      frame.setFrameType(frameType);
       frame.setFrameRate(frameStatus.symbolRate);
       frame.setSampleStart(frameStatus.frameStart);
       frame.setSampleEnd(frameStatus.frameEnd);
@@ -227,6 +230,10 @@ struct NfcV::Impl : NfcTech
       bitrateParams.offsetDelay4Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period4SymbolSamples;
       bitrateParams.offsetDelay8Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period8SymbolSamples;
 
+      // delayed signal samples must be inside the sample buffer, otherwise high sample rates read overwritten data
+      if (bitrateParams.symbolDelayDetect + bitrateParams.period2SymbolSamples >= BUFFER_SIZE)
+         log->warn("sample rate {} too high for NFC-V decoding, delay line exceeds buffer size", {decoder->sampleRate});
+
       // inverse of half symbol length to normalize correlation without divisions
       period2Inverse = 1.0f / static_cast<float>(bitrateParams.period2SymbolSamples);
 
@@ -251,8 +258,9 @@ struct NfcV::Impl : NfcTech
       // initialize pulse parameters for 1 of 256 code
       configurePulse(pulseParams + 1, 8);
 
-      // initialize default protocol parameters for start decoding
-      protocolStatus.maxFrameSize = 256;
+      // ISO/IEC 15693 has no frame size negotiation and Read Multiple Blocks responses can be several KB long,
+      // so the frame size is only limited by the stream buffer capacity
+      protocolStatus.maxFrameSize = sizeof(NfcStreamStatus::buffer) - 1;
       protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCV_SFGT_DEF);
       protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCV_FGT_DEF);
       protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCV_FWT_DEF);
@@ -860,8 +868,8 @@ struct NfcV::Impl : NfcTech
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // using signal variance at guard end as lower level threshold
-         if (decoder->signalClock == frameStatus.guardEnd)
+         // using signal variance at guard end as lower level threshold, calibrated once after guard time
+         if (!modulation->searchValueThreshold)
             modulation->searchValueThreshold = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].meanDeviation;
 
          // check if frame waiting time exceeded without detect modulation
@@ -1152,6 +1160,8 @@ struct NfcV::Impl : NfcTech
          if (decoder->bitrate)
          {
             // response guard time TR0min (PICC must not modulate reponse within this period)
+            // note: unlike other techs the delay is subtracted, so the guard ends right at the end of the reader EOF and the
+            // listen threshold is calibrated from the signal deviation at that point; real captures depend on this behavior
             frameStatus.guardEnd = frameStatus.frameEnd + frameStatus.frameGuardTime - decoder->bitrate->symbolDelayDetect;
 
             // response delay time WFT (PICC must reply to command before this period)

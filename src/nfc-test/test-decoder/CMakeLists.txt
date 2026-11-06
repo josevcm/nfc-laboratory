@@ -34,8 +34,10 @@ if (Python3_Interpreter_FOUND)
 
     set(NFCA_SYNTHETIC_SCENARIOS basic fsdi_4096 fsdi_rfu ats_short sblock wtx spurious)
     set(NFCB_SYNTHETIC_SCENARIOS basic fsd_4096 fsdi_rfu frame_size egt tr1_short wtx hltb slot_marker no_eos)
+    set(NFCF_SYNTHETIC_SCENARIOS basic basic_424 max_length spurious unanswered)
+    set(NFCV_SYNTHETIC_SCENARIOS basic code256 large_response rate_20m)
 
-    foreach (tech nfca nfcb)
+    foreach (tech nfca nfcb nfcf nfcv)
         add_test(NAME decoder-${tech}-synthetic-generate
                 COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/${tech}_synthetic.py ${SYNTHETIC_DIR})
 

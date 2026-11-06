@@ -12,7 +12,7 @@ Files:
 | `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/NfcDecoder.cpp` | Orchestrator: carrier detection and dispatch to NFC-A/B/F/V |
 | `src/nfc-lib/lib-lab/lab-radio/src/main/include/lab/nfc/Nfc.h` | Timing constants (FGT, FWT, SFGT, FSD/FWT tables) |
 | `src/nfc-test/test-decoder` | Decoder regression test and synthetic NFC-A capture generator (section 10) |
-| `doc/nfcb.md` | Same analysis for the NFC-B decoder |
+| `doc/nfcb.md`, `doc/nfcf.md`, `doc/nfcv.md` | Same analysis for the NFC-B, NFC-F and NFC-V decoders |
 
 ---
 
