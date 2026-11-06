@@ -41,7 +41,7 @@ if (Python3_Interpreter_FOUND)
         add_test(NAME decoder-${tech}-synthetic-generate
                 COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/${tech}_synthetic.py ${SYNTHETIC_DIR})
 
-        set_tests_properties(decoder-${tech}-synthetic-generate PROPERTIES FIXTURES_SETUP decoder-${tech}-synthetic)
+        set_tests_properties(decoder-${tech}-synthetic-generate PROPERTIES FIXTURES_SETUP decoder-${tech}-synthetic ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
 
         string(TOUPPER ${tech} TECH)
 
