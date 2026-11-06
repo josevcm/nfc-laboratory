@@ -318,7 +318,7 @@ Se configura desde la API y la interfaz (`setModulationThresholdNfcA(min, max)`)
    - `resetModulation()` pone a cero `modulationStatus[4]` completo (4 × 8 KB). Solo se usan 3 velocidades, y de cada una basta con limpiar los escalares y la parte de `correlationData` que se usa (P1 elementos).
    - El `memset` de 8 KB de `decodePollFrame` se puede limitar igual.
 7. **Eliminar código duplicado.**
-   - Hay 5 bloques casi idénticos de "reset search" (l. ~277, ~339, ~376, ~1053, `resetFrameSearch`) que pueden ser un único `resetSearch(modulation)`.
+   - Hay 5 bloques casi idénticos de "reset search" (l. 270, 330, 367, 1056 y `resetFrameSearch`) que pueden ser un único `resetSearch(modulation)`.
    - Los 3 bloques que construyen un `RawFrame` (poll, listen ASK, listen BPSK) pueden ser un único `buildFrame(type, flags)`.
    - Así se reduce el riesgo de errores como E4.
 8. **Debug fuera del bucle caliente.** Las comprobaciones `if (decoder->debug)` en cada muestra son baratas, pero se pueden eliminar del binario de producción con una plantilla o un `constexpr` sobre la ruta de debug.
