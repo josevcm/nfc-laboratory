@@ -1,378 +1,416 @@
-# Decodificador NFC-A (ISO/IEC 14443 tipo A)
+# NFC-A decoder (ISO/IEC 14443 type A)
 
-Este documento describe cómo funciona el decodificador NFC-A de `lab-radio` y recoge los errores y las optimizaciones encontrados al revisarlo.
+This document describes how the NFC-A decoder in `lab-radio` works, and records the errors and optimizations found while reviewing it.
 
-Ficheros:
+Files:
 
-| Fichero | Contenido |
+| File | Contents |
 |---|---|
-| `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/tech/NfcA.cpp` | Demodulador, decodificador de tramas y lógica de protocolo (`NfcA::Impl`) |
-| `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/tech/NfcA.h` | Interfaz pública y códigos de comando |
-| `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/NfcTech.h` / `NfcTech.cpp` | Estructuras compartidas por todas las tecnologías y preprocesado de cada muestra (`nextSample`) |
-| `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/NfcDecoder.cpp` | Orquestador: detección de portadora y reparto entre NFC-A/B/F/V |
-| `src/nfc-lib/lib-lab/lab-radio/src/main/include/lab/nfc/Nfc.h` | Constantes de temporización (FGT, FWT, SFGT, tablas FSD/FWT) |
+| `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/tech/NfcA.cpp` | Demodulator, frame decoder and protocol logic (`NfcA::Impl`) |
+| `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/tech/NfcA.h` | Public interface and command codes |
+| `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/NfcTech.h` / `NfcTech.cpp` | Structures shared by all technologies and per-sample preprocessing (`nextSample`) |
+| `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/NfcDecoder.cpp` | Orchestrator: carrier detection and dispatch to NFC-A/B/F/V |
+| `src/nfc-lib/lib-lab/lab-radio/src/main/include/lab/nfc/Nfc.h` | Timing constants (FGT, FWT, SFGT, FSD/FWT tables) |
+| `src/nfc-test/test-decoder` | Decoder regression test and synthetic NFC-A capture generator (section 10) |
 
 ---
 
-## 1. Visión general
+## 1. Overview
 
 ```
-SignalBuffer (magnitud de la señal, 1 canal float)
+SignalBuffer (signal magnitude, 1 float channel)
         │
         ▼
-NfcDecoderStatus::nextSample()        ← preprocesado común por muestra
-        │   envolvente, filtro DC (IIR), desviación media, profundidad de modulación
-        │   → buffer circular sample[1024]
+NfcDecoderStatus::nextSample()        ← common per-sample preprocessing
+        │   envelope, DC filter (IIR), mean deviation, modulation depth
+        │   → circular buffer sample[1024]
         ▼
 NfcDecoder::nextFrames()
-   ├─ sin modulación activa → NfcA::detect() (y B, F, V) en cada muestra
-   └─ con modulación NFC-A  → NfcA::decode()
-                                 ├─ decodePollFrame()    (lector → tarjeta, ASK 100 % + Miller modificado)
-                                 └─ decodeListenFrame()  (tarjeta → lector)
-                                        ├─ 106 kbps: OOK de subportadora + Manchester
-                                        └─ 212/424 kbps: BPSK de subportadora + NRZ-L
+   ├─ no active modulation → NfcA::detect() (and B, F, V) on every sample
+   └─ NFC-A modulation     → NfcA::decode()
+                                 ├─ decodePollFrame()    (reader → card, 100% ASK + modified Miller)
+                                 └─ decodeListenFrame()  (card → reader)
+                                        ├─ 106 kbps: subcarrier OOK + Manchester
+                                        └─ 212/424 kbps: subcarrier BPSK + NRZ-L
         │
         ▼
-process(RawFrame) → fase de protocolo, CRC, timings (FGT/FWT) para la siguiente trama
+process(RawFrame) → protocol phase, CRC, timings (FGT/FWT) for the next frame
         │
         ▼
 std::list<RawFrame>
 ```
 
-El decodificador es una máquina de estados que procesa muestra a muestra. El estado se reparte en:
+The decoder is a state machine that processes one sample at a time. Its state is split into:
 
-- `bitrateParams[rate]`: duraciones de símbolo en muestras para 106, 212 y 424 kbps (índices `r106k`..`r424k`).
-- `modulationStatus[rate]`: estado del detector o demodulador para cada velocidad (integradores, ventanas de búsqueda, picos, buffers).
-- `symbolStatus`: último símbolo decodificado (patrón, valor, inicio, fin, flanco).
-- `streamStatus`: bits y bytes acumulados de la trama en curso.
-- `frameStatus`: tipo de trama esperada (poll o listen), inicio y fin, y ventanas `guardEnd` y `waitingEnd`.
-- `protocolStatus`: parámetros negociados (FSD, FWT, SFGT) que se actualizan con RATS/ATS.
-- `chainedFlags`: flags que se propagan a las tramas siguientes (p. ej. `Encrypted` tras MIFARE AUTH).
+- `bitrateParams[rate]`: symbol lengths in samples for 106, 212 and 424 kbps (indexes `r106k`..`r424k`).
+- `modulationStatus[rate]`: detector or demodulator state for each bit rate (integrators, search windows, peaks, buffers).
+- `symbolStatus`: last decoded symbol (pattern, value, start, end, edge).
+- `streamStatus`: bits and bytes accumulated for the current frame.
+- `frameStatus`: expected frame type (poll or listen), start and end, and the `guardEnd` and `waitingEnd` windows.
+- `protocolStatus`: negotiated parameters (FSD, FSC, FWT, SFGT), updated by RATS/ATS.
+- `chainedFlags`: flags propagated to the following frames (e.g. `Encrypted` after MIFARE AUTH).
 
-`decoder->bitrate` y `decoder->modulation` apuntan a la velocidad detectada. Si `decoder->modulation == nullptr`, el orquestador vuelve al modo de detección.
+`decoder->bitrate` and `decoder->modulation` point to the detected bit rate. When `decoder->modulation == nullptr`, the orchestrator goes back to detection mode.
 
-## 2. Preprocesado común (`NfcDecoderStatus::nextSample`)
+## 2. Common preprocessing (`NfcDecoderStatus::nextSample`)
 
-Por cada muestra de entrada:
+For each input sample:
 
-1. Incrementa `signalClock`, el reloj maestro en muestras (`unsigned int`).
-2. Actualiza la envolvente (`signalEnvelope`) con una media exponencial (constante 5·10⁵/fs), pero solo cuando la muestra se separa menos de un 5 % de la envolvente, o tras 10 ETU sin actualizar. Así las pausas de modulación no arrastran la envolvente.
-3. Aplica un filtro IIR de eliminación de DC: `y = x + 0.9·y₁; filtered = y − y₁`.
-4. Calcula la desviación media de la señal filtrada (`meanDeviation`) y la media lenta (`signalAverage`, usada para detectar la portadora).
-5. Guarda en `sample[clock & 1023]` cuatro valores:
-   - `samplingValue`: magnitud cruda.
-   - `filteredValue`: magnitud sin DC.
-   - `meanDeviation`: nivel de ruido.
-   - `modulateDepth = (env − clamp(x, 0, env)) / env`: profundidad de modulación, de 0 a 1.
+1. Increments `signalClock`, the master clock in samples (`unsigned int`).
+2. Updates the envelope (`signalEnvelope`) with an exponential average (constant 5·10⁵/fs), but only when the sample differs less than 5% from the envelope, or after 10 ETU without an update. This keeps modulation pauses from dragging the envelope down.
+3. Applies an IIR DC-removal filter: `y = x + 0.9·y₁; filtered = y − y₁`.
+4. Computes the mean deviation of the filtered signal (`meanDeviation`) and the slow average (`signalAverage`, used for carrier detection).
+5. Stores four values in `sample[clock & 1023]`:
+   - `samplingValue`: raw magnitude.
+   - `filteredValue`: magnitude without DC.
+   - `meanDeviation`: noise level.
+   - `modulateDepth = (env − clamp(x, 0, env)) / env`: modulation depth, from 0 to 1.
 
-Todos los demoduladores leen de este buffer con offsets fijos (`offsetSignalIndex`, `offsetDelayNIndex`, `offsetFutureIndex`), que se calculan en `initialize()`.
+All demodulators read this buffer through fixed offsets (`offsetSignalIndex`, `offsetDelayNIndex`, `offsetFutureIndex`) computed in `initialize()`.
 
-## 3. Parámetros por velocidad (`initialize`)
+## 3. Per bit rate parameters (`initialize`)
 
-Con `u = fs / fc` (muestras por ciclo de portadora, `sampleTimeUnit`) y `rate` = 0, 1, 2 (106, 212, 424 kbps):
+With `u = fs / fc` (samples per carrier cycle, `sampleTimeUnit`) and `rate` = 0, 1, 2 (106, 212, 424 kbps):
 
-| Campo | Valor | Significado |
+| Field | Value | Meaning |
 |---|---|---|
-| `period1SymbolSamples` | `u·(128 >> rate)` | 1 símbolo (1 ETU) |
-| `period2SymbolSamples` | `u·(64 >> rate)` | ½ símbolo |
-| `period4SymbolSamples` | `u·(32 >> rate)` | ¼ símbolo |
-| `period8SymbolSamples` | `u·(16 >> rate)` | ⅛ símbolo |
-| `period0SymbolSamples` | `u·(256 >> rate)` | 2 símbolos |
-| `symbolDelayDetect` | suma de `period1` de las velocidades inferiores | retardo extra de cada velocidad |
+| `period1SymbolSamples` | `u·(128 >> rate)` | 1 symbol (1 ETU) |
+| `period2SymbolSamples` | `u·(64 >> rate)` | ½ symbol |
+| `period4SymbolSamples` | `u·(32 >> rate)` | ¼ symbol |
+| `period8SymbolSamples` | `u·(16 >> rate)` | ⅛ symbol |
+| `period0SymbolSamples` | `u·(256 >> rate)` | 2 symbols |
+| `symbolDelayDetect` | sum of `period1` of the lower bit rates | extra delay for each bit rate |
 
-El retardo `symbolDelayDetect` hace que 212 y 424 kbps se evalúen sobre muestras más antiguas. Así, en cada muestra se evalúa primero 106 kbps y una velocidad superior solo gana si la inferior no ha validado ya el pulso. Todos los tiempos que se publican se corrigen restando este retardo.
+The `symbolDelayDetect` delay makes 212 and 424 kbps work on older samples. On each sample 106 kbps is evaluated first, and a higher bit rate only wins if the lower one has not already validated the pulse. All published times are corrected by subtracting this delay.
 
-Timings de protocolo por defecto, en unidades de 1/fc (`Nfc.h`):
+The whole delay line (`symbolDelayDetect + period1`) must fit in `BUFFER_SIZE = 1024` samples, which limits the sample rate to about 60 MS/s; `initialize()` logs a warning when it does not fit.
 
-| Constante | Valor | Uso |
+Default protocol timings, in 1/fc units (`Nfc.h`):
+
+| Constant | Value | Use |
 |---|---|---|
-| `NFCA_FGT_DEF` | 1024 | Guarda mínima antes de buscar la respuesta (TR0) |
-| `NFCA_FWT_ATQA` | 128·18 | Espera máxima de la respuesta a REQA/WUPA/SELn |
-| `NFCA_FWT_DEF` | 256·16·2⁴ | FWT por defecto (FWI = 4) |
-| `NFCA_SFGT_DEF` | 256·16 | SFGT por defecto |
-| `NFC_FWT_ACTIVATION` | 71680 | Espera máxima del ATS tras RATS |
+| `NFCA_FGT_DEF` | 1024 | Minimum guard before searching for the response (TR0) |
+| `NFCA_FWT_ATQA` | 128·18 | Maximum wait for the response to REQA/WUPA/SELn |
+| `NFCA_FWT_DEF` | 256·16·2⁴ | Default FWT (FWI = 4) |
+| `NFCA_SFGT_DEF` | 256·16 | Default SFGT |
+| `NFC_FWT_ACTIVATION` | 71680 | Maximum wait for ATS after RATS |
 
-## 4. Detección de la trama del lector (`detectModulation`)
+## 4. Reader frame detection (`detectModulation`)
 
-Se ejecuta en cada muestra mientras no hay modulación activa, y solo si la envolvente supera `powerLevelThreshold`. Para cada velocidad:
+Runs on every sample while there is no active modulation, and only when the envelope is above `powerLevelThreshold`. For each bit rate:
 
-1. **Integrador de medio símbolo**: `filterIntegrate` es la suma móvil de `samplingValue` sobre `period2` muestras.
-2. **Buffer de correlación**: `correlationData[t mod P1] = filterIntegrate`, un buffer circular de un símbolo.
-3. **Correlación**:
-   - `S0 = I(t) − I(t − P/2)`: segunda mitad del último símbolo menos la primera.
-   - `S1 = I(t − P/2) − I(t − 1)` (ver el hallazgo E7).
-   - `SD = (S0 − S1) / P2`, con signo.
+1. **Half symbol integrator**: `filterIntegrate` is the moving sum of `samplingValue` over `period2` samples.
+2. **Correlation buffer**: `correlationData[t mod P1] = filterIntegrate`, a circular buffer one symbol long.
+3. **Correlation**:
+   - `S0 = I(t) − I(t − P/2)`: second half of the last symbol minus the first half.
+   - `S1 = I(t − P/2) − I(t − 1)` (see finding E7).
+   - `SD = (S0 − S1) / P2`, signed.
 
-   Una pausa ASK que entra en la ventana produce un mínimo negativo de `SD`, y al salir produce un máximo positivo.
-4. **Fase 1, flanco de bajada**: si `SD < −envolvente·correlationThreshold` (0.75 por defecto), registra el mínimo (`correlatedPeakTime`) y la profundidad máxima (`modulateDepth`). La búsqueda acaba ¼ de símbolo después del último mínimo. Si la profundidad no llega a `minimumModulationDeep` (0.90), se descarta.
-5. **Fase 2, flanco de subida**: abre una ventana de ±⅛ de símbolo alrededor de `pico + P/2` y busca el máximo positivo de `SD`.
-6. **Validación**: la anchura `fin − inicio` debe estar dentro de `P1 ± P1/4`.
-7. Si el pulso es válido, se considera el SoF (patrón Z). Entonces:
-   - fija `decoder->bitrate` y `decoder->modulation`;
-   - pone `frameStatus.frameType = NfcPollFrame`;
-   - prepara la ventana del siguiente símbolo (`searchSyncTime = fin + P1`, ±P8);
-   - fija el umbral de símbolo en `searchValueThreshold = pico/2`.
+   An ASK pause entering the window produces a negative minimum of `SD`, and a positive maximum when it leaves.
+4. **Phase 1, falling edge**: when `SD < −envelope·correlationThreshold` (0.75 by default), it records the minimum (`correlatedPeakTime`) and the maximum depth (`modulateDepth`). The search ends ¼ symbol after the last minimum. The pulse is discarded if its depth is below `minimumModulationDeep` (0.90) or above `maximumModulationDeep` (1.0).
+5. **Phase 2, rising edge**: opens a ±⅛ symbol window around `peak + P/2` and searches for the positive maximum of `SD`.
+6. **Validation**: the width `end − start` must be within `P1 ± P1/4`.
+7. A valid pulse is taken as the SoF (pattern Z). Then it:
+   - sets `decoder->bitrate` and `decoder->modulation`;
+   - sets `frameStatus.frameType = NfcPollFrame`;
+   - prepares the window for the next symbol (`searchSyncTime = end + P1`, ±P8);
+   - sets the symbol threshold to `searchValueThreshold = peak/2`.
 
-Si en un símbolo no se completa la búsqueda (`clock > peak + P1`), el estado se reinicia.
+If the search for a symbol does not complete (`clock > peak + P1`), the state is reset.
 
-## 5. Trama del lector: ASK 100 % + Miller modificado
+## 5. Reader frame: 100% ASK + modified Miller
 
-### 5.1 Símbolos (`decodePollFrameSymbolAsk`)
+### 5.1 Symbols (`decodePollFrameSymbolAsk`)
 
-Usa el mismo correlador que la detección, pero con `SD = |S0 − S1| / P2`. En cada ventana `[sync − P8, sync + P8]`:
+Uses the same correlator as detection, but with `SD = |S0 − S1| / P2`. In each window `[sync − P8, sync + P8]`:
 
-- Sigue el máximo de `SD` por encima del umbral, para resincronizar el fin de símbolo.
-- En `sync`, captura `SD`, `S0` y `S1`.
-- Al cerrar la ventana clasifica el símbolo:
-  - `SD(sync) < umbral` → **Patrón Y**, sin pausa. El tiempo se extrapola desde `sync`, sin resincronizar.
-  - `S0 > S1` → **Patrón Z**, pausa al inicio del bit. Resincroniza con el pico.
-  - en otro caso → **Patrón X**, pausa a mitad de bit. Resincroniza con el pico.
-- La siguiente ventana se abre en `fin + P1`.
+- Tracks the maximum of `SD` above the threshold, to resynchronize the symbol end.
+- At `sync`, captures `SD`, `S0` and `S1`.
+- When the window closes, it classifies the symbol:
+  - `SD(sync) < threshold` → **pattern Y**, no pause. Timing is extrapolated from `sync`, without resynchronizing.
+  - `S0 > S1` → **pattern Z**, pause at the start of the bit. Resynchronizes on the peak.
+  - otherwise → **pattern X**, pause in the middle of the bit. Resynchronizes on the peak.
+  - If there is modulation at `sync` but no peak was captured, `sync` is used as the peak so the next window is never placed in the past.
+- The next window opens at `end + P1`.
 
-### 5.2 Bits y bytes (`decodePollFrame`)
+### 5.2 Bits and bytes (`decodePollFrame`)
 
-- Cada bit se decodifica con un símbolo de retraso (`streamStatus.previous`). Así, al detectar el EoF no se cuenta como dato el "0" que lo precede. X equivale a 1; Y y Z equivalen a 0.
-- **EoF**: un patrón Y precedido de Y o de Z. Es el "0 lógico + Y" de ISO 14443-2.
-- Cada byte tiene 8 bits de datos (LSB primero) más 1 bit de paridad impar (`checkParity`). Un error de paridad marca `ParityError` en la trama.
-- Al cerrar la trama:
-  - si quedan ≥ 7 bits sueltos, se añaden como último byte;
-  - una trama de exactamente 7 bits se marca `ShortFrame` (REQA/WUPA);
-  - si se llega a `maxFrameSize`, la trama se marca `Truncated`.
-- Después se llama a `process()`, se añade la trama a la lista y se limpia el estado del demodulador, conservando `decoder->bitrate` para buscar la respuesta.
+- Each bit is decoded one symbol late (`streamStatus.previous`). This way, when the EoF is detected, the "0" that precedes it is not counted as data. X is 1; Y and Z are 0.
+- **EoF**: a Y pattern preceded by Y or Z. This is the "logic 0 + Y" of ISO 14443-2.
+- Each byte has 8 data bits (LSB first) plus 1 odd parity bit (`checkParity`). A parity error sets `ParityError` on the frame.
+- When the frame closes:
+  - if 7 or more leftover bits remain, they are added as the last byte;
+  - a frame of exactly 7 bits is flagged `ShortFrame` (REQA/WUPA);
+  - when `maxPollFrameSize` is reached, the frame is flagged `Truncated`.
+- Then `process()` is called, the frame is added to the list, and the demodulator state is cleared, keeping `decoder->bitrate` to search for the response.
 
-## 6. Trama de la tarjeta (listen)
+## 6. Card frame (listen)
 
-`process()` fija dos instantes a partir del final de la trama del lector:
+`process()` sets two instants from the end of the reader frame:
 
-- `guardEnd = frameEnd + FGT`: antes de este instante no se busca respuesta.
-- `waitingEnd = frameEnd + FWT`: si no hay respuesta, se considera timeout.
+- `guardEnd = frameEnd + FGT`: no response is searched before this instant.
+- `waitingEnd = frameEnd + FWT`: if there is no response by then, it is a timeout.
 
-La tarjeta responde a la misma velocidad que el lector.
+The card answers at the same bit rate as the reader.
 
-### 6.1 106 kbps: OOK de subportadora (fc/16) + Manchester
+### 6.1 106 kbps: subcarrier OOK (fc/16) + Manchester
 
-**SoF, patrón D (`decodeListenFrameStartAsk`)**
+**SoF, pattern D (`decodeListenFrameStartAsk`)**
 
-- Señal: `filteredValue² · 10`, la energía de la subportadora, integrada sobre ½ símbolo.
-- Correlación `S0 = I(t) − I(t − P/2)`.
-- En `guardEnd` el umbral se calibra con el ruido: `meanDeviation · P8`.
-- Si se pasa de `waitingEnd`, o reaparece modulación del lector (`modulateDepth > 0.9`), devuelve `NoPattern` (timeout).
-- El pulso válido es un máximo positivo seguido de un mínimo negativo, con anchura `P1 ± P8`. Tras validarlo, el umbral pasa a ser el 25 % del pico.
+- Signal: `filteredValue² · 10`, the subcarrier energy, integrated over ½ symbol.
+- Correlation `S0 = I(t) − I(t − P/2)`.
+- From `guardEnd`, the threshold is calibrated from the noise: `meanDeviation · P8`. It is calibrated again after a frame search reset.
+- When `waitingEnd` is passed, or reader modulation appears again (`modulateDepth > 0.9`), it returns `NoPattern` (timeout).
+- A valid pulse is a positive maximum followed by a negative minimum, with width `P1 ± P8`. Once validated, the threshold becomes 25% of the peak.
 
-**Símbolos (`decodeListenFrameSymbolAsk`)**
+**Symbols (`decodeListenFrameSymbolAsk`)**
 
-- Mismo correlador, con `SD = |S0 − S1|`.
-- `SD(sync) > umbral`: si `S0 > S1` es el **patrón E** (0, subportadora en la segunda mitad); en otro caso es el **patrón D** (1, subportadora en la primera mitad). El umbral se adapta al 25 % del último pico.
-- Sin modulación → **patrón F** (EoF).
+- Same correlator, with `SD = |S0 − S1|`.
+- `SD(sync) > threshold`: if `S0 > S1` it is **pattern E** (0, subcarrier in the second half); otherwise **pattern D** (1, subcarrier in the first half). The threshold adapts to 25% of the last peak.
+- No modulation → **pattern F** (EoF).
 
 **Bytes (`decodeListenFrame`)**
 
-- 8 bits de datos más paridad impar.
-- Se aceptan tramas de 4 bits (ACK/NAK de MIFARE).
+- 8 data bits plus odd parity.
+- 4-bit frames (MIFARE ACK/NAK) are accepted.
+- A SoF followed by too few bits is treated as a spurious pulse: partial data is discarded and the SoF search restarts.
 
-### 6.2 212/424 kbps: BPSK de subportadora + NRZ-L
+### 6.2 212/424 kbps: subcarrier BPSK + NRZ-L
 
-**SoF, patrón S (`decodeListenFrameStartBpsk`)**
+**SoF, pattern S (`decodeListenFrameStartBpsk`)**
 
-- Demodulación diferencial: `filtered(t) · filtered(t − P1) · 10`, integrada sobre ¼ de símbolo (`phaseIntegrate`).
-- El valor es positivo si el símbolo actual tiene la misma fase que el anterior, y negativo si la fase se ha invertido.
-- Busca el preámbulo de subportadora sin cambios de fase (32 ciclos de subportadora, entre 3 y 4 ETU de 106 kbps). Termina con la primera inversión de fase.
+- Differential demodulation: `filtered(t) · filtered(t − P1) · 10`, integrated over ¼ symbol (`phaseIntegrate`).
+- The value is positive when the current symbol has the same phase as the previous one, and negative when the phase is inverted.
+- Searches for the subcarrier preamble without phase changes (32 subcarrier cycles, between 3 and 4 ETU at 106 kbps). It ends at the first phase inversion.
 
-**Símbolos (`decodeListenFrameSymbolBpsk`)**
+**Symbols (`decodeListenFrameSymbolBpsk`)**
 
-- Un detector de cruce por cero, que actúa una sola vez por símbolo, resincroniza `searchSyncTime`.
-- En `sync`:
-  - si `|phase| < umbral`, es el EoF (**patrón O**);
-  - si `phase < −umbral`, hay inversión de fase: se conmuta el valor del bit y el patrón M/N;
-  - en otro caso se mantiene el valor y el umbral pasa a ser el 25 % de `phase`.
-- Bytes: 8 bits de datos más 1 de paridad. El último byte se comprueba con paridad par, invertida respecto al resto.
+- A zero-crossing detector, active only once per symbol, resynchronizes `searchSyncTime`.
+- At `sync`:
+  - if `|phase| < threshold`, it is the EoF (**pattern O**);
+  - if `phase < −threshold`, there is a phase inversion: the bit value and the M/N pattern toggle;
+  - otherwise the value is kept and the threshold becomes 25% of `phase`.
+- Bytes: 8 data bits plus 1 parity bit. The last byte is checked with even parity, inverted with respect to the others.
 
-## 7. Capa de protocolo (`process`)
+## 7. Protocol layer (`process`)
 
-Antes de clasificar, una trama del lector restaura los timings por defecto de `protocolStatus`. Después se prueban, en este orden:
+Before classification, a reader frame restores the default timings from `protocolStatus`. Then the handlers are tried in this order:
 
-| Función | Reconoce (poll) | Efecto |
+| Function | Recognizes (poll) | Effect |
 |---|---|---|
-| `processREQA` | `0x26`/`0x52`, 1 byte | Reinicia los parámetros de protocolo y `chainedFlags`. FWT pasa a ser `NFCA_FWT_ATQA` |
-| `processHLTA` | `0x50`, 4 bytes | Comprueba CRC, reinicia los parámetros y la modulación (la tarjeta no responde) |
-| `processSELn` | `0x93`/`0x95`/`0x97` | Mismos timings que REQA |
-| `processRATS` | `0xE0` | FSD = `NFC_FDS_TABLE[FSDI]`, FWT = activación. En la respuesta (ATS) lee TB(1) → SFGI, FWI |
-| `processPPSr` | `0xDx` | Comprueba CRC |
-| `processAUTH` | `0x60`/`0x61` | Tras la respuesta activa `Encrypted` en `chainedFlags`. A partir de ahí toda trama se considera de aplicación y sin paridad válida |
-| `processIBlock` / `RBlock` / `SBlock` | máscaras del PCB | Comprueban CRC |
-| `processOther` | resto | Fase de aplicación, comprueba CRC |
+| `processREQA` | `0x26`/`0x52`, 7-bit short frame | Resets the protocol parameters and `chainedFlags`. FWT becomes `NFCA_FWT_ATQA` |
+| `processHLTA` | `50 00` + CRC, 4 bytes | Checks CRC, resets the parameters and the modulation (the card does not answer) |
+| `processSELn` | `0x93`/`0x95`/`0x97` | Same timings as REQA. CRC is checked on SELECT (NVB = 0x70) and on its SAK, not on anticollision frames |
+| `processRATS` | `0xE0`, 4 bytes | FSD from FSDI, FWT = activation. The ATS response gives FSC (FSCI in T0) and TB(1) → SFGI, FWI, parsed within `min(TL, length − 2)` |
+| `processPPSr` | `0xDx` | Checks CRC |
+| `processAUTH` | `0x60`/`0x61` | After the response sets `Encrypted` in `chainedFlags`. From then on every frame is an application frame without valid parity |
+| `processIBlock` | PCB `000x x01x`, 3 bytes or more | Checks CRC |
+| `processRBlock` | PCB `101x x01x`, 3–4 bytes | Checks CRC |
+| `processSBlock` | PCB `11xx x010`, 3–5 bytes | Checks CRC. An S(WTX) response from the reader extends the FWT of the next response to `FWT × WTXM` |
+| `processOther` | anything else | Application phase, checks CRC, forgets the last command |
 
-Las respuestas se clasifican según `frameStatus.lastCommand`, que se pone a 0 tras cada respuesta.
+FSDI/FSCI values 'D' to 'F' (RFU) are interpreted as 'C' (4096 bytes), and frame sizes are limited to the stream buffer capacity (4096 + 2 bytes).
 
-Al acabar, `process()` calcula `guardEnd`/`waitingEnd` para la respuesta (tramas poll) o `guardEnd` para el siguiente comando (tramas listen). También vuelve a poner `frameType` en modo detección.
+Responses are classified according to `frameStatus.lastCommand`, which is cleared after each response and on response timeout.
+
+At the end, `process()` computes `guardEnd`/`waitingEnd` for the response (poll frames) or `guardEnd` for the next command (listen frames). It also sets `frameType` back to detection mode.
 
 ---
 
-## 8. Errores encontrados
+## 8. Errors found
 
-Están ordenados por gravedad. Las líneas se refieren a `tech/NfcA.cpp`. Las líneas citadas en cada error corresponden al código anterior a las correcciones.
+They are sorted by severity. Line numbers refer to `tech/NfcA.cpp` before the fixes.
 
-### Estado de las correcciones
+### Fix status
 
-| Error | Estado | Corrección aplicada |
+| Error | Status | Applied fix |
 |---|---|---|
-| E1 Desbordamiento de buffer | **Corregido** | `NfcStreamStatus::buffer` pasa a 4096 + 2 bytes (también protege a NFC-B, que tenía el mismo problema). El tamaño de trama se limita a la capacidad del buffer. `buildFrame` reserva el `RawFrame` con el tamaño real: el constructor por defecto reserva 512 bytes y `put()` abortaba por `assert` con tramas mayores |
-| E2 FSDI reservado | **Corregido** | `frameSizeFromIndex()` interpreta FSDI/FSCI 'D'–'F' como 'C' (ISO/IEC 14443-4) |
-| E3 S-Blocks | **Corregido** | `NFCA_SBLOCK = 0xC2`, longitud de 3 a 5 bytes (con y sin CID y WTXM) |
-| E4 `resetFrameSearch` | **Corregido** | Limpia `streamStatus` y fuerza recalibrar el umbral con el nivel de ruido |
-| E5 Lecturas fuera de rango | **Corregido** | RATS exige 4 bytes. El ATS se recorre limitado por `min(TL, limit − 2)`; si falta TB se usan los valores por defecto |
-| E6 Bloqueo de ventana | **Corregido** | Si hay modulación en el punto de sincronización pero no se capturó pico, se usa `searchSyncTime` como pico. La calibración del umbral ya no depende de `clock == guardEnd` exacto |
-| E7 `S1 ≈ −S0` | Pendiente | Hay que decidir si el comportamiento es intencionado: cambiarlo altera los resultados |
-| E8 Reloj de 32 bits | Pendiente | Afecta a todo el decodificador (NFC-A/B/F/V y `RawFrame`); requiere un cambio transversal |
-| E9 `maximumModulationDeep` | **Corregido** | La detección descarta pulsos con profundidad mayor que el máximo. Con el valor por defecto (1.0) no cambia nada |
-| E10 RawFrame::Nil | **Corregido** | `return false` |
-| E10 HLTA | **Corregido** | Se eliminó la comprobación inútil de `CrcError`; exige `50 00` y 4 bytes |
-| E10 REQA/WUPA | **Corregido** | Exige `ShortFrame` (7 bits) |
-| E10 I-Block / R-Block | **Corregido** | I-block desde 3 bytes; R-block de 3 o 4 bytes (con CID) |
-| E10 CRC de SELECT y SAK | **Corregido** | Se comprueba el CRC en SELECT (NVB = 0x70) y en su SAK; no en las tramas de anticolisión |
-| E10 FSC para tramas del lector | **Corregido** | Las tramas del lector se limitan con el FSC del ATS (FSCI de T0). Hasta recibir el ATS se usa el FSD del RATS, para no truncar tramas válidas |
-| E10 S(WTX) | **Corregido** | La respuesta S(WTX) del lector extiende el FWT de la siguiente respuesta a `FWT × WTXM` (WTXM 1–59) |
-| E10 `lastCommand` tras timeout | **Corregido** | Se reinicia en `resetModulation()` y al recibir un comando desconocido |
-| E10 Bits sueltos en anticolisión | Pendiente | `RawFrame` no tiene campo para el número de bits válidos del último byte |
-| E10 Límite de frecuencia de muestreo | **Avisado** | `initialize()` registra un aviso si la línea de retardo no cabe en `BUFFER_SIZE` |
-| E10 Campos sin uso | Pendiente | `startUpGuardTime`, `requestGuardTime`, `lastFrameEnd`, `detectIntegrate`: se dejan por si se usan en el futuro |
+| E1 Buffer overflow | **Fixed** | `NfcStreamStatus::buffer` grows to 4096 + 2 bytes (this also protects NFC-B, which had the same problem). Frame size is limited to the buffer capacity. `buildFrame` allocates the `RawFrame` with the actual size: the default constructor allocates 512 bytes and `put()` aborted on an `assert` with larger frames |
+| E2 RFU FSDI | **Fixed** | `frameSizeFromIndex()` interprets FSDI/FSCI 'D'–'F' as 'C' (ISO/IEC 14443-4) |
+| E3 S-Blocks | **Fixed** | `NFCA_SBLOCK = 0xC2`, length 3 to 5 bytes (with and without CID and WTXM) |
+| E4 `resetFrameSearch` | **Fixed** | Clears `streamStatus` and forces the threshold to be recalibrated from the noise level |
+| E5 Out of range reads | **Fixed** | RATS requires 4 bytes. The ATS is parsed within `min(TL, limit − 2)`; when TB is missing the defaults are used |
+| E6 Window lock | **Fixed** | If there is modulation at the sync point but no peak was captured, `searchSyncTime` is used as the peak. Threshold calibration no longer depends on an exact `clock == guardEnd` |
+| E7 `S1 ≈ −S0` | Pending | It must be decided whether this behavior is intended: changing it alters the results |
+| E8 32-bit clock | Pending | Affects the whole decoder (NFC-A/B/F/V and `RawFrame`); requires a cross-cutting change |
+| E9 `maximumModulationDeep` | **Fixed** | Detection discards pulses deeper than the maximum. With the default value (1.0) nothing changes |
+| E10 RawFrame::Nil | **Fixed** | `return false` |
+| E10 HLTA | **Fixed** | Removed the useless `CrcError` check; requires `50 00` and 4 bytes |
+| E10 REQA/WUPA | **Fixed** | Requires `ShortFrame` (7 bits) |
+| E10 I-Block / R-Block | **Fixed** | I-block from 3 bytes; R-block 3 or 4 bytes (with CID) |
+| E10 SELECT and SAK CRC | **Fixed** | CRC is checked on SELECT (NVB = 0x70) and its SAK; not on anticollision frames |
+| E10 FSC for reader frames | **Fixed** | Reader frames are limited by the FSC from the ATS (FSCI in T0). Until the ATS is received the FSD from RATS is used, so valid frames are not truncated |
+| E10 S(WTX) | **Fixed** | The reader S(WTX) response extends the FWT of the next response to `FWT × WTXM` (WTXM 1–59) |
+| E10 `lastCommand` after timeout | **Fixed** | Cleared in `resetModulation()` and when an unknown command is received |
+| E10 Leftover bits in anticollision | Pending | `RawFrame` has no field for the number of valid bits in the last byte |
+| E10 Sample rate limit | **Warned** | `initialize()` logs a warning when the delay line does not fit in `BUFFER_SIZE` |
+| E10 Unused fields | Pending | `startUpGuardTime`, `requestGuardTime`, `lastFrameEnd`, `detectIntegrate`: kept in case they are used in the future |
 
+Related issue outside NFC-A: NFC-B maps RFU FSDI values to a frame size of 0, like E2. It was not changed.
 
-### E1. Desbordamiento de `streamStatus.buffer` con FSD ≥ 512. **Grave**
+### E1. `streamStatus.buffer` overflow with FSD ≥ 512. **Severe**
 
-`streamStatus.buffer` tiene 512 bytes (`NfcTech.h`), pero `processRATS` (l. 1716) asigna `maxFrameSize = NFC_FDS_TABLE[fsdi]`, que puede valer hasta 4096 (FSDI 9–C).
+`streamStatus.buffer` was 512 bytes (`NfcTech.h`), but `processRATS` (l. 1716) set `maxFrameSize = NFC_FDS_TABLE[fsdi]`, which can be up to 4096 (FSDI 9–C).
 
-- Con FSD ≥ 1024, el bucle de bytes escribe más allá del array: `bytes < maxFrameSize` lo permite.
-- Con FSD = 512, el caso de truncado escribe en `buffer[512]`. Pasa en `bits >= 7` (l. 455), `bits == 4` (l. 615) y `bits == 9` (l. 728), porque se escribe en `buffer[bytes++]` justo cuando `bytes == maxFrameSize`.
+- With FSD ≥ 1024, the byte loop wrote past the array: `bytes < maxFrameSize` allowed it.
+- With FSD = 512, the truncation path wrote to `buffer[512]`. This happened for `bits >= 7` (l. 455), `bits == 4` (l. 615) and `bits == 9` (l. 728), because `buffer[bytes++]` is written right when `bytes == maxFrameSize`.
 
-La escritura corrompe `frameStatus`, el miembro que viene a continuación en `Impl`. Basta un RATS con FSDI ≥ 9, real o corrupto por ruido.
+The write corrupted `frameStatus`, the next member in `Impl`. A single RATS with FSDI ≥ 9, real or corrupted by noise, was enough. With the synthetic test, the original decoder hangs.
 
-**Corrección**: limitar `maxFrameSize` a `sizeof(streamStatus.buffer) − 1`, o ampliar el buffer a 4096 + margen.
+**Fix**: limit `maxFrameSize` to `sizeof(streamStatus.buffer) − 1`, or grow the buffer to 4096 plus a margin.
 
-### E2. FSDI reservado (D–F) bloquea el decodificador hasta el siguiente REQA. **Grave**
+### E2. RFU FSDI (D–F) locks the decoder until the next REQA. **Severe**
 
-`NFC_FDS_TABLE[13..15] = 0`. Con `maxFrameSize = 0`, cada trama se trunca en su primer símbolo, o se aborta con `resetModulation()`, hasta que llegue un REQA, WUPA o HLTA. ISO 14443-4 y NFC Forum piden tratar un FSDI reservado como el máximo (o 256).
+`NFC_FDS_TABLE[13..15] = 0`. With `maxFrameSize = 0`, every frame was truncated on its first symbol, or aborted with `resetModulation()`, until a REQA, WUPA or HLTA arrived. ISO 14443-4 and NFC Forum require an RFU FSDI to be treated as the maximum (or 256).
 
-**Corrección**: mapear FSDI > 0xC a 256 o 4096.
+**Fix**: map FSDI > 0xC to 256 or 4096.
 
-### E3. Las S-Blocks nunca se reconocen. **Media**
+### E3. S-Blocks are never recognized. **Medium**
 
-`NFCA_SBLOCK = 0xC0`, pero un PCB de S-block cumple `(pcb & 0xC7) == 0xC2`, porque el bit b2 siempre vale 1. Además se exige `limit() == 4`, pero S(DESELECT) sin CID ocupa 3 bytes.
+`NFCA_SBLOCK` was `0xC0`, but an S-block PCB satisfies `(pcb & 0xC7) == 0xC2`, because bit b2 is always 1. It also required `limit() == 4`, but S(DESELECT) without CID is 3 bytes long.
 
-Resultado: DESELECT (`C2`) y WTX (`F2`) acaban en `processOther`. El parser de la aplicación (`ParserNfc.cpp:245`) sí usa 0xC2 con 3–4 bytes.
+Result: DESELECT (`C2`) and WTX (`F2`) ended up in `processOther`. The application parser (`ParserNfc.cpp:245`) does use 0xC2 with 3–4 bytes.
 
-**Corrección**: `NFCA_SBLOCK = 0xC2` y `limit() >= 3 && limit() <= 4` (o 5 con CID).
+**Fix**: `NFCA_SBLOCK = 0xC2` and `limit() >= 3 && limit() <= 4` (or 5 with CID).
 
-### E4. `resetFrameSearch()` no limpia el estado de bits ni el umbral. **Media**
+### E4. `resetFrameSearch()` does not clear the bit state or the threshold. **Medium**
 
-Si un pulso espurio se toma como SoF y se decodifican unos pocos bits antes del EoF (l. 653), solo se reinician los tiempos de modulación y `frameStart`. Quedan sin limpiar:
+If a spurious pulse was taken as SoF and a few bits were decoded before the EoF (l. 653), only the modulation times and `frameStart` were reset. These were left uncleared:
 
-- `streamStatus.bits`, `data` y `flags`: la siguiente respuesta real empieza desplazada y con paridad errónea;
-- `searchValueThreshold`: queda en el 25 % del pico espurio. Como solo se recalibra cuando `clock == guardEnd`, y ese instante ya pasó, el nuevo SoF se busca con un umbral arbitrario.
+- `streamStatus.bits`, `data` and `flags`: the next real response started shifted and with wrong parity;
+- `searchValueThreshold`: it stayed at 25% of the spurious peak. Since it was only recalibrated when `clock == guardEnd`, and that instant had already passed, the new SoF was searched with an arbitrary threshold.
 
-**Corrección**: `streamStatus = {}` en `resetFrameSearch()` y recalcular el umbral desde `meanDeviation`.
+**Fix**: `streamStatus = {}` in `resetFrameSearch()`, and recompute the threshold from `meanDeviation`.
 
-### E5. Lecturas fuera de rango en RATS/ATS. **Media**
+### E5. Out of range reads in RATS/ATS. **Medium**
 
-- `processRATS` (poll) lee `frame[1]` sin comprobar que `limit() >= 2`.
-- En el ATS, `T0`, `TA` y `TB` se leen sin comparar con `TL` ni con `limit()`. Si un ATS viene corto o con TL erróneo, se usan los bytes de CRC (o memoria fuera de la trama, porque `Buffer::operator[]` no comprueba límites) como TB. Eso configura FWT/SFGT con valores arbitrarios, y FWI puede llegar a dar FWT de varios segundos.
+- `processRATS` (poll) read `frame[1]` without checking `limit() >= 2`.
+- In the ATS, `T0`, `TA` and `TB` were read without comparing against `TL` or `limit()`. With a short ATS or a wrong TL, CRC bytes (or memory outside the frame, because `Buffer::operator[]` does not check bounds) were used as TB. That configured FWT/SFGT with arbitrary values, and FWI could result in an FWT of several seconds.
 
-**Corrección**: validar `offset < tl && offset < limit() − 2` antes de cada lectura.
+**Fix**: check `offset < tl && offset < limit() − 2` before each read.
 
-### E6. Bloqueo si la ventana de búsqueda queda en el pasado. **Baja (robustez)**
+### E6. Lock when the search window falls in the past. **Low (robustness)**
 
-Las búsquedas terminan con `signalClock == searchEndTime` o `== searchSyncTime` (l. 321, 873, 1029, 1162, 1304, BPSK). Si por cualquier camino el fin de ventana se calcula en el pasado, el bucle consume muestras sin fin y el decodificador se queda en esa trama hasta el final del stream. Ejemplos:
+Searches end with `signalClock == searchEndTime` or `== searchSyncTime` (l. 321, 873, 1029, 1162, 1304, BPSK). If the window end is ever computed in the past, the loop consumes samples forever and the decoder stays on that frame until the end of the stream. Examples:
 
-- `correlatedPeakTime == 0` al resincronizar en `decodePollFrameSymbolAsk`. Es posible si `SD(sync) == umbral`, porque el pico exige `>` y la clasificación exige `<`.
-- El desbordamiento de `signalClock` (E8).
+- `correlatedPeakTime == 0` when resynchronizing in `decodePollFrameSymbolAsk`. This is possible when `SD(sync) == threshold`, because the peak requires `>` and the classification requires `<`.
+- `signalClock` wrap-around (E8).
 
-Lo mismo pasa con la calibración `clock == guardEnd` (l. 987, 1253): si `guardEnd` ya ha pasado, el umbral no se recalibra.
+The same applied to the `clock == guardEnd` calibration (l. 987, 1253): if `guardEnd` had already passed, the threshold was not recalibrated.
 
-**Corrección**: usar `>=` para cerrar las ventanas, y abortar la trama si `searchEndTime < signalClock`.
+**Fix**: use `>=` to close the windows, and abort the frame if `searchEndTime < signalClock`.
 
-### E7. `S1` no es una medida independiente. **Baja (claridad / posible error)**
+### E7. `S1` is not an independent measurement. **Low (clarity / possible error)**
 
-`filterPoint3 = (t + P1 − 1) % P1` apunta a la posición escrita en la muestra anterior (`t − 1`), no a la más antigua del buffer (`t + 1 ≡ t − P1 + 1`). Por eso:
+`filterPoint3 = (t + P1 − 1) % P1` points to the slot written on the previous sample (`t − 1`), not to the oldest slot in the buffer (`t + 1 ≡ t − P1 + 1`). Therefore:
 
 ```
 S1 = I(t−P/2) − I(t−1) ≈ −S0
 SD = S0 − S1 = 2·S0 − (s[t] − s[t−P/2])
 ```
 
-La comparación `S0 > S1` equivale a `S0 > 0`. El decodificador funciona porque los umbrales (0.75·env, pico/2) están calibrados con este `SD ≈ 2·S0`, pero el nombre y el comentario sugieren otra cosa.
+The comparison `S0 > S1` is equivalent to `S0 > 0`. The decoder works because the thresholds (0.75·env, peak/2) are calibrated for this `SD ≈ 2·S0`, but the name and the comment suggest otherwise.
 
-**Corrección**: o bien es intencionado, y se documenta y se simplifica a `SD = 2·S0`, o bien se pretendía comparar con el semisímbolo anterior, y hay que revisarlo junto con los umbrales.
+**Fix**: either it is intended, and it should be documented and simplified to `SD = 2·S0`, or the intent was to compare with the previous half symbol, and it must be reviewed together with the thresholds.
 
-### E8. Reloj de 32 bits. **Baja (afecta a todo el decodificador)**
+### E8. 32-bit clock. **Low (affects the whole decoder)**
 
-`signalClock`, `frameStart`/`frameEnd` y todos los `search*Time` son `unsigned int`. A 10 MS/s desbordan cada ~7,1 min, y a 40 MS/s cada ~1,8 min. En capturas en vivo largas:
+`signalClock`, `frameStart`/`frameEnd` and all `search*Time` fields are `unsigned int`. At 10 MS/s they wrap every ~7.1 min, and at 40 MS/s every ~1.8 min. In long live captures:
 
-- las marcas de tiempo de las tramas (`timeStart = frameStart / fs`) vuelven a 0;
-- las comparaciones `<`/`>` de las ventanas fallan alrededor del desbordamiento.
+- frame timestamps (`timeStart = frameStart / fs`) go back to 0;
+- the `<`/`>` window comparisons fail around the wrap-around.
 
-**Corrección**: usar `uint64_t` para el reloj y los tiempos, o comparar con diferencias con signo.
+**Fix**: use `uint64_t` for the clock and the times, or compare with signed differences.
 
-### E9. `maximumModulationDeep` no se usa en NFC-A. **Baja**
+### E9. `maximumModulationDeep` is not used in NFC-A. **Low**
 
-Se configura desde la API y la interfaz (`setModulationThresholdNfcA(min, max)`) y aparece en el log, pero ningún camino de NFC-A la consulta. En NFC-B sí se usa. El parámetro "max" de NFC-A no tiene efecto.
+It is configured from the API and the UI (`setModulationThresholdNfcA(min, max)`) and appears in the log, but no NFC-A code path read it. NFC-B does use it. The NFC-A "max" parameter had no effect.
 
-### E10. Otros detalles menores
+### E10. Other minor details
 
-- `decodeListenFrame` devuelve `RawFrame::Nil` en una función `bool` (l. 593). Funciona por `operator bool()` (devuelve `false`), pero debería ser `return false;`.
-- `processHLTA` comprueba `!hasFrameFlags(CrcError)` antes de calcular el CRC, así que la condición siempre se cumple. Tampoco comprueba que el segundo byte sea `0x00`.
-- `processREQA` acepta `0x26`/`0x52` como trama de 8 bits. Debería exigir `ShortFrame` (7 bits).
-- `processIBlock` exige `limit() > 4`, por lo que no reconoce I-blocks con INF de 0–1 byte (p. ej. encadenado o R/ACK de 1 byte). `processRBlock`, con `limit() == 3`, no reconoce R-blocks con CID.
-- `processSELn` no comprueba CRC en SELECT (NVB = 0x70) ni en SAK.
-- Las tramas de anticolisión orientadas a bit (NVB ≠ 0x70) pueden tener entre 1 y 6 bits en el último byte, y esos bits se descartan sin ningún flag. Lo mismo ocurre con respuestas que no sean de 4 ni de 8·n bits.
-- `maxFrameSize` (el FSD, máximo que recibe el lector) también se aplica a las tramas del lector, cuando el límite correcto para esas es el FSC (FSCI en T0 del ATS).
-- No se procesa S(WTX). Una respuesta tras WTX que supere el FWT negociado se pierde por timeout.
-- Si un comando no tiene respuesta (timeout), `lastCommand` no se reinicia. Si después llega una trama no reconocida (`processOther`, que no modifica `lastCommand`), su respuesta se interpretaría según el comando anterior. Por ejemplo, se parsearía como ATS y cambiaría FWT/SFGT.
-- Hay campos que se calculan pero no se usan: `startUpGuardTime`, `requestGuardTime`, `lastFrameEnd` y `detectIntegrate`.
-- La longitud de la cadena de retardos (`symbolDelayDetect` + P1 a 424 kbps ≈ 224/fc) debe caber en `BUFFER_SIZE = 1024`, lo que limita fs a ≈ 60 MS/s. No se comprueba.
+- `decodeListenFrame` returned `RawFrame::Nil` from a `bool` function (l. 593). It worked through `operator bool()` (returns `false`), but it should be `return false;`.
+- `processHLTA` checked `!hasFrameFlags(CrcError)` before computing the CRC, so the condition was always true. It did not check that the second byte is `0x00` either.
+- `processREQA` accepted `0x26`/`0x52` as an 8-bit frame. It should require `ShortFrame` (7 bits).
+- `processIBlock` required `limit() > 4`, so it did not recognize I-blocks with 0–1 byte of INF (e.g. chaining). `processRBlock`, with `limit() == 3`, did not recognize R-blocks with CID.
+- `processSELn` did not check CRC on SELECT (NVB = 0x70) or on SAK.
+- Bit-oriented anticollision frames (NVB ≠ 0x70) can have 1 to 6 bits in the last byte, and those bits are discarded without any flag. The same happens with responses that are neither 4 nor 8·n bits.
+- `maxFrameSize` (the FSD, maximum frame the reader receives) was also applied to reader frames, when the correct limit for those is the FSC (FSCI in T0 of the ATS).
+- S(WTX) was not handled. A response after WTX that exceeded the negotiated FWT was lost as a timeout.
+- When a command had no response (timeout), `lastCommand` was not reset. If an unrecognized frame came next (`processOther`, which did not modify `lastCommand`), its response would be interpreted according to the previous command. For example, it would be parsed as an ATS and change FWT/SFGT.
+- Some fields are computed but never used: `startUpGuardTime`, `requestGuardTime`, `lastFrameEnd` and `detectIntegrate`.
+- The delay line length (`symbolDelayDetect` + P1 at 424 kbps ≈ 224/fc) must fit in `BUFFER_SIZE = 1024`, which limits fs to about 60 MS/s. This was not checked.
 
-## 9. Optimizaciones
+## 9. Optimizations
 
-### 9.1 Aplicadas
+### 9.1 Applied
 
-Todas mantienen la salida exacta del decodificador: con las 19 capturas de `wav/` las tramas generadas (datos, flags, fase y muestras de inicio y fin) son idénticas byte a byte antes y después, tanto con todas las tecnologías activas como con solo NFC-A.
+All of them keep the decoder output exactly the same: on the 19 captures in `wav/` the generated frames (data, flags, phase and start and end samples) are byte-identical before and after, both with all technologies enabled and with NFC-A only.
 
-1. **Una división por muestra en lugar de tres.** `correlationPoints()` calcula `filterPoint1 = signalIndex % P1` y deriva los otros dos puntos con una comparación y una resta (`point2 = p1 + P2`, restando P1 si se pasa; `point3 = p1 − 1` con vuelta a `P1 − 1`). Se usa en detección y en los demoduladores ASK.
-2. **Inversa precalculada.** `period2Inverse[rate] = 1 / P2` se calcula en `initialize()`, y la normalización de `SD` pasa a ser una multiplicación.
-3. **Copias locales en `detectModulation`.** `signalClock` y el puntero de debug se leen una vez por llamada. Antes el compilador tenía que releerlos de memoria en cada uso, porque las escrituras en `NfcModulationStatus` podían solaparse con ellos.
-4. **Paridad sin bucle.** `checkParity` usa un plegado XOR de 8 bits, portable a MSVC.
-5. **Código duplicado eliminado.**
-   - `resetSearch(modulation)` sustituye a los 5 bloques de reinicio de búsqueda, incluido `resetFrameSearch`. Algunos bloques no limpiaban `searchPulseWidth` ni `symbolRiseTime`; ambos se escriben siempre antes de leerse, así que limpiarlos no cambia el resultado.
-   - `buildFrame(type, rate, flags)` sustituye a los 3 bloques que construían un `RawFrame`.
+1. **One division per sample instead of three.** `correlationPoints()` computes `filterPoint1 = signalIndex % P1` and derives the other two points with a comparison and a subtraction (`point2 = p1 + P2`, subtracting P1 on overflow; `point3 = p1 − 1`, wrapping to `P1 − 1`). It is used in detection and in the ASK demodulators.
+2. **Precomputed inverse.** `period2Inverse[rate] = 1 / P2` is computed in `initialize()`, and the `SD` normalization becomes a multiplication.
+3. **Local copies in `detectModulation`.** `signalClock` and the debug pointer are read once per call. Before, the compiler had to reload them from memory on every use, because writes to `NfcModulationStatus` could alias them.
+4. **Parity without a loop.** `checkParity` uses an 8-bit XOR fold, portable to MSVC.
+5. **Duplicated code removed.**
+   - `resetSearch(modulation)` replaces the 5 search reset blocks, including `resetFrameSearch`. Some blocks did not clear `searchPulseWidth` or `symbolRiseTime`; both are always written before being read, so clearing them does not change the result.
+   - `buildFrame(type, rate, flags)` replaces the 3 blocks that built a `RawFrame`.
 
-**Rendimiento medido** (mejor de 40 repeticiones, 8 rondas intercaladas, en una máquina compartida con bastante ruido):
+**Measured performance** (best of 40 repetitions, 8 interleaved rounds, on a shared and fairly noisy machine):
 
-| Escenario | Mejora media |
+| Scenario | Average improvement |
 |---|---|
-| Solo NFC-A, `test_NFC-A_106kbps_424kbps_001` | ≈ +14 % |
-| Solo NFC-A, `test_NFC-F_212kbps_003` (detector NFC-A sin tramas A) | ≈ +16 % |
-| Las cuatro tecnologías activas | ≈ +5–10 % (B/F/V y `nextSample` siguen igual) |
+| NFC-A only, `test_NFC-A_106kbps_424kbps_001` | ≈ +14% |
+| NFC-A only, `test_NFC-F_212kbps_003` (NFC-A detector without A frames) | ≈ +16% |
+| All four technologies enabled | ≈ +5–10% (B/F/V and `nextSample` are unchanged) |
 
-### 9.2 Descartadas o pendientes
+The bug fixes in section 8 did not change these figures.
 
-- **Índices circulares incrementales** (un contador por velocidad en lugar de `%`): se probó y resultó **más lento** (~5 %). Mantener y validar el estado del contador cuesta más que una división entera en una CPU actual.
-- **Simplificar el correlador a `SD = 2·S0`** (E7): cambiaría `SD` en el término `s[t] − s[t−P/2]` y, con ello, los resultados. Antes hay que decidir si el comportamiento actual es intencionado.
-- **Salida temprana en detección**: el camino sin señal ya se reduce a unas pocas comparaciones, así que la ganancia esperada es pequeña.
-- **Reinicios más baratos**: `resetModulation()` limpia 3 × 8 KB y `decodePollFrame` hace un `memset` de 8 KB. `integrationData` se indexa con el buffer completo y se leen valores antiguos tras el reinicio, así que limpiar menos cambiaría la salida. Se ejecuta una vez por trama, por lo que no compensa.
-- **Debug en tiempo de compilación** (plantilla o `constexpr`): la comprobación ya es una sola rama muy predecible tras la copia local.
-- Fuera del alcance de NFC-A: `NfcDecoderStatus::nextSample()` supone ~30 % del tiempo (con una división por `signalEnvelope` en cada muestra) y es común a todas las tecnologías.
+### 9.2 Discarded or pending
 
-## 10. Pruebas
+- **Incremental circular indexes** (one counter per bit rate instead of `%`): tried, and it turned out **slower** (~5%). Keeping and validating the counter state costs more than an integer division on a current CPU.
+- **Simplify the correlator to `SD = 2·S0`** (E7): it would change `SD` by the `s[t] − s[t−P/2]` term and therefore the results. It must first be decided whether the current behavior is intended.
+- **Early exit in detection**: the no-signal path already reduces to a few comparisons, so the expected gain is small.
+- **Cheaper resets**: `resetModulation()` clears 3 × 8 KB and `decodePollFrame` does an 8 KB `memset`. `integrationData` is indexed over the whole buffer and old values are read after the reset, so clearing less would change the output. It runs once per frame, so it is not worth it.
+- **Compile-time debug** (template or `constexpr`): after the local copy the check is a single, highly predictable branch.
+- Outside the NFC-A scope: `NfcDecoderStatus::nextSample()` takes ~30% of the time (with a division by `signalEnvelope` on every sample) and is shared by all technologies.
 
-En `wav/` hay capturas de referencia (`test_*.wav`) con su salida esperada (`*.json`). Cualquier cambio en el demodulador debería validarse comparando las tramas decodificadas con esos ficheros antes y después del cambio. Con el código actual, las 19 capturas reproducen exactamente sus `.json`, y la salida es idéntica byte a byte a la del código anterior a las optimizaciones y correcciones.
+## 10. Tests
 
-Ninguna de esas capturas contiene los casos de los errores E1–E6, así que también se validaron con señales NFC-A de 106 kbps generadas sintéticamente (lector con ASK 100 % y Miller modificado, tarjeta con subportadora y Manchester, y ruido gaussiano):
+### 10.1 Running the tests
 
-| Escenario | Código anterior | Código corregido |
+The decoder regression tests live in `src/nfc-test/test-decoder` and are registered with CTest:
+
+```
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target test-decoder
+ctest --test-dir build -R decoder
+```
+
+`test-decoder` can also be run directly on one or more captures:
+
+```
+build/src/nfc-test/test-decoder/test-decoder [-v] wav/test_NFC-A_106kbps_001.wav ...
+```
+
+For each `<capture>.wav` it decodes the signal with `lab::NfcDecoder` and compares the decoded frames with `<capture>.json`, which uses the trace storage format. Only the fields present in each expected frame are compared (`techType`, `frameType`, `framePhase`, `frameFlags`, `frameRate`, `sampleStart`, `sampleEnd`, `frameData`), and carrier frames are ignored. The exit code is 0 when every capture matches.
+
+### 10.2 Reference captures
+
+`wav/` holds reference captures (`test_*.wav`) with their expected output (`*.json`), one CTest test per capture (`decoder-test_*`). Any demodulator change should be validated against them. With the current code all 19 captures reproduce their `.json` exactly, and the output is byte-identical to the code before the optimizations and fixes.
+
+### 10.3 Synthetic NFC-A captures
+
+None of the reference captures contains the cases of errors E1–E6, so `scripts/nfca_synthetic.py` generates 106 kbps NFC-A captures with their expected frames. The reader uses 100% ASK with modified Miller coding, the card uses subcarrier load modulation with Manchester coding, and deterministic gaussian noise is added. The expected frames check content, type, phase and flags, not exact sample positions.
+
+CTest runs the generator into the build directory (`decoder-synthetic-generate`) and then one test per scenario (`decoder-nfca-synthetic-*`). They need Python 3; without it they are skipped.
+
+| Scenario | Before the fixes | After the fixes |
 |---|---|---|
-| Activación completa (REQA, ATQA, RATS, ATS, I-block) | Correcto | Correcto |
-| RATS con FSDI = C y trama del lector de 703 bytes (E1) | Se cuelga (corrupción de memoria) | Trama de 703 bytes completa y sin errores |
-| RATS con FSDI = F (E2) | Pierde todas las tramas posteriores | Decodifica todas |
-| ATS truncado: TL = 5 pero solo TL y T0 (E5) | Usa bytes de CRC como TB | Usa los timings por defecto |
-| S(WTX) con WTXM = 4 y respuesta a 12 ms, por encima del FWT de 4,8 ms | Pierde la respuesta | Decodifica la respuesta |
-| Ráfaga espuria de 2 bits antes del ATQA (E4) | ATQA `13:00` con error de paridad | ATQA `04:00` correcto |
-| S(DESELECT) de 3 bytes (E3) | Clasificado como trama genérica | Clasificado como S-block |
+| `basic`: full activation (REQA, ATQA, RATS, ATS, I-block) | Pass | Pass |
+| `fsdi_4096`: RATS with FSDI = C and a 703-byte reader frame (E1) | **Fails**: hangs (memory corruption), stopped by the test timeout | 703-byte frame complete and without errors |
+| `fsdi_rfu`: RATS with FSDI = F (E2) | **Fails**: all following frames are lost | All frames decoded |
+| `wtx`: S(WTX) with WTXM = 4 and response at 12 ms, over the 4.8 ms FWT | **Fails**: response lost | Response decoded |
+| `spurious`: 2-bit spurious burst before ATQA (E4) | **Fails**: ATQA `13:00` with parity error | ATQA `04:00` correct |
+| `ats_short`: truncated ATS, TL = 5 but only TL and T0 (E5) | Pass (CRC bytes were used as TB; only internal timing changes) | Pass, default timings used |
+| `sblock`: 3-byte S(DESELECT) (E3) | Pass (classified as a generic frame with the same phase and flags) | Pass, classified as S-block |
+
+The last two scenarios do not change the decoded frames, so they act as non-regression tests rather than detecting the original errors.
