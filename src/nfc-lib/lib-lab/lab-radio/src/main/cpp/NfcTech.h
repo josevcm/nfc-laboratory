@@ -29,6 +29,8 @@
 #include <hw/SignalBuffer.h>
 #include <hw/RecordDevice.h>
 
+#include <lab/nfc/Nfc.h>
+
 #define DEBUG_CHANNELS 10
 #define DEBUG_SIGNAL_VALUE_CHANNEL 0
 #define DEBUG_SIGNAL_FILTERED_CHANNEL 1
@@ -397,6 +399,19 @@ struct NfcDecoderStatus
 
 struct NfcTech
 {
+   /*
+    * Convert ISO-DEP FSDI / FSCI to frame size in bytes, limited to stream buffer capacity
+    */
+   static unsigned int frameSizeFromIndex(unsigned int index)
+   {
+      // ISO/IEC 14443-4: values 'D' to 'F' are RFU and must be interpreted as 'C'
+      unsigned int size = NFC_FDS_TABLE[index > 0x0C ? 0x0C : index];
+
+      // truncated frames store one more byte, keep room for it
+      constexpr unsigned int capacity = sizeof(NfcStreamStatus::buffer) - 1;
+
+      return size < capacity ? size : capacity;
+   }
 };
 
 }

@@ -70,8 +70,11 @@ struct NfcB::Impl : NfcTech
    // protocol processing status
    struct NfcProtocolStatus
    {
-      // The FSD defines the maximum size of a frame the PCD is able to receive
+      // The FSD defines the maximum size of a frame the PCD is able to receive (limit for listen frames)
       unsigned int maxFrameSize;
+
+      // The FSC defines the maximum size of a frame the PICC is able to receive (limit for poll frames)
+      unsigned int maxPollFrameSize;
 
       // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
       unsigned int frameGuardTime;
@@ -137,6 +140,7 @@ struct NfcB::Impl : NfcTech
     */
    static void resetListenSearch(NfcModulationStatus *modulation)
    {
+      modulation->detectorPeakValue = 0;
       modulation->searchModeState = LISTEN_MODE_TR1;
       modulation->searchStartTime = 0;
       modulation->searchEndTime = 0;
@@ -145,12 +149,29 @@ struct NfcB::Impl : NfcTech
    }
 
    /*
+    * Reset protocol parameters to default values
+    */
+   void resetProtocol()
+   {
+      protocolStatus.maxFrameSize = 256;
+      protocolStatus.maxPollFrameSize = 256;
+      protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_SFGT_DEF);
+      protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF);
+      protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FWT_DEF);
+      protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_RGT_DEF);
+      protocolStatus.tr1MinimumTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TR1_MIN);
+   }
+
+   /*
     * Build a frame from current frame and stream status
     */
    RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
    {
-      RawFrame frame = RawFrame(FrameTech::NfcBTech, frameType);
+      // default frame capacity is 512 bytes, allocate enough room for large ISO-DEP frames
+      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
 
+      frame.setTechType(FrameTech::NfcBTech);
+      frame.setFrameType(frameType);
       frame.setFrameRate(decoder->bitrate->symbolsPerSecond);
       frame.setSampleStart(frameStatus.frameStart);
       frame.setSampleEnd(frameStatus.frameEnd);
@@ -234,6 +255,10 @@ struct NfcB::Impl : NfcTech
          bitrate->offsetDelay4Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
          bitrate->offsetDelay8Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period8SymbolSamples;
 
+         // all delayed signal pointers must be inside the sample buffer, otherwise high sample rates read overwritten data
+         if (bitrate->symbolDelayDetect + bitrate->period1SymbolSamples >= BUFFER_SIZE)
+            log->warn("sample rate {} too high for {} kbps decoding, delay line exceeds buffer size", {decoder->sampleRate, round(bitrate->symbolsPerSecond / 1E3)});
+
          log->info("{} kpbs parameters:", {round(bitrate->symbolsPerSecond / 1E3)});
          log->info("\tsymbolsPerSecond     {}", {bitrate->symbolsPerSecond});
          log->info("\tperiod1SymbolSamples {} ({} us)", {bitrate->period1SymbolSamples, 1E6 * bitrate->period1SymbolSamples / decoder->sampleRate});
@@ -251,11 +276,7 @@ struct NfcB::Impl : NfcTech
       }
 
       // initialize NFC-B protocol specific parameters
-      protocolStatus.maxFrameSize = 256;
-      protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_SFGT_DEF);
-      protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF);
-      protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FWT_DEF);
-      protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_RGT_DEF);
+      resetProtocol();
       protocolStatus.tr1MinimumTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TR1_MIN);
       protocolStatus.tr1MaximumTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TR1_MAX);
       protocolStatus.listenS1MinimumTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TLISTEN_S1_MIN);
@@ -430,7 +451,8 @@ struct NfcB::Impl : NfcTech
          {
             resetSearch(modulation);
 
-            break;
+            // continue with next bitrate
+            continue;
          }
 
          if (debug)
@@ -502,8 +524,8 @@ struct NfcB::Impl : NfcTech
          else if (streamStatus.bits == 0 && pattern == PatternH && streamStatus.skip == 6)
             streamError = true;
 
-            // frame ends width truncate error max frame size is reached
-         else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+            // frame ends width truncate error if a full character is received when max frame size is reached
+         else if (streamStatus.bits == 9 && pattern == PatternH && streamStatus.bytes == protocolStatus.maxPollFrameSize)
             truncateError = true;
 
             // if pattern H is detected after complete one byte, EGT are present and must be skipped up tu 57us (6 EUT)
@@ -618,17 +640,30 @@ struct NfcB::Impl : NfcTech
       {
          while ((pattern = decodeListenFrameSymbolBpsk(buffer)) > NoPattern)
          {
+            // subcarrier lost: frame ends without EoS (may be suppressed by ATTRIB), stream error if inside a character
+            if (pattern == PatternO)
+            {
+               if (streamStatus.bits == 0)
+                  frameEnd = true;
+               else
+                  streamError = true;
+            }
+
             // frame ends if found 10 ETU width Pattern-M (10 consecutive bits at value 0)
-            if (streamStatus.bits == 9 && !streamStatus.data && pattern == PatternM)
+            else if (streamStatus.bits == 9 && !streamStatus.data && pattern == PatternM)
                frameEnd = true;
 
-               // frame stream error if start bit is PatternN (1) or end bit is pattern M (0)
-            else if ((streamStatus.bits == 0 && pattern == PatternN) || (streamStatus.bits == 9 && pattern == PatternM))
+               // frame stream error if end bit is pattern M (0) or EGT is longer than 2 ETU
+            else if ((streamStatus.bits == 9 && pattern == PatternM) || (streamStatus.bits == 0 && pattern == PatternN && streamStatus.skip == 2))
                streamError = true;
 
-               // frame ends width truncate error max frame size is reached
-            else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+               // frame ends width truncate error if a full character is received when max frame size is reached
+            else if (streamStatus.bits == 9 && pattern == PatternN && streamStatus.bytes == protocolStatus.maxFrameSize)
                truncateError = true;
+
+               // if pattern N is detected after complete one byte, EGT are present and must be skipped up to 2 ETU
+            else if ((streamStatus.bits == 0 && pattern == PatternN) && ++streamStatus.skip)
+               continue;
 
             // detect end of frame
             if (frameEnd || streamError || truncateError)
@@ -675,6 +710,7 @@ struct NfcB::Impl : NfcTech
                streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
                streamStatus.data = 0;
                streamStatus.bits = 0;
+               streamStatus.skip = 0;
             }
          }
       }
@@ -807,8 +843,8 @@ struct NfcB::Impl : NfcTech
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // using signal st.dev as lower level threshold scaled to 1/8 symbol to compensate integration
-         if (decoder->signalClock == frameStatus.guardEnd)
+         // using signal st.dev as lower level threshold, calibrated once after guard time
+         if (!modulation->searchValueThreshold)
             modulation->searchValueThreshold = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].meanDeviation;
 
          // check if frame waiting time exceeded without detect modulation
@@ -834,6 +870,10 @@ struct NfcB::Impl : NfcTech
          {
             if (!modulation->symbolStartTime)
                modulation->symbolStartTime = decoder->signalClock;
+
+            // phase peak detector, used to set the phase threshold for symbol decoding
+            if (modulation->phaseIntegrate > modulation->detectorPeakValue)
+               modulation->detectorPeakValue = modulation->phaseIntegrate;
 
             modulation->searchEndTime = decoder->signalClock + bitrate->period2SymbolSamples;
          }
@@ -1053,6 +1093,9 @@ struct NfcB::Impl : NfcTech
       frameStatus.frameStart = 0;
       frameStatus.frameEnd = 0;
 
+      // no response is pending, forget last command
+      frameStatus.lastCommand = 0;
+
       // restore bitrate
       decoder->bitrate = nullptr;
 
@@ -1087,6 +1130,9 @@ struct NfcB::Impl : NfcTech
             break;
 
          if (processATTRIB(frame))
+            break;
+
+         if (processHLTB(frame))
             break;
 
          processOther(frame);
@@ -1146,16 +1192,16 @@ struct NfcB::Impl : NfcTech
    {
       if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == NFCB_REQB && frame.limit() == 5)
+         // Slot-MARKER (APn = n << 4 | 0x05, n = 1..15), the PICC answers with ATQB in the slot
+         bool slotMarker = (frame[0] & 0x0F) == 0x05 && frame[0] != NFCB_REQB && frame.limit() == 3;
+
+         if ((frame[0] == NFCB_REQB && frame.limit() == 5) || slotMarker)
          {
-            frameStatus.lastCommand = frame[0];
+            frameStatus.lastCommand = NFCB_REQB;
 
             // This commands starts or wakeup card communication, so reset the protocol parameters to the default values
-            protocolStatus.maxFrameSize = 256;
-            protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_SFGT_DEF);
-            protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF);
-            protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FWT_DEF);
-            protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_RGT_DEF);
+            if (!slotMarker)
+               resetProtocol();
 
             // The REQ-A Response must start between this range
             frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCB_TR0_MIN; // ATQ-B response guard
@@ -1176,18 +1222,26 @@ struct NfcB::Impl : NfcTech
       {
          if (frameStatus.lastCommand == NFCB_REQB)
          {
-            int fdsi = (frame[10] >> 4) & 0x0f;
-            int fwi = (frame[11] >> 4) & 0x0f;
+            // ATQB: 0x50, PUPI (4), application data (4), protocol info (3 or 4) and CRC
+            if (frame.limit() >= 14 && frame[0] == 0x50)
+            {
+               int fsci = (frame[10] >> 4) & 0x0f;
+               int fwi = (frame[11] >> 4) & 0x0f;
 
-            // This commands update protocol parameters
-            protocolStatus.maxFrameSize = NFC_FDS_TABLE[fdsi];
-            protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFC_FWT_TABLE[fwi]);
+               // A received value of FWI = 15 MUST be treated as FWI = 4
+               if (fwi == 15)
+                  fwi = 4;
+
+               // maximum frame size accepted by PICC, limits reader frames
+               protocolStatus.maxPollFrameSize = frameSizeFromIndex(fsci);
+               protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFC_FWT_TABLE[fwi]);
+            }
 
             frame.setFramePhase(NfcSelectionPhase);
             frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             log->debug("ATQB protocol timing parameters");
-            log->debug("  maxFrameSize {} bytes", {protocolStatus.maxFrameSize});
+            log->debug("  maxPollFrameSize {} bytes", {protocolStatus.maxPollFrameSize});
             log->debug("  frameWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1E6 * protocolStatus.frameWaitingTime / decoder->sampleRate});
 
             return true;
@@ -1213,11 +1267,20 @@ struct NfcB::Impl : NfcTech
             int param2 = frame[6];
 
             int tr0i = (param1 >> 6) & 0x3;
+            int tr1i = (param1 >> 4) & 0x3;
             int fdsi = param2 & 0xf;
 
-            protocolStatus.maxFrameSize = NFC_FDS_TABLE[fdsi];
+            // maximum frame size accepted by PCD, limits card frames
+            protocolStatus.maxFrameSize = frameSizeFromIndex(fdsi);
 
-            if (!tr0i)
+            // TR1 sets the minimum PICC phase reference, measured preamble starts one symbol later (delayed phase detector)
+            if (tr1i == 1 || tr1i == 2)
+               protocolStatus.tr1MinimumTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TR1_MIN_TABLE[tr1i]) - decoder->bitrate->period1SymbolSamples - decoder->bitrate->period4SymbolSamples;
+            else
+               protocolStatus.tr1MinimumTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TR1_MIN);
+
+            // TR0 value 3 is RFU, use default
+            if (!tr0i || !NFCB_TR0_MIN_TABLE[tr0i])
                protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF); // default value
             else
                protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TR0_MIN_TABLE[tr0i]);
@@ -1241,6 +1304,7 @@ struct NfcB::Impl : NfcTech
          if (frameStatus.lastCommand == NFCB_ATTRIB)
          {
             frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
 
             return true;
          }
@@ -1250,10 +1314,67 @@ struct NfcB::Impl : NfcTech
    }
 
    /*
-    * Process other frames
+    * Process HLTB frame, the PICC answers with 0x00 and goes to HALT state
+    */
+   bool processHLTB(RawFrame &frame)
+   {
+      if (frame.frameType() == NfcPollFrame)
+      {
+         if (frame[0] == NFCB_HLTB && frame.limit() == 7)
+         {
+            frameStatus.lastCommand = frame[0];
+
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
+
+            return true;
+         }
+      }
+
+      if (frame.frameType() == NfcListenFrame)
+      {
+         if (frameStatus.lastCommand == NFCB_HLTB)
+         {
+            frame.setFramePhase(NfcSelectionPhase);
+            frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
+
+            return true;
+         }
+      }
+
+      return false;
+   }
+
+   /*
+    * Process other frames (ISO-DEP blocks and application frames)
     */
    void processOther(RawFrame &frame)
    {
+      if (frame.frameType() == NfcPollFrame)
+      {
+         // unknown poll command, do not interpret the response as the previous command
+         frameStatus.lastCommand = 0;
+
+         // S(WTX) response from PCD (PCB 0xF2, or 0xFA with CID), PICC can use FWT * WTXM to send next response
+         if ((frame[0] & 0xF7) == 0xF2)
+         {
+            unsigned int offset = (frame[0] & 0x08) ? 2 : 1;
+
+            if (frame.limit() >= 3 && offset < frame.limit() - 2)
+            {
+               unsigned int wtxm = frame[offset] & 0x3F;
+
+               // valid WTXM range is 1 to 59
+               if (wtxm > 59)
+                  wtxm = 59;
+
+               // extended waiting time, limited to avoid overflow of sample clock arithmetic
+               if (wtxm > 0)
+                  frameStatus.frameWaitingTime = static_cast<unsigned int>(std::min<unsigned long long>(static_cast<unsigned long long>(protocolStatus.frameWaitingTime) * wtxm, 0x7fffffffULL));
+            }
+         }
+      }
+
       frame.setFramePhase(NfcApplicationPhase);
       frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
    }

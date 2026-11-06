@@ -12,6 +12,7 @@ Files:
 | `src/nfc-lib/lib-lab/lab-radio/src/main/cpp/NfcDecoder.cpp` | Orchestrator: carrier detection and dispatch to NFC-A/B/F/V |
 | `src/nfc-lib/lib-lab/lab-radio/src/main/include/lab/nfc/Nfc.h` | Timing constants (FGT, FWT, SFGT, FSD/FWT tables) |
 | `src/nfc-test/test-decoder` | Decoder regression test and synthetic NFC-A capture generator (section 10) |
+| `doc/nfcb.md` | Same analysis for the NFC-B decoder |
 
 ---
 
@@ -248,7 +249,7 @@ They are sorted by severity. Line numbers refer to `tech/NfcA.cpp` before the fi
 | E10 Sample rate limit | **Warned** | `initialize()` logs a warning when the delay line does not fit in `BUFFER_SIZE` |
 | E10 Unused fields | Pending | `startUpGuardTime`, `requestGuardTime`, `lastFrameEnd`, `detectIntegrate`: kept in case they are used in the future |
 
-Related issue outside NFC-A: NFC-B maps RFU FSDI values to a frame size of 0, like E2. It was not changed.
+The same RFU frame size problem existed in NFC-B; it is fixed with the shared `NfcTech::frameSizeFromIndex()` (see `doc/nfcb.md`, B2).
 
 ### E1. `streamStatus.buffer` overflow with FSD ≥ 512. **Severe**
 
@@ -401,7 +402,7 @@ For each `<capture>.wav` it decodes the signal with `lab::NfcDecoder` and compar
 
 None of the reference captures contains the cases of errors E1–E6, so `scripts/nfca_synthetic.py` generates 106 kbps NFC-A captures with their expected frames. The reader uses 100% ASK with modified Miller coding, the card uses subcarrier load modulation with Manchester coding, and deterministic gaussian noise is added. The expected frames check content, type, phase and flags, not exact sample positions.
 
-CTest runs the generator into the build directory (`decoder-synthetic-generate`) and then one test per scenario (`decoder-nfca-synthetic-*`). They need Python 3; without it they are skipped.
+CTest runs the generator into the build directory (`decoder-nfca-synthetic-generate`) and then one test per scenario (`decoder-nfca-synthetic-*`). They need Python 3; without it they are skipped.
 
 | Scenario | Before the fixes | After the fixes |
 |---|---|---|

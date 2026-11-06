@@ -12,7 +12,8 @@ build/src/nfc-test/test-decoder/test-decoder [-v] wav/test_NFC-A_106kbps_001.wav
 Tests registered with CTest:
 
 - `decoder-test_*`: one test per reference capture in `wav/`.
-- `decoder-nfca-synthetic-*`: synthetic NFC-A captures generated at test time by `scripts/nfca_synthetic.py`
-  (requires Python 3). They cover protocol and robustness cases not present in the reference captures.
+- `decoder-nfca-synthetic-*` and `decoder-nfcb-synthetic-*`: synthetic NFC-A and NFC-B captures generated at test
+  time by `scripts/nfca_synthetic.py` and `scripts/nfcb_synthetic.py` (requires Python 3). They cover protocol and
+  robustness cases not present in the reference captures.
 
-See `doc/nfca.md`, section 10, for the description of each scenario.
+See section 10 of `doc/nfca.md` and `doc/nfcb.md` for the description of each scenario.

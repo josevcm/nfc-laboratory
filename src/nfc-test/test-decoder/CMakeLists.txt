@@ -26,22 +26,29 @@ foreach (capture ${DECODER_TEST_CAPTURES})
     add_test(NAME decoder-${name} COMMAND test-decoder ${capture})
 endforeach ()
 
-# synthetic NFC-A captures generated at test time, require python 3
+# synthetic captures generated at test time, require python 3
 find_package(Python3 COMPONENTS Interpreter)
 
 if (Python3_Interpreter_FOUND)
     set(SYNTHETIC_DIR ${CMAKE_CURRENT_BINARY_DIR}/synthetic)
 
-    add_test(NAME decoder-synthetic-generate
-            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/nfca_synthetic.py ${SYNTHETIC_DIR})
+    set(NFCA_SYNTHETIC_SCENARIOS basic fsdi_4096 fsdi_rfu ats_short sblock wtx spurious)
+    set(NFCB_SYNTHETIC_SCENARIOS basic fsd_4096 fsdi_rfu frame_size egt tr1_short wtx hltb slot_marker no_eos)
 
-    set_tests_properties(decoder-synthetic-generate PROPERTIES FIXTURES_SETUP decoder-synthetic)
+    foreach (tech nfca nfcb)
+        add_test(NAME decoder-${tech}-synthetic-generate
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/${tech}_synthetic.py ${SYNTHETIC_DIR})
 
-    foreach (scenario basic fsdi_4096 fsdi_rfu ats_short sblock wtx spurious)
-        add_test(NAME decoder-nfca-synthetic-${scenario}
-                COMMAND test-decoder ${SYNTHETIC_DIR}/nfca_synthetic_${scenario}.wav)
+        set_tests_properties(decoder-${tech}-synthetic-generate PROPERTIES FIXTURES_SETUP decoder-${tech}-synthetic)
 
-        set_tests_properties(decoder-nfca-synthetic-${scenario} PROPERTIES FIXTURES_REQUIRED decoder-synthetic TIMEOUT 60)
+        string(TOUPPER ${tech} TECH)
+
+        foreach (scenario ${${TECH}_SYNTHETIC_SCENARIOS})
+            add_test(NAME decoder-${tech}-synthetic-${scenario}
+                    COMMAND test-decoder ${SYNTHETIC_DIR}/${tech}_synthetic_${scenario}.wav)
+
+            set_tests_properties(decoder-${tech}-synthetic-${scenario} PROPERTIES FIXTURES_REQUIRED decoder-${tech}-synthetic TIMEOUT 60)
+        endforeach ()
     endforeach ()
 else ()
     message(STATUS "python3 not found, synthetic decoder tests disabled")

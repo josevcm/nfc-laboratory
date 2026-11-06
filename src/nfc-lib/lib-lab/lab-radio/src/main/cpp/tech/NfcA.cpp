@@ -144,20 +144,6 @@ struct NfcA::Impl : NfcTech
    }
 
    /*
-    * Convert FSDI / FSCI to frame size, limited to stream buffer capacity
-    */
-   static unsigned int frameSizeFromIndex(unsigned int index)
-   {
-      // ISO/IEC 14443-4: values 'D' to 'F' are RFU and must be interpreted as 'C'
-      unsigned int size = NFC_FDS_TABLE[index > 0x0C ? 0x0C : index];
-
-      // truncated frames store one more byte, keep room for it
-      constexpr unsigned int capacity = sizeof(NfcStreamStatus::buffer) - 1;
-
-      return size < capacity ? size : capacity;
-   }
-
-   /*
     * Reset protocol parameters to default values
     */
    void resetProtocol()
