@@ -103,8 +103,10 @@ Runs on every sample while there is no active modulation, and only when the enve
 2. **Correlation buffer**: `correlationData[t mod P1] = filterIntegrate`, a circular buffer one symbol long.
 3. **Correlation**:
    - `S0 = I(t) − I(t − P/2)`: second half of the last symbol minus the first half.
-   - `S1 = I(t − P/2) − I(t − 1)` (see finding E7).
-   - `SD = (S0 − S1) / P2`, signed.
+   - `S1 = I(t − P/2) − I(t − 1)`: the same measure with inverted sign, `S1 ≈ −S0`.
+   - `SD = (S0 − S1) / P2 ≈ 2·S0 / P2`, signed.
+
+   This is a correlation with a square template (+1 over one half symbol, −1 over the other). Taking `SD = S0 − S1` doubles the correlation amplitude, and the thresholds (0.75·envelope, peak/2) are calibrated for it. The comparison `S0 > S1` used to classify symbols is equivalent to `S0 > 0`.
 
    An ASK pause entering the window produces a negative minimum of `SD`, and a positive maximum when it leaves.
 4. **Phase 1, falling edge**: when `SD < −envelope·correlationThreshold` (0.75 by default), it records the minimum (`correlatedPeakTime`) and the maximum depth (`modulateDepth`). The search ends ¼ symbol after the last minimum. The pulse is discarded if its depth is below `minimumModulationDeep` (0.90) or above `maximumModulationDeep` (1.0).
@@ -231,7 +233,7 @@ They are sorted by severity. Line numbers refer to `tech/NfcA.cpp` before the fi
 | E4 `resetFrameSearch` | **Fixed** | Clears `streamStatus` and forces the threshold to be recalibrated from the noise level |
 | E5 Out of range reads | **Fixed** | RATS requires 4 bytes. The ATS is parsed within `min(TL, limit − 2)`; when TB is missing the defaults are used |
 | E6 Window lock | **Fixed** | If there is modulation at the sync point but no peak was captured, `searchSyncTime` is used as the peak. Threshold calibration no longer depends on an exact `clock == guardEnd` |
-| E7 `S1 ≈ −S0` | Pending | It must be decided whether this behavior is intended: changing it alters the results |
+| E7 `S1 ≈ −S0` | **Not an error** | Intended: square template correlation, `S1` is the inverse of `S0` (confirmed by the author). Documented in the code and in section 4 |
 | E8 32-bit clock | Pending | Affects the whole decoder (NFC-A/B/F/V and `RawFrame`); requires a cross-cutting change |
 | E9 `maximumModulationDeep` | **Fixed** | Detection discards pulses deeper than the maximum. With the default value (1.0) nothing changes |
 | E10 RawFrame::Nil | **Fixed** | `return false` |
@@ -300,7 +302,7 @@ The same applied to the `clock == guardEnd` calibration (l. 987, 1253): if `guar
 
 **Fix**: use `>=` to close the windows, and abort the frame if `searchEndTime < signalClock`.
 
-### E7. `S1` is not an independent measurement. **Low (clarity / possible error)**
+### E7. `S1` is the inverse of `S0`. **Not an error (by design)**
 
 `filterPoint3 = (t + P1 − 1) % P1` points to the slot written on the previous sample (`t − 1`), not to the oldest slot in the buffer (`t + 1 ≡ t − P1 + 1`). Therefore:
 
@@ -309,9 +311,7 @@ S1 = I(t−P/2) − I(t−1) ≈ −S0
 SD = S0 − S1 = 2·S0 − (s[t] − s[t−P/2])
 ```
 
-The comparison `S0 > S1` is equivalent to `S0 > 0`. The decoder works because the thresholds (0.75·env, peak/2) are calibrated for this `SD ≈ 2·S0`, but the name and the comment suggest otherwise.
-
-**Fix**: either it is intended, and it should be documented and simplified to `SD = 2·S0`, or the intent was to compare with the previous half symbol, and it must be reviewed together with the thresholds.
+The review flagged this because `S1` is not an independent measurement and the comparison `S0 > S1` is equivalent to `S0 > 0`. The author confirmed it is intended: the correlation function is a square template, so `S1` is the inverse of `S0`, and the thresholds (0.75·envelope, peak/2) are calibrated for `SD ≈ 2·S0`. The code now explains this next to each correlator.
 
 ### E8. 32-bit clock. **Low (affects the whole decoder)**
 
@@ -367,7 +367,7 @@ The bug fixes in section 8 did not change these figures.
 ### 9.2 Discarded or pending
 
 - **Incremental circular indexes** (one counter per bit rate instead of `%`): tried, and it turned out **slower** (~5%). Keeping and validating the counter state costs more than an integer division on a current CPU.
-- **Simplify the correlator to `SD = 2·S0`** (E7): it would change `SD` by the `s[t] − s[t−P/2]` term and therefore the results. It must first be decided whether the current behavior is intended.
+- **Simplify the correlator to `SD = 2·S0`** (E7): the behavior is intended, but this simplification would drop the `s[t] − s[t−P/2]` term, changing `SD` slightly and therefore the results, for one memory read less per sample. Not applied.
 - **Early exit in detection**: the no-signal path already reduces to a few comparisons, so the expected gain is small.
 - **Cheaper resets**: `resetModulation()` clears 3 × 8 KB and `decodePollFrame` does an 8 KB `memset`. `integrationData` is indexed over the whole buffer and old values are read after the reset, so clearing less would change the output. It runs once per frame, so it is not worth it.
 - **Compile-time debug** (template or `constexpr`): after the local copy the check is a single, highly predictable branch.

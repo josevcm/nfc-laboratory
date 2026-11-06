@@ -366,7 +366,9 @@ struct NfcA::Impl : NfcTech
          // store integrated signal in correlation buffer
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
-         // compute correlation factors
+         // compute correlation factors with a square template (+1 over one half symbol, -1 over the other):
+         // S0 = second half minus first half of last symbol, S1 = the same measure with inverted sign (S1 ~ -S0),
+         // so SD = S0 - S1 ~ 2 * S0 doubles the correlation amplitude (detection thresholds are calibrated for it)
          float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = (correlatedS0 - correlatedS1) * period2Inverse[bitrate->rateType];
@@ -874,7 +876,9 @@ struct NfcA::Impl : NfcTech
          // store integrated signal in correlation buffer
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
-         // compute correlation factors
+         // compute correlation factors with a square template (+1 over one half symbol, -1 over the other):
+         // S0 = second half minus first half of last symbol, S1 = the same measure with inverted sign (S1 ~ -S0),
+         // so SD = S0 - S1 ~ 2 * S0 doubles the correlation amplitude (detection thresholds are calibrated for it)
          float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1) * period2Inverse[bitrate->rateType];
@@ -1161,7 +1165,9 @@ struct NfcA::Impl : NfcTech
          // store integrated signal in correlation buffer
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
-         // compute correlation results for each symbol and distance
+         // compute correlation factors with a square template (+1 over one half symbol, -1 over the other):
+         // S0 = second half minus first half of last symbol, S1 = the same measure with inverted sign (S1 ~ -S0),
+         // so SD = S0 - S1 ~ 2 * S0 doubles the correlation amplitude (detection thresholds are calibrated for it)
          float correlatedS0 = modulation->correlationData[filterPoint1] - modulation->correlationData[filterPoint2];
          float correlatedS1 = modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint3];
          float correlatedSD = std::fabs(correlatedS0 - correlatedS1);
