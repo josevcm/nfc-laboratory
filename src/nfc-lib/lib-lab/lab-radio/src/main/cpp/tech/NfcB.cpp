@@ -119,6 +119,56 @@ struct NfcB::Impl : NfcTech
    }
 
    /*
+    * Reset SoS search status for one modulation (poll frame detection)
+    */
+   static void resetSearch(NfcModulationStatus *modulation)
+   {
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->searchSyncTime = 0;
+      modulation->detectorPeakTime = 0;
+      modulation->detectorPeakValue = 0;
+   }
+
+   /*
+    * Reset SoS search status for listen frame, restart from TR1 preamble
+    */
+   static void resetListenSearch(NfcModulationStatus *modulation)
+   {
+      modulation->searchModeState = LISTEN_MODE_TR1;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+   }
+
+   /*
+    * Build a frame from current frame and stream status
+    */
+   RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
+   {
+      RawFrame frame = RawFrame(FrameTech::NfcBTech, frameType);
+
+      frame.setFrameRate(decoder->bitrate->symbolsPerSecond);
+      frame.setSampleStart(frameStatus.frameStart);
+      frame.setSampleEnd(frameStatus.frameEnd);
+      frame.setSampleRate(decoder->sampleRate);
+      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
+      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
+      frame.setDateTime(decoder->streamTime + frame.timeStart());
+
+      if (frameFlags)
+         frame.setFrameFlags(frameFlags);
+
+      // add bytes to frame and flip to prepare read
+      frame.put(streamStatus.buffer, streamStatus.bytes).flip();
+
+      return frame;
+   }
+
+   /*
     * Configure NFC-B modulation
     */
    void initialize(unsigned int sampleRate)
@@ -237,13 +287,20 @@ struct NfcB::Impl : NfcTech
     */
    bool detectModulation()
    {
+      // local copies, signal clock and debugger does not change during detection
+      const unsigned int clock = decoder->signalClock;
+      NfcSignalDebug *debug = decoder->debug.get();
+
       // wait until has enough data in buffer
-      if (decoder->signalClock < BUFFER_SIZE)
+      if (clock < BUFFER_SIZE)
          return false;
 
       // ignore low power signals
       if (decoder->signalEnvelope < decoder->powerLevelThreshold)
          return false;
+
+      // first modulation must be over minimum modulation deep, same threshold for all rates
+      const float edgeThreshold = decoder->signalEnvelope * minimumModulationDeep;
 
       // POLL frame ASK detector for  106Kbps, 212Kbps and 424Kbps
       for (int rate = r106k; rate <= r212k; rate++)
@@ -252,43 +309,37 @@ struct NfcB::Impl : NfcTech
          NfcModulationStatus *modulation = modulationStatus + rate;
 
          // compute signal pointer
-         unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
+         unsigned int signalIndex = (bitrate->offsetSignalIndex + clock);
 
          // get signal samples
          float signalEdge = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filteredValue;
          float signalDeep = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].modulateDepth;
 
-         if (decoder->debug)
-            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL, signalEdge);
+         if (debug)
+            debug->set(DEBUG_SIGNAL_DECODER_CHANNEL, signalEdge);
 
          // recover status from previous partial search or maximum modulation depth
-         if (signalDeep > maximumModulationDeep || (modulation->detectorPeakTime && decoder->signalClock > modulation->detectorPeakTime + bitrate->period1SymbolSamples))
+         if (signalDeep > maximumModulationDeep || (modulation->detectorPeakTime && clock > modulation->detectorPeakTime + bitrate->period1SymbolSamples))
          {
-            modulation->symbolStartTime = 0;
-            modulation->symbolEndTime = 0;
-            modulation->searchStartTime = 0;
-            modulation->searchEndTime = 0;
-            modulation->searchSyncTime = 0;
-            modulation->detectorPeakTime = 0;
-            modulation->detectorPeakValue = 0;
+            resetSearch(modulation);
          }
 
          // no modulation detected, search SoF begin
          if (!modulation->symbolStartTime)
          {
             // first modulation must be over minimum modulation deep
-            modulation->searchValueThreshold = decoder->signalEnvelope * minimumModulationDeep;
+            modulation->searchValueThreshold = edgeThreshold;
 
             // detect edge at maximum peak
             if (signalEdge < -modulation->searchValueThreshold && signalEdge < modulation->detectorPeakValue)
             {
                modulation->detectorPeakValue = signalEdge;
-               modulation->detectorPeakTime = decoder->signalClock;
-               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               modulation->detectorPeakTime = clock;
+               modulation->searchEndTime = clock + bitrate->period4SymbolSamples;
             }
 
             // wait until search finished
-            if (decoder->signalClock != modulation->searchEndTime)
+            if (clock != modulation->searchEndTime)
                continue;
 
             // sets SOF symbol frame start (also frame start)
@@ -308,16 +359,11 @@ struct NfcB::Impl : NfcTech
          if (!modulation->symbolEndTime)
          {
             // during 10-11 ETU there must not be modulation changes
-            if (decoder->signalClock < modulation->searchStartTime)
+            if (clock < modulation->searchStartTime)
             {
                if (signalEdge > modulation->searchValueThreshold)
                {
-                  modulation->symbolStartTime = 0;
-                  modulation->symbolEndTime = 0;
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->detectorPeakTime = 0;
-                  modulation->detectorPeakValue = 0;
+                  resetSearch(modulation);
                }
 
                continue;
@@ -327,23 +373,19 @@ struct NfcB::Impl : NfcTech
             if (signalEdge > modulation->searchValueThreshold && signalEdge > modulation->detectorPeakValue)
             {
                modulation->detectorPeakValue = signalEdge;
-               modulation->detectorPeakTime = decoder->signalClock;
-               modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+               modulation->detectorPeakTime = clock;
+               modulation->searchEndTime = clock + bitrate->period4SymbolSamples;
             }
 
             // wait until search finished
-            if (decoder->signalClock != modulation->searchEndTime)
+            if (clock != modulation->searchEndTime)
                continue;
 
             // if no edge detected reset SOF search
             if (!modulation->detectorPeakTime)
             {
                // if no edge found, restart search
-               modulation->symbolStartTime = 0;
-               modulation->symbolEndTime = 0;
-               modulation->searchStartTime = 0;
-               modulation->searchEndTime = 0;
-               modulation->detectorPeakValue = 0;
+               resetSearch(modulation);
                continue;
             }
 
@@ -361,16 +403,11 @@ struct NfcB::Impl : NfcTech
          }
 
          // during last 2-3 ETU there must not be modulation changes
-         if (decoder->signalClock < modulation->searchStartTime)
+         if (clock < modulation->searchStartTime)
          {
             if (signalEdge < -modulation->searchValueThreshold)
             {
-               modulation->symbolStartTime = 0;
-               modulation->symbolEndTime = 0;
-               modulation->searchStartTime = 0;
-               modulation->searchEndTime = 0;
-               modulation->detectorPeakTime = 0;
-               modulation->detectorPeakValue = 0;
+               resetSearch(modulation);
             }
 
             continue;
@@ -380,29 +417,24 @@ struct NfcB::Impl : NfcTech
          if (signalEdge < -modulation->searchValueThreshold && modulation->detectorPeakValue > signalEdge)
          {
             modulation->detectorPeakValue = signalEdge;
-            modulation->detectorPeakTime = decoder->signalClock;
-            modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+            modulation->detectorPeakTime = clock;
+            modulation->searchEndTime = clock + bitrate->period4SymbolSamples;
          }
 
          // wait until search finished
-         if (decoder->signalClock != modulation->searchEndTime)
+         if (clock != modulation->searchEndTime)
             continue;
 
          // if no edge detected reset modulation search
          if (!modulation->detectorPeakTime)
          {
-            modulation->symbolStartTime = 0;
-            modulation->symbolEndTime = 0;
-            modulation->searchStartTime = 0;
-            modulation->searchEndTime = 0;
-            modulation->detectorPeakTime = 0;
-            modulation->detectorPeakValue = 0;
+            resetSearch(modulation);
 
             break;
          }
 
-         if (decoder->debug)
-            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL, 0.75f);
+         if (debug)
+            debug->set(DEBUG_SIGNAL_DECODER_CHANNEL, 0.75f);
 
          // update SOF symbol end time
          modulation->symbolEndTime = modulation->detectorPeakTime;
@@ -486,21 +518,7 @@ struct NfcB::Impl : NfcTech
             {
                frameStatus.frameEnd = symbolStatus.end;
 
-               RawFrame request = RawFrame(FrameTech::NfcBTech, NfcPollFrame);
-
-               request.setFrameRate(decoder->bitrate->symbolsPerSecond);
-               request.setSampleStart(frameStatus.frameStart);
-               request.setSampleEnd(frameStatus.frameEnd);
-               request.setSampleRate(decoder->sampleRate);
-               request.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
-               request.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
-               request.setDateTime(decoder->streamTime + request.timeStart());
-
-               if (truncateError || streamError)
-                  request.setFrameFlags(Truncated);
-
-               // add bytes to frame and flip to prepare read
-               request.put(streamStatus.buffer, streamStatus.bytes).flip();
+               RawFrame request = buildFrame(NfcPollFrame, truncateError || streamError ? Truncated : 0);
 
                // process frame
                process(request);
@@ -622,21 +640,7 @@ struct NfcB::Impl : NfcTech
                   frameStatus.frameEnd = symbolStatus.end + static_cast<int>(decoder->signalParams.sampleTimeUnit * 352);
 
                   // build response frame
-                  RawFrame response = RawFrame(FrameTech::NfcBTech, NfcListenFrame);
-
-                  response.setFrameRate(decoder->bitrate->symbolsPerSecond);
-                  response.setSampleStart(frameStatus.frameStart);
-                  response.setSampleEnd(frameStatus.frameEnd);
-                  response.setSampleRate(decoder->sampleRate);
-                  response.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
-                  response.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
-                  response.setDateTime(decoder->streamTime + response.timeStart());
-
-                  if (truncateError || streamError)
-                     response.setFrameFlags(Truncated);
-
-                  // add bytes to frame and flip to prepare read
-                  response.put(streamStatus.buffer, streamStatus.bytes).flip();
+                  RawFrame response = buildFrame(NfcListenFrame, truncateError || streamError ? Truncated : 0);
 
                   // process frame
                   process(response);
@@ -849,11 +853,7 @@ struct NfcB::Impl : NfcTech
                if (preambleSyncLength < protocolStatus.tr1MinimumTime || // preamble too short
                   preambleSyncLength > protocolStatus.tr1MaximumTime) // preamble too long
                {
-                  modulation->searchModeState = LISTEN_MODE_TR1;
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->symbolStartTime = 0;
-                  modulation->symbolEndTime = 0;
+                  resetListenSearch(modulation);
                   continue;
                }
 
@@ -879,11 +879,7 @@ struct NfcB::Impl : NfcTech
                if (listenS1Length < protocolStatus.listenS1MinimumTime || // preamble too short
                   listenS1Length > protocolStatus.listenS1MaximumTime) // preamble too long
                {
-                  modulation->searchModeState = LISTEN_MODE_TR1;
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->symbolStartTime = 0;
-                  modulation->symbolEndTime = 0;
+                  resetListenSearch(modulation);
                   continue;
                }
 
@@ -909,11 +905,7 @@ struct NfcB::Impl : NfcTech
                if (listenS2Length < protocolStatus.listenS2MinimumTime || // preamble too short
                   listenS2Length > protocolStatus.listenS2MaximumTime) // preamble too long
                {
-                  modulation->searchModeState = LISTEN_MODE_TR1;
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->symbolStartTime = 0;
-                  modulation->symbolEndTime = 0;
+                  resetListenSearch(modulation);
                   continue;
                }
 
