@@ -400,6 +400,40 @@ struct NfcDecoderStatus
 struct NfcTech
 {
    /*
+    * Circular correlation buffer points for one sample
+    */
+   struct CorrelationPoints
+   {
+      unsigned int point1; // index % period
+      unsigned int point2; // (index + offset) % period
+      unsigned int point3; // (index + period - 1) % period
+   };
+
+   /*
+    * Compute circular correlation buffer points, equivalent to (index + k) % period for k = 0, offset and period - 1
+    * but using only one integer division. Offset must not be greater than period.
+    */
+   static CorrelationPoints correlationPoints(unsigned int index, unsigned int period, unsigned int offset)
+   {
+      const unsigned int point1 = index % period;
+
+      unsigned int point2 = point1 + offset;
+
+      if (point2 >= period)
+         point2 -= period;
+
+      return {point1, point2, point1 ? point1 - 1 : period - 1};
+   }
+
+   /*
+    * Correlation points for a symbol length buffer with half symbol offset
+    */
+   static CorrelationPoints correlationPoints(const NfcBitrateParams *bitrate, unsigned int index)
+   {
+      return correlationPoints(index, bitrate->period1SymbolSamples, bitrate->period2SymbolSamples);
+   }
+
+   /*
     * Convert ISO-DEP FSDI / FSCI to frame size in bytes, limited to stream buffer capacity
     */
    static unsigned int frameSizeFromIndex(unsigned int index)

@@ -114,33 +114,8 @@ struct NfcA::Impl : NfcTech
    // precomputed 1 / period2SymbolSamples for each bitrate
    float period2Inverse[4] {};
 
-   // correlation buffer points for one sample
-   struct CorrelationPoints
-   {
-      unsigned int point1; // signalIndex % period1
-      unsigned int point2; // (signalIndex + period2) % period1
-      unsigned int point3; // (signalIndex + period1 - 1) % period1
-   };
-
    explicit Impl(NfcDecoderStatus *decoder) : decoder(decoder)
    {
-   }
-
-   /*
-    * Compute correlation buffer points for current signal index, equivalent to (signalIndex + k) % period1SymbolSamples
-    * for k = 0, period2SymbolSamples and period1SymbolSamples - 1, but using only one integer division
-    */
-   static CorrelationPoints correlationPoints(const NfcBitrateParams *bitrate, unsigned int signalIndex)
-   {
-      const unsigned int period1 = bitrate->period1SymbolSamples;
-      const unsigned int point1 = signalIndex % period1;
-
-      unsigned int point2 = point1 + bitrate->period2SymbolSamples;
-
-      if (point2 >= period1)
-         point2 -= period1;
-
-      return {point1, point2, point1 ? point1 - 1 : period1 - 1};
    }
 
    /*

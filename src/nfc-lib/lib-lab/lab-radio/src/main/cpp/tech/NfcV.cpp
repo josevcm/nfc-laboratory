@@ -112,8 +112,63 @@ struct NfcV::Impl : NfcTech
    // chained frame flags
    unsigned int chainedFlags = 0;
 
+   // precomputed 1 / period2SymbolSamples
+   float period2Inverse = 0;
+
    Impl(NfcDecoderStatus *decoder) : decoder(decoder)
    {
+   }
+
+   /*
+    * Reset SoF search status (poll frame detection)
+    */
+   static void resetSearch(NfcModulationStatus *modulation)
+   {
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->searchSyncTime = 0;
+      modulation->correlatedPeakTime = 0;
+      modulation->correlatedPeakValue = 0;
+      modulation->detectorPeakTime = 0;
+      modulation->detectorPeakValue = 0;
+   }
+
+   /*
+    * Reset SoF search status for listen frame, restart from first preamble
+    */
+   static void resetListenSearch(NfcModulationStatus *modulation)
+   {
+      modulation->searchModeState = LISTEN_MODE_PREAMBLE1;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+   }
+
+   /*
+    * Build a frame from current frame and stream status
+    */
+   RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
+   {
+      RawFrame frame = RawFrame(NfcVTech, frameType);
+
+      frame.setFrameRate(frameStatus.symbolRate);
+      frame.setSampleStart(frameStatus.frameStart);
+      frame.setSampleEnd(frameStatus.frameEnd);
+      frame.setSampleRate(decoder->sampleRate);
+      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
+      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
+      frame.setDateTime(decoder->streamTime + frame.timeStart());
+
+      if (frameFlags)
+         frame.setFrameFlags(frameFlags);
+
+      // add bytes to frame and flip to prepare read
+      frame.put(streamStatus.buffer, streamStatus.bytes).flip();
+
+      return frame;
    }
 
    inline void initialize(unsigned int sampleRate)
@@ -171,6 +226,9 @@ struct NfcV::Impl : NfcTech
       bitrateParams.offsetDelay2Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period2SymbolSamples;
       bitrateParams.offsetDelay4Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period4SymbolSamples;
       bitrateParams.offsetDelay8Index = BUFFER_SIZE - bitrateParams.symbolDelayDetect - bitrateParams.period8SymbolSamples;
+
+      // inverse of half symbol length to normalize correlation without divisions
+      period2Inverse = 1.0f / static_cast<float>(bitrateParams.period2SymbolSamples);
 
       log->info("{} kpbs parameters:", {round(bitrateParams.symbolsPerSecond / 1E3)});
       log->info("\tsymbolsPerSecond     {}", {bitrateParams.symbolsPerSecond});
@@ -235,8 +293,12 @@ struct NfcV::Impl : NfcTech
 
    inline bool detectModulation()
    {
+      // local copies, signal clock and debugger does not change during detection
+      const unsigned int clock = decoder->signalClock;
+      NfcSignalDebug *debug = decoder->debug.get();
+
       // wait until has enough data in buffer
-      if (decoder->signalClock < BUFFER_SIZE)
+      if (clock < BUFFER_SIZE)
          return false;
 
       // ignore low power signals
@@ -250,13 +312,14 @@ struct NfcV::Impl : NfcTech
       float minimumCorrelationValue = decoder->signalEnvelope * correlationThreshold;
 
       // compute signal pointers
-      unsigned int signalIndex = (bitrate->offsetSignalIndex + decoder->signalClock);
-      unsigned int delay2Index = (bitrate->offsetDelay2Index + decoder->signalClock);
-      unsigned int delay8Index = (bitrate->offsetDelay8Index + decoder->signalClock);
+      unsigned int signalIndex = (bitrate->offsetSignalIndex + clock);
+      unsigned int delay2Index = (bitrate->offsetDelay2Index + clock);
+      unsigned int delay8Index = (bitrate->offsetDelay8Index + clock);
 
       // correlation points
-      unsigned int filterPoint1 = (signalIndex % bitrate->period1SymbolSamples);
-      unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+      const CorrelationPoints points = correlationPoints(bitrate, signalIndex);
+      const unsigned int filterPoint1 = points.point1;
+      const unsigned int filterPoint2 = points.point2;
 
       // get signal samples
       float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].samplingValue;
@@ -271,34 +334,26 @@ struct NfcV::Impl : NfcTech
       modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
       // compute correlation factor
-      float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / static_cast<float>(bitrate->period2SymbolSamples);
+      float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) * period2Inverse;
 
-      if (decoder->debug)
+      if (debug)
       {
-         decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, modulation->filterIntegrate / static_cast<float>(bitrate->period2SymbolSamples));
+         debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 0, modulation->filterIntegrate / static_cast<float>(bitrate->period2SymbolSamples));
 
-         decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, correlatedS0);
+         debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, correlatedS0);
 
-         if (decoder->signalClock == modulation->searchSyncTime)
-            decoder->debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, 0.75f);
+         if (clock == modulation->searchSyncTime)
+            debug->set(DEBUG_SIGNAL_DECODER_CHANNEL + 1, 0.75f);
       }
 
       // recover status from previous partial search
-      if (modulation->correlatedPeakTime && decoder->signalClock > modulation->correlatedPeakTime + bitrate->period0SymbolSamples)
+      if (modulation->correlatedPeakTime && clock > modulation->correlatedPeakTime + bitrate->period0SymbolSamples)
       {
-         modulation->symbolStartTime = 0;
-         modulation->symbolEndTime = 0;
-         modulation->searchStartTime = 0;
-         modulation->searchEndTime = 0;
-         modulation->searchSyncTime = 0;
-         modulation->detectorPeakTime = 0;
-         modulation->detectorPeakValue = 0;
-         modulation->correlatedPeakTime = 0;
-         modulation->correlatedPeakValue = 0;
+         resetSearch(modulation);
       }
 
       // wait until search start
-      if (decoder->signalClock < modulation->searchStartTime)
+      if (clock < modulation->searchStartTime)
          return false;
 
       // max correlation detector
@@ -308,20 +363,20 @@ struct NfcV::Impl : NfcTech
          if (correlatedS0 > modulation->correlatedPeakValue)
          {
             modulation->correlatedPeakValue = correlatedS0;
-            modulation->correlatedPeakTime = decoder->signalClock;
-            modulation->searchEndTime = decoder->signalClock + bitrate->period4SymbolSamples;
+            modulation->correlatedPeakTime = clock;
+            modulation->searchEndTime = clock + bitrate->period4SymbolSamples;
          }
 
          // detect maximum modulation deep
          if (signalDeep > modulation->detectorPeakValue)
          {
             modulation->detectorPeakValue = signalDeep;
-            modulation->detectorPeakTime = decoder->signalClock;
+            modulation->detectorPeakTime = clock;
          }
       }
 
       // wait until search finished
-      if (decoder->signalClock != modulation->searchEndTime)
+      if (clock != modulation->searchEndTime)
          return false;
 
       // check for valid NFC-V modulated pulse
@@ -330,14 +385,7 @@ struct NfcV::Impl : NfcTech
          modulation->detectorPeakValue < minimumModulationDeep) // insufficient modulation deep
       {
          // reset modulation to continue search
-         modulation->symbolStartTime = 0;
-         modulation->symbolEndTime = 0;
-         modulation->searchStartTime = 0;
-         modulation->searchEndTime = 0;
-         modulation->correlatedPeakTime = 0;
-         modulation->correlatedPeakValue = 0;
-         modulation->detectorPeakTime = 0;
-         modulation->detectorPeakValue = 0;
+         resetSearch(modulation);
          return false;
       }
 
@@ -402,14 +450,7 @@ struct NfcV::Impl : NfcTech
          // invalid code detected, reset symbol status
          else
          {
-            modulation->symbolStartTime = 0;
-            modulation->symbolEndTime = 0;
-            modulation->searchStartTime = 0;
-            modulation->searchEndTime = 0;
-            modulation->correlatedPeakTime = 0;
-            modulation->correlatedPeakValue = 0;
-            modulation->detectorPeakTime = 0;
-            modulation->detectorPeakValue = 0;
+            resetSearch(modulation);
             return false;
          }
 
@@ -480,21 +521,7 @@ struct NfcV::Impl : NfcTech
                // set last symbol timing
                frameStatus.frameEnd = symbolStatus.end;
 
-               RawFrame request = RawFrame(NfcVTech, NfcPollFrame);
-
-               request.setFrameRate(frameStatus.symbolRate);
-               request.setSampleStart(frameStatus.frameStart);
-               request.setSampleEnd(frameStatus.frameEnd);
-               request.setSampleRate(decoder->sampleRate);
-               request.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
-               request.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
-               request.setDateTime(decoder->streamTime + request.timeStart());
-
-               if (truncateError || streamError)
-                  request.setFrameFlags(Truncated);
-
-               // add bytes to frame and flip to prepare read
-               request.put(streamStatus.buffer, streamStatus.bytes).flip();
+               RawFrame request = buildFrame(NfcPollFrame, truncateError || streamError ? Truncated : 0);
 
                // process frame
                process(request);
@@ -614,21 +641,7 @@ struct NfcV::Impl : NfcTech
                   frameStatus.frameEnd = symbolStatus.end;
 
                   // build response frame
-                  RawFrame response = RawFrame(NfcVTech, NfcListenFrame);
-
-                  response.setFrameRate(frameStatus.symbolRate);
-                  response.setSampleStart(frameStatus.frameStart);
-                  response.setSampleEnd(frameStatus.frameEnd);
-                  response.setSampleRate(decoder->sampleRate);
-                  response.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
-                  response.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
-                  response.setDateTime(decoder->streamTime + response.timeStart());
-
-                  if (truncateError || streamError)
-                     response.setFrameFlags(Truncated);
-
-                  // add bytes to frame and flip to prepare read
-                  response.put(streamStatus.buffer, streamStatus.bytes).flip();
+                  RawFrame response = buildFrame(NfcListenFrame, truncateError || streamError ? Truncated : 0);
 
                   // process frame
                   process(response);
@@ -685,8 +698,9 @@ struct NfcV::Impl : NfcTech
          ++delay2Index;
 
          // correlation points
-         unsigned int filterPoint1 = (signalIndex % bitrate->period1SymbolSamples);
-         unsigned int filterPoint2 = (signalIndex + bitrate->period2SymbolSamples) % bitrate->period1SymbolSamples;
+         const CorrelationPoints points = correlationPoints(bitrate, signalIndex);
+         const unsigned int filterPoint1 = points.point1;
+         const unsigned int filterPoint2 = points.point2;
 
          // get signal samples
          float currentData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].samplingValue;
@@ -700,7 +714,7 @@ struct NfcV::Impl : NfcTech
          modulation->correlationData[filterPoint1] = modulation->filterIntegrate;
 
          // compute correlation factor
-         float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) / static_cast<float>(bitrate->period2SymbolSamples);
+         float correlatedS0 = (modulation->correlationData[filterPoint2] - modulation->correlationData[filterPoint1]) * period2Inverse;
 
          if (decoder->debug)
          {
@@ -814,8 +828,9 @@ struct NfcV::Impl : NfcTech
          ++delay1Index;
 
          // compute correlation points
-         unsigned int filterPoint1 = (signalIndex % bitrate->period0SymbolSamples);
-         unsigned int filterPoint2 = (signalIndex + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
+         const CorrelationPoints points = correlationPoints(signalIndex, bitrate->period0SymbolSamples, bitrate->period1SymbolSamples);
+         const unsigned int filterPoint1 = points.point1;
+         const unsigned int filterPoint2 = points.point2;
 
          // get signal samples
          float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filteredValue;
@@ -916,11 +931,7 @@ struct NfcV::Impl : NfcTech
                   preambleS1Length < protocolStatus.sofS1MinimumTime || // preamble too short
                   preambleS1Length > protocolStatus.sofS1MaximumTime) // preamble too long
                {
-                  modulation->searchModeState = LISTEN_MODE_PREAMBLE1;
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->symbolStartTime = 0;
-                  modulation->symbolEndTime = 0;
+                  resetListenSearch(modulation);
                   continue;
                }
 
@@ -943,11 +954,7 @@ struct NfcV::Impl : NfcTech
                   preambleS2Length < protocolStatus.sofS2MinimumTime || // preamble too short
                   preambleS2Length > protocolStatus.sofS2MaximumTime) // preamble too long
                {
-                  modulation->searchModeState = LISTEN_MODE_PREAMBLE1;
-                  modulation->searchStartTime = 0;
-                  modulation->searchEndTime = 0;
-                  modulation->symbolStartTime = 0;
-                  modulation->symbolEndTime = 0;
+                  resetListenSearch(modulation);
                   continue;
                }
 
@@ -997,8 +1004,9 @@ struct NfcV::Impl : NfcTech
          ++delay1Index;
 
          // compute correlation points
-         unsigned int filterPoint1 = (signalIndex % bitrate->period0SymbolSamples);
-         unsigned int filterPoint2 = (signalIndex + bitrate->period1SymbolSamples) % bitrate->period0SymbolSamples;
+         const CorrelationPoints points = correlationPoints(signalIndex, bitrate->period0SymbolSamples, bitrate->period1SymbolSamples);
+         const unsigned int filterPoint1 = points.point1;
+         const unsigned int filterPoint2 = points.point2;
 
          // get signal samples
          float signalData = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].filteredValue;
