@@ -73,8 +73,11 @@ struct NfcA::Impl : NfcTech
    // protocol processing status
    struct NfcProtocolStatus
    {
-      // The FSD defines the maximum size of a frame the PCD is able to receive
+      // The FSD defines the maximum size of a frame the PCD is able to receive (limit for listen frames)
       unsigned int maxFrameSize;
+
+      // The FSC defines the maximum size of a frame the PICC is able to receive (limit for poll frames)
+      unsigned int maxPollFrameSize;
 
       // The frame delay time FDT is defined as the time between two frames transmitted in opposite directions
       unsigned int frameGuardTime;
@@ -104,6 +107,9 @@ struct NfcA::Impl : NfcTech
 
    // chained frame flags
    unsigned int chainedFlags = 0;
+
+   // last SELn command was a full SELECT (NVB = 0x70), so the response is a SAK with CRC
+   bool selectCommand = false;
 
    // precomputed 1 / period2SymbolSamples for each bitrate
    float period2Inverse[4] {};
@@ -138,6 +144,33 @@ struct NfcA::Impl : NfcTech
    }
 
    /*
+    * Convert FSDI / FSCI to frame size, limited to stream buffer capacity
+    */
+   static unsigned int frameSizeFromIndex(unsigned int index)
+   {
+      // ISO/IEC 14443-4: values 'D' to 'F' are RFU and must be interpreted as 'C'
+      unsigned int size = NFC_FDS_TABLE[index > 0x0C ? 0x0C : index];
+
+      // truncated frames store one more byte, keep room for it
+      constexpr unsigned int capacity = sizeof(NfcStreamStatus::buffer) - 1;
+
+      return size < capacity ? size : capacity;
+   }
+
+   /*
+    * Reset protocol parameters to default values
+    */
+   void resetProtocol()
+   {
+      protocolStatus.maxFrameSize = 256;
+      protocolStatus.maxPollFrameSize = 256;
+      protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
+      protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
+      protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
+      protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
+   }
+
+   /*
     * Reset symbol search status for one modulation
     */
    static void resetSearch(NfcModulationStatus *modulation)
@@ -160,8 +193,11 @@ struct NfcA::Impl : NfcTech
     */
    RawFrame buildFrame(unsigned int frameType, unsigned int frameRate, unsigned int frameFlags) const
    {
-      RawFrame frame = RawFrame(FrameTech::NfcATech, frameType);
+      // default frame capacity is 512 bytes, allocate enough room for large ISO-DEP frames
+      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
 
+      frame.setTechType(FrameTech::NfcATech);
+      frame.setFrameType(frameType);
       frame.setFrameRate(frameRate);
       frame.setSampleStart(frameStatus.frameStart);
       frame.setSampleEnd(frameStatus.frameEnd);
@@ -248,6 +284,10 @@ struct NfcA::Impl : NfcTech
          bitrate->offsetDelay4Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period4SymbolSamples;
          bitrate->offsetDelay8Index = BUFFER_SIZE - bitrate->symbolDelayDetect - bitrate->period8SymbolSamples;
 
+         // all delayed signal pointers must be inside the sample buffer, otherwise high sample rates read overwritten data
+         if (bitrate->symbolDelayDetect + bitrate->period1SymbolSamples >= BUFFER_SIZE)
+            log->warn("sample rate {} too high for {} kbps decoding, delay line exceeds buffer size", {decoder->sampleRate, round(bitrate->symbolsPerSecond / 1E3)});
+
          // inverse of half symbol length to normalize correlation without divisions
          period2Inverse[rate] = 1.0f / static_cast<float>(bitrate->period2SymbolSamples);
 
@@ -268,11 +308,7 @@ struct NfcA::Impl : NfcTech
       }
 
       // initialize default protocol parameters for start decoding
-      protocolStatus.maxFrameSize = 256;
-      protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
-      protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
-      protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
-      protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
+      resetProtocol();
 
       // initialize frame parameters to default protocol parameters
       frameStatus.startUpGuardTime = protocolStatus.startUpGuardTime;
@@ -397,7 +433,7 @@ struct NfcA::Impl : NfcTech
          if (!modulation->symbolStartTime)
          {
             // check modulation deep
-            if (modulation->detectorPeakValue < minimumModulationDeep)
+            if (modulation->detectorPeakValue < minimumModulationDeep || modulation->detectorPeakValue > maximumModulationDeep)
             {
                // reset modulation to continue search
                resetSearch(modulation);
@@ -497,7 +533,7 @@ struct NfcA::Impl : NfcTech
          if (streamStatus.pattern == PatternY && (streamStatus.previous == PatternY || streamStatus.previous == PatternZ))
             frameEnd = true;
 
-         else if (streamStatus.bytes == protocolStatus.maxFrameSize)
+         else if (streamStatus.bytes == protocolStatus.maxPollFrameSize)
             truncateError = true;
 
          // detect end of request (Pattern-Y after Pattern-Z)
@@ -573,7 +609,7 @@ struct NfcA::Impl : NfcTech
             }
 
             // store full byte in stream buffer and check parity
-            else if (streamStatus.bytes < protocolStatus.maxFrameSize)
+            else if (streamStatus.bytes < protocolStatus.maxPollFrameSize)
             {
                streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
                streamStatus.flags |= !checkParity(streamStatus.data, value) ? ParityError : 0;
@@ -627,7 +663,7 @@ struct NfcA::Impl : NfcTech
                   resetModulation();
 
                // no frame found
-               return RawFrame::Nil;
+               return false;
             }
          }
 
@@ -876,6 +912,11 @@ struct NfcA::Impl : NfcTech
          if (decoder->signalClock != modulation->searchEndTime)
             continue;
 
+         // modulation detected at sync point but peak not captured (correlation equal to threshold), use sync point as peak
+         // to avoid symbol timings reference the past and lock the search window
+         if (modulation->searchCorrDValue >= modulation->searchValueThreshold && !modulation->correlatedPeakTime)
+            modulation->correlatedPeakTime = modulation->searchSyncTime;
+
          // detect Pattern-Y when no modulation occurs (below search detection threshold)
          if (modulation->searchCorrDValue < modulation->searchValueThreshold)
          {
@@ -987,8 +1028,8 @@ struct NfcA::Impl : NfcTech
          if (decoder->signalClock < frameStatus.guardEnd)
             continue;
 
-         // using minimum signal st.dev as lower level threshold
-         if (decoder->signalClock == frameStatus.guardEnd)
+         // using minimum signal st.dev as lower level threshold, calibrated at guard end or after a frame search reset
+         if (!modulation->searchValueThreshold)
             modulation->searchValueThreshold = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].meanDeviation * bitrate->period8SymbolSamples;
 
          // check for maximum response time
@@ -1246,7 +1287,7 @@ struct NfcA::Impl : NfcTech
             continue;
 
          // using minimum signal st.dev as lower level threshold scaled to 1/4 symbol to compensate integration
-         if (decoder->signalClock == frameStatus.guardEnd)
+         if (!modulation->searchValueThreshold)
             modulation->searchValueThreshold = decoder->sample[signalIndex & (BUFFER_SIZE - 1)].meanDeviation;
 
          // check if frame waiting time exceeded without detect modulation
@@ -1423,7 +1464,15 @@ struct NfcA::Impl : NfcTech
    {
       // reset frame search status
       if (decoder->modulation)
+      {
          resetSearch(decoder->modulation);
+
+         // force threshold re-calibration from signal noise level
+         decoder->modulation->searchValueThreshold = 0;
+      }
+
+      // discard partially decoded data
+      streamStatus = {};
 
       // reset frame start time
       frameStatus.frameStart = 0;
@@ -1450,6 +1499,9 @@ struct NfcA::Impl : NfcTech
       frameStatus.frameType = 0;
       frameStatus.frameStart = 0;
       frameStatus.frameEnd = 0;
+
+      // no response is pending, forget last command
+      frameStatus.lastCommand = 0;
 
       // restore bitrate
       decoder->bitrate = nullptr;
@@ -1577,18 +1629,14 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] == NFCA_REQA || frame[0] == NFCA_WUPA) && frame.limit() == 1)
+         if ((frame[0] == NFCA_REQA || frame[0] == NFCA_WUPA) && frame.limit() == 1 && frame.hasFrameFlags(ShortFrame))
          {
             frame.setFramePhase(NfcSelectionPhase);
 
             frameStatus.lastCommand = frame[0];
 
             // This commands starts or wakeup card communication, so reset the protocol parameters to the default values
-            protocolStatus.maxFrameSize = 256;
-            protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
-            protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
-            protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
-            protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
+            resetProtocol();
 
             // The REQ-A Response must start exactly at 128 * n, n=9, decoder search between n=7 and n=18
             frameStatus.frameGuardTime = decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF; // ATQ-A response guard
@@ -1621,7 +1669,7 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == NFCA_HLTA && frame.limit() == 4 && !frame.hasFrameFlags(CrcError))
+         if (frame.limit() == 4 && frame[0] == NFCA_HLTA && frame[1] == 0x00)
          {
             frame.setFramePhase(NfcSelectionPhase);
             frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
@@ -1629,11 +1677,7 @@ struct NfcA::Impl : NfcTech
             frameStatus.lastCommand = frame[0];
 
             // After this command the PICC will stop and will not respond, set the protocol parameters to the default values
-            protocolStatus.maxFrameSize = 256;
-            protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
-            protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
-            protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
-            protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
+            resetProtocol();
 
             // clear chained flags
             chainedFlags = 0;
@@ -1659,6 +1703,12 @@ struct NfcA::Impl : NfcTech
          {
             frame.setFramePhase(NfcSelectionPhase);
 
+            // only SELECT command (NVB = 0x70) is protected by CRC, anti-collision frames are not
+            selectCommand = frame.limit() > 1 && frame[1] == 0x70;
+
+            if (selectCommand)
+               frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
+
             frameStatus.lastCommand = frame[0];
 
             // The selection commands has same timings as REQ-A
@@ -1675,6 +1725,10 @@ struct NfcA::Impl : NfcTech
          {
             frame.setFramePhase(NfcSelectionPhase);
 
+            // SAK response to SELECT is protected by CRC, anti-collision responses (UID CLn with BCC) are not
+            if (selectCommand)
+               frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
+
             return true;
          }
       }
@@ -1690,14 +1744,17 @@ struct NfcA::Impl : NfcTech
       // capture parameters from ATS and reconfigure decoder timings
       if (frame.frameType() == NfcPollFrame)
       {
-         if (frame[0] == NFCA_RATS)
+         if (frame[0] == NFCA_RATS && frame.limit() == 4)
          {
             int fsdi = (frame[1] >> 4) & 0x0F;
 
             frameStatus.lastCommand = frame[0];
 
             // sets maximum frame length requested by reader
-            protocolStatus.maxFrameSize = NFC_FDS_TABLE[fsdi];
+            protocolStatus.maxFrameSize = frameSizeFromIndex(fsdi);
+
+            // until FSC is known from ATS, do not truncate reader frames below the reader own limit
+            protocolStatus.maxPollFrameSize = protocolStatus.maxFrameSize;
 
             // sets the activation frame waiting time for ATS response
             frameStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFC_FWT_ACTIVATION);
@@ -1718,18 +1775,24 @@ struct NfcA::Impl : NfcTech
          if (frameStatus.lastCommand == NFCA_RATS)
          {
             int offset = 0;
-            int tl = frame[offset++];
+            int tl = frame.limit() > 0 ? frame[offset++] : 0;
 
-            if (tl > 0)
+            // ATS bytes available for parsing (TL counts itself, CRC is not included)
+            int length = std::min(tl, static_cast<int>(frame.limit()) - 2);
+
+            if (offset < length)
             {
                int t0 = frame[offset++];
+
+               // get maximum frame size accepted by PICC
+               protocolStatus.maxPollFrameSize = frameSizeFromIndex(t0 & 0x0F);
 
                // if TA is transmitted, skip...
                if (t0 & 0x10)
                   offset++;
 
                // if TB is transmitted capture timing parameters
-               if (t0 & 0x20)
+               if ((t0 & 0x20) && offset < length)
                {
                   int tb = frame[offset++];
 
@@ -1858,7 +1921,7 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] & 0xE2) == NFCA_IBLOCK && frame.limit() > 4)
+         if ((frame[0] & 0xE2) == NFCA_IBLOCK && frame.limit() >= 3)
          {
             frameStatus.lastCommand = frame[0] & 0xE2;
 
@@ -1890,7 +1953,7 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] & 0xE6) == NFCA_RBLOCK && frame.limit() == 3)
+         if ((frame[0] & 0xE6) == NFCA_RBLOCK && frame.limit() >= 3 && frame.limit() <= 4)
          {
             frameStatus.lastCommand = frame[0] & 0xE6;
 
@@ -1922,9 +1985,28 @@ struct NfcA::Impl : NfcTech
    {
       if (frame.frameType() == NfcPollFrame)
       {
-         if ((frame[0] & 0xC7) == NFCA_SBLOCK && frame.limit() == 4)
+         if ((frame[0] & 0xC7) == NFCA_SBLOCK && frame.limit() >= 3 && frame.limit() <= 5)
          {
             frameStatus.lastCommand = frame[0] & 0xC7;
+
+            // S(WTX) response from PCD, PICC can use FWT * WTXM to send next response
+            if ((frame[0] & 0x30) == 0x30)
+            {
+               unsigned int offset = (frame[0] & 0x08) ? 2 : 1;
+
+               if (offset < frame.limit() - 2)
+               {
+                  unsigned int wtxm = frame[offset] & 0x3F;
+
+                  // valid WTXM range is 1 to 59
+                  if (wtxm > 59)
+                     wtxm = 59;
+
+                  // extended waiting time, limited to avoid overflow of sample clock arithmetic
+                  if (wtxm > 0)
+                     frameStatus.frameWaitingTime = static_cast<unsigned int>(std::min<unsigned long long>(static_cast<unsigned long long>(protocolStatus.frameWaitingTime) * wtxm, 0x7fffffffULL));
+               }
+            }
 
             frame.setFramePhase(NfcApplicationPhase);
             frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
@@ -1952,6 +2034,10 @@ struct NfcA::Impl : NfcTech
     */
    void processOther(RawFrame &frame)
    {
+      // unknown poll command, do not interpret the response as the previous command
+      if (frame.frameType() == NfcPollFrame)
+         frameStatus.lastCommand = 0;
+
       frame.setFramePhase(NfcApplicationPhase);
       frame.setFrameFlags(!checkCrc(frame) ? CrcError : 0);
    }

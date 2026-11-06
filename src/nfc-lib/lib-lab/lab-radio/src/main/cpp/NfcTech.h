@@ -285,7 +285,7 @@ struct NfcStreamStatus
    unsigned int flags;
    unsigned int parity;
    unsigned int bytes;
-   unsigned char buffer[512];
+   unsigned char buffer[4096 + 2]; // maximum ISO-DEP frame size (FSD/FSC 4096) plus margin for truncated frames
 };
 
 /*

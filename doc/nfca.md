@@ -210,7 +210,33 @@ Al acabar, `process()` calcula `guardEnd`/`waitingEnd` para la respuesta (tramas
 
 ## 8. Errores encontrados
 
-Están ordenados por gravedad. Las líneas se refieren a `tech/NfcA.cpp`.
+Están ordenados por gravedad. Las líneas se refieren a `tech/NfcA.cpp`. Las líneas citadas en cada error corresponden al código anterior a las correcciones.
+
+### Estado de las correcciones
+
+| Error | Estado | Corrección aplicada |
+|---|---|---|
+| E1 Desbordamiento de buffer | **Corregido** | `NfcStreamStatus::buffer` pasa a 4096 + 2 bytes (también protege a NFC-B, que tenía el mismo problema). El tamaño de trama se limita a la capacidad del buffer. `buildFrame` reserva el `RawFrame` con el tamaño real: el constructor por defecto reserva 512 bytes y `put()` abortaba por `assert` con tramas mayores |
+| E2 FSDI reservado | **Corregido** | `frameSizeFromIndex()` interpreta FSDI/FSCI 'D'–'F' como 'C' (ISO/IEC 14443-4) |
+| E3 S-Blocks | **Corregido** | `NFCA_SBLOCK = 0xC2`, longitud de 3 a 5 bytes (con y sin CID y WTXM) |
+| E4 `resetFrameSearch` | **Corregido** | Limpia `streamStatus` y fuerza recalibrar el umbral con el nivel de ruido |
+| E5 Lecturas fuera de rango | **Corregido** | RATS exige 4 bytes. El ATS se recorre limitado por `min(TL, limit − 2)`; si falta TB se usan los valores por defecto |
+| E6 Bloqueo de ventana | **Corregido** | Si hay modulación en el punto de sincronización pero no se capturó pico, se usa `searchSyncTime` como pico. La calibración del umbral ya no depende de `clock == guardEnd` exacto |
+| E7 `S1 ≈ −S0` | Pendiente | Hay que decidir si el comportamiento es intencionado: cambiarlo altera los resultados |
+| E8 Reloj de 32 bits | Pendiente | Afecta a todo el decodificador (NFC-A/B/F/V y `RawFrame`); requiere un cambio transversal |
+| E9 `maximumModulationDeep` | **Corregido** | La detección descarta pulsos con profundidad mayor que el máximo. Con el valor por defecto (1.0) no cambia nada |
+| E10 RawFrame::Nil | **Corregido** | `return false` |
+| E10 HLTA | **Corregido** | Se eliminó la comprobación inútil de `CrcError`; exige `50 00` y 4 bytes |
+| E10 REQA/WUPA | **Corregido** | Exige `ShortFrame` (7 bits) |
+| E10 I-Block / R-Block | **Corregido** | I-block desde 3 bytes; R-block de 3 o 4 bytes (con CID) |
+| E10 CRC de SELECT y SAK | **Corregido** | Se comprueba el CRC en SELECT (NVB = 0x70) y en su SAK; no en las tramas de anticolisión |
+| E10 FSC para tramas del lector | **Corregido** | Las tramas del lector se limitan con el FSC del ATS (FSCI de T0). Hasta recibir el ATS se usa el FSD del RATS, para no truncar tramas válidas |
+| E10 S(WTX) | **Corregido** | La respuesta S(WTX) del lector extiende el FWT de la siguiente respuesta a `FWT × WTXM` (WTXM 1–59) |
+| E10 `lastCommand` tras timeout | **Corregido** | Se reinicia en `resetModulation()` y al recibir un comando desconocido |
+| E10 Bits sueltos en anticolisión | Pendiente | `RawFrame` no tiene campo para el número de bits válidos del último byte |
+| E10 Límite de frecuencia de muestreo | **Avisado** | `initialize()` registra un aviso si la línea de retardo no cabe en `BUFFER_SIZE` |
+| E10 Campos sin uso | Pendiente | `startUpGuardTime`, `requestGuardTime`, `lastFrameEnd`, `detectIntegrate`: se dejan por si se usan en el futuro |
+
 
 ### E1. Desbordamiento de `streamStatus.buffer` con FSD ≥ 512. **Grave**
 
@@ -337,4 +363,16 @@ Todas mantienen la salida exacta del decodificador: con las 19 capturas de `wav/
 
 ## 10. Pruebas
 
-En `wav/` hay capturas de referencia (`test_*.wav`) con su salida esperada (`*.json`). Cualquier cambio en el demodulador debería validarse comparando las tramas decodificadas con esos ficheros antes y después del cambio. Con el código actual, las 19 capturas reproducen exactamente sus `.json`.
+En `wav/` hay capturas de referencia (`test_*.wav`) con su salida esperada (`*.json`). Cualquier cambio en el demodulador debería validarse comparando las tramas decodificadas con esos ficheros antes y después del cambio. Con el código actual, las 19 capturas reproducen exactamente sus `.json`, y la salida es idéntica byte a byte a la del código anterior a las optimizaciones y correcciones.
+
+Ninguna de esas capturas contiene los casos de los errores E1–E6, así que también se validaron con señales NFC-A de 106 kbps generadas sintéticamente (lector con ASK 100 % y Miller modificado, tarjeta con subportadora y Manchester, y ruido gaussiano):
+
+| Escenario | Código anterior | Código corregido |
+|---|---|---|
+| Activación completa (REQA, ATQA, RATS, ATS, I-block) | Correcto | Correcto |
+| RATS con FSDI = C y trama del lector de 703 bytes (E1) | Se cuelga (corrupción de memoria) | Trama de 703 bytes completa y sin errores |
+| RATS con FSDI = F (E2) | Pierde todas las tramas posteriores | Decodifica todas |
+| ATS truncado: TL = 5 pero solo TL y T0 (E5) | Usa bytes de CRC como TB | Usa los timings por defecto |
+| S(WTX) con WTXM = 4 y respuesta a 12 ms, por encima del FWT de 4,8 ms | Pierde la respuesta | Decodifica la respuesta |
+| Ráfaga espuria de 2 bits antes del ATQA (E4) | ATQA `13:00` con error de paridad | ATQA `04:00` correcto |
+| S(DESELECT) de 3 bytes (E3) | Clasificado como trama genérica | Clasificado como S-block |
