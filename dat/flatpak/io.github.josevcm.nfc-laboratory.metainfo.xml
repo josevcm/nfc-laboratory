@@ -73,6 +73,13 @@
   </developer>
 
   <releases>
+    <release version="3.5.0" date="2026-11-04">
+      <description>
+        <p>Added HackRF One and Sipeed SLogic Combo 8 support, SigMF capture format and HydraSDR RF port selection.</p>
+        <p>New settings dialog, compact zstd-compressed trace storage and device disconnection detection.</p>
+        <p>Fixed Airspy/DSLogic signal desync and several capture stability issues.</p>
+      </description>
+    </release>
     <release version="3.4.2" date="2025-11-28">
       <description>
         <p>Fixed resampled buffer size to avoid crash when resampled data equals incoming data.</p>

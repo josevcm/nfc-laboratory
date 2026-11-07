@@ -41,6 +41,7 @@ struct NfcB
    enum CommandType
    {
       NFCB_REQB = 0x05,
+      NFCB_HLTB = 0x50,
       NFCB_ATTRIB = 0x1d
    };
 

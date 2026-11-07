@@ -40,7 +40,7 @@ struct NfcF
 
    enum CommandType
    {
-      NFCB_REQC = 0x00,
+      NFCF_REQC = 0x00,
    };
 
    explicit NfcF(NfcDecoderStatus *decoder);
