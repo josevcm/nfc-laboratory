@@ -119,67 +119,6 @@ struct NfcA::Impl : NfcTech
    }
 
    /*
-    * Reset protocol parameters to default values
-    */
-   void resetProtocol()
-   {
-      protocolStatus.maxFrameSize = 256;
-      protocolStatus.maxPollFrameSize = 256;
-      protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
-      protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
-      protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
-      protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
-   }
-
-   /*
-    * Reset symbol search status for one modulation
-    */
-   static void resetSearch(NfcModulationStatus *modulation)
-   {
-      modulation->symbolStartTime = 0;
-      modulation->symbolEndTime = 0;
-      modulation->symbolRiseTime = 0;
-      modulation->searchSyncTime = 0;
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->searchPulseWidth = 0;
-      modulation->correlatedPeakTime = 0;
-      modulation->correlatedPeakValue = 0;
-      modulation->detectorPeakTime = 0;
-      modulation->detectorPeakValue = 0;
-   }
-
-   /*
-    * Build a frame from current frame and stream status
-    */
-   RawFrame buildFrame(unsigned int frameType, unsigned int frameRate, unsigned int frameFlags) const
-   {
-      // default frame capacity is 512 bytes, allocate enough room for large ISO-DEP frames
-      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
-
-      frame.setTechType(FrameTech::NfcATech);
-      frame.setFrameType(frameType);
-      frame.setFrameRate(frameRate);
-      frame.setSampleStart(frameStatus.frameStart);
-      frame.setSampleEnd(frameStatus.frameEnd);
-      frame.setSampleRate(decoder->sampleRate);
-      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
-      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
-      frame.setDateTime(decoder->streamTime + frame.timeStart());
-
-      if (streamStatus.flags & ParityError)
-         frameFlags |= ParityError;
-
-      if (frameFlags)
-         frame.setFrameFlags(frameFlags);
-
-      // add bytes to frame and flip to prepare read
-      frame.put(streamStatus.buffer, streamStatus.bytes).flip();
-
-      return frame;
-   }
-
-   /*
     * Configure NFC-A modulation
     */
    void initialize(unsigned int sampleRate)
@@ -282,6 +221,67 @@ struct NfcA::Impl : NfcTech
       log->info("\tframeGuardTime {} samples ({} us)", {protocolStatus.frameGuardTime, 1000000.0 * protocolStatus.frameGuardTime / decoder->sampleRate});
       log->info("\tframeWaitingTime {} samples ({} us)", {protocolStatus.frameWaitingTime, 1000000.0 * protocolStatus.frameWaitingTime / decoder->sampleRate});
       log->info("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / decoder->sampleRate});
+   }
+
+   /*
+ * Reset protocol parameters to default values
+ */
+   void resetProtocol()
+   {
+      protocolStatus.maxFrameSize = 256;
+      protocolStatus.maxPollFrameSize = 256;
+      protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_SFGT_DEF);
+      protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FGT_DEF);
+      protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_FWT_DEF);
+      protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCA_RGT_DEF);
+   }
+
+   /*
+    * Reset symbol search status for one modulation
+    */
+   static void resetSearch(NfcModulationStatus *modulation)
+   {
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+      modulation->symbolRiseTime = 0;
+      modulation->searchSyncTime = 0;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->searchPulseWidth = 0;
+      modulation->correlatedPeakTime = 0;
+      modulation->correlatedPeakValue = 0;
+      modulation->detectorPeakTime = 0;
+      modulation->detectorPeakValue = 0;
+   }
+
+   /*
+    * Build a frame from current frame and stream status
+    */
+   RawFrame buildFrame(unsigned int frameType, unsigned int frameRate, unsigned int frameFlags) const
+   {
+      // default frame capacity is 512 bytes, allocate enough room for large ISO-DEP frames
+      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
+
+      frame.setTechType(FrameTech::NfcATech);
+      frame.setFrameType(frameType);
+      frame.setFrameRate(frameRate);
+      frame.setSampleStart(frameStatus.frameStart);
+      frame.setSampleEnd(frameStatus.frameEnd);
+      frame.setSampleRate(decoder->sampleRate);
+      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
+      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
+      frame.setDateTime(decoder->streamTime + frame.timeStart());
+
+      if (streamStatus.flags & ParityError)
+         frameFlags |= ParityError;
+
+      if (frameFlags)
+         frame.setFrameFlags(frameFlags);
+
+      // add bytes to frame and flip to prepare read
+      frame.put(streamStatus.buffer, streamStatus.bytes).flip();
+
+      return frame;
    }
 
    /*
@@ -510,9 +510,7 @@ struct NfcA::Impl : NfcTech
                   streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
 
                // build request frame
-               RawFrame request = buildFrame(NfcPollFrame, frameStatus.symbolRate,
-                                             (truncateError ? Truncated : 0) |
-                                             (streamStatus.bytes == 1 && streamStatus.bits == 7 ? ShortFrame : 0));
+               RawFrame request = buildFrame(NfcPollFrame, frameStatus.symbolRate, (truncateError ? Truncated : 0) | (streamStatus.bytes == 1 && streamStatus.bits == 7 ? ShortFrame : 0));
 
                // process frame
                process(request);
@@ -651,9 +649,7 @@ struct NfcA::Impl : NfcTech
                      if (streamStatus.bits == 4)
                         streamStatus.buffer[streamStatus.bytes++] = streamStatus.data;
 
-                     RawFrame response = buildFrame(NfcListenFrame, decoder->bitrate->symbolsPerSecond,
-                                                    (truncateError ? Truncated : 0) |
-                                                    (streamStatus.bytes == 1 && streamStatus.bits == 4 ? ShortFrame : 0));
+                     RawFrame response = buildFrame(NfcListenFrame, decoder->bitrate->symbolsPerSecond, (truncateError ? Truncated : 0) | (streamStatus.bytes == 1 && streamStatus.bits == 4 ? ShortFrame : 0));
 
                      // process frame
                      process(response);
