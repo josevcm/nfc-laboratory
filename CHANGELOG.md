@@ -4,6 +4,22 @@ All notable changes to NFC Laboratory are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- `test-decoder` regression tests for NFC-A/B/F/V, with synthetic capture generators.
+- Decoder analysis documents for NFC-A, NFC-B, NFC-F and NFC-V (`doc/nfca.md`, `nfcb.md`, `nfcf.md`, `nfcv.md`).
+
+### Changed
+
+- Open and Save file dialogs remember the last directory used (stored separately for each), defaulting to the user's home directory.
+- Faster NFC-A and NFC-B decoder hot paths; correlation helpers shared between NFC-F and NFC-V, and reset/frame building refactored across all technologies.
+
+### Fixed
+
+- Protocol and robustness errors in the NFC-A, NFC-B, NFC-F and NFC-V decoders.
+
 ## [3.5.0] - 2026-11-04
 
 ### Added
