@@ -122,74 +122,6 @@ struct NfcB::Impl : NfcTech
    }
 
    /*
-    * Reset SoS search status for one modulation (poll frame detection)
-    */
-   static void resetSearch(NfcModulationStatus *modulation)
-   {
-      modulation->symbolStartTime = 0;
-      modulation->symbolEndTime = 0;
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->searchSyncTime = 0;
-      modulation->detectorPeakTime = 0;
-      modulation->detectorPeakValue = 0;
-   }
-
-   /*
-    * Reset SoS search status for listen frame, restart from TR1 preamble
-    */
-   static void resetListenSearch(NfcModulationStatus *modulation)
-   {
-      modulation->detectorPeakValue = 0;
-      modulation->searchModeState = LISTEN_MODE_TR1;
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->symbolStartTime = 0;
-      modulation->symbolEndTime = 0;
-   }
-
-   /*
-    * Reset protocol parameters to default values
-    */
-   void resetProtocol()
-   {
-      protocolStatus.maxFrameSize = 256;
-      protocolStatus.maxPollFrameSize = 256;
-      protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_SFGT_DEF);
-      protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF);
-      protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FWT_DEF);
-      protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_RGT_DEF);
-      protocolStatus.tr1MinimumTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TR1_MIN);
-   }
-
-   /*
-    * Build a frame from current frame and stream status
-    */
-   RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
-   {
-      // default frame capacity is 512 bytes, allocate enough room for large ISO-DEP frames
-      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
-
-      frame.setTechType(FrameTech::NfcBTech);
-      frame.setFrameType(frameType);
-      frame.setFrameRate(decoder->bitrate->symbolsPerSecond);
-      frame.setSampleStart(frameStatus.frameStart);
-      frame.setSampleEnd(frameStatus.frameEnd);
-      frame.setSampleRate(decoder->sampleRate);
-      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
-      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
-      frame.setDateTime(decoder->streamTime + frame.timeStart());
-
-      if (frameFlags)
-         frame.setFrameFlags(frameFlags);
-
-      // add bytes to frame and flip to prepare read
-      frame.put(streamStatus.buffer, streamStatus.bytes).flip();
-
-      return frame;
-   }
-
-   /*
     * Configure NFC-B modulation
     */
    void initialize(unsigned int sampleRate)
@@ -301,6 +233,74 @@ struct NfcB::Impl : NfcTech
       log->debug("\tlistenS1MaximumTime {} samples ({} us)", {protocolStatus.listenS1MaximumTime, 1000000.0 * protocolStatus.listenS1MaximumTime / decoder->sampleRate});
       log->debug("\tlistenS2MinimumTime {} samples ({} us)", {protocolStatus.listenS2MinimumTime, 1000000.0 * protocolStatus.listenS2MinimumTime / decoder->sampleRate});
       log->debug("\tlistenS2MaximumTime {} samples ({} us)", {protocolStatus.listenS2MaximumTime, 1000000.0 * protocolStatus.listenS2MaximumTime / decoder->sampleRate});
+   }
+
+      /*
+    * Reset SoS search status for one modulation (poll frame detection)
+    */
+   static void resetSearch(NfcModulationStatus *modulation)
+   {
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->searchSyncTime = 0;
+      modulation->detectorPeakTime = 0;
+      modulation->detectorPeakValue = 0;
+   }
+
+   /*
+    * Reset SoS search status for listen frame, restart from TR1 preamble
+    */
+   static void resetListenSearch(NfcModulationStatus *modulation)
+   {
+      modulation->detectorPeakValue = 0;
+      modulation->searchModeState = LISTEN_MODE_TR1;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+   }
+
+   /*
+    * Reset protocol parameters to default values
+    */
+   void resetProtocol()
+   {
+      protocolStatus.maxFrameSize = 256;
+      protocolStatus.maxPollFrameSize = 256;
+      protocolStatus.startUpGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_SFGT_DEF);
+      protocolStatus.frameGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FGT_DEF);
+      protocolStatus.frameWaitingTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_FWT_DEF);
+      protocolStatus.requestGuardTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_RGT_DEF);
+      protocolStatus.tr1MinimumTime = static_cast<int>(decoder->signalParams.sampleTimeUnit * NFCB_TR1_MIN);
+   }
+
+   /*
+    * Build a frame from current frame and stream status
+    */
+   RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
+   {
+      // default frame capacity is 512 bytes, allocate enough room for large ISO-DEP frames
+      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
+
+      frame.setTechType(FrameTech::NfcBTech);
+      frame.setFrameType(frameType);
+      frame.setFrameRate(decoder->bitrate->symbolsPerSecond);
+      frame.setSampleStart(frameStatus.frameStart);
+      frame.setSampleEnd(frameStatus.frameEnd);
+      frame.setSampleRate(decoder->sampleRate);
+      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
+      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
+      frame.setDateTime(decoder->streamTime + frame.timeStart());
+
+      if (frameFlags)
+         frame.setFrameFlags(frameFlags);
+
+      // add bytes to frame and flip to prepare read
+      frame.put(streamStatus.buffer, streamStatus.bytes).flip();
+
+      return frame;
    }
 
    /*
