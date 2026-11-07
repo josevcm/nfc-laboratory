@@ -26,6 +26,7 @@
 #include <QSettings>
 #include <QTimer>
 #include <QStandardPaths>
+#include <QFileInfo>
 #include <QScreen>
 #include <QRegularExpression>
 #include <QDesktopServices>
@@ -1762,12 +1763,14 @@ struct QtWindow::Impl
    {
       qInfo() << "open file";
 
-      QDir dataPath = QtApplication::dataPath();
+      QString path = lastDirectory("lastOpenDirectory");
 
-      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), dataPath.absolutePath(), tr("Capture (*.wav *.trz *.sigmf-meta *.sigmf-data)"));
+      QString fileName = Theme::openFileDialog(window, tr("Open trace file"), path, tr("Capture (*.wav *.trz *.sigmf-meta *.sigmf-data)"));
 
       if (fileName.isEmpty())
          return;
+
+      settings.setValue("lastOpenDirectory", QFileInfo(fileName).absolutePath());
 
       if (!(fileName.endsWith(".wav") || fileName.endsWith(".trz") || fileName.endsWith(".sigmf-meta") || fileName.endsWith(".sigmf-data")))
       {
@@ -1790,7 +1793,17 @@ struct QtWindow::Impl
                                                   }));
    }
 
-   void saveFile() const
+   QString lastDirectory(const QString &key) const
+   {
+      QString path = settings.value(key).toString();
+
+      if (path.isEmpty() || !QDir(path).exists())
+         path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+
+      return path;
+   }
+
+   void saveFile()
    {
       qInfo() << "save signal trace";
 
@@ -1799,7 +1812,7 @@ struct QtWindow::Impl
       double writeTimeFrom = hasSelection ? selectedTimeFrom : receivedTimeFrom;
       double writeTimeTo = hasSelection ? selectedTimeTo : receivedTimeTo;
 
-      QString path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+      QString path = lastDirectory("lastSaveDirectory");
       QString date = QDateTime::currentDateTime().toString("yyyy_MM_dd-HH_mm_ss");
       QString name = QString("%1-trace.trz").arg(date);
 
@@ -1807,6 +1820,8 @@ struct QtWindow::Impl
 
       if (!fileName.isEmpty())
       {
+         settings.setValue("lastSaveDirectory", QFileInfo(fileName).absolutePath());
+
          QtApplication::post(new DecoderControlEvent(DecoderControlEvent::WriteFile, {
                                                         {"fileName", fileName},
                                                         {"sampleRate", radioSampleRate},
