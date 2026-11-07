@@ -112,52 +112,7 @@ struct NfcF::Impl : NfcTech
    {
    }
 
-   /*
-    * Reset preamble search status for one modulation
-    */
-   static void resetSearch(NfcModulationStatus *modulation)
-   {
-      modulation->symbolStartTime = 0;
-      modulation->symbolEndTime = 0;
-      modulation->searchSyncTime = 0;
-      modulation->searchSyncValue = 0;
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->searchPulseWidth = 0;
-      modulation->searchValueThreshold = 0;
-      modulation->correlatedPeakValue = 0;
-      modulation->correlatedPeakTime = 0;
-   }
-
-   /*
-    * Build a frame from current frame and stream status, sync bytes are not included
-    */
-   RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
-   {
-      RawFrame frame = RawFrame(FrameTech::NfcFTech, frameType);
-
-      frame.setFrameRate(decoder->bitrate->symbolsPerSecond);
-      frame.setSampleStart(frameStatus.frameStart);
-      frame.setSampleEnd(frameStatus.frameEnd);
-      frame.setSampleRate(decoder->sampleRate);
-      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
-      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
-      frame.setDateTime(decoder->streamTime + frame.timeStart());
-
-      // check synchronization bytes, must be 0xB24D
-      if (streamStatus.buffer[0] != 0xB2 || streamStatus.buffer[1] != 0x4D)
-         frameFlags |= SyncError;
-
-      if (frameFlags)
-         frame.setFrameFlags(frameFlags);
-
-      // add bytes to frame and flip to prepare read
-      frame.put(streamStatus.buffer + 2, streamStatus.bytes - 2).flip();
-
-      return frame;
-   }
-
-   inline void initialize(unsigned int sampleRate)
+   void initialize(unsigned int sampleRate)
    {
       log->info("--------------------------------------------");
       log->info("initializing NFC-F decoder");
@@ -260,7 +215,52 @@ struct NfcF::Impl : NfcTech
       log->debug("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / decoder->sampleRate});
    }
 
-   inline bool detectModulation()
+   /*
+    * Reset preamble search status for one modulation
+    */
+   static void resetSearch(NfcModulationStatus *modulation)
+   {
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+      modulation->searchSyncTime = 0;
+      modulation->searchSyncValue = 0;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->searchPulseWidth = 0;
+      modulation->searchValueThreshold = 0;
+      modulation->correlatedPeakValue = 0;
+      modulation->correlatedPeakTime = 0;
+   }
+
+   /*
+    * Build a frame from current frame and stream status, sync bytes are not included
+    */
+   RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
+   {
+      RawFrame frame = RawFrame(FrameTech::NfcFTech, frameType);
+
+      frame.setFrameRate(decoder->bitrate->symbolsPerSecond);
+      frame.setSampleStart(frameStatus.frameStart);
+      frame.setSampleEnd(frameStatus.frameEnd);
+      frame.setSampleRate(decoder->sampleRate);
+      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
+      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
+      frame.setDateTime(decoder->streamTime + frame.timeStart());
+
+      // check synchronization bytes, must be 0xB24D
+      if (streamStatus.buffer[0] != 0xB2 || streamStatus.buffer[1] != 0x4D)
+         frameFlags |= SyncError;
+
+      if (frameFlags)
+         frame.setFrameFlags(frameFlags);
+
+      // add bytes to frame and flip to prepare read
+      frame.put(streamStatus.buffer + 2, streamStatus.bytes - 2).flip();
+
+      return frame;
+   }
+
+   bool detectModulation()
    {
       // local copies, signal clock and debugger does not change during detection
       const unsigned int clock = decoder->signalClock;
@@ -451,8 +451,6 @@ struct NfcF::Impl : NfcTech
       return false;
    }
 
-   inline
-
    void decodeFrame(hw::SignalBuffer &samples, std::list<RawFrame> &frames)
    {
       if (frameStatus.frameType == NfcPollFrame)
@@ -469,7 +467,7 @@ struct NfcF::Impl : NfcTech
    /*
     * Decode next poll frame
     */
-   inline bool decodePollFrame(hw::SignalBuffer &buffer, std::list<RawFrame> &frames)
+   bool decodePollFrame(hw::SignalBuffer &buffer, std::list<RawFrame> &frames)
    {
       int pattern;
       bool frameEnd = false, truncateError = false;
@@ -557,7 +555,7 @@ struct NfcF::Impl : NfcTech
    /*
     * Decode next listen frame
     */
-   inline bool decodeListenFrame(hw::SignalBuffer &buffer, std::list<RawFrame> &frames)
+   bool decodeListenFrame(hw::SignalBuffer &buffer, std::list<RawFrame> &frames)
    {
       int pattern;
       bool frameEnd = false, truncateError = false;
@@ -646,7 +644,7 @@ struct NfcF::Impl : NfcTech
    /*
     * Decode one ASK modulated poll frame symbol
     */
-   inline int decodePollFrameSymbolAsk(hw::SignalBuffer &buffer)
+   int decodePollFrameSymbolAsk(hw::SignalBuffer &buffer)
    {
       NfcBitrateParams *bitrate = decoder->bitrate;
       NfcModulationStatus *modulation = decoder->modulation;
@@ -755,7 +753,7 @@ struct NfcF::Impl : NfcTech
    /*
    * Decode SOF ASK modulated listen frame symbol
    */
-   inline int decodeListenFrameStartAsk(hw::SignalBuffer &buffer)
+   int decodeListenFrameStartAsk(hw::SignalBuffer &buffer)
    {
       NfcBitrateParams *bitrate = decoder->bitrate;
       NfcModulationStatus *modulation = decoder->modulation;

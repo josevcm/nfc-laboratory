@@ -119,62 +119,7 @@ struct NfcV::Impl : NfcTech
    {
    }
 
-   /*
-    * Reset SoF search status (poll frame detection)
-    */
-   static void resetSearch(NfcModulationStatus *modulation)
-   {
-      modulation->symbolStartTime = 0;
-      modulation->symbolEndTime = 0;
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->searchSyncTime = 0;
-      modulation->correlatedPeakTime = 0;
-      modulation->correlatedPeakValue = 0;
-      modulation->detectorPeakTime = 0;
-      modulation->detectorPeakValue = 0;
-   }
-
-   /*
-    * Reset SoF search status for listen frame, restart from first preamble
-    */
-   static void resetListenSearch(NfcModulationStatus *modulation)
-   {
-      modulation->searchModeState = LISTEN_MODE_PREAMBLE1;
-      modulation->searchStartTime = 0;
-      modulation->searchEndTime = 0;
-      modulation->symbolStartTime = 0;
-      modulation->symbolEndTime = 0;
-   }
-
-   /*
-    * Build a frame from current frame and stream status
-    */
-   RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
-   {
-      // default frame capacity is 512 bytes, allocate enough room for large responses
-      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
-
-      frame.setTechType(NfcVTech);
-      frame.setFrameType(frameType);
-      frame.setFrameRate(frameStatus.symbolRate);
-      frame.setSampleStart(frameStatus.frameStart);
-      frame.setSampleEnd(frameStatus.frameEnd);
-      frame.setSampleRate(decoder->sampleRate);
-      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
-      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
-      frame.setDateTime(decoder->streamTime + frame.timeStart());
-
-      if (frameFlags)
-         frame.setFrameFlags(frameFlags);
-
-      // add bytes to frame and flip to prepare read
-      frame.put(streamStatus.buffer, streamStatus.bytes).flip();
-
-      return frame;
-   }
-
-   inline void initialize(unsigned int sampleRate)
+   void initialize(unsigned int sampleRate)
    {
       log->info("--------------------------------------------");
       log->info("initializing NFC-V decoder");
@@ -283,7 +228,7 @@ struct NfcV::Impl : NfcTech
       log->debug("\trequestGuardTime {} samples ({} us)", {protocolStatus.requestGuardTime, 1000000.0 * protocolStatus.requestGuardTime / decoder->sampleRate});
    }
 
-   inline void configurePulse(NfcPulseParams *pulse, int bits)
+   void configurePulse(NfcPulseParams *pulse, int bits)
    {
       pulse->bits = bits;
       pulse->periods = 1 << bits;
@@ -299,7 +244,62 @@ struct NfcV::Impl : NfcTech
       }
    }
 
-   inline bool detectModulation()
+   /*
+    * Reset SoF search status (poll frame detection)
+    */
+   static void resetSearch(NfcModulationStatus *modulation)
+   {
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->searchSyncTime = 0;
+      modulation->correlatedPeakTime = 0;
+      modulation->correlatedPeakValue = 0;
+      modulation->detectorPeakTime = 0;
+      modulation->detectorPeakValue = 0;
+   }
+
+   /*
+    * Reset SoF search status for listen frame, restart from first preamble
+    */
+   static void resetListenSearch(NfcModulationStatus *modulation)
+   {
+      modulation->searchModeState = LISTEN_MODE_PREAMBLE1;
+      modulation->searchStartTime = 0;
+      modulation->searchEndTime = 0;
+      modulation->symbolStartTime = 0;
+      modulation->symbolEndTime = 0;
+   }
+
+   /*
+    * Build a frame from current frame and stream status
+    */
+   RawFrame buildFrame(unsigned int frameType, unsigned int frameFlags) const
+   {
+      // default frame capacity is 512 bytes, allocate enough room for large responses
+      RawFrame frame = RawFrame(std::max(streamStatus.bytes, 512u));
+
+      frame.setTechType(NfcVTech);
+      frame.setFrameType(frameType);
+      frame.setFrameRate(frameStatus.symbolRate);
+      frame.setSampleStart(frameStatus.frameStart);
+      frame.setSampleEnd(frameStatus.frameEnd);
+      frame.setSampleRate(decoder->sampleRate);
+      frame.setTimeStart(static_cast<double>(frameStatus.frameStart) / static_cast<double>(decoder->sampleRate));
+      frame.setTimeEnd(static_cast<double>(frameStatus.frameEnd) / static_cast<double>(decoder->sampleRate));
+      frame.setDateTime(decoder->streamTime + frame.timeStart());
+
+      if (frameFlags)
+         frame.setFrameFlags(frameFlags);
+
+      // add bytes to frame and flip to prepare read
+      frame.put(streamStatus.buffer, streamStatus.bytes).flip();
+
+      return frame;
+   }
+
+   bool detectModulation()
    {
       // local copies, signal clock and debugger does not change during detection
       const unsigned int clock = decoder->signalClock;
@@ -483,7 +483,7 @@ struct NfcV::Impl : NfcTech
       return false;
    }
 
-   inline void decodeFrame(hw::SignalBuffer &samples, std::list<RawFrame> &frames)
+   void decodeFrame(hw::SignalBuffer &samples, std::list<RawFrame> &frames)
    {
       if (frameStatus.frameType == NfcPollFrame)
       {
@@ -496,7 +496,7 @@ struct NfcV::Impl : NfcTech
       }
    }
 
-   inline bool decodePollFrame(hw::SignalBuffer &buffer, std::list<RawFrame> &frames)
+   bool decodePollFrame(hw::SignalBuffer &buffer, std::list<RawFrame> &frames)
    {
       int pattern;
       bool frameEnd = false, truncateError = false, streamError = false;
@@ -593,7 +593,7 @@ struct NfcV::Impl : NfcTech
    /*
     * Decode next listen frame
     */
-   inline bool decodeListenFrame(hw::SignalBuffer &buffer, std::list<RawFrame> &frames)
+   bool decodeListenFrame(hw::SignalBuffer &buffer, std::list<RawFrame> &frames)
    {
       int pattern;
       bool frameEnd = false, truncateError = false, streamError = false;
@@ -690,7 +690,7 @@ struct NfcV::Impl : NfcTech
    /*
     * Decode one PPM modulated poll frame symbol
     */
-   inline int decodePollFrameSymbolPpm(hw::SignalBuffer &buffer)
+   int decodePollFrameSymbolPpm(hw::SignalBuffer &buffer)
    {
       NfcPulseParams *pulse = decoder->pulse;
       NfcBitrateParams *bitrate = decoder->bitrate;
